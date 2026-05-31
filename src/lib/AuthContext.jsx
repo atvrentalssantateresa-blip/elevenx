@@ -27,9 +27,11 @@ export const AuthProvider = ({ children }) => {
       const walletSession = localStorage.getItem('elevenx_wallet_session');
       const isAuthenticatedMarker = localStorage.getItem('elevenx_authenticated');
       
+      console.log('🔍 checkAppState: walletSession=', walletSession, 'isAuthenticatedMarker=', isAuthenticatedMarker);
+      
       // If we have a wallet session marker, authenticate immediately (skip token-based checks)
       if (walletSession && isAuthenticatedMarker === 'true') {
-        console.log('🔐 Wallet session detected in checkAppState');
+        console.log('🔐 Wallet session detected in checkAppState, calling checkUserAuth...');
         await checkUserAuth();
         setIsLoadingPublicSettings(false);
         return;
@@ -103,6 +105,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Check for wallet session first (wallet-only auth)
       const walletSession = localStorage.getItem('elevenx_wallet_session');
+      console.log('🔑 checkUserAuth: walletSession=', walletSession);
       
       if (walletSession) {
         // Wallet-based session - fetch user from backend using wallet address
@@ -112,10 +115,15 @@ export const AuthProvider = ({ children }) => {
           // Handle both string and JSON formats
           const parsed = JSON.parse(walletSession);
           address = parsed.address || walletSession;
-        } catch {}
+          console.log('📍 Parsed wallet address from JSON:', address);
+        } catch (e) {
+          console.log('📍 Using wallet session as string:', address);
+        }
+        console.log('🎯 Calling walletAuth with address:', address);
         const response = await base44.functions.invoke('walletAuth', {
           walletAddress: address
         });
+        console.log('📥 walletAuth response:', response.data);
         
         if (response.data.success) {
           // Build user object from response (handle both direct fields and nested user.*)

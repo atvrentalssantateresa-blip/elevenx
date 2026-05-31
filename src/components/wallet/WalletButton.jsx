@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { useWallet } from '@/lib/WalletContext';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Wallet, ChevronDown, LogOut, Copy } from 'lucide-react';
 import ConnectWalletModal from './ConnectWalletModal';
 
 export default function WalletButton() {
-  const { isConnected, shortAddress, disconnect, isConnecting } = useWallet();
+  const { isConnected, shortAddress, disconnect, isConnecting, walletAddress } = useWallet();
+  const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { walletAddress } = useWallet();
+  // Show username if available, otherwise show short address
+  const displayName = user?.full_name || user?.username || shortAddress;
 
   const copyAddress = () => {
     if (walletAddress) {
@@ -46,7 +49,7 @@ export default function WalletButton() {
         className="flex items-center gap-2 bg-primary/10 border border-primary/25 hover:bg-primary/20 transition-colors rounded-xl px-3 py-2"
       >
         <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        <span className="font-heading font-bold text-xs text-primary">{shortAddress}</span>
+        <span className="font-heading font-bold text-xs text-primary">{displayName}</span>
         <ChevronDown className="w-3 h-3 text-primary/60" />
       </button>
 
