@@ -15,6 +15,9 @@ export default function Profile() {
   // Use auth user directly
   const currentUser = user;
   
+  // Define walletAddress early to avoid reference errors
+  const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
+  
   console.log('Profile - currentUser:', currentUser);
   console.log('Profile - user (auth):', user);
   console.log('Profile - connectedWalletAddress:', connectedWalletAddress);
@@ -42,8 +45,6 @@ export default function Profile() {
   const wins = myBets.filter(b => b.status === 'won' || b.status === 'claimed').length;
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
-
-  const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
 
   // Show connect prompt if wallet not connected (even if platform user exists)
   if (!walletAddress) {
