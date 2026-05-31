@@ -6,11 +6,15 @@ import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
 import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function Profile() {
   const { user, refreshUser, logout } = useAuth();
   const { isConnected, connect, disconnect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
   const [userData, setUserData] = useState(null);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
 
   // Use auth user directly
   const currentUser = user;
@@ -31,6 +35,26 @@ export default function Profile() {
     }
   }, [isConnected, currentUser, walletAddress]);
 
+  // Handle username setup for first-time users
+  const handleSaveUsername = async () => {
+    if (!usernameInput || usernameInput.length < 3) {
+      return;
+    }
+    setIsSavingUsername(true);
+    try {
+      await base44.functions.invoke('saveWalletAddress', { 
+        walletAddress, 
+        username: usernameInput 
+      });
+      await refreshUser();
+      setUsernameInput('');
+    } catch (err) {
+      console.error('Failed to save username:', err);
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
     queryFn: async () => {
@@ -46,7 +70,7 @@ export default function Profile() {
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
 
-  // Show connect prompt if wallet not connected (even if platform user exists)
+  // Show connect prompt if wallet not connected
   if (!walletAddress) {
     return (
       <div className="space-y-6 max-w-lg mx-auto">
@@ -65,7 +89,6 @@ export default function Profile() {
           <Button
             onClick={async () => {
               await connect();
-              // Wait a bit for wallet to save, then refresh
               setTimeout(() => refreshUser(), 1000);
             }}
             disabled={isConnecting}
@@ -74,6 +97,44 @@ export default function Profile() {
             <Wallet className="w-4 h-4 mr-2" />
             {isConnecting ? 'Connecting...' : 'Connect Phantom Wallet'}
           </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show username setup for first-time users (no username yet)
+  if (walletAddress && currentUser && !currentUser.username) {
+    return (
+      <div className="space-y-6 max-w-lg mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border/50 rounded-2xl p-8 text-center"
+        >
+          <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-accent" />
+          </div>
+          <h1 className="font-heading font-bold text-xl mb-2">Choose Your Username</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Pick a unique username for your profile
+          </p>
+          <div className="space-y-3">
+            <Label htmlFor="username" className="text-left">Username</Label>
+            <Input
+              id="username"
+              placeholder="Enter username"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              className="h-11 rounded-xl"
+            />
+            <Button
+              onClick={handleSaveUsername}
+              disabled={isSavingUsername || usernameInput.length < 3}
+              className="w-full h-11 font-heading font-bold rounded-xl"
+            >
+              {isSavingUsername ? 'Saving...' : 'Save Username'}
+            </Button>
+          </div>
         </motion.div>
       </div>
     );

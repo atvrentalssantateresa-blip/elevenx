@@ -9,8 +9,20 @@ export const WalletProvider = ({ children }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Don't auto-restore wallet connection - user must explicitly connect
-  // Wallet session is only used for auth state, not Phantom connection
+  // Restore wallet session from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(WALLET_SESSION_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const address = parsed.address || parsed;
+        if (address) {
+          setWalletAddress(address);
+          setIsConnected(true);
+        }
+      } catch {}
+    }
+  }, []);
 
   const getPhantom = () => {
     if (typeof window !== 'undefined' && window.solana?.isPhantom) {
