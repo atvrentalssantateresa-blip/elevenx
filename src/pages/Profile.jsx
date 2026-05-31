@@ -24,6 +24,51 @@ export default function Profile() {
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
 
+  const walletAddress = user?.wallet_address || user?.data?.wallet_address;
+
+  if (!walletAddress) {
+    return (
+      <div className="space-y-6 max-w-lg mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border/50 rounded-2xl p-8 text-center"
+        >
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Wallet className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="font-heading font-bold text-xl mb-2">Connect Wallet First</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Your profile is linked to your Solana wallet. Connect your Phantom wallet to view your betting stats and history.
+          </p>
+          <Button
+            onClick={async () => {
+              const provider = window.solana;
+              if (!provider) {
+                window.open('https://phantom.app/', '_blank');
+                return;
+              }
+              try {
+                await provider.connect();
+                const resp = await provider.connect();
+                const address = resp.publicKey.toString();
+                await base44.auth.updateMe({ wallet_address: address });
+                window.location.reload();
+              } catch (err) {
+                console.error('Failed to connect:', err);
+                alert('Failed to connect wallet: ' + err.message);
+              }
+            }}
+            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8"
+          >
+            <Wallet className="w-4 h-4 mr-2" />
+            Connect Phantom Wallet
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <motion.div
@@ -36,14 +81,12 @@ export default function Profile() {
         </div>
         <h1 className="font-heading font-bold text-xl">{user?.full_name || 'Bettor'}</h1>
         <p className="text-sm text-muted-foreground">{user?.email}</p>
-        {user?.wallet_address && (
-          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg border border-border/30">
-            <Wallet className="w-3 h-3 text-primary" />
-            <span className="text-xs font-mono text-primary">
-              {user.wallet_address.slice(0, 4)}...{user.wallet_address.slice(-4)}
-            </span>
-          </div>
-        )}
+        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg border border-border/30">
+          <Wallet className="w-3 h-3 text-primary" />
+          <span className="text-xs font-mono text-primary">
+            {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+          </span>
+        </div>
         <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
           <Trophy className="w-3 h-3 text-primary" />
           <span className="text-xs font-semibold text-primary">{user?.role || 'user'}</span>
