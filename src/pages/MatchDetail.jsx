@@ -23,7 +23,7 @@ function calcOdds(avA, avB, avDraw) {
   return { oddsA, oddsB, oddsDraw };
 }
 
-const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
+const QUICK_AMOUNTS = [0.25, 0.5, 1, 2];
 const FEE_BPS = 200;
 
 export default function MatchDetail() {
