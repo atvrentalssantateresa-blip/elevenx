@@ -658,18 +658,23 @@ export default function MatchDetail() {
                     ) : (
                       <Button
                         onClick={() => {
-                          const offerToMatch = matchingOffer || offers.find(o =>
-                            (o.status === 'open' || o.status === 'partially_matched') &&
+                          console.log('Bet button clicked', { stakeNum, selectedOutcome, matchingOffer, openOffersCount: openOffers.length });
+                          const offerToMatch = matchingOffer || openOffers.find(o =>
                             o.outcome !== selectedOutcome &&
                             o.amount_unmatched >= stakeNum
                           );
-                          if (offerToMatch) matchOfferMutation.mutate({ offer: offerToMatch, matchAmount: stakeNum });
+                          console.log('Found offer to match:', offerToMatch);
+                          if (offerToMatch) {
+                            matchOfferMutation.mutate({ offer: offerToMatch, matchAmount: stakeNum });
+                          }
                         }}
-                        disabled={stakeNum <= 0 || stakeNum > matchMax || matchOfferMutation.isPending}
+                        disabled={stakeNum <= 0 || stakeNum > matchMax || matchOfferMutation.isPending || !isConnected}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
                         {matchOfferMutation.isPending
                           ? <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                          : !isConnected
+                          ? 'Connect Wallet First'
                           : `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
                       </Button>
                     )}
