@@ -4,6 +4,18 @@ import { Home, Trophy, BarChart3, User, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import WalletButton from '@/components/wallet/WalletButton';
 
+const TwitterIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const TelegramIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+  </svg>
+);
+
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/matches', icon: Trophy, label: 'Matches' },
@@ -22,13 +34,7 @@ export default function AppLayout() {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <span className="font-heading font-bold text-lg text-foreground tracking-tight">ElevenX</span>
-              <span className="text-[10px] text-primary font-semibold ml-1 tracking-widest">SOL</span>
-            </div>
+            <span className="font-heading font-bold text-lg text-white tracking-tight">ElevenX</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -65,6 +71,18 @@ export default function AppLayout() {
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* Social links */}
+            <div className="hidden md:flex items-center gap-1">
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all duration-200">
+                <TwitterIcon />
+              </a>
+              <a href="https://t.me" target="_blank" rel="noopener noreferrer"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all duration-200">
+                <TelegramIcon />
+              </a>
+            </div>
+            <div className="hidden md:block w-px h-5 bg-border/50" />
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full">
               <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
               <span className="text-xs text-muted-foreground font-medium">Solana</span>
