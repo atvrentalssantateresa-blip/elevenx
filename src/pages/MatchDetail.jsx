@@ -195,6 +195,28 @@ export default function MatchDetail() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] }),
   });
 
+  const cancelOfferMutation = useMutation({
+    mutationFn: async (ub) => {
+      await base44.entities.UserBet.update(ub.id, { status: 'refunded' });
+      if (ub.offer_id || ub.role === 'lp') {
+        const lpOffers = await base44.entities.BetOffer.filter({ bet_id: ub.bet_id, outcome: ub.outcome });
+        const myOffer = lpOffers.find(o => o.created_by_id === user?.id && (o.status === 'open' || o.status === 'partially_matched'));
+        if (myOffer) {
+          await base44.entities.BetOffer.update(myOffer.id, { status: 'cancelled' });
+          const lpField = ub.outcome === 'a' ? 'lp_amount_a' : ub.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
+          await base44.entities.Bet.update(ub.bet_id, {
+            [lpField]: Math.max(0, (bet[lpField] || 0) - myOffer.amount_unmatched),
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
+      queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+    },
+  });
+
   function resetForm() {
     setMode(null); setSelectedOutcome(null); setAmount(''); setMatchingOffer(null);
   }
@@ -444,6 +466,14 @@ export default function MatchDetail() {
                 <Button onClick={() => claimMutation.mutate(ub.id)} size="sm"
                   className="w-full mt-2 h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg">
                   Claim ${ub.actual_payout?.toFixed(2) || ub.potential_payout?.toFixed(2)}
+                </Button>
+              )}
+              {ub.status === 'pending' && ub.role === 'lp' && (
+                <Button onClick={() => cancelOfferMutation.mutate(ub)} size="sm"
+                  disabled={cancelOfferMutation.isPending}
+                  variant="outline"
+                  className="w-full mt-2 h-8 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg">
+                  Cancel Offer & Refund
                 </Button>
               )}
             </div>
