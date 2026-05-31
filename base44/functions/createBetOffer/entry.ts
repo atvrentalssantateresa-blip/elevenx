@@ -18,25 +18,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Please login first: Connect your wallet and register/login to place bets' }, { status: 401 });
     }
 
-    // Verify user exists with this wallet address (check both data.wallet_address and root wallet_address)
-    // Use filter instead of list to avoid auth issues
-    const usersByData = await serviceRole.entities.User.filter({});
-    const user = usersByData.find(u => 
-      (u.data?.wallet_address === walletAddress) || 
-      (u.wallet_address === walletAddress)
-    );
+    // Verify user exists with this wallet address
+    const users = await serviceRole.entities.User.filter({});
+    const user = users.find(u => u.data?.wallet_address === walletAddress);
     
     if (!user) {
-      console.log('❌ User not found for wallet:', walletAddress);
-      console.log('Wallet being checked:', walletAddress);
       return Response.json({ 
-        error: 'Wallet not registered. Please connect your wallet and register first.',
-        registeredWallet: user?.data?.wallet_address || user?.wallet_address,
-        connectedWallet: walletAddress
+        error: 'Wallet not registered. Please register with this wallet first.',
+        needsRegistration: true
       }, { status: 401 });
     }
 
-    console.log('✓ User found:', user.id, 'wallet:', user.data?.wallet_address || user.wallet_address);
+    console.log('✓ User authenticated:', user.id);
 
     const { bet_id, match_id, outcome, amount } = payload;
 
