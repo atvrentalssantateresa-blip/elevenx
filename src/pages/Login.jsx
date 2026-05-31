@@ -81,6 +81,12 @@ export default function Login() {
           walletAddress
         });
 
+        if (response.data.needsRegistration) {
+          // User was not created properly, redirect to register
+          window.location.href = '/register';
+          return;
+        }
+
         if (response.data.success) {
           await base44.auth.updateMe({ wallet_address: walletAddress });
           await checkUserAuth();
