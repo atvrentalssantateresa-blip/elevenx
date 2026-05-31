@@ -35,7 +35,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
       // Create transaction from instruction
       const { Transaction, PublicKey, SystemProgram } = await import('@solana/web3.js');
-      const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       
       const transaction = new Transaction();
       

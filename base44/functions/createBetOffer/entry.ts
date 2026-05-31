@@ -3,7 +3,7 @@ import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.95.3
 import { Buffer } from 'node:buffer';
 
 const SOLANA_PROGRAM_ID = '11111111111111111111111111111111'; // System program as placeholder until real program is deployed
-const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+const SOLANA_RPC_URL = 'https://api.devnet.solana.com'; // Using devnet for testing
 
 Deno.serve(async (req) => {
   try {
