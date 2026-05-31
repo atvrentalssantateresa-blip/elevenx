@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       
       // Check for wallet-based session marker (set by Login page after wallet verification)
-      const walletSession = localStorage.getItem('elevenx_wallet');
+      const walletSession = localStorage.getItem('elevenx_wallet_session');
       const isAuthenticatedMarker = localStorage.getItem('elevenx_authenticated');
       
       // First, check app public settings (with token if available)
