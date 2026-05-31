@@ -10,7 +10,6 @@ export default function Register() {
   const [step, setStep] = useState('wallet'); // 'wallet' | 'details'
   const [walletAddress, setWalletAddress] = useState('');
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
@@ -48,8 +47,8 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    if (!fullName || !email) {
-      setError('Please fill in all fields');
+    if (!fullName) {
+      setError('Please enter your name');
       return;
     }
 
@@ -57,14 +56,14 @@ export default function Register() {
     setError('');
 
     try {
-      // In production, this would create a user with wallet address
-      // For now, we'll use the platform's registration
+      // Create user with wallet-based email
+      const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
       await base44.auth.register({
-        email,
+        email: walletEmail,
         password: Math.random().toString(36).slice(-10), // Random password (wallet-based auth)
       });
 
-      // After registration, update user with wallet address
+      // After registration, update user with wallet address and name
       const user = await base44.auth.me();
       if (user) {
         await base44.auth.updateMe({
@@ -144,24 +143,9 @@ export default function Register() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 rounded-xl"
-                />
-              </div>
-            </div>
-
             <Button
               onClick={handleRegister}
-              disabled={isRegistering || !fullName || !email}
+              disabled={isRegistering || !fullName}
               className="w-full h-12 font-heading font-bold rounded-xl text-sm"
               style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)', boxShadow: '0 0 16px rgba(166,156,242,0.25)' }}
             >
