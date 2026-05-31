@@ -25,8 +25,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if user exists by wallet address
-    let users = await base44.entities.User.filter({ wallet_address: walletAddress });
+    // Check if user exists by wallet address (use service role for unauthenticated endpoint)
+    let users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
     let user = users[0] || null;
 
     // If registering and user doesn't exist, create user with service role
