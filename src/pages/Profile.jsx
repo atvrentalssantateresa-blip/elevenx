@@ -18,6 +18,15 @@ export default function Profile() {
   console.log('Profile - currentUser:', currentUser);
   console.log('Profile - user (auth):', user);
   console.log('Profile - connectedWalletAddress:', connectedWalletAddress);
+  console.log('Profile - isConnected:', isConnected);
+
+  // Auto-logout when wallet disconnects
+  React.useEffect(() => {
+    if (currentUser && !isConnected) {
+      console.log('Wallet disconnected, logging out...');
+      logout();
+    }
+  }, [isConnected, currentUser]);
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
