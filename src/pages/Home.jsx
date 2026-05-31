@@ -215,6 +215,7 @@ export default function Home() {
                   src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                   alt="match"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  style={i === 1 ? { objectPosition: 'center 20%' } : {}}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
                 <div className="absolute top-2 left-2">
