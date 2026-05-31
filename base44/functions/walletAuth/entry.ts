@@ -25,14 +25,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if user exists by wallet address (use service role for unauthenticated endpoint)
+    // Always use service role for this endpoint to allow unauthenticated requests
+    // Check if user exists by wallet address
     let users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
     let user = users[0] || null;
 
     // If registering and user doesn't exist, create user with service role
     if (register && !user && fullName) {
       const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
-      const tempPassword = Math.random().toString(36).slice(-10);
       
       // Create user using service role (bypasses email/password auth requirement)
       const newUser = await base44.asServiceRole.entities.User.create({
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
         role: 'user',
       });
       
-      // Return credentials for frontend to login
+      // Return success with user info (no password needed)
       return Response.json({
         success: true,
         needsRegistration: false,
@@ -54,9 +54,7 @@ Deno.serve(async (req) => {
           role: newUser.role
         },
         walletAddress,
-        isNewUser: true,
-        email: walletEmail,
-        password: tempPassword
+        isNewUser: true
       });
     }
 
