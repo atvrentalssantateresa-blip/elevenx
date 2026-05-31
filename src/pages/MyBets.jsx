@@ -1,11 +1,12 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const statusConfig = {
   active: { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock },
@@ -111,8 +112,18 @@ export default function MyBets() {
 }
 
 function BetRow({ bet, index }) {
+  const queryClient = useQueryClient();
   const config = statusConfig[bet.status] || statusConfig.active;
   const StatusIcon = config.icon;
+
+  const claimMutation = useMutation({
+    mutationFn: () => base44.functions.invoke('claimWinnings', { userBetId: bet.id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBets'] });
+    },
+  });
+
+  const isWonAndClaimable = bet.status === 'won';
 
   return (
     <motion.div
@@ -120,11 +131,8 @@ function BetRow({ bet, index }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
     >
-      <Link
-        to={`/bet/${bet.bet_id}`}
-        className="group flex items-center justify-between p-4 bg-card border border-border/50 rounded-xl hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-center gap-3">
+      <div className="group flex items-center justify-between p-4 bg-card border border-border/50 rounded-xl">
+        <Link to={`/bet/${bet.bet_id}`} className="flex items-center gap-3 flex-1">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${config.color}`}>
             <StatusIcon className="w-4 h-4" />
           </div>
@@ -134,17 +142,42 @@ function BetRow({ bet, index }) {
               Picked: <span className="text-primary font-medium">{bet.outcome_label}</span> · ${bet.amount?.toFixed(2)}
             </p>
           </div>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
-          <Badge className={`text-[10px] border ${config.color}`}>
-            {bet.status}
-          </Badge>
-          {(bet.status === 'won' || bet.status === 'claimed') && (
-            <span className="text-sm font-bold text-accent">${bet.actual_payout?.toFixed(2)}</span>
+          {isWonAndClaimable ? (
+            <>
+              <span className="text-sm font-bold text-accent">${bet.potential_payout?.toFixed(2)}</span>
+              <Button
+                size="sm"
+                onClick={() => claimMutation.mutate()}
+                disabled={claimMutation.isPending}
+                className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg"
+              >
+                {claimMutation.isPending ? (
+                  <div className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Wallet className="w-3 h-3 mr-1" />
+                    Claim
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              {(bet.status === 'won' || bet.status === 'claimed') && (
+                <span className="text-sm font-bold text-accent">${bet.actual_payout?.toFixed(2)}</span>
+              )}
+              <Badge className={`text-[10px] border ${config.color}`}>
+                {bet.status}
+              </Badge>
+            </>
           )}
-          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <Link to={`/bet/${bet.bet_id}`}>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </Link>
         </div>
-      </Link>
+      </div>
     </motion.div>
   );
 }
