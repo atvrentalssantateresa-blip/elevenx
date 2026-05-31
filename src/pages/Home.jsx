@@ -24,7 +24,7 @@ const FEATURED_MATCHES = [
 export default function Home() {
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
-    queryFn: () => base44.entities.Match.list('-created_date', 20),
+    queryFn: () => base44.entities.Match.list('match_time', 100),
   });
 
   const { data: bets = [] } = useQuery({
