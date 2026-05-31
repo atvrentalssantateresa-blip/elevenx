@@ -623,29 +623,18 @@ export default function MatchDetail() {
 
                     {!isConnected ? (
                       <Button
-                        onClick={async () => {
-                          const provider = window.solana;
-                          if (!provider) {
-                            window.open('https://phantom.app/', '_blank');
-                            return;
-                          }
-                          try {
-                            await provider.connect();
-                            // Save wallet to backend
-                            const { base44 } = await import('@/api/base44Client');
-                            const resp = await provider.connect();
-                            const address = resp.publicKey.toString();
-                            await base44.auth.updateMe({ wallet_address: address });
-                            window.location.reload();
-                          } catch (err) {
-                            console.error('Failed to connect:', err);
-                            alert('Failed to connect wallet: ' + err.message);
-                          }
-                        }}
+                        onClick={() => window.location.href = '/register'}
                         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                       >
                         <Wallet className="w-4 h-4 mr-2" />
-                        Connect Phantom Wallet
+                        Register to Bet
+                      </Button>
+                    ) : !user?.email ? (
+                      <Button
+                        onClick={() => window.location.href = '/register'}
+                        className="w-full h-12 font-heading font-bold text-sm bg-yellow-500 hover:bg-yellow-500/90 text-yellow-50 rounded-xl"
+                      >
+                        Complete Registration First
                       </Button>
                     ) : pendingTransaction ? (
                       <SolanaTransactionSigner
@@ -772,29 +761,18 @@ export default function MatchDetail() {
 
                     {!isConnected ? (
                       <Button
-                        onClick={async () => {
-                          const provider = window.solana;
-                          if (!provider) {
-                            window.open('https://phantom.app/', '_blank');
-                            return;
-                          }
-                          try {
-                            await provider.connect();
-                            // Save wallet to backend
-                            const { base44 } = await import('@/api/base44Client');
-                            const resp = await provider.connect();
-                            const address = resp.publicKey.toString();
-                            await base44.auth.updateMe({ wallet_address: address });
-                            window.location.reload();
-                          } catch (err) {
-                            console.error('Failed to connect:', err);
-                            alert('Failed to connect wallet: ' + err.message);
-                          }
-                        }}
+                        onClick={() => window.location.href = '/register'}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
                         <Wallet className="w-4 h-4 mr-2" />
-                        Connect Phantom Wallet
+                        Register to Bet
+                      </Button>
+                    ) : !user?.email ? (
+                      <Button
+                        onClick={() => window.location.href = '/register'}
+                        className="w-full h-12 font-heading font-bold text-sm bg-yellow-500 hover:bg-yellow-500/90 text-yellow-50 rounded-xl"
+                      >
+                        Complete Registration First
                       </Button>
                     ) : pendingTransaction ? (
                       <SolanaTransactionSigner
