@@ -66,6 +66,8 @@ export default function Register() {
         register: true,
       });
 
+      console.log('walletAuth response:', response.data);
+
       if (response.data.error) {
         throw new Error(response.data.error);
       }
@@ -78,6 +80,7 @@ export default function Register() {
       } else if (response.data.needsRegistration) {
         throw new Error('User already exists, please login instead');
       } else {
+        console.error('Unexpected response:', response.data);
         throw new Error('Failed to create account');
       }
     } catch (err) {
