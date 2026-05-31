@@ -4,7 +4,7 @@ import bs58 from 'npm:bs58@5.0.0';
 
 Deno.serve(async (req) => {
   try {
-    // Initialize SDK - service role mode allows unauthenticated requests for registration
+    // Initialize SDK in service role mode for unauthenticated registration requests
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
@@ -27,48 +27,55 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Always use service role for this endpoint to allow unauthenticated requests
-    // Check if user exists by wallet address
+    // Check if user exists by wallet address - wrap in try/catch for auth errors
     let user = null;
-    try {
-      const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
-      user = users[0] || null;
-    } catch (err) {
-      // If auth fails, treat as user not found (will need registration)
-      console.log('User lookup failed, treating as new user:', err.message);
-      user = null;
+    if (!register) {
+      // Only try to lookup existing users if NOT registering
+      // During registration, we skip lookup and go straight to create
+      try {
+        const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+        user = users[0] || null;
+      } catch (err) {
+        console.log('User lookup failed:', err.message);
+        user = null;
+      }
     }
 
-    // If registering and user doesn't exist, create user with service role
-    if (register && !user && fullName) {
+    // If registering, create user with service role
+    if (register && fullName) {
       const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
       
-      // Create user using service role (bypasses email/password auth requirement)
-      const newUser = await serviceRole.entities.User.create({
-        email: walletEmail,
-        full_name: fullName,
-        wallet_address: walletAddress,
-        role: 'user',
-      });
-      
-      // Return success with user info (no password needed)
-      return Response.json({
-        success: true,
-        needsRegistration: false,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          full_name: newUser.full_name,
-          wallet_address: newUser.wallet_address,
-          role: newUser.role
-        },
-        walletAddress,
-        isNewUser: true
-      });
+      try {
+        // Create user using service role (bypasses email/password auth requirement)
+        const newUser = await serviceRole.entities.User.create({
+          email: walletEmail,
+          full_name: fullName,
+          wallet_address: walletAddress,
+          role: 'user',
+        });
+        
+        // Return success with user info
+        return Response.json({
+          success: true,
+          needsRegistration: false,
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            full_name: newUser.full_name,
+            wallet_address: newUser.wallet_address,
+            role: newUser.role
+          },
+          walletAddress,
+          isNewUser: true
+        });
+      } catch (createErr) {
+        console.error('User creation failed:', createErr);
+        return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
+      }
     }
 
+    // If not registering and no user found, they need to register
     if (!user) {
-      // User doesn't exist - return that user needs to be registered
       return Response.json({ 
         needsRegistration: true,
         walletAddress 
