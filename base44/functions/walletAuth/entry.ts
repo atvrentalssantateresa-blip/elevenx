@@ -70,19 +70,14 @@ Deno.serve(async (req) => {
         }, { status: 409 });
       }
       
-      const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
-      
       try {
-        console.log('Creating user with email:', walletEmail);
-        // Create user with wallet address as the initial password
+        console.log('Creating user with username:', username);
+        // Create user with just username and wallet address (no email/password)
         const newUser = await serviceRole.entities.User.create({
-          email: walletEmail,
           full_name: username,
           username: username,
           wallet_address: walletAddress,
           role: 'user',
-          // Store wallet address as a temporary password field (platform will hash it)
-          password_hash: walletAddress,
         });
         
         console.log('✓ User created successfully:', newUser.id, newUser.full_name);
@@ -92,7 +87,6 @@ Deno.serve(async (req) => {
           needsRegistration: false,
           user: {
             id: newUser.id,
-            email: newUser.email,
             full_name: newUser.full_name,
             username: newUser.username,
             wallet_address: newUser.wallet_address,

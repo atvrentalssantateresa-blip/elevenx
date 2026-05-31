@@ -101,25 +101,49 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      // Now check if the user is authenticated
-      setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      setIsAuthenticated(true);
+      // Check for wallet session first (wallet-only auth)
+      const walletSession = localStorage.getItem('elevenx_wallet_session');
+      
+      if (walletSession) {
+        // Wallet-based session - fetch user from backend using wallet address
+        console.log('Wallet session detected, fetching user...');
+        const response = await base44.functions.invoke('walletAuth', {
+          walletAddress: walletSession
+        });
+        
+        if (response.data.success && response.data.user) {
+          setUser(response.data.user);
+          setIsAuthenticated(true);
+          console.log('✓ Wallet auth successful:', response.data.user.username);
+        } else {
+          // Wallet not registered
+          localStorage.removeItem('elevenx_wallet_session');
+          localStorage.removeItem('elevenx_authenticated');
+          setIsAuthenticated(false);
+        }
+      } else {
+        // Try platform token auth
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        setIsAuthenticated(true);
+      }
+      
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
-      setIsAuthenticated(false);
       setAuthChecked(true);
       
-      // If user auth fails, it might be an expired token
+      // Don't set auth error for wallet auth - let pages handle it
       if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+        const walletSession = localStorage.getItem('elevenx_wallet_session');
+        if (!walletSession) {
+          setAuthError({
+            type: 'auth_required',
+            message: 'Authentication required'
+          });
+        }
       }
     }
   };
@@ -127,6 +151,10 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    
+    // Clear wallet session markers
+    localStorage.removeItem('elevenx_wallet_session');
+    localStorage.removeItem('elevenx_authenticated');
     
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect

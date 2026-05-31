@@ -69,24 +69,9 @@ export default function Login() {
 
       if (response.data.success) {
         console.log('✓ Login successful, user verified:', response.data.username);
-        // User verified - use the email created during registration to login
-        const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
-        
-        // Try to login with platform using wallet email and wallet address as password
-        // This works because we'll update the user creation to use wallet address as password
-        try {
-          await base44.auth.loginViaEmailPassword(walletEmail, walletAddress);
-          console.log('✓ Platform session established');
-        } catch (loginErr) {
-          console.error('Platform login failed:', loginErr.message);
-          // If login fails, the user might not have a password set yet
-          // Trigger password reset email
-          console.log('Triggering password reset for:', walletEmail);
-          await base44.auth.resetPasswordRequest(walletEmail);
-          setError('Account created! Please check your email to set a password, then login.');
-          setIsConnecting(false);
-          return;
-        }
+        // Set wallet session marker for AuthContext to recognize
+        localStorage.setItem('elevenx_wallet_session', walletAddress);
+        localStorage.setItem('elevenx_authenticated', 'true');
         
         // Hard redirect to reload app with auth state
         window.location.href = '/';
