@@ -45,9 +45,11 @@ export default function Register() {
         });
         
         if (response.data.success && response.data.email) {
-          // User already exists - redirect to login for auto-auth
-          console.log('User already registered, redirecting to login...');
-          window.location.href = `/login?wallet=${address}&registered=true`;
+          // User already exists - auto-login and redirect to home
+          console.log('User already registered, auto-logging in...');
+          localStorage.setItem('elevenx_wallet_session', address);
+          localStorage.setItem('elevenx_authenticated', 'true');
+          window.location.href = '/';
           return;
         }
       } catch (checkErr) {
@@ -89,12 +91,15 @@ export default function Register() {
         throw new Error(response.data.error);
       }
 
-      // User was created successfully - redirect to login
+      // User was created successfully - auto-login and redirect to home
       if (response.data.success && response.data.user) {
-        console.log('✓ User created, redirecting to login...');
-        // Redirect to login page with wallet address
-        // The login page will handle the authentication
-        window.location.href = `/login?wallet=${walletAddress}&registered=true`;
+        console.log('✓ User created, auto-logging in...');
+        // Set wallet session marker for auth
+        localStorage.setItem('elevenx_wallet_session', walletAddress);
+        localStorage.setItem('elevenx_authenticated', 'true');
+        // Hard redirect to home to reload with auth state
+        window.location.href = '/';
+        return;
       } else if (response.data.needsRegistration) {
         throw new Error('User already exists, please login instead');
       } else {
