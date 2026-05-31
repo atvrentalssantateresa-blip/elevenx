@@ -18,6 +18,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Please login first: Connect your wallet and register/login to place bets' }, { status: 401 });
     }
 
+    // Fetch all users to check wallet registration
+    const users = await serviceRole.entities.User.filter({});
     console.log('🔍 Checking wallet:', walletAddress);
     console.log('📋 All registered users:', users.map(u => ({ id: u.id, wallet: u.data?.wallet_address })));
     
