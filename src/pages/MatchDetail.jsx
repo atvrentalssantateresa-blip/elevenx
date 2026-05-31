@@ -25,7 +25,7 @@ function calcOdds(avA, avB, avDraw) {
   return { oddsA, oddsB, oddsDraw };
 }
 
-const QUICK_AMOUNTS = [0.25, 0.5, 1, 2];
+const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 const FEE_BPS = 0; // 0% fee - fully decentralized, can be updated later
 
 export default function MatchDetail() {

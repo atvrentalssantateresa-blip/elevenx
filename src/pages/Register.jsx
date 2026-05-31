@@ -5,10 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/components/AuthLayout';
-import { useAuth } from '@/lib/AuthContext';
 
 export default function Register() {
-  const { refreshUser } = useAuth();
   const [step, setStep] = useState('wallet'); // 'wallet' | 'details'
   const [walletAddress, setWalletAddress] = useState('');
   const [fullName, setFullName] = useState('');
@@ -72,9 +70,6 @@ export default function Register() {
         full_name: fullName,
       });
 
-      // Refresh auth context
-      await refreshUser();
-      
       // Hard redirect to reload the app with new auth state
       window.location.href = '/';
     } catch (err) {
