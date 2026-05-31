@@ -73,8 +73,8 @@ export default function Register() {
       // User was created successfully - response includes user info
       if (response.data.success && response.data.user) {
         // Wallet address already saved during user creation via service role
-        // Just redirect to login page to establish session
-        window.location.href = '/login';
+        // Redirect to login with success message and wallet address for auto-login
+        window.location.href = `/login?wallet=${walletAddress}&registered=true`;
       } else if (response.data.needsRegistration) {
         throw new Error('User already exists, please login instead');
       } else {

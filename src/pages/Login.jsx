@@ -21,8 +21,13 @@ export default function Login() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const walletFromUrl = params.get('wallet');
-    if (walletFromUrl) {
-      handleWalletLogin(walletFromUrl);
+    const registered = params.get('registered');
+    if (walletFromUrl && registered) {
+      // Show success message and auto-login
+      setError(''); // Clear any errors
+      setTimeout(() => {
+        handleWalletLogin(walletFromUrl);
+      }, 500);
     }
   }, []);
 
