@@ -3,28 +3,24 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ArrowLeft, Clock, Trophy, TrendingUp, Users, Zap, CheckCircle2, XCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Clock, Trophy, TrendingUp, Users, Zap, CheckCircle2, XCircle, Plus, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import OfferBook from '@/components/betting/OfferBook';
-
-// ── Odds calculation from live offer pools ────────────────────────────────────
-function calcImpliedOdds(lpA, lpB, lpDraw) {
-  const total = lpA + lpB + lpDraw;
-  if (total === 0) return { oddsA: 1, oddsB: 1, oddsDraw: 1 };
-  const oddsA = lpA > 0 ? (lpB + lpDraw) / lpA : 0;
-  const oddsB = lpB > 0 ? (lpA + lpDraw) / lpB : 0;
-  const oddsDraw = lpDraw > 0 ? (lpA + lpB) / lpDraw : 0;
-  return { oddsA, oddsB, oddsDraw };
-}
 
 function totalAvailable(offers, outcome) {
   return offers
     .filter(o => o.outcome === outcome && (o.status === 'open' || o.status === 'partially_matched'))
     .reduce((s, o) => s + (o.amount_unmatched || 0), 0);
+}
+
+function calcOdds(avA, avB, avDraw) {
+  const oddsA = avA > 0 && (avB + avDraw) > 0 ? (avB + avDraw) / avA : null;
+  const oddsB = avB > 0 && (avA + avDraw) > 0 ? (avA + avDraw) / avB : null;
+  const oddsDraw = avDraw > 0 && (avA + avB) > 0 ? (avA + avB) / avDraw : null;
+  return { oddsA, oddsB, oddsDraw };
 }
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
@@ -35,10 +31,11 @@ export default function MatchDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [mode, setMode] = useState(null);
+  const [mode, setMode] = useState(null); // null | 'offer' | 'match'
   const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [amount, setAmount] = useState('');
   const [matchingOffer, setMatchingOffer] = useState(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -129,11 +126,10 @@ export default function MatchDetail() {
     mutationFn: async ({ offer, matchAmount }) => {
       const matcherOutcome = selectedOutcome;
       const matcherLabel = getOutcomeLabel(matcherOutcome);
-      const { oddsA, oddsB, oddsDraw } = calcImpliedOdds(
-        totalAvailable(offers, 'a'),
-        totalAvailable(offers, 'b'),
-        totalAvailable(offers, 'draw')
-      );
+      const avA = totalAvailable(offers, 'a');
+      const avB = totalAvailable(offers, 'b');
+      const avDraw = totalAvailable(offers, 'draw');
+      const { oddsA, oddsB, oddsDraw } = calcOdds(avA, avB, avDraw);
       const currentOdds = matcherOutcome === 'a' ? oddsA : matcherOutcome === 'b' ? oddsB : oddsDraw;
       const winnings = matchAmount * currentOdds;
       const fee = winnings * FEE_BPS / 10000;
@@ -244,17 +240,16 @@ export default function MatchDetail() {
   const avA = totalAvailable(offers, 'a');
   const avB = totalAvailable(offers, 'b');
   const avDraw = totalAvailable(offers, 'draw');
-  const { oddsA, oddsB, oddsDraw } = calcImpliedOdds(avA, avB, avDraw);
+  const { oddsA, oddsB, oddsDraw } = calcOdds(avA, avB, avDraw);
   const totalLiquidity = avA + avB + avDraw;
 
   const stakeNum = parseFloat(amount) || 0;
   const matchOdds = selectedOutcome === 'a' ? oddsA : selectedOutcome === 'b' ? oddsB : oddsDraw;
-  // matchMax = total opposing liquidity you can bet against
-  const opposingKeys = selectedOutcome ? ['a','b','draw'].filter(k => k !== selectedOutcome) : [];
+  const opposingKeys = selectedOutcome ? ['a', 'b', 'draw'].filter(k => k !== selectedOutcome) : [];
   const matchMax = matchingOffer
     ? matchingOffer.amount_unmatched
     : opposingKeys.reduce((sum, k) => sum + totalAvailable(offers, k), 0);
-  const matchWin = stakeNum * matchOdds;
+  const matchWin = stakeNum * (matchOdds || 0);
   const matchFee = matchWin * FEE_BPS / 10000;
   const matchPayout = stakeNum + matchWin - matchFee;
 
@@ -264,14 +259,16 @@ export default function MatchDetail() {
     { key: 'b', label: bet?.outcome_b || match.team_b, flag: match.team_b_flag, odds: oddsB, available: avB, color: 'accent' },
   ];
 
+  const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched');
+
   return (
-    <div className="space-y-5 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto">
       <Link to="/matches" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Back to matches
       </Link>
 
-      {/* Match Header */}
+      {/* ── Match Header ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-card border border-border/50 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-5">
@@ -298,13 +295,8 @@ export default function MatchDetail() {
           <div className="flex-1 text-center">
             <div className="text-5xl mb-3">{match.team_a_flag || '🏳️'}</div>
             <p className="font-heading font-black text-lg">{match.team_a}</p>
-            {hasBet && avA > 0 && (
-              <div className="mt-2 inline-flex items-center gap-1 bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
-                <span className="text-xs font-bold text-primary">{oddsA.toFixed(2)}x</span>
-              </div>
-            )}
           </div>
-          <div className="text-center flex flex-col items-center gap-2">
+          <div className="text-center">
             {match.status === 'finished' || match.status === 'live' ? (
               <div className="flex items-center gap-3">
                 <span className="text-4xl font-heading font-bold">{match.score_a ?? 0}</span>
@@ -314,25 +306,15 @@ export default function MatchDetail() {
             ) : (
               <span className="text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-full">VS</span>
             )}
-            {hasBet && avDraw > 0 && (
-              <div className="inline-flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-2 py-0.5">
-                <span className="text-[10px] font-bold text-yellow-400">Draw {oddsDraw.toFixed(2)}x</span>
-              </div>
-            )}
           </div>
           <div className="flex-1 text-center">
             <div className="text-5xl mb-3">{match.team_b_flag || '🏳️'}</div>
             <p className="font-heading font-black text-lg">{match.team_b}</p>
-            {hasBet && avB > 0 && (
-              <div className="mt-2 inline-flex items-center gap-1 bg-accent/10 border border-accent/20 rounded-full px-3 py-1">
-                <span className="text-xs font-bold text-accent">{oddsB.toFixed(2)}x</span>
-              </div>
-            )}
           </div>
         </div>
       </motion.div>
 
-      {/* No market yet */}
+      {/* ── No market yet ── */}
       {!hasBet && isAdmin && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
@@ -352,101 +334,18 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Pool overview */}
-      {hasBet && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> Live Market
-            </h3>
-            <div className="flex items-center gap-2">
-              <Badge className={`text-[10px] ${isOpen ? 'bg-accent/20 text-accent' : 'bg-secondary text-secondary-foreground'}`}>
-                {bet.status}
-              </Badge>
-              <span className="text-xs text-muted-foreground">${totalLiquidity.toLocaleString()} available</span>
-            </div>
-          </div>
-
-          {totalLiquidity > 0 && (
-            <div>
-              <div className="h-3 rounded-full overflow-hidden bg-secondary flex gap-0.5">
-                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(avA / totalLiquidity) * 100}%` }} />
-                <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${(avDraw / totalLiquidity) * 100}%` }} />
-                <div className="h-full bg-accent transition-all duration-500" style={{ width: `${(avB / totalLiquidity) * 100}%` }} />
-              </div>
-              <div className="flex justify-between text-[10px] mt-1.5">
-                <span className="text-primary font-bold">{match.team_a} {oddsA > 0 ? `${oddsA.toFixed(2)}x` : '—'}</span>
-                <span className="text-yellow-400 font-bold">Draw {oddsDraw > 0 ? `${oddsDraw.toFixed(2)}x` : '—'}</span>
-                <span className="text-accent font-bold">{match.team_b} {oddsB > 0 ? `${oddsB.toFixed(2)}x` : '—'}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {OUTCOMES.map(o => (
-              <div key={o.key} className="bg-secondary/40 rounded-xl p-3">
-                <p className="text-[10px] text-muted-foreground mb-0.5">{o.label}</p>
-                <p className={`font-heading font-bold text-sm ${
-                  o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
-                }`}>${o.available.toFixed(0)}</p>
-                <p className="text-[9px] text-muted-foreground">available</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Offer Book */}
-      {hasBet && isOpen && offers.some(o => o.status === 'open' || o.status === 'partially_matched') && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
-          <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" /> Open Offers
-          </h3>
-          {OUTCOMES.map(o => {
-            const oOffers = offers.filter(of => of.outcome === o.key && (of.status === 'open' || of.status === 'partially_matched'));
-            if (oOffers.length === 0) return null;
-            return (
-              <div key={o.key}>
-                <p className={`text-xs font-bold mb-2 ${
-                  o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
-                }`}>{o.label}</p>
-                <OfferBook
-                  offers={oOffers}
-                  outcome={o.key}
-                  outcomeLabel={o.label}
-                  color={o.color}
-                  canMatch={!!user && isOpen}
-                  onMatch={(offer) => {
-                    setMatchingOffer(offer);
-                    setMode('match');
-                    const opp = offer.outcome === 'a' ? 'b' : offer.outcome === 'b' ? 'a' : 'a';
-                    setSelectedOutcome(opp);
-                    setAmount('');
-                  }}
-                />
-              </div>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* My Positions */}
+      {/* ── My Positions ── */}
       {myActiveBets.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-primary/20 rounded-2xl p-5 space-y-3">
           <h3 className="font-heading font-bold text-sm flex items-center gap-2">
             <Trophy className="w-4 h-4 text-primary" /> My Positions
           </h3>
           {myActiveBets.map(ub => (
-            <div key={ub.id} className="bg-secondary/30 rounded-xl p-3">
-              <div className="flex items-center justify-between mb-2">
+            <div key={ub.id} className="bg-secondary/30 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  {ub.status === 'won' || ub.status === 'claimed' ? <CheckCircle2 className="w-3.5 h-3.5 text-accent" /> :
-                   ub.status === 'lost' ? <XCircle className="w-3.5 h-3.5 text-destructive" /> :
-                   <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />}
-                  <span className="font-bold text-xs text-primary">{ub.outcome_label}</span>
+                  <span className="font-bold text-sm">{ub.outcome_label}</span>
                   <Badge className={`text-[9px] py-0 ${
                     ub.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                     ub.status === 'active' ? 'bg-accent/20 text-accent' :
@@ -454,14 +353,15 @@ export default function MatchDetail() {
                     ub.status === 'lost' ? 'bg-destructive/20 text-destructive' :
                     'bg-secondary text-secondary-foreground'
                   }`}>
-                    {ub.status === 'pending' && ub.role === 'lp' ? 'waiting to match' : ub.status}
+                    {ub.status === 'pending' && ub.role === 'lp' ? 'Waiting for match' : ub.status}
                   </Badge>
+                  {ub.role === 'lp' && <span className="text-[10px] text-muted-foreground">LP offer</span>}
                 </div>
-                <span className="text-xs font-bold">${ub.amount?.toFixed(2)}</span>
+                <span className="font-bold">${ub.amount?.toFixed(2)}</span>
               </div>
               {ub.potential_payout > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  If win: <span className="text-accent font-bold">${ub.potential_payout?.toFixed(2)}</span>
+                <p className="text-xs text-muted-foreground">
+                  Potential payout if you win: <span className="text-accent font-bold">${ub.potential_payout?.toFixed(2)}</span>
                 </p>
               )}
               {ub.status === 'won' && (
@@ -475,7 +375,7 @@ export default function MatchDetail() {
                   disabled={cancelOfferMutation.isPending}
                   variant="outline"
                   className="w-full mt-2 h-8 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg">
-                  Cancel Offer & Refund
+                  Cancel & Refund
                 </Button>
               )}
             </div>
@@ -483,33 +383,119 @@ export default function MatchDetail() {
         </motion.div>
       )}
 
-      {/* Action Panel */}
+      {/* ── Market Odds ── */}
+      {hasBet && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+          className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading font-bold text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" /> Current Odds
+            </h3>
+            <Badge className={`text-[10px] ${isOpen ? 'bg-accent/20 text-accent' : 'bg-secondary text-secondary-foreground'}`}>
+              {bet.status}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {OUTCOMES.map(o => (
+              <div key={o.key} className={`rounded-xl p-3 text-center border ${
+                o.color === 'primary' ? 'bg-primary/5 border-primary/20' :
+                o.color === 'accent' ? 'bg-accent/5 border-accent/20' :
+                'bg-yellow-500/5 border-yellow-500/20'
+              }`}>
+                <p className="text-xs text-muted-foreground mb-1 truncate">{o.label}</p>
+                <p className={`font-heading font-black text-xl ${
+                  o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
+                }`}>
+                  {o.odds !== null ? `${o.odds.toFixed(2)}x` : '—'}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {o.odds !== null ? 'current odds' : 'no offers yet'}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {totalLiquidity > 0 && (
+            <div className="text-xs text-muted-foreground text-center">
+              ${totalLiquidity.toLocaleString()} total liquidity available across all outcomes
+            </div>
+          )}
+
+          {totalLiquidity === 0 && (
+            <div className="text-center py-2 text-xs text-muted-foreground bg-secondary/30 rounded-xl px-4">
+              No open offers yet — be the first to provide liquidity below!
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── How It Works (collapsible) ── */}
       {hasBet && isOpen && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+        <div className="bg-card border border-border/50 rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setShowHowItWorks(v => !v)}
+            className="w-full flex items-center justify-between p-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className="flex items-center gap-2"><Info className="w-4 h-4" /> How does P2P betting work?</span>
+            {showHowItWorks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          <AnimatePresence>
+            {showHowItWorks && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden">
+                <div className="px-4 pb-4 grid gap-3">
+                  <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
+                    <p className="text-xs font-bold text-primary mb-1">🏦 Open an Offer (be the "house")</p>
+                    <p className="text-xs text-muted-foreground">Put up funds backing an outcome (e.g. Mexico wins). You collect the other person's stake if you're right. Others bet against you.</p>
+                  </div>
+                  <div className="bg-accent/5 border border-accent/15 rounded-xl p-3">
+                    <p className="text-xs font-bold text-accent mb-1">🎯 Match a Bet (bet against an offer)</p>
+                    <p className="text-xs text-muted-foreground">Pick your outcome and stake against someone else's open offer. Odds are determined by the ratio of liquidity on each side.</p>
+                  </div>
+                  <div className="bg-secondary/50 rounded-xl p-3">
+                    <p className="text-xs font-bold text-foreground mb-1">💡 Odds explained</p>
+                    <p className="text-xs text-muted-foreground">Odds = how much you win per $1 staked. 2.00x means stake $10, win $10 profit ($20 total). A 2% fee applies to winnings only.</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* ── Action Panel ── */}
+      {hasBet && isOpen && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-card border border-primary/20 rounded-2xl p-5">
 
+          {/* Mode selector */}
           {!mode && (
             <div className="space-y-3">
-              <h3 className="font-heading font-bold text-sm mb-3 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" /> Place a Bet
-              </h3>
+              <h3 className="font-heading font-bold text-base mb-1">Place a Bet</h3>
+              <p className="text-xs text-muted-foreground mb-4">Choose how you want to participate in this market.</p>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => setMode('offer')}
-                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 hover:border-primary/60 transition-all">
-                  <Plus className="w-6 h-6 text-primary" />
-                  <p className="font-heading font-bold text-sm text-primary">Open Offer</p>
-                  <p className="text-[11px] text-muted-foreground text-center">Provide liquidity. Others can match you.</p>
+                  className="flex flex-col items-start gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 hover:border-primary/60 transition-all text-left">
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-primary" />
+                    <p className="font-heading font-bold text-sm text-primary">Open Offer</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">Back an outcome with your funds. Others bet against you. You earn their stake if you're right.</p>
                 </button>
                 <button onClick={() => setMode('match')} disabled={totalLiquidity <= 0}
-                  className="flex flex-col items-center gap-2 rounded-xl border-2 border-accent/30 bg-accent/5 p-4 hover:border-accent/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  <TrendingUp className="w-6 h-6 text-accent" />
-                  <p className="font-heading font-bold text-sm text-accent">Match a Bet</p>
-                  <p className="text-[11px] text-muted-foreground text-center">Bet against an open offer at live odds.</p>
+                  className="flex flex-col items-start gap-2 rounded-xl border-2 border-accent/30 bg-accent/5 p-4 hover:border-accent/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-left">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-accent" />
+                    <p className="font-heading font-bold text-sm text-accent">Match a Bet</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {totalLiquidity > 0
+                      ? 'Bet against an open offer. Pick your outcome and stake at live odds.'
+                      : 'No open offers yet. Be the first to open one!'}
+                  </p>
                 </button>
               </div>
-              {totalLiquidity <= 0 && (
-                <p className="text-[11px] text-muted-foreground text-center">No offers to match yet — be the first!</p>
-              )}
             </div>
           )}
 
@@ -517,75 +503,81 @@ export default function MatchDetail() {
           {mode === 'offer' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-primary" /> Open LP Offer
-                </h3>
-                <button onClick={resetForm} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                <div>
+                  <h3 className="font-heading font-bold text-sm">Open an Offer</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pick the outcome you think will win and put up funds.</p>
+                </div>
+                <button onClick={resetForm} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-secondary/50">✕ Cancel</button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Pick an outcome and provide liquidity. Funds lock when matched; unmatched portion stays open.
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {OUTCOMES.map(o => (
-                  <button key={o.key}
-                    onClick={() => { setSelectedOutcome(o.key); setAmount(''); }}
-                    className={`rounded-xl p-3 border-2 text-center transition-all ${
-                      selectedOutcome === o.key
-                        ? o.color === 'primary' ? 'border-primary bg-primary/10' :
-                          o.color === 'accent' ? 'border-accent bg-accent/10' :
-                          'border-yellow-500 bg-yellow-500/10'
-                        : 'border-border/50 bg-secondary/30 hover:border-border'
-                    }`}>
-                    <div className="text-2xl mb-1">{o.flag}</div>
-                    <p className="font-heading font-bold text-xs">{o.label}</p>
-                    {o.odds > 0 && (
-                      <p className={`text-[10px] font-bold mt-0.5 ${
-                        o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
-                      }`}>{o.odds.toFixed(2)}x</p>
-                    )}
-                  </button>
-                ))}
+
+              <div>
+                <p className="text-xs font-medium text-foreground mb-2">Step 1 — Which outcome do you want to back?</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {OUTCOMES.map(o => (
+                    <button key={o.key}
+                      onClick={() => { setSelectedOutcome(o.key); setAmount(''); }}
+                      className={`rounded-xl p-3 border-2 text-center transition-all ${
+                        selectedOutcome === o.key
+                          ? o.color === 'primary' ? 'border-primary bg-primary/10' :
+                            o.color === 'accent' ? 'border-accent bg-accent/10' :
+                            'border-yellow-500 bg-yellow-500/10'
+                          : 'border-border/50 bg-secondary/30 hover:border-border'
+                      }`}>
+                      <div className="text-2xl mb-1">{o.flag}</div>
+                      <p className="font-heading font-bold text-xs">{o.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">wins</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <AnimatePresence>
                 {selectedOutcome && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3 overflow-hidden">
+                    className="space-y-4 overflow-hidden">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1.5 block">Amount to offer</label>
+                      <p className="text-xs font-medium text-foreground mb-2">Step 2 — How much do you want to offer?</p>
                       <Input type="number" placeholder="0.00" value={amount} min={1}
                         onChange={e => setAmount(e.target.value)}
                         className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {QUICK_AMOUNTS.map(qa => (
+                          <button key={qa} onClick={() => setAmount(String(qa))}
+                            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {QUICK_AMOUNTS.map(qa => (
-                        <button key={qa} onClick={() => setAmount(String(qa))}
-                          className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
-                      ))}
-                    </div>
+
                     {stakeNum > 0 && (
-                      <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 space-y-1.5 text-xs">
+                      <div className="bg-secondary/40 rounded-xl p-4 space-y-2 text-xs">
+                        <p className="font-bold text-foreground mb-2">Summary</p>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">You offer</span>
-                          <span className="font-bold">${stakeNum.toFixed(2)} on {getOutcomeLabel(selectedOutcome)}</span>
+                          <span className="text-muted-foreground">You're backing</span>
+                          <span className="font-bold">{getOutcomeLabel(selectedOutcome)} to win</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">If matched & you win</span>
-                          <span className="font-bold text-accent">you keep matcher's stake (−2% fee)</span>
+                          <span className="text-muted-foreground">Your offer amount</span>
+                          <span className="font-bold">${stakeNum.toFixed(2)}</span>
+                        </div>
+                        <div className="h-px bg-border/30 my-1" />
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">If {getOutcomeLabel(selectedOutcome)} wins</span>
+                          <span className="font-bold text-accent">You keep matcher's stake (−2% fee)</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Unmatched portion</span>
-                          <span className="font-bold text-yellow-400">stays open, refundable</span>
+                          <span className="text-muted-foreground">If unmatched</span>
+                          <span className="font-bold text-yellow-400">Your $${stakeNum.toFixed(2)} is refunded</span>
                         </div>
                       </div>
                     )}
+
                     <Button
                       onClick={() => openOfferMutation.mutate({ outcome: selectedOutcome, offerOutcomeLabel: getOutcomeLabel(selectedOutcome), offerAmount: stakeNum })}
                       disabled={stakeNum <= 0 || openOfferMutation.isPending}
                       className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                       {openOfferMutation.isPending
                         ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        : `Open $${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} offer on ${getOutcomeLabel(selectedOutcome)}`}
+                        : `Offer $${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
                     </Button>
                   </motion.div>
                 )}
@@ -597,31 +589,27 @@ export default function MatchDetail() {
           {mode === 'match' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-accent" />
-                  {matchingOffer ? `Match Offer (${getOutcomeLabel(matchingOffer.outcome)})` : 'Match a Bet'}
-                </h3>
-                <button onClick={resetForm} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                <div>
+                  <h3 className="font-heading font-bold text-sm">Match a Bet</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pick your outcome and bet against existing offers.</p>
+                </div>
+                <button onClick={resetForm} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-secondary/50">✕ Cancel</button>
               </div>
 
               {matchingOffer && (
-                <div className="bg-secondary/40 rounded-xl p-3 text-xs">
-                  <p className="text-muted-foreground">Matching against: <span className="font-bold text-foreground">{getOutcomeLabel(matchingOffer.outcome)}</span> offer · <span className="font-bold text-accent">${matchingOffer.amount_unmatched?.toFixed(2)} available</span></p>
+                <div className="bg-secondary/40 rounded-xl p-3 text-xs border border-border/30">
+                  <p className="text-muted-foreground">Betting against a specific <span className="font-bold text-foreground">{getOutcomeLabel(matchingOffer.outcome)}</span> offer · <span className="font-bold text-accent">${matchingOffer.amount_unmatched?.toFixed(2)} available</span></p>
                 </div>
               )}
 
               <div>
-                <p className="text-xs text-muted-foreground mb-2">Pick your outcome:</p>
+                <p className="text-xs font-medium text-foreground mb-2">Step 1 — Which outcome do you think will win?</p>
                 <div className="grid grid-cols-3 gap-2">
                   {OUTCOMES.map(o => {
-                    // To bet on outcome X, you need opposing liquidity (offers NOT on X)
                     const opposingLiquidity = matchingOffer
                       ? (o.key !== matchingOffer.outcome ? matchingOffer.amount_unmatched : 0)
-                      : OUTCOMES.filter(other => other.key !== o.key).reduce((sum, other) => {
-                          return sum + (other.key === 'a' ? avA : other.key === 'b' ? avB : avDraw);
-                        }, 0);
-                    const avail = opposingLiquidity;
-                    const disabled = avail <= 0 || (matchingOffer && o.key === matchingOffer.outcome);
+                      : OUTCOMES.filter(other => other.key !== o.key).reduce((sum, other) => sum + totalAvailable(offers, other.key), 0);
+                    const disabled = opposingLiquidity <= 0 || (matchingOffer && o.key === matchingOffer.outcome);
                     return (
                       <button key={o.key}
                         onClick={() => { if (!disabled) { setSelectedOutcome(o.key); setAmount(''); } }}
@@ -637,8 +625,10 @@ export default function MatchDetail() {
                         <p className="font-heading font-bold text-xs">{o.label}</p>
                         <p className={`text-[10px] font-bold mt-0.5 ${
                           o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
-                        }`}>{o.odds > 0 ? `${o.odds.toFixed(2)}x` : '—'}</p>
-                        <p className="text-[9px] text-muted-foreground">${avail.toFixed(0)} avail.</p>
+                        }`}>
+                          {o.odds !== null ? `${o.odds.toFixed(2)}x` : '—'}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground">${opposingLiquidity.toFixed(0)} avail.</p>
                       </button>
                     );
                   })}
@@ -648,42 +638,50 @@ export default function MatchDetail() {
               <AnimatePresence>
                 {selectedOutcome && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3 overflow-hidden">
+                    className="space-y-4 overflow-hidden">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1.5 block">Stake (max ${matchMax.toFixed(2)})</label>
+                      <p className="text-xs font-medium text-foreground mb-2">Step 2 — How much do you want to stake? <span className="text-muted-foreground">(max ${matchMax.toFixed(2)})</span></p>
                       <Input type="number" placeholder="0.00" value={amount} min={0} max={matchMax}
                         onChange={e => setAmount(Math.min(parseFloat(e.target.value) || 0, matchMax).toString())}
                         className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {QUICK_AMOUNTS.filter(q => q <= matchMax).map(qa => (
+                          <button key={qa} onClick={() => setAmount(String(qa))}
+                            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
+                        ))}
+                        <button onClick={() => setAmount(matchMax.toFixed(2))}
+                          className="px-3 py-1.5 text-xs font-bold bg-accent/10 hover:bg-accent/20 text-accent rounded-lg">MAX</button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                      {QUICK_AMOUNTS.filter(q => q <= matchMax).map(qa => (
-                        <button key={qa} onClick={() => setAmount(String(qa))}
-                          className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
-                      ))}
-                      <button onClick={() => setAmount(matchMax.toFixed(2))}
-                        className="px-3 py-1.5 text-xs font-bold bg-accent/10 hover:bg-accent/20 text-accent rounded-lg">MAX</button>
-                    </div>
+
                     {stakeNum > 0 && (
-                      <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
+                      <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2 text-xs">
+                        <p className="font-bold text-foreground mb-2">Your bet summary</p>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">You're betting on</span>
+                          <span className="font-bold">{getOutcomeLabel(selectedOutcome)} to win</span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-muted-foreground">Your stake</span>
                           <span className="font-bold">${stakeNum.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">If {getOutcomeLabel(selectedOutcome)} wins</span>
-                          <span className="font-bold text-accent">+${(matchWin - matchFee).toFixed(2)}</span>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Current odds</span>
+                          <span className="font-bold">{matchOdds !== null ? `${matchOdds.toFixed(2)}x` : '—'}</span>
                         </div>
-                        <div className="h-px bg-border/30" />
-                        <div className="flex justify-between text-sm font-bold">
-                          <span>Total payout</span>
-                          <span className="text-accent text-lg">${matchPayout.toFixed(2)}</span>
+                        <div className="h-px bg-border/30 my-1" />
+                        <div className="flex justify-between font-bold text-sm">
+                          <span>If you win, you get</span>
+                          <span className="text-accent text-base">${matchPayout.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Odds</span>
-                          <span>{matchOdds.toFixed(2)}x · 2% fee</span>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Profit if you win</span>
+                          <span className="text-accent">+${(matchWin - matchFee).toFixed(2)}</span>
                         </div>
+                        <p className="text-muted-foreground text-[10px] pt-1">2% fee deducted from winnings only. Your stake is always returned if you win.</p>
                       </div>
                     )}
+
                     <Button
                       onClick={() => {
                         const offerToMatch = matchingOffer || offers.find(o =>
@@ -713,23 +711,71 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* Recent activity */}
+      {/* ── Open Offers ── */}
+      {hasBet && isOpen && openOffers.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="bg-card border border-border/50 rounded-2xl p-5 space-y-3">
+          <div>
+            <h3 className="font-heading font-bold text-sm flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" /> Open Offers
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">These are offers you can bet against. Click "Match" to bet against one.</p>
+          </div>
+          {OUTCOMES.map(o => {
+            const oOffers = openOffers.filter(of => of.outcome === o.key);
+            if (oOffers.length === 0) return null;
+            return (
+              <div key={o.key}>
+                <p className={`text-xs font-bold mb-2 ${
+                  o.color === 'primary' ? 'text-primary' : o.color === 'accent' ? 'text-accent' : 'text-yellow-400'
+                }`}>{o.label} offers</p>
+                <div className="space-y-2">
+                  {oOffers.map(offer => (
+                    <div key={offer.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
+                      <div className="text-xs">
+                        <span className="font-bold">${offer.amount_unmatched?.toFixed(2)}</span>
+                        <span className="text-muted-foreground"> available</span>
+                        <span className="text-muted-foreground ml-2">of ${offer.amount_offered?.toFixed(2)} total</span>
+                      </div>
+                      <Button size="sm" variant="outline"
+                        onClick={() => {
+                          setMatchingOffer(offer);
+                          setMode('match');
+                          const opp = offer.outcome === 'a' ? 'b' : offer.outcome === 'b' ? 'a' : 'a';
+                          setSelectedOutcome(opp);
+                          setAmount('');
+                        }}
+                        className="h-7 text-xs font-bold border-accent/40 text-accent hover:bg-accent/10">
+                        Bet against this
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
+      )}
+
+      {/* ── Recent Activity ── */}
       {allUserBets.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
           className="bg-card border border-border/50 rounded-2xl p-5">
           <h3 className="font-heading font-bold text-sm mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" /> Recent Activity
+            <Users className="w-4 h-4 text-muted-foreground" /> Recent Bets
           </h3>
           <div className="space-y-2">
             {allUserBets.slice(0, 8).map(ub => (
               <div key={ub.id} className="flex items-center justify-between text-xs py-2 border-b border-border/20 last:border-0">
                 <div className="flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${ub.role === 'lp' ? 'bg-yellow-400' : 'bg-accent'}`} />
-                  <span className="text-muted-foreground">{ub.outcome_label}</span>
-                  <span className="text-[10px] text-muted-foreground/60">{ub.role === 'lp' ? 'LP' : 'bet'}</span>
+                  <span className="font-medium">{ub.outcome_label}</span>
+                  <span className="text-muted-foreground text-[10px]">{ub.role === 'lp' ? '· opened offer' : '· matched bet'}</span>
                 </div>
-                <span className="font-bold">${ub.amount?.toFixed(2)}</span>
-                {ub.potential_payout > 0 && <span className="text-accent font-medium">→ ${ub.potential_payout?.toFixed(2)}</span>}
+                <div className="flex items-center gap-3">
+                  <span className="font-bold">${ub.amount?.toFixed(2)}</span>
+                  {ub.potential_payout > 0 && <span className="text-accent font-medium">→ ${ub.potential_payout?.toFixed(2)} if win</span>}
+                </div>
               </div>
             ))}
           </div>
