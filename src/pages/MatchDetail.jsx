@@ -161,7 +161,8 @@ export default function MatchDetail() {
         response, 
         offer, 
         amount: matchAmount,
-        userBetId: response.data.userBetId 
+        userBetId: response.data.userBetId,
+        offerId: response.data.offerId 
       };
     },
     onSuccess: async (result) => {
@@ -171,6 +172,7 @@ export default function MatchDetail() {
           instruction: result.response.data.solana_instruction,
           amount: result.amount,
           userBetId: result.userBetId,
+          offerId: result.offerId,
         });
       } else {
         queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
@@ -788,7 +790,7 @@ export default function MatchDetail() {
                         amount={pendingTransaction.amount}
                         userBetId={pendingTransaction.userBetId}
                         offerId={pendingTransaction.offerId}
-                        isOffer={pendingTransaction.isOffer}
+                        isOffer={pendingTransaction.isOffer || false}
                         onSuccess={handleTransactionSuccess}
                         onError={handleTransactionError}
                       />

@@ -91,8 +91,8 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Get the LP's wallet address from their user record
-    const lpUser = await base44.entities.User.filter({ id: offer.created_by_id });
+    // Get the LP's wallet address from their user record (use service role)
+    const lpUser = await base44.asServiceRole.entities.User.filter({ id: offer.created_by_id });
     const lpWalletAddress = lpUser[0]?.wallet_address || lpUser[0]?.data?.wallet_address;
     if (!lpWalletAddress) {
       return Response.json({ error: 'LP wallet address not found' }, { status: 400 });
