@@ -37,6 +37,23 @@ export default function Register() {
       const resp = await phantom.connect();
       const address = resp.publicKey.toString();
       console.log('Wallet connected:', address);
+      
+      // Check if this wallet is already registered
+      try {
+        const response = await base44.functions.invoke('walletAuth', {
+          walletAddress: address,
+        });
+        
+        if (response.data.success && response.data.email) {
+          // User already exists - redirect to login for auto-auth
+          console.log('User already registered, redirecting to login...');
+          window.location.href = `/login?wallet=${address}&registered=true`;
+          return;
+        }
+      } catch (checkErr) {
+        console.log('Wallet not registered yet, proceeding to registration');
+      }
+      
       setWalletAddress(address);
       setStep('details');
     } catch (err) {

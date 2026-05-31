@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If not registering and no user found, they need to register
+    // If not registering (just checking), return user info if exists
     if (!user) {
       console.log('No user found, needs registration');
       return Response.json({ 
@@ -121,8 +121,7 @@ Deno.serve(async (req) => {
       }, { status: 404 });
     }
 
-    // User exists - we need to create a platform session
-    // Generate a temporary password using the wallet address as both email and password
+    // User exists - return user info for login
     const walletEmail = user.email;
     
     console.log('✓ User authenticated:', user.username, user.id);
