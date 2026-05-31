@@ -166,7 +166,7 @@ export default function Home() {
         className="grid grid-cols-2 md:grid-cols-4 gap-3"
       >
         {[
-          { icon: DollarSign, label: 'Total Volume', value: `$${totalVolume.toLocaleString()}`, color: 'text-primary', bg: 'bg-primary/10' },
+          { icon: DollarSign, label: 'Total Volume', value: `◎${totalVolume.toLocaleString()}`, color: 'text-primary', bg: 'bg-primary/10' },
           { icon: Users, label: 'Active Bettors', value: activeBettors.toString(), color: '', bg: '', style: { color: '#21c45d', background: 'rgba(33,196,93,0.1)' } },
           { icon: Flame, label: 'Open Bets', value: openBets.length.toString(), color: 'text-orange-400', bg: 'bg-orange-400/10' },
           { icon: Globe, label: 'Matches', value: matches.length.toString(), color: 'text-blue-400', bg: 'bg-blue-400/10' },

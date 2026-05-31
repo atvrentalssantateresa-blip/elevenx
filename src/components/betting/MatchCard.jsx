@@ -83,7 +83,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
                     <div className="bg-primary/10 rounded-lg px-2 py-1.5 text-center">
                       <p className="text-[10px] text-muted-foreground truncate">{match.team_a}</p>
                       <p className="font-heading font-bold text-xs text-primary">
-                        {oddsA !== null ? `${oddsA.toFixed(2)}x` : `$${lpA.toFixed(0)}`}
+                        {oddsA !== null ? `${oddsA.toFixed(2)}x` : `◎${lpA.toFixed(0)}`}
                       </p>
                     </div>
                   )}
@@ -91,7 +91,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
                     <div className="bg-yellow-500/10 rounded-lg px-2 py-1.5 text-center">
                       <p className="text-[10px] text-muted-foreground">Draw</p>
                       <p className="font-heading font-bold text-xs text-yellow-400">
-                        {oddsDraw !== null ? `${oddsDraw.toFixed(2)}x` : `$${lpDraw.toFixed(0)}`}
+                        {oddsDraw !== null ? `${oddsDraw.toFixed(2)}x` : `◎${lpDraw.toFixed(0)}`}
                       </p>
                     </div>
                   )}
@@ -99,7 +99,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
                     <div className="bg-accent/10 rounded-lg px-2 py-1.5 text-center">
                       <p className="text-[10px] text-muted-foreground truncate">{match.team_b}</p>
                       <p className="font-heading font-bold text-xs text-accent">
-                        {oddsB !== null ? `${oddsB.toFixed(2)}x` : `$${lpB.toFixed(0)}`}
+                        {oddsB !== null ? `${oddsB.toFixed(2)}x` : `◎${lpB.toFixed(0)}`}
                       </p>
                     </div>
                   )}
@@ -108,7 +108,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Users className="w-3 h-3" />
-                  {bet.total_bettors || 0} bettors · Pool ${(bet.total_pool || 0).toLocaleString()}
+                  {bet.total_bettors || 0} bettors · Pool ◎{(bet.total_pool || 0).toLocaleString()}
                 </span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>

@@ -369,7 +369,7 @@ export default function MatchDetail() {
 
           {totalLiquidity > 0 && (
             <div className="text-xs text-muted-foreground text-center">
-              ${totalLiquidity.toLocaleString()} total liquidity available across all outcomes
+              ◎{totalLiquidity.toLocaleString()} total liquidity available across all outcomes
             </div>
           )}
 
@@ -406,7 +406,7 @@ export default function MatchDetail() {
                   </div>
                   <div className="bg-secondary/50 rounded-xl p-3">
                     <p className="text-xs font-bold text-foreground mb-1">💡 Odds explained</p>
-                    <p className="text-xs text-muted-foreground">Odds = how much you win per $1 staked. 2.00x means stake $10, win $10 profit ($20 total). A 2% fee applies to winnings only.</p>
+                    <p className="text-xs text-muted-foreground">Odds = how much you win per ◎1 staked. 2.00x means stake ◎10, win ◎10 profit (◎20 total). A 2% fee applies to winnings only.</p>
                   </div>
                 </div>
               </motion.div>
@@ -489,12 +489,12 @@ export default function MatchDetail() {
                     <div>
                       <p className="text-xs font-medium text-foreground mb-2">Step 2 — How much do you want to offer?</p>
                       <Input type="number" placeholder="0.00" value={amount} min={1}
-                        onChange={e => setAmount(e.target.value)}
-                        className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
+                       onChange={e => setAmount(e.target.value)}
+                       className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
                       <div className="flex gap-2 flex-wrap mt-2">
-                        {QUICK_AMOUNTS.map(qa => (
-                          <button key={qa} onClick={() => setAmount(String(qa))}
-                            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
+                       {QUICK_AMOUNTS.map(qa => (
+                         <button key={qa} onClick={() => setAmount(String(qa))}
+                           className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">◎{qa}</button>
                         ))}
                       </div>
                     </div>
@@ -508,7 +508,7 @@ export default function MatchDetail() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Your offer amount</span>
-                          <span className="font-bold">${stakeNum.toFixed(2)}</span>
+                          <span className="font-bold">◎{stakeNum.toFixed(2)}</span>
                         </div>
                         <div className="h-px bg-border/30 my-1" />
                         <div className="flex justify-between">
@@ -517,7 +517,7 @@ export default function MatchDetail() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">If unmatched</span>
-                          <span className="font-bold text-yellow-400">Your $${stakeNum.toFixed(2)} is refunded</span>
+                          <span className="font-bold text-yellow-400">Your ◎{stakeNum.toFixed(2)} is refunded</span>
                         </div>
                       </div>
                     )}
@@ -528,7 +528,7 @@ export default function MatchDetail() {
                       className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                       {openOfferMutation.isPending
                         ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        : `Offer $${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
+                        : `Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
                     </Button>
                   </motion.div>
                 )}
@@ -549,7 +549,7 @@ export default function MatchDetail() {
 
               {matchingOffer && (
                 <div className="bg-secondary/40 rounded-xl p-3 text-xs border border-border/30">
-                  <p className="text-muted-foreground">Betting against a specific <span className="font-bold text-foreground">{getOutcomeLabel(matchingOffer.outcome)}</span> offer · <span className="font-bold text-accent">${matchingOffer.amount_unmatched?.toFixed(2)} available</span></p>
+                  <p className="text-muted-foreground">Betting against a specific <span className="font-bold text-foreground">{getOutcomeLabel(matchingOffer.outcome)}</span> offer · <span className="font-bold text-accent">◎{matchingOffer.amount_unmatched?.toFixed(2)} available</span></p>
                 </div>
               )}
 
@@ -579,7 +579,7 @@ export default function MatchDetail() {
                         }`}>
                           {o.odds !== null ? `${o.odds.toFixed(2)}x` : '—'}
                         </p>
-                        <p className="text-[9px] text-muted-foreground">${opposingLiquidity.toFixed(0)} avail.</p>
+                        <p className="text-[9px] text-muted-foreground">◎{opposingLiquidity.toFixed(0)} avail.</p>
                       </button>
                     );
                   })}
@@ -591,14 +591,14 @@ export default function MatchDetail() {
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                     className="space-y-4 overflow-hidden">
                     <div>
-                      <p className="text-xs font-medium text-foreground mb-2">Step 2 — How much do you want to stake? <span className="text-muted-foreground">(max ${matchMax.toFixed(2)})</span></p>
+                      <p className="text-xs font-medium text-foreground mb-2">Step 2 — How much do you want to stake? <span className="text-muted-foreground">(max ◎{matchMax.toFixed(2)})</span></p>
                       <Input type="number" placeholder="0.00" value={amount} min={0} max={matchMax}
                         onChange={e => setAmount(Math.min(parseFloat(e.target.value) || 0, matchMax).toString())}
                         className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
                       <div className="flex gap-2 flex-wrap mt-2">
                         {QUICK_AMOUNTS.filter(q => q <= matchMax).map(qa => (
                           <button key={qa} onClick={() => setAmount(String(qa))}
-                            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">${qa}</button>
+                            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">◎{qa}</button>
                         ))}
                         <button onClick={() => setAmount(matchMax.toFixed(2))}
                           className="px-3 py-1.5 text-xs font-bold bg-accent/10 hover:bg-accent/20 text-accent rounded-lg">MAX</button>
@@ -614,7 +614,7 @@ export default function MatchDetail() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Your stake</span>
-                          <span className="font-bold">${stakeNum.toFixed(2)}</span>
+                          <span className="font-bold">◎{stakeNum.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current odds</span>
@@ -623,11 +623,11 @@ export default function MatchDetail() {
                         <div className="h-px bg-border/30 my-1" />
                         <div className="flex justify-between font-bold text-sm">
                           <span>If you win, you get</span>
-                          <span className="text-accent text-base">${matchPayout.toFixed(2)}</span>
+                          <span className="text-accent text-base">◎{matchPayout.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
                           <span>Profit if you win</span>
-                          <span className="text-accent">+${(matchWin - matchFee).toFixed(2)}</span>
+                          <span className="text-accent">+◎{(matchWin - matchFee).toFixed(2)}</span>
                         </div>
                         <p className="text-muted-foreground text-[10px] pt-1">2% fee deducted from winnings only. Your stake is always returned if you win.</p>
                       </div>
@@ -646,7 +646,7 @@ export default function MatchDetail() {
                       className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl">
                       {matchOfferMutation.isPending
                         ? <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                        : `Bet $${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
+                        : `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
                     </Button>
                   </motion.div>
                 )}
@@ -684,9 +684,9 @@ export default function MatchDetail() {
                   {oOffers.map(offer => (
                     <div key={offer.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
                       <div className="text-xs">
-                        <span className="font-bold">${offer.amount_unmatched?.toFixed(2)}</span>
+                        <span className="font-bold">◎{offer.amount_unmatched?.toFixed(2)}</span>
                         <span className="text-muted-foreground"> available</span>
-                        <span className="text-muted-foreground ml-2">of ${offer.amount_offered?.toFixed(2)} total</span>
+                        <span className="text-muted-foreground ml-2">of ◎{offer.amount_offered?.toFixed(2)} total</span>
                       </div>
                       <Button size="sm" variant="outline"
                         onClick={() => {
@@ -731,17 +731,17 @@ export default function MatchDetail() {
                   </Badge>
                   {ub.role === 'lp' && <span className="text-[10px] text-muted-foreground">LP offer</span>}
                 </div>
-                <span className="font-bold">${ub.amount?.toFixed(2)}</span>
+                <span className="font-bold">◎{ub.amount?.toFixed(2)}</span>
               </div>
               {ub.potential_payout > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Potential payout if you win: <span className="text-accent font-bold">${ub.potential_payout?.toFixed(2)}</span>
+                  Potential payout if you win: <span className="text-accent font-bold">◎{ub.potential_payout?.toFixed(2)}</span>
                 </p>
               )}
               {ub.status === 'won' && (
                 <Button onClick={() => claimMutation.mutate(ub.id)} size="sm"
                   className="w-full mt-2 h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg">
-                  Claim ${ub.actual_payout?.toFixed(2) || ub.potential_payout?.toFixed(2)}
+                  Claim ◎{ub.actual_payout?.toFixed(2) || ub.potential_payout?.toFixed(2)}
                 </Button>
               )}
               {ub.status === 'pending' && ub.role === 'lp' && (
@@ -773,8 +773,8 @@ export default function MatchDetail() {
                   <span className="text-muted-foreground text-[10px]">{ub.role === 'lp' ? '· opened offer' : '· matched bet'}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-bold">${ub.amount?.toFixed(2)}</span>
-                  {ub.potential_payout > 0 && <span className="text-accent font-medium">→ ${ub.potential_payout?.toFixed(2)} if win</span>}
+                  <span className="font-bold">◎{ub.amount?.toFixed(2)}</span>
+                  {ub.potential_payout > 0 && <span className="text-accent font-medium">→ ◎{ub.potential_payout?.toFixed(2)} if win</span>}
                 </div>
               </div>
             ))}
