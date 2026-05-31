@@ -135,6 +135,7 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = async () => {
     try {
       const currentUser = await base44.auth.me();
+      console.log('refreshUser got:', currentUser);
       setUser(currentUser);
     } catch (error) {
       console.error('Failed to refresh user:', error);

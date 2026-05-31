@@ -13,12 +13,13 @@ export default function Profile() {
   const [userData, setUserData] = useState(null);
 
   // Fetch user data by wallet address
-  const { data: fetchedUser } = useQuery({
+  const { data: fetchedUser, isLoading: isFetchingUser } = useQuery({
     queryKey: ['userByWallet', connectedWalletAddress],
     queryFn: async () => {
       if (!connectedWalletAddress) return null;
       try {
         const users = await base44.asServiceRole.entities.User.filter({ wallet_address: connectedWalletAddress });
+        console.log('Fetched user:', users[0]);
         return users[0] || null;
       } catch (err) {
         console.log('Failed to fetch user:', err);
@@ -26,10 +27,16 @@ export default function Profile() {
       }
     },
     enabled: !!connectedWalletAddress,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Use fetched user data or auth user
   const currentUser = fetchedUser || userData || user;
+  
+  console.log('Profile - currentUser:', currentUser);
+  console.log('Profile - fetchedUser:', fetchedUser);
+  console.log('Profile - user (auth):', user);
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
@@ -55,7 +62,8 @@ export default function Profile() {
     }
   }, [fetchedUser]);
 
-  if (!walletAddress) {
+  // Show loading while fetching user
+  if (isFetchingUser || !walletAddress) {
     return (
       <div className="space-y-6 max-w-lg mx-auto">
         <motion.div
