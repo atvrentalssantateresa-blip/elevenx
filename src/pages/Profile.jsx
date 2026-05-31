@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useWallet } from '@/lib/WalletContext';
 import { useQuery } from '@tanstack/react-query';
@@ -10,14 +10,34 @@ import { Button } from '@/components/ui/button';
 export default function Profile() {
   const { user, refreshUser, logout } = useAuth();
   const { isConnected, connect, disconnect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
+  const [userData, setUserData] = useState(null);
+
+  // Fetch user data by wallet address
+  const { data: fetchedUser } = useQuery({
+    queryKey: ['userByWallet', connectedWalletAddress],
+    queryFn: async () => {
+      if (!connectedWalletAddress) return null;
+      try {
+        const users = await base44.asServiceRole.entities.User.filter({ wallet_address: connectedWalletAddress });
+        return users[0] || null;
+      } catch (err) {
+        console.log('Failed to fetch user:', err);
+        return null;
+      }
+    },
+    enabled: !!connectedWalletAddress,
+  });
+
+  // Use fetched user data or auth user
+  const currentUser = fetchedUser || userData || user;
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
     queryFn: async () => {
       const all = await base44.entities.UserBet.list('-created_date', 200);
-      return all.filter(ub => ub.created_by_id === user?.id);
+      return all.filter(ub => ub.created_by_id === currentUser?.id);
     },
-    enabled: !!user,
+    enabled: !!currentUser?.id,
   });
 
   const totalStaked = myBets.reduce((s, b) => s + (b.amount || 0), 0);
@@ -26,14 +46,14 @@ export default function Profile() {
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
 
-  const walletAddress = connectedWalletAddress || user?.wallet_address || user?.data?.wallet_address;
+  const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
 
-  // Refresh user data when wallet connects
+  // Update user data when fetched
   useEffect(() => {
-    if (isConnected && connectedWalletAddress && (!user?.wallet_address || user.wallet_address !== connectedWalletAddress)) {
-      refreshUser();
+    if (fetchedUser) {
+      setUserData(fetchedUser);
     }
-  }, [isConnected, connectedWalletAddress]);
+  }, [fetchedUser]);
 
   if (!walletAddress) {
     return (
@@ -77,11 +97,8 @@ export default function Profile() {
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <User className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="font-heading font-bold text-xl">{user?.full_name || 'Complete Registration'}</h1>
-        {!user?.full_name && (
-          <p className="text-sm text-accent mb-2">Please complete your registration</p>
-        )}
-        <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <h1 className="font-heading font-bold text-xl">{currentUser?.full_name || 'User'}</h1>
+        <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg border border-border/30">
           <Wallet className="w-3 h-3 text-primary" />
           <span className="text-xs font-mono text-primary">
@@ -90,16 +107,8 @@ export default function Profile() {
         </div>
         <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
           <Trophy className="w-3 h-3 text-primary" />
-          <span className="text-xs font-semibold text-primary">{user?.role || 'user'}</span>
+          <span className="text-xs font-semibold text-primary">{currentUser?.role || 'user'}</span>
         </div>
-        {!user?.full_name && (
-          <Button
-            onClick={() => window.location.href = '/register'}
-            className="mt-4 bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8"
-          >
-            Complete Registration
-          </Button>
-        )}
       </motion.div>
 
       <div className="grid grid-cols-2 gap-3">
