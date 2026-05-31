@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const WalletContext = createContext();
+const WalletContext = createContext(null);
 
 const WALLET_SESSION_KEY = 'elevenx_wallet_session';
 
-export const WalletProvider = ({ children }) => {
+export function WalletProvider({ children }) {
   const [walletAddress, setWalletAddress] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -118,10 +118,10 @@ export const WalletProvider = ({ children }) => {
       {children}
     </WalletContext.Provider>
   );
-};
+}
 
-export const useWallet = () => {
+export function useWallet() {
   const ctx = useContext(WalletContext);
   if (!ctx) throw new Error('useWallet must be used within WalletProvider');
   return ctx;
-};
+}
