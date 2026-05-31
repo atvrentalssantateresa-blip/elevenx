@@ -25,8 +25,8 @@ export default function AppLayout() {
               <Trophy className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <span className="font-heading font-bold text-lg text-foreground tracking-tight">BET26</span>
-              <span className="text-[10px] text-primary font-semibold ml-1 tracking-widest">WC</span>
+              <span className="font-heading font-bold text-lg text-foreground tracking-tight">ElevenX</span>
+              <span className="text-[10px] text-primary font-semibold ml-1 tracking-widest">SOL</span>
             </div>
           </Link>
 
@@ -66,7 +66,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full">
               <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              <span className="text-xs text-muted-foreground font-medium">WC 2026</span>
+              <span className="text-xs text-muted-foreground font-medium">Solana</span>
             </div>
           </div>
         </div>

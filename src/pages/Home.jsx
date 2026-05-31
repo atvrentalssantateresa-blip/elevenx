@@ -65,7 +65,7 @@ export default function Home() {
             <span className="text-primary">Beautiful Game</span>
           </h1>
           <p className="text-muted-foreground max-w-md text-sm md:text-base mb-6">
-            Peer-to-peer match betting for the FIFA World Cup 2026. No bookmakers, no middlemen — just pure football.
+            Peer-to-peer match betting on Solana. No bookmakers, no middlemen — decentralized, transparent, on-chain.
           </p>
 
           <div className="flex gap-3">
