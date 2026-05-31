@@ -73,7 +73,7 @@ export default function Register() {
       }
 
       // User was created successfully - response includes user info
-      if (response.data.success && response.data.user) {
+      if (response.data.success && (response.data.user || response.data.userId)) {
         // Wallet address already saved during user creation via service role
         // Redirect to login with success message and wallet address for auto-login
         window.location.href = `/login?wallet=${walletAddress}&registered=true`;
