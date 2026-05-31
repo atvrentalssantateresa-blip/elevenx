@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.95.3';
+import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = 'ElevenX1111111111111111111111111111111111111';
+const SOLANA_PROGRAM_ID = '11111111111111111111111111111111'; // System program as placeholder until real program is deployed
 const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
 
 Deno.serve(async (req) => {
@@ -80,18 +81,31 @@ Deno.serve(async (req) => {
     const matcherPubkey = new PublicKey(walletAddress);
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
+    // Convert bet_id to bytes for PDA (use first 32 bytes or pad with zeros)
+    const betIdBytes = Buffer.from(bet_id, 'utf-8');
+    const betIdPadded = Buffer.alloc(32);
+    betIdBytes.copy(betIdPadded, 0, 0, Math.min(betIdBytes.length, 32));
+
     const [betPoolPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('bet_pool'), Buffer.from(bet_id)],
+      [Buffer.from('bet_pool'), betIdPadded],
       programId
     );
 
+    // Get the LP's wallet address from their user record
+    const lpUser = await base44.entities.User.filter({ id: offer.created_by_id });
+    const lpWalletAddress = lpUser[0]?.wallet_address || lpUser[0]?.data?.wallet_address;
+    if (!lpWalletAddress) {
+      return Response.json({ error: 'LP wallet address not found' }, { status: 400 });
+    }
+    const lpPubkey = new PublicKey(lpWalletAddress);
+
     const [existingPositionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user_position'), new PublicKey(offer.created_by_id).toBuffer(), Buffer.from(bet_id)],
+      [Buffer.from('user_position'), lpPubkey.toBuffer(), betIdPadded],
       programId
     );
 
     const [matcherPositionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user_position'), matcherPubkey.toBuffer(), Buffer.from(bet_id)],
+      [Buffer.from('user_position'), matcherPubkey.toBuffer(), betIdPadded],
       programId
     );
 

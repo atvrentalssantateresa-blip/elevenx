@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.95.3';
+import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = 'ElevenX1111111111111111111111111111111111111';
+const SOLANA_PROGRAM_ID = '11111111111111111111111111111111'; // System program as placeholder until real program is deployed
 const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
 
 Deno.serve(async (req) => {
@@ -41,18 +42,27 @@ Deno.serve(async (req) => {
 
     const outcomeLabel = outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw';
 
-    // Prepare Solana instruction data
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    const userPubkey = new PublicKey(walletAddress);
-    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    // Prepare Solana instruction data - wrap in try-catch for detailed error
+    let userPubkey, programId;
+    try {
+      userPubkey = new PublicKey(walletAddress);
+      programId = new PublicKey(SOLANA_PROGRAM_ID);
+    } catch (err) {
+      return Response.json({ error: 'Invalid public key: ' + err.message, walletAddress, SOLANA_PROGRAM_ID }, { status: 400 });
+    }
     
+    // Convert bet_id to bytes for PDA (use first 32 bytes or pad with zeros)
+    const betIdBytes = Buffer.from(bet_id, 'utf-8');
+    const betIdPadded = Buffer.alloc(32);
+    betIdBytes.copy(betIdPadded, 0, 0, Math.min(betIdBytes.length, 32));
+
     const [betPoolPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('bet_pool'), Buffer.from(bet_id)],
+      [Buffer.from('bet_pool'), betIdPadded],
       programId
     );
 
     const [userPositionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user_position'), userPubkey.toBuffer(), Buffer.from(bet_id)],
+      [Buffer.from('user_position'), userPubkey.toBuffer(), betIdPadded],
       programId
     );
 
