@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_instruction;
 
-declare_id!("ElevenX1111111111111111111111111111111111111");
+declare_id!("Bh1f4fN8Wf81fZJ99CmSBiYsgEBqakMdfW6HJDkUacf7");
 
 #[program]
 pub mod elevenx_betting {
@@ -23,12 +23,13 @@ pub mod elevenx_betting {
     }
 
     pub fn create_bet_offer(ctx: Context<CreateBetOffer>, params: CreateBetOfferParams) -> Result<()> {
+        let bet_pool_key = ctx.accounts.bet_pool.key();
         let bet_pool = &mut ctx.accounts.bet_pool;
         let user_position = &mut ctx.accounts.user_position;
 
         // Initialize user position
         user_position.user = ctx.accounts.user.key();
-        user_position.bet_pool = ctx.accounts.bet_pool.key();
+        user_position.bet_pool = bet_pool_key;
         user_position.outcome = params.outcome;
         user_position.amount = params.amount;
         user_position.potential_payout = 0;
@@ -38,7 +39,7 @@ pub mod elevenx_betting {
         // Transfer SOL from user to bet pool
         let transfer_ix = system_instruction::transfer(
             &ctx.accounts.user.key(),
-            &ctx.accounts.bet_pool.key(),
+            &bet_pool_key,
             params.amount,
         );
         anchor_lang::solana_program::program::invoke(
@@ -61,6 +62,7 @@ pub mod elevenx_betting {
     }
 
     pub fn match_bet(ctx: Context<MatchBet>, params: MatchBetParams) -> Result<()> {
+        let bet_pool_key = ctx.accounts.bet_pool.key();
         let bet_pool = &mut ctx.accounts.bet_pool;
         let existing_position = &mut ctx.accounts.existing_position;
         let matcher_position = &mut ctx.accounts.matcher_position;
@@ -73,7 +75,7 @@ pub mod elevenx_betting {
 
         // Initialize matcher position
         matcher_position.user = ctx.accounts.matcher.key();
-        matcher_position.bet_pool = ctx.accounts.bet_pool.key();
+        matcher_position.bet_pool = bet_pool_key;
         matcher_position.outcome = params.matcher_outcome;
         matcher_position.amount = params.amount;
         matcher_position.potential_payout = 0; // Will be calculated
@@ -83,7 +85,7 @@ pub mod elevenx_betting {
         // Transfer SOL from matcher to pool
         let transfer_ix = system_instruction::transfer(
             &ctx.accounts.matcher.key(),
-            &ctx.accounts.bet_pool.key(),
+            &bet_pool_key,
             params.amount,
         );
         anchor_lang::solana_program::program::invoke(
@@ -270,7 +272,7 @@ pub struct UserPosition {
     pub bump: u8,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum BetStatus {
     Open,
     Closed,
@@ -278,14 +280,14 @@ pub enum BetStatus {
     Void,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum Outcome {
     A,
     B,
     Draw,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum PositionStatus {
     Pending,
     Active,
