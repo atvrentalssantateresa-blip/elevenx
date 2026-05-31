@@ -128,8 +128,9 @@ export default function Profile() {
         onClick={async () => {
           // Disconnect wallet first
           await disconnect();
-          // Then logout from Base44
+          // Then logout from Base44 and redirect
           await logout();
+          window.location.href = '/';
         }}
         className="w-full border-border/50 text-muted-foreground hover:text-destructive hover:border-destructive/30 h-11 rounded-xl"
       >
