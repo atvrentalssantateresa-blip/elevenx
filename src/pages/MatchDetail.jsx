@@ -623,7 +623,28 @@ export default function MatchDetail() {
 
                     {!isConnected ? (
                       <Button
-                        onClick={() => window.location.href = '/login'}
+                        onClick={async () => {
+                          const phantom = window.solana?.isPhantom ? window.solana : null;
+                          if (!phantom) {
+                            window.open('https://phantom.app/', '_blank');
+                            return;
+                          }
+                          try {
+                            const resp = await phantom.connect();
+                            const walletAddress = resp.publicKey.toString();
+                            const response = await base44.functions.invoke('walletAuth', {
+                              walletAddress,
+                              register: true
+                            });
+                            if (response.data.success) {
+                              localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletAddress, connectedAt: Date.now() }));
+                              localStorage.setItem('elevenx_authenticated', 'true');
+                              window.location.reload();
+                            }
+                          } catch (err) {
+                            console.error('Wallet connect failed:', err);
+                          }
+                        }}
                         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                       >
                         <Wallet className="w-4 h-4 mr-2" />
@@ -754,7 +775,28 @@ export default function MatchDetail() {
 
                     {!isConnected ? (
                       <Button
-                        onClick={() => window.location.href = '/login'}
+                        onClick={async () => {
+                          const phantom = window.solana?.isPhantom ? window.solana : null;
+                          if (!phantom) {
+                            window.open('https://phantom.app/', '_blank');
+                            return;
+                          }
+                          try {
+                            const resp = await phantom.connect();
+                            const walletAddress = resp.publicKey.toString();
+                            const response = await base44.functions.invoke('walletAuth', {
+                              walletAddress,
+                              register: true
+                            });
+                            if (response.data.success) {
+                              localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletAddress, connectedAt: Date.now() }));
+                              localStorage.setItem('elevenx_authenticated', 'true');
+                              window.location.reload();
+                            }
+                          } catch (err) {
+                            console.error('Wallet connect failed:', err);
+                          }
+                        }}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
                         <Wallet className="w-4 h-4 mr-2" />
