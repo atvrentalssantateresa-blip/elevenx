@@ -128,73 +128,26 @@ export default function MatchDetail() {
 
   const matchOfferMutation = useMutation({
     mutationFn: async ({ offer, matchAmount }) => {
-      const matcherOutcome = selectedOutcome;
-      const matcherLabel = getOutcomeLabel(matcherOutcome);
-      const avA = totalAvailable(offers, 'a');
-      const avB = totalAvailable(offers, 'b');
-      const avDraw = totalAvailable(offers, 'draw');
-      const { oddsA, oddsB, oddsDraw } = calcOdds(avA, avB, avDraw);
-      const currentOdds = matcherOutcome === 'a' ? oddsA : matcherOutcome === 'b' ? oddsB : oddsDraw;
-      const winnings = matchAmount * currentOdds;
-      const fee = winnings * FEE_BPS / 10000;
-      const potentialPayout = matchAmount + winnings - fee;
-
-      const newMatched = (offer.amount_matched || 0) + matchAmount;
-      const newUnmatched = offer.amount_offered - newMatched;
-      const newStatus = newUnmatched <= 0.01 ? 'fully_matched' : 'partially_matched';
-      await base44.entities.BetOffer.update(offer.id, {
-        amount_matched: newMatched,
-        amount_unmatched: Math.max(0, newUnmatched),
-        status: newStatus,
-      });
-
-      const match = await base44.entities.Match.list().then(ms => ms.find(m => m.id === matchId));
-      const userBet = await base44.entities.UserBet.create({
+      const response = await base44.functions.invoke('matchBet', {
+        offer_id: offer.id,
         bet_id: bet.id,
         match_id: matchId,
-        offer_id: offer.id,
-        outcome: matcherOutcome,
         amount: matchAmount,
-        role: 'matcher',
-        status: 'pending',
-        outcome_label: matcherLabel,
-        match_title: `${match.team_a} vs ${match.team_b}`,
-        potential_payout: potentialPayout,
       });
 
-      const lpBets = await base44.entities.UserBet.filter({ offer_id: offer.id, role: 'lp' });
-      if (lpBets.length > 0) {
-        const lpWin = matchAmount;
-        const lpFee = lpWin * FEE_BPS / 10000;
-        const lpPayout = offer.amount_offered + lpWin - lpFee;
-        await base44.entities.UserBet.update(lpBets[0].id, {
-          status: 'active',
-          potential_payout: lpPayout,
-        });
-      }
-
-      const backedField = matcherOutcome === 'a' ? 'backed_amount_a' : matcherOutcome === 'b' ? 'backed_amount_b' : 'backed_amount_draw';
-      await base44.entities.Bet.update(bet.id, {
-        [backedField]: (bet[backedField] || 0) + matchAmount,
-        total_pool: (bet.total_pool || 0) + matchAmount,
-        total_bettors: (bet.total_bettors || 0) + 1,
-      });
-
-      return { userBet, offer, amount: matchAmount };
+      return { 
+        response, 
+        offer, 
+        amount: matchAmount,
+        userBetId: response.data.userBet?.id 
+      };
     },
     onSuccess: async (result) => {
-      const response = await base44.functions.invoke('matchBet', {
-        offer_id: result.offer.id,
-        bet_id: bet.id,
-        match_id: matchId,
-        amount: result.amount,
-      });
-
-      if (response.data.solana_instruction) {
+      if (result.response.data.solana_instruction) {
         setPendingTransaction({
-          instruction: response.data.solana_instruction,
+          instruction: result.response.data.solana_instruction,
           amount: result.amount,
-          userBetId: result.userBet.id,
+          userBetId: result.userBetId,
         });
       } else {
         queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
@@ -678,12 +631,22 @@ export default function MatchDetail() {
                     {!isConnected ? (
                       <Button
                         onClick={async () => {
-                          await base44.auth.redirectToLogin();
+                          const provider = window.solana;
+                          if (!provider) {
+                            window.open('https://phantom.app/', '_blank');
+                            return;
+                          }
+                          try {
+                            await provider.connect();
+                            window.location.reload();
+                          } catch (err) {
+                            console.error('Failed to connect:', err);
+                          }
                         }}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
                         <Wallet className="w-4 h-4 mr-2" />
-                        Connect Wallet to Bet
+                        Connect Phantom Wallet
                       </Button>
                     ) : pendingTransaction ? (
                       <SolanaTransactionSigner
