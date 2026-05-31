@@ -92,12 +92,6 @@ export default function MatchDetail() {
 
   const openOfferMutation = useMutation({
     mutationFn: async ({ outcome, offerOutcomeLabel, offerAmount }) => {
-      // Check authentication first
-      const isAuthenticated = await base44.auth.isAuthenticated();
-      if (!isAuthenticated) {
-        throw new Error('Please login first: Connect your wallet and register/login to place bets');
-      }
-      
       const payload = {
         bet_id: bet.id,
         match_id: matchId,
@@ -147,12 +141,6 @@ export default function MatchDetail() {
 
   const matchOfferMutation = useMutation({
     mutationFn: async ({ offer, matchAmount }) => {
-      // Check authentication first
-      const isAuthenticated = await base44.auth.isAuthenticated();
-      if (!isAuthenticated) {
-        throw new Error('Please login first: Connect your wallet and register/login to place bets');
-      }
-      
       const payload = {
         offer_id: offer.id,
         bet_id: bet.id,
