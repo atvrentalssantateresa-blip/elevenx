@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
@@ -21,8 +21,6 @@ const FEATURED_MATCHES = [
 ];
 
 export default function Home() {
-  const [activePhoto, setActivePhoto] = useState(0);
-
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: () => base44.entities.Match.list('-created_date', 20),
@@ -51,76 +49,112 @@ export default function Home() {
   return (
     <div className="space-y-6 -mt-2">
 
-      {/* ── HERO ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-3xl min-h-[420px] md:min-h-[500px] flex flex-col justify-end"
-      >
-        {/* BG photo */}
-        <img
-          src={WC_PHOTOS[activePhoto]}
-          alt="World Cup"
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-        />
-        {/* Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+      {/* ── HERO CARDS ── */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Card 1 — Main CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative overflow-hidden rounded-3xl min-h-[320px] flex flex-col justify-between p-7"
+          style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}
+        >
+          {/* Glow orbs */}
+          <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
+          <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: '#14f195' }} />
+          {/* Grid lines decoration */}
+          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(#a69cf2 1px, transparent 1px), linear-gradient(90deg, #a69cf2 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-        {/* Top badge row */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-destructive/90 backdrop-blur-sm px-3 py-1 rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-xs font-bold text-white tracking-wide">LIVE</span>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full">
+                <Zap className="w-3 h-3 text-primary" />
+                <span className="text-[11px] font-bold text-primary tracking-widest">SOLANA POWERED</span>
+              </div>
             </div>
-            <div className="bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
-              <span className="text-xs font-semibold text-white/90">FIFA World Cup 2026™</span>
-            </div>
+            <h1 className="font-heading font-black text-3xl md:text-4xl leading-tight mb-3 text-white">
+              Bet P2P.<br />
+              <span className="text-primary" style={{ textShadow: '0 0 40px rgba(166,156,242,0.6)' }}>Win On-Chain.</span>
+            </h1>
+            <p className="text-white/60 text-sm leading-relaxed max-w-xs">
+              The first fully decentralized World Cup betting pool. No house edge. No middlemen. Just pure odds between you and other fans.
+            </p>
           </div>
-          {/* Photo dots */}
-          <div className="flex gap-1.5">
-            {WC_PHOTOS.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActivePhoto(i)}
-                className={`w-2 h-2 rounded-full transition-all ${i === activePhoto ? 'bg-primary w-5' : 'bg-white/40'}`}
-              />
-            ))}
-          </div>
-        </div>
 
-        {/* Hero content */}
-        <div className="relative z-10 p-6 md:p-10">
-          <div className="flex items-center gap-2 mb-3">
-            <Flame className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-primary tracking-widest uppercase">P2P · On-Chain · Solana</span>
-          </div>
-          <h1 className="font-heading font-black text-4xl md:text-6xl text-white leading-none mb-3">
-            The World's<br />
-            <span className="text-primary drop-shadow-[0_0_30px_hsl(45,100%,51%,0.5)]">Biggest Bets</span>
-          </h1>
-          <p className="text-white/70 max-w-sm text-sm md:text-base mb-6">
-            No bookmakers. No middlemen. Pure peer-to-peer betting on the World Cup — settled on-chain.
-          </p>
-
-          <div className="flex flex-wrap gap-3">
+          <div className="relative z-10 flex flex-wrap gap-3 mt-6">
             <Link to="/matches">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-7 h-12 rounded-xl text-sm shadow-[0_0_20px_hsl(45,100%,51%,0.3)]">
-                <Zap className="w-4 h-4 mr-2" />
-                Place a Bet
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-6 h-11 rounded-xl text-sm" style={{ boxShadow: '0 0 24px rgba(166,156,242,0.35)' }}>
+                <Trophy className="w-4 h-4 mr-2" />
+                Start Betting
               </Button>
             </Link>
             <Link to="/my-bets">
-              <Button variant="outline" className="font-heading font-medium h-12 rounded-xl border-white/20 text-white bg-white/5 backdrop-blur-sm hover:bg-white/10">
-                My Bets
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button variant="outline" className="font-heading font-medium h-11 rounded-xl border-white/15 text-white/80 bg-white/5 hover:bg-white/10">
+                My Bets <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </Link>
           </div>
-        </div>
-      </motion.div>
+
+          {/* Floating stat chips */}
+          <div className="absolute bottom-7 right-6 flex flex-col gap-2 items-end">
+            <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-[11px] text-white/80 font-medium">2% platform fee only</span>
+            </div>
+            <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+              <Flame className="w-3 h-3 text-primary" />
+              <span className="text-[11px] text-white/80 font-medium">Instant settlement</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Card 2 — World Cup Hype */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="relative overflow-hidden rounded-3xl min-h-[320px] flex flex-col justify-between"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80"
+            alt="World Cup"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(10,8,20,0.97) 0%, rgba(10,8,20,0.6) 50%, rgba(10,8,20,0.2) 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(166,156,242,0.12) 0%, transparent 60%)' }} />
+
+          <div className="relative z-10 p-7">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-3 py-1 rounded-full">
+                <Globe className="w-3 h-3 text-white/70" />
+                <span className="text-[11px] font-bold text-white/80 tracking-wide">FIFA WORLD CUP 2026™</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 p-7">
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-primary tracking-widest uppercase">48 Teams · 104 Matches</span>
+            </div>
+            <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight mb-3">
+              One Trophy.<br />
+              <span className="text-primary">Your Prediction.</span>
+            </h2>
+            <p className="text-white/60 text-sm mb-5">
+              USA · Canada · Mexico hosting the biggest sporting event on Earth. Pick your winner and back it with SOL.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {['🇧🇷','🇫🇷','🇩🇪','🇦🇷','🏴󠁧󠁢󠁥󠁮󠁧󠁿'].map((flag, i) => (
+                  <div key={i} className="w-8 h-8 rounded-full bg-card border-2 border-background flex items-center justify-center text-sm">{flag}</div>
+                ))}
+              </div>
+              <span className="text-xs text-white/50">+43 more nations</span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
       {/* ── LIVE STATS BAR ── */}
       <motion.div
