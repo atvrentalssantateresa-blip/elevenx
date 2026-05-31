@@ -444,7 +444,7 @@ export default function MatchDetail() {
       </motion.div>
 
       {/* ── No market yet ── */}
-      {!hasBet && isAdmin && (
+      {!hasBet && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
           <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
@@ -455,12 +455,6 @@ export default function MatchDetail() {
             {createMarketMutation.isPending ? 'Opening...' : 'Open Market'}
           </Button>
         </motion.div>
-      )}
-      {!hasBet && !isAdmin && (
-        <div className="text-center py-12 bg-card border border-border/50 rounded-2xl">
-          <Trophy className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Betting market not yet open for this match</p>
-        </div>
       )}
 
       {/* ── Market Odds ── */}
