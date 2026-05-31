@@ -612,9 +612,13 @@ export default function MatchDetail() {
                 <p className="text-xs text-muted-foreground mb-2">Pick your outcome:</p>
                 <div className="grid grid-cols-3 gap-2">
                   {OUTCOMES.map(o => {
-                    const avail = matchingOffer
+                    // To bet on outcome X, you need opposing liquidity (offers NOT on X)
+                    const opposingLiquidity = matchingOffer
                       ? (o.key !== matchingOffer.outcome ? matchingOffer.amount_unmatched : 0)
-                      : (o.key === 'a' ? avA : o.key === 'b' ? avB : avDraw);
+                      : OUTCOMES.filter(other => other.key !== o.key).reduce((sum, other) => {
+                          return sum + (other.key === 'a' ? avA : other.key === 'b' ? avB : avDraw);
+                        }, 0);
+                    const avail = opposingLiquidity;
                     const disabled = avail <= 0 || (matchingOffer && o.key === matchingOffer.outcome);
                     return (
                       <button key={o.key}
