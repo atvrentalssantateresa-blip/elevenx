@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/use-toast';
 import { Plus, Trophy, Settings, Gavel, RefreshCw, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -15,7 +14,6 @@ import { format } from 'date-fns';
 
 export default function Admin() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: matches = [] } = useQuery({
@@ -85,13 +83,11 @@ function CreateMatchDialog() {
     group_stage: '', match_time: '', venue: '', status: 'upcoming',
   });
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Match.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches'] });
-      toast({ title: 'Match created!' });
       setOpen(false);
       setForm({ team_a: '', team_b: '', team_a_flag: '', team_b_flag: '', group_stage: '', match_time: '', venue: '', status: 'upcoming' });
     },
@@ -156,7 +152,6 @@ function CreateMatchDialog() {
 
 function AdminMatchRow({ match, bets, index }) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const existingBet = bets.find(b => b.match_id === match.id);
 
   const createBetMutation = useMutation({
@@ -172,7 +167,6 @@ function AdminMatchRow({ match, bets, index }) {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bets'] });
-      toast({ title: 'Bet created for this match!' });
     },
   });
 
@@ -229,7 +223,6 @@ function AdminMatchRow({ match, bets, index }) {
 
 function AdminBetRow({ bet, matches, index }) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const match = matches.find(m => m.id === bet.match_id);
 
   const settleMutation = useMutation({
@@ -263,7 +256,6 @@ function AdminBetRow({ bet, matches, index }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bets'] });
       queryClient.invalidateQueries({ queryKey: ['myBets'] });
-      toast({ title: 'Bet settled!' });
     },
   });
 
@@ -277,7 +269,6 @@ function AdminBetRow({ bet, matches, index }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bets'] });
-      toast({ title: 'Bet voided and refunds issued.' });
     },
   });
 

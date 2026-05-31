@@ -8,14 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
 import OddsBar from '@/components/betting/OddsBar';
 import BetSlip from '@/components/betting/BetSlip';
 
 export default function BetDetail() {
   const { betId } = useParams();
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedOutcome, setSelectedOutcome] = useState(null);
 
@@ -68,12 +66,9 @@ export default function BetDetail() {
       queryClient.invalidateQueries({ queryKey: ['bet', betId] });
       queryClient.invalidateQueries({ queryKey: ['myBetsForBet', betId] });
       queryClient.invalidateQueries({ queryKey: ['bets'] });
-      toast({ title: 'Bet placed!', description: 'Your bet has been recorded successfully.' });
       setSelectedOutcome(null);
     },
-    onError: (err) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    },
+    onError: () => {},
   });
 
   const claimMutation = useMutation({
@@ -82,7 +77,7 @@ export default function BetDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBetsForBet', betId] });
-      toast({ title: 'Claimed!', description: `$${myBet.actual_payout?.toFixed(2)} has been credited.` });
+
     },
   });
 
