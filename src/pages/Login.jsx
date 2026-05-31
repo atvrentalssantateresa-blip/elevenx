@@ -50,8 +50,12 @@ export default function Login() {
       });
 
       if (response.data.needsRegistration) {
-        setError('Wallet not registered. Please contact admin or register first.');
+        setError('Wallet not registered. Please register first.');
         await phantom.disconnect();
+        // Redirect to registration after short delay
+        setTimeout(() => {
+          window.location.href = '/register';
+        }, 2000);
         return;
       }
 
@@ -114,6 +118,10 @@ export default function Login() {
         <div className="text-center space-y-2">
           <p className="text-xs text-muted-foreground">
             By connecting your wallet, you agree to our Terms of Service
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Don't have an account?{' '}
+            <a href="/register" className="text-primary hover:underline">Register here</a>
           </p>
         </div>
       </div>
