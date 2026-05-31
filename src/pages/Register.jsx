@@ -70,22 +70,19 @@ export default function Register() {
         throw new Error(response.data.error);
       }
 
-      // User was created successfully
-      // Now call walletAuth again to get the user info and establish session
-      const loginResponse = await base44.functions.invoke('walletAuth', {
-        walletAddress,
-      });
-
-      if (loginResponse.data.success && loginResponse.data.userId) {
-        // Update wallet address on the current session
+      // User was created successfully - response includes user info
+      if (response.data.success && response.data.user) {
+        // Update current user's wallet address
         await base44.auth.updateMe({
           wallet_address: walletAddress,
         });
         
         // Hard redirect to reload the app with new auth state
         window.location.href = '/';
+      } else if (response.data.needsRegistration) {
+        throw new Error('User already exists, please login instead');
       } else {
-        throw new Error('Failed to login after registration');
+        throw new Error('Failed to create account');
       }
     } catch (err) {
       console.error('Registration failed:', err);
