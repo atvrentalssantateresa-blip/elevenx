@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useWallet } from '@/lib/WalletContext';
 import { ArrowLeft, Clock, Trophy, TrendingUp, Users, Zap, CheckCircle2, XCircle, Plus, Info, ChevronDown, ChevronUp, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import { useWallet } from '@/lib/WalletContext';
 
 function totalAvailable(offers, outcome) {
   return offers
@@ -30,7 +30,7 @@ const FEE_BPS = 0; // 0% fee - fully decentralized, can be updated later
 
 export default function MatchDetail() {
   const { matchId } = useParams();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const queryClient = useQueryClient();
 
   const [mode, setMode] = useState(null); // null | 'offer' | 'match'
@@ -39,7 +39,7 @@ export default function MatchDetail() {
   const [matchingOffer, setMatchingOffer] = useState(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState(null);
-  const { isConnected } = useWallet();
+  const { isConnected, isConnecting, connect } = useWallet();
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -624,31 +624,23 @@ export default function MatchDetail() {
                     {!isConnected ? (
                       <Button
                         onClick={async () => {
-                          const phantom = window.solana?.isPhantom ? window.solana : null;
-                          if (!phantom) {
-                            window.open('https://phantom.app/', '_blank');
-                            return;
-                          }
-                          try {
-                            const resp = await phantom.connect();
-                            const walletAddress = resp.publicKey.toString();
-                            const response = await base44.functions.invoke('walletAuth', {
-                              walletAddress,
-                              register: true
-                            });
-                            if (response.data.success) {
-                              localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletAddress, connectedAt: Date.now() }));
-                              localStorage.setItem('elevenx_authenticated', 'true');
-                              window.location.reload();
-                            }
-                          } catch (err) {
-                            console.error('Wallet connect failed:', err);
-                          }
+                          await connect();
+                          setTimeout(() => refreshUser(), 1000);
                         }}
+                        disabled={isConnecting}
                         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                       >
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Connect Wallet to Bet
+                        {isConnecting ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Wallet className="w-4 h-4 mr-2" />
+                            Connect Wallet to Bet
+                          </>
+                        )}
                       </Button>
                     ) : pendingTransaction ? (
                       <SolanaTransactionSigner
@@ -776,31 +768,23 @@ export default function MatchDetail() {
                     {!isConnected ? (
                       <Button
                         onClick={async () => {
-                          const phantom = window.solana?.isPhantom ? window.solana : null;
-                          if (!phantom) {
-                            window.open('https://phantom.app/', '_blank');
-                            return;
-                          }
-                          try {
-                            const resp = await phantom.connect();
-                            const walletAddress = resp.publicKey.toString();
-                            const response = await base44.functions.invoke('walletAuth', {
-                              walletAddress,
-                              register: true
-                            });
-                            if (response.data.success) {
-                              localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletAddress, connectedAt: Date.now() }));
-                              localStorage.setItem('elevenx_authenticated', 'true');
-                              window.location.reload();
-                            }
-                          } catch (err) {
-                            console.error('Wallet connect failed:', err);
-                          }
+                          await connect();
+                          setTimeout(() => refreshUser(), 1000);
                         }}
+                        disabled={isConnecting}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Connect Wallet to Bet
+                        {isConnecting ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin mr-2" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Wallet className="w-4 h-4 mr-2" />
+                            Connect Wallet to Bet
+                          </>
+                        )}
                       </Button>
                     ) : pendingTransaction ? (
                       <SolanaTransactionSigner
