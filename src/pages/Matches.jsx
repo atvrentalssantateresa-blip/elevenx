@@ -12,7 +12,7 @@ export default function Matches() {
 
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
-    queryFn: () => base44.entities.Match.list('-match_time', 100),
+    queryFn: () => base44.entities.Match.list('match_time', 100),
   });
 
   const { data: bets = [] } = useQuery({
