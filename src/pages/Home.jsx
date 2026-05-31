@@ -15,9 +15,9 @@ const WC_PHOTOS = [
 ];
 
 const FEATURED_MATCHES = [
-  { flag_a: '🇧🇷', flag_b: '🇦🇷', team_a: 'Brazil', team_b: 'Argentina', group: 'Group C', odds_a: '2.1', odds_b: '3.4', pool: '$48,200' },
-  { flag_a: '🇫🇷', flag_b: '🇩🇪', team_a: 'France', team_b: 'Germany', group: 'Group A', odds_a: '1.8', odds_b: '2.9', pool: '$62,100' },
-  { flag_a: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', flag_b: '🇪🇸', team_a: 'England', team_b: 'Spain', group: 'Group D', odds_a: '2.5', odds_b: '2.2', pool: '$35,800' },
+  { flag_a: '🇲🇽', flag_b: '🇿🇦', team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a1bb650d531dec9f2da81ba' },
+  { flag_a: '🇺🇸', flag_b: '🇵🇾', team_a: 'USA', team_b: 'Paraguay', group: 'Group D', date: 'Jun 12', matchId: '6a1bb650d531dec9f2da81bd' },
+  { flag_a: '🇧🇷', flag_b: '🇲🇦', team_a: 'Brazil', team_b: 'Morocco', group: 'Group C', date: 'Jun 13', matchId: '6a1bb650d531dec9f2da81bf' },
 ];
 
 export default function Home() {
@@ -99,7 +99,7 @@ export default function Home() {
           {/* Floating stat chips */}
           <div className="absolute bottom-7 right-6 flex flex-col gap-2 items-end">
             <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#21c45d' }} />
               <span className="text-[11px] text-white/80 font-medium">2% platform fee only</span>
             </div>
             <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function Home() {
       >
         {[
           { icon: DollarSign, label: 'Total Volume', value: `$${totalVolume.toLocaleString()}`, color: 'text-primary', bg: 'bg-primary/10' },
-          { icon: Users, label: 'Active Bettors', value: activeBettors.toString(), color: 'text-accent', bg: 'bg-accent/10' },
+          { icon: Users, label: 'Active Bettors', value: activeBettors.toString(), color: '', bg: '', style: { color: '#21c45d', background: 'rgba(33,196,93,0.1)' } },
           { icon: Flame, label: 'Open Bets', value: openBets.length.toString(), color: 'text-orange-400', bg: 'bg-orange-400/10' },
           { icon: Globe, label: 'Matches', value: matches.length.toString(), color: 'text-blue-400', bg: 'bg-blue-400/10' },
         ].map((stat, i) => (
@@ -177,12 +177,12 @@ export default function Home() {
             transition={{ delay: 0.2 + i * 0.05 }}
             className="bg-card border border-border/50 rounded-2xl p-4 flex items-center gap-3"
           >
-            <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center flex-shrink-0`}>
-              <stat.icon className={`w-4 h-4 ${stat.color}`} />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${stat.bg}`} style={stat.style ? { background: stat.style.background } : {}}>
+              <stat.icon className={`w-4 h-4 ${stat.color}`} style={stat.style ? { color: stat.style.color } : {}} />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className={`font-heading font-bold text-lg leading-tight ${stat.color}`}>{stat.value}</p>
+              <p className={`font-heading font-bold text-lg leading-tight ${stat.color}`} style={stat.style ? { color: stat.style.color } : {}}>{stat.value}</p>
             </div>
           </motion.div>
         ))}
@@ -207,21 +207,21 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 + i * 0.08 }}
-              className="flex-shrink-0 w-72 bg-card border border-border/50 rounded-2xl overflow-hidden"
+              className="flex-shrink-0 w-64 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group"
             >
               {/* Match photo strip */}
-              <div className="relative h-28 overflow-hidden">
+              <div className="relative h-24 overflow-hidden">
                 <img
                   src={WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                   alt="match"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
                 <div className="absolute top-2 left-2">
-                  <span className="text-[10px] font-bold bg-primary/90 text-primary-foreground px-2 py-0.5 rounded-full">{fm.group}</span>
+                  <span className="text-[10px] font-bold bg-black/50 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">{fm.group}</span>
                 </div>
                 <div className="absolute top-2 right-2">
-                  <span className="text-[10px] font-bold bg-accent/20 text-accent px-2 py-0.5 rounded-full border border-accent/30">OPEN</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border" style={{ background: 'rgba(33,196,93,0.15)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.3)' }}>OPEN</span>
                 </div>
               </div>
 
@@ -232,8 +232,9 @@ export default function Home() {
                     <div className="text-2xl mb-1">{fm.flag_a}</div>
                     <p className="font-heading font-bold text-xs">{fm.team_a}</p>
                   </div>
-                  <div className="px-3 py-1.5 bg-primary/10 rounded-xl mx-2">
+                  <div className="flex flex-col items-center gap-0.5 px-2">
                     <span className="font-heading font-black text-primary text-sm">VS</span>
+                    <span className="text-[9px] text-muted-foreground">{fm.date}</span>
                   </div>
                   <div className="text-center flex-1">
                     <div className="text-2xl mb-1">{fm.flag_b}</div>
@@ -241,26 +242,11 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Odds */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="bg-secondary/50 rounded-xl p-2 text-center border border-border/30 hover:border-primary/30 transition-colors cursor-pointer">
-                    <p className="text-[10px] text-muted-foreground">{fm.team_a}</p>
-                    <p className="font-heading font-bold text-primary text-sm">{fm.odds_a}x</p>
-                  </div>
-                  <div className="bg-secondary/50 rounded-xl p-2 text-center border border-border/30 hover:border-accent/30 transition-colors cursor-pointer">
-                    <p className="text-[10px] text-muted-foreground">{fm.team_b}</p>
-                    <p className="font-heading font-bold text-accent text-sm">{fm.odds_b}x</p>
-                  </div>
-                </div>
-
-                {/* Pool */}
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">Pool</span>
-                  <span className="font-heading font-bold text-xs text-foreground">{fm.pool}</span>
-                </div>
-
-                <Link to="/matches">
-                  <Button className="w-full mt-3 h-9 text-xs font-heading font-bold bg-primary/10 hover:bg-primary/20 text-primary rounded-xl border border-primary/20">
+                <Link to={`/match/${fm.matchId}`}>
+                  <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
+                    style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(33,196,93,0.1)'}>
                     Bet Now →
                   </Button>
                 </Link>
@@ -378,7 +364,10 @@ export default function Home() {
             Join thousands of bettors on the most decentralized sports betting platform — built on Solana for speed, transparency, and zero fees to the house.
           </p>
           <Link to="/matches">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-10 h-12 rounded-xl text-sm shadow-[0_0_30px_hsl(45,100%,51%,0.25)]">
+            <Button className="font-heading font-bold px-10 h-12 rounded-xl text-sm text-white"
+              style={{ background: '#21c45d', boxShadow: '0 0 28px rgba(33,196,93,0.3)' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
               <Trophy className="w-4 h-4 mr-2" />
               Start Betting Now
             </Button>
