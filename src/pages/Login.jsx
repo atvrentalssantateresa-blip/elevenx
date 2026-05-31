@@ -23,13 +23,15 @@ export default function Login() {
     const walletFromUrl = params.get('wallet');
     const registered = params.get('registered');
     if (walletFromUrl && registered) {
-      // Show success message and auto-login
-      setError(''); // Clear any errors
-      console.log('Auto-logging in with wallet:', walletFromUrl);
-      // Directly set wallet session and redirect (skip Phantom connect since user just registered)
-      localStorage.setItem('elevenx_wallet_session', walletFromUrl);
+      console.log('Registration detected, auto-logging in with wallet:', walletFromUrl);
+      // Set wallet session
+      localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletFromUrl, connectedAt: Date.now() }));
       localStorage.setItem('elevenx_authenticated', 'true');
-      window.location.href = '/';
+      // Force reload after a brief delay to ensure localStorage is written
+      setTimeout(() => {
+        console.log('Redirecting to home...');
+        window.location.href = '/';
+      }, 100);
     }
   }, []);
 
