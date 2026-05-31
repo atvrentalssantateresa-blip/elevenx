@@ -3,7 +3,7 @@ import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 // ElevenX Betting Program ID (devnet)
-const SOLANA_PROGRAM_ID = '11111111111111111111111111111111'; // System Program (valid placeholder for testing)
+const SOLANA_PROGRAM_ID = 'YOUR_PROGRAM_ID_HERE'; // Update with your deployed program ID from anchor deploy
 const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
 Deno.serve(async (req) => {
