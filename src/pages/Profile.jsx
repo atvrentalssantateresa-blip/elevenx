@@ -8,8 +8,8 @@ import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
-  const { isConnected, connect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
+  const { user, refreshUser, logout } = useAuth();
+  const { isConnected, connect, disconnect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
@@ -114,7 +114,12 @@ export default function Profile() {
 
       <Button
         variant="outline"
-        onClick={() => base44.auth.logout()}
+        onClick={async () => {
+          // Disconnect wallet first
+          await disconnect();
+          // Then logout from Base44
+          await logout();
+        }}
         className="w-full border-border/50 text-muted-foreground hover:text-destructive hover:border-destructive/30 h-11 rounded-xl"
       >
         <LogOut className="w-4 h-4 mr-2" />
