@@ -2,9 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-// IMPORTANT: Replace with your actual deployed program ID after deployment
-// For now using a valid placeholder - update after deploying your program
-const SOLANA_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'; // SPL Token Program (valid devnet program for testing)
+// ElevenX Betting Program ID (devnet)
+const SOLANA_PROGRAM_ID = '11111111111111111111111111111111'; // System Program (valid placeholder for testing)
 const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
 Deno.serve(async (req) => {
