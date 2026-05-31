@@ -4,7 +4,7 @@ import bs58 from 'npm:bs58@5.0.0';
 
 Deno.serve(async (req) => {
   try {
-    // Initialize in service role mode for unauthenticated endpoint
+    // Initialize SDK - service role mode allows unauthenticated requests for registration
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
