@@ -43,6 +43,14 @@ export const WalletProvider = ({ children }) => {
       setWalletAddress(address);
       setIsConnected(true);
       localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
+      
+      // Save to backend user profile
+      try {
+        const { base44 } = await import('@/api/base44Client');
+        await base44.functions.invoke('saveWalletAddress', { walletAddress: address });
+      } catch (err) {
+        console.error('Failed to save wallet to profile:', err);
+      }
     } catch (err) {
       console.error('Wallet connect failed:', err);
     } finally {
