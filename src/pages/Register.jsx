@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/components/AuthLayout';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Register() {
+  const { refreshUser } = useAuth();
   const [step, setStep] = useState('wallet'); // 'wallet' | 'details'
   const [walletAddress, setWalletAddress] = useState('');
   const [fullName, setFullName] = useState('');
@@ -65,14 +67,15 @@ export default function Register() {
       });
 
       // After registration, update user with wallet address and name
-      const user = await base44.auth.me();
-      if (user) {
-        await base44.auth.updateMe({
-          wallet_address: walletAddress,
-          full_name: fullName,
-        });
-      }
+      await base44.auth.updateMe({
+        wallet_address: walletAddress,
+        full_name: fullName,
+      });
 
+      // Refresh auth context
+      await refreshUser();
+      
+      // Hard redirect to reload the app with new auth state
       window.location.href = '/';
     } catch (err) {
       console.error('Registration failed:', err);
