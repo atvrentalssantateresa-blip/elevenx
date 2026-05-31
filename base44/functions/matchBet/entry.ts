@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       currentOdds = avDraw > 0 ? (avA + avB) / avDraw : 0;
     }
 
-    const FEE_BPS = 200;
+    const FEE_BPS = 0; // 0% fee - fully decentralized
     const winnings = amount * currentOdds;
     const fee = winnings * FEE_BPS / 10000;
     const potentialPayout = amount + winnings - fee;

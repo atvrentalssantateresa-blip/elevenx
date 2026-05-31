@@ -26,7 +26,7 @@ function calcOdds(avA, avB, avDraw) {
 }
 
 const QUICK_AMOUNTS = [0.25, 0.5, 1, 2];
-const FEE_BPS = 200;
+const FEE_BPS = 0; // 0% fee - fully decentralized, can be updated later
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -555,7 +555,7 @@ export default function MatchDetail() {
                         <div className="h-px bg-border/30 my-1" />
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">If {getOutcomeLabel(selectedOutcome)} wins</span>
-                          <span className="font-bold text-accent">You keep matcher's stake (−2% fee)</span>
+                          <span className="font-bold text-accent">You keep matcher's full stake (0% fee)</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">If unmatched</span>
@@ -671,7 +671,7 @@ export default function MatchDetail() {
                           <span>Profit if you win</span>
                           <span className="text-accent">+◎{(matchWin - matchFee).toFixed(2)}</span>
                         </div>
-                        <p className="text-muted-foreground text-[10px] pt-1">2% fee deducted from winnings only. Your stake is always returned if you win.</p>
+                        <p className="text-muted-foreground text-[10px] pt-1">0% fee - fully decentralized P2P betting</p>
                       </div>
                     )}
 

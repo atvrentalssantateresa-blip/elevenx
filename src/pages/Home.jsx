@@ -101,7 +101,7 @@ export default function Home() {
           <div className="absolute bottom-7 right-6 flex flex-col gap-2 items-end">
             <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#21c45d' }} />
-              <span className="text-[11px] text-white/80 font-medium">2% platform fee only</span>
+              <span className="text-[11px] text-white/80 font-medium">0% platform fee</span>
             </div>
             <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
               <Flame className="w-3 h-3 text-primary" />
