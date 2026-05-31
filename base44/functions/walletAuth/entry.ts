@@ -29,8 +29,15 @@ Deno.serve(async (req) => {
 
     // Always use service role for this endpoint to allow unauthenticated requests
     // Check if user exists by wallet address
-    let users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
-    let user = users[0] || null;
+    let user = null;
+    try {
+      const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+      user = users[0] || null;
+    } catch (err) {
+      // If auth fails, treat as user not found (will need registration)
+      console.log('User lookup failed, treating as new user:', err.message);
+      user = null;
+    }
 
     // If registering and user doesn't exist, create user with service role
     if (register && !user && fullName) {
