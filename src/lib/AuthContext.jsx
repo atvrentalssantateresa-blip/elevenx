@@ -127,9 +127,11 @@ export const AuthProvider = ({ children }) => {
             role: response.data.role || response.data.user?.role,
             email: response.data.email || response.data.user?.email
           };
+          console.log('Wallet auth response data:', response.data);
+          console.log('Built userData:', userData);
           setUser(userData);
           setIsAuthenticated(true);
-          console.log('✓ Wallet auth successful:', userData.username);
+          console.log('✓ Wallet auth successful, username:', userData.username);
         } else {
           // Wallet not registered
           localStorage.removeItem('elevenx_wallet_session');
