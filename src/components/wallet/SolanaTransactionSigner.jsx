@@ -34,13 +34,34 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
 
       // Create transaction from instruction
-      const { Transaction, PublicKey, SystemProgram } = await import('@solana/web3.js');
+      const { Transaction, PublicKey, SystemProgram, TransactionInstruction } = await import('@solana/web3.js');
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       
       const transaction = new Transaction();
       
-      // Add transfer instruction for SOL (this deducts funds from wallet)
-      if (instruction.amountLamports) {
+      // Check if this is a claim_winnings instruction or a bet/offer instruction
+      if (instruction.instruction_type === 'claim_winnings') {
+        // Claim winnings - program will transfer SOL from pool to user
+        console.log('Creating claim_winnings program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
+        
+        const data = Buffer.from(instruction.data, 'base64');
+        
+        const claimIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(claimIx);
+      } else if (instruction.amountLamports) {
+        // Regular bet/offer - transfer SOL from user to pool
         const fromPubkey = provider.publicKey;
         const toPubkey = new PublicKey(instruction.betPoolPda);
         

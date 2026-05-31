@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { Connection, PublicKey, Transaction, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
+import { Connection, PublicKey, SystemProgram, TransactionInstruction } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 // IMPORTANT: Replace with your actual deployed program ID after deployment
@@ -55,15 +55,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'User position PDA not found' }, { status: 400 });
     }
 
-    // Prepare the claim_winnings instruction
-    // Instruction layout: [instruction_type=6] (claim_winnings is 6th instruction)
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const payoutAmount = userBet.actual_payout || userBet.potential_payout;
+    const payoutLamports = Math.round(payoutAmount * 1_000_000_000);
+
+    // Prepare the claim_winnings instruction for the frontend to sign
     const userPubkey = new PublicKey(user.wallet_address);
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const betPoolPubkey = new PublicKey(betPoolPda);
     const userPositionPubkey = new PublicKey(userPositionPda);
 
-    // Claim winnings instruction data: [6] (no additional params needed)
+    // Claim winnings instruction data: [6] (claim_winnings is instruction 6)
     const data = Buffer.from([6]);
 
     const keys = [
@@ -73,26 +74,22 @@ Deno.serve(async (req) => {
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
-    // In devnet/testing mode, we'll just update the database
-    // In production, the frontend would construct and sign the transaction
-    const payoutAmount = userBet.actual_payout || userBet.potential_payout;
-
-    await base44.entities.UserBet.update(userBetId, {
-      status: 'claimed',
-    });
-
-    console.log(`✓ Claimed winnings for user ${user.wallet_address}: ◎${payoutAmount}`);
+    console.log(`✓ Prepared claim_winnings instruction for user ${user.wallet_address}: ◎${payoutAmount}`);
 
     return Response.json({
       success: true,
-      message: 'Winnings claimed successfully',
+      message: 'Sign transaction to claim your winnings',
       payout: payoutAmount,
       solana_instruction: {
         instruction_type: 'claim_winnings',
-        betPoolPda: betPoolPda,
-        userPositionPda: userPositionPda,
-        userPubkey: user.wallet_address,
-        payoutAmount,
+        programId: programId.toBase58(),
+        keys: keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })),
+        data: data.toString('base64'),
+        payoutLamports,
       }
     });
 
