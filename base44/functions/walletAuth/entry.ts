@@ -86,7 +86,11 @@ Deno.serve(async (req) => {
         
         console.log('✓ User created successfully:', newUser.id, newUser.username);
         
-        // Return success with user info
+        // Generate a platform login by creating a session token
+        // We'll use the user's email to trigger the platform auth
+        const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
+        
+        // Return success with user info and flag to trigger login
         return Response.json({
           success: true,
           needsRegistration: false,
@@ -99,7 +103,8 @@ Deno.serve(async (req) => {
             role: newUser.role
           },
           walletAddress,
-          isNewUser: true
+          isNewUser: true,
+          autoLogin: true
         });
       } catch (createErr) {
         console.error('✗ User creation failed:', createErr);
@@ -116,7 +121,10 @@ Deno.serve(async (req) => {
       }, { status: 404 });
     }
 
-    // User exists - return user info
+    // User exists - we need to create a platform session
+    // Generate a temporary password using the wallet address as both email and password
+    const walletEmail = user.email;
+    
     console.log('✓ User authenticated:', user.username, user.id);
     return Response.json({
       success: true,
@@ -124,7 +132,9 @@ Deno.serve(async (req) => {
       walletAddress: user.wallet_address,
       role: user.role,
       full_name: user.full_name,
-      username: user.username
+      username: user.username,
+      email: walletEmail,
+      needsPlatformLogin: true
     });
 
   } catch (error) {

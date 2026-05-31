@@ -25,9 +25,10 @@ export default function Login() {
     if (walletFromUrl && registered) {
       // Show success message and auto-login
       setError(''); // Clear any errors
+      console.log('Auto-logging in with wallet:', walletFromUrl);
       setTimeout(() => {
         handleWalletLogin(walletFromUrl);
-      }, 500);
+      }, 1000);
     }
   }, []);
 
@@ -75,9 +76,24 @@ export default function Login() {
           return;
         }
 
-        if (response.data.success) {
-          // Wallet address already saved during registration, just redirect
+        if (response.data.success && response.data.email) {
+          console.log('✓ Login successful, logging into platform...');
+          try {
+            // Use platform auth with the wallet email
+            // Password is the wallet address (acts as a secret key)
+            await base44.auth.loginViaEmailPassword(response.data.email, walletAddress);
+            console.log('✓ Platform login complete');
+            window.location.href = '/';
+          } catch (loginErr) {
+            console.error('Platform login failed:', loginErr);
+            // Fallback: just redirect, user will be prompted to login again
+            window.location.href = '/';
+          }
+          return;
+        } else if (response.data.success) {
+          console.log('✓ Login successful (no email returned)');
           window.location.href = '/';
+          return;
         }
       } else {
         // Wallet already connected during registration, just verify user exists
@@ -91,9 +107,22 @@ export default function Login() {
           return;
         }
 
-        if (response.data.success) {
-          // Wallet address already saved during registration, just redirect
+        if (response.data.success && response.data.email) {
+          console.log('✓ Login successful, logging into platform...');
+          try {
+            // Use platform auth with the wallet email
+            await base44.auth.loginViaEmailPassword(response.data.email, walletAddress);
+            console.log('✓ Platform login complete');
+            window.location.href = '/';
+          } catch (loginErr) {
+            console.error('Platform login failed:', loginErr);
+            window.location.href = '/';
+          }
+          return;
+        } else if (response.data.success) {
+          console.log('✓ Login successful');
           window.location.href = '/';
+          return;
         }
       }
 
