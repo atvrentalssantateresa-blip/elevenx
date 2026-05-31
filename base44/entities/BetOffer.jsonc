@@ -51,6 +51,18 @@
     "odds_at_creation": {
       "type": "number",
       "description": "The implied odds for the opposing side at the time this offer was made"
+    },
+    "lp_wallet_address": {
+      "type": "string",
+      "description": "Wallet address of the liquidity provider who created this offer"
+    },
+    "solana_bet_pool_pda": {
+      "type": "string",
+      "description": "Solana PDA for the bet pool"
+    },
+    "solana_position_pda": {
+      "type": "string",
+      "description": "Solana PDA for the LP's position"
     }
   },
   "required": [

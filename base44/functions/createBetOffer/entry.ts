@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
       amount_unmatched: amount,
       status: 'pending', // Changed from 'open' - will update to 'open' after signing
       odds_at_creation: 0,
+      lp_wallet_address: walletAddress,
       solana_bet_pool_pda: betPoolPda.toBase58(),
       solana_position_pda: userPositionPda.toBase58(),
     });
