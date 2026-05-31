@@ -128,19 +128,26 @@ export default function MatchDetail() {
 
   const matchOfferMutation = useMutation({
     mutationFn: async ({ offer, matchAmount }) => {
-      console.log('Calling matchBet function', { offer_id: offer.id, bet_id: bet.id, match_id: matchId, amount: matchAmount });
-      const response = await base44.functions.invoke('matchBet', {
+      const payload = {
         offer_id: offer.id,
         bet_id: bet.id,
         match_id: matchId,
         amount: matchAmount,
-      });
+      };
+      console.log('Calling matchBet with payload:', payload);
+      
+      const response = await base44.functions.invoke('matchBet', payload);
       console.log('matchBet response:', response);
+      
+      if (!response.data.userBet) {
+        throw new Error(response.data.error || 'No userBet returned');
+      }
+      
       return { 
         response, 
         offer, 
         amount: matchAmount,
-        userBetId: response.data.userBet?.id 
+        userBetId: response.data.userBet.id 
       };
     },
     onSuccess: async (result) => {
