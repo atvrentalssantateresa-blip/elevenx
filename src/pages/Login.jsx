@@ -26,9 +26,10 @@ export default function Login() {
       // Show success message and auto-login
       setError(''); // Clear any errors
       console.log('Auto-logging in with wallet:', walletFromUrl);
-      setTimeout(() => {
-        handleWalletLogin(walletFromUrl);
-      }, 1000);
+      // Directly set wallet session and redirect (skip Phantom connect since user just registered)
+      localStorage.setItem('elevenx_wallet_session', walletFromUrl);
+      localStorage.setItem('elevenx_authenticated', 'true');
+      window.location.href = '/';
     }
   }, []);
 
