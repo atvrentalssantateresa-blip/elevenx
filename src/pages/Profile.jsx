@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { useWallet } from '@/lib/WalletContext';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
@@ -7,7 +8,8 @@ import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { isConnected, connect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
@@ -24,7 +26,14 @@ export default function Profile() {
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
 
-  const walletAddress = user?.wallet_address || user?.data?.wallet_address;
+  const walletAddress = connectedWalletAddress || user?.wallet_address || user?.data?.wallet_address;
+
+  // Refresh user data when wallet connects
+  useEffect(() => {
+    if (isConnected && connectedWalletAddress && (!user?.wallet_address || user.wallet_address !== connectedWalletAddress)) {
+      refreshUser();
+    }
+  }, [isConnected, connectedWalletAddress]);
 
   if (!walletAddress) {
     return (
@@ -43,26 +52,15 @@ export default function Profile() {
           </p>
           <Button
             onClick={async () => {
-              const provider = window.solana;
-              if (!provider) {
-                window.open('https://phantom.app/', '_blank');
-                return;
-              }
-              try {
-                await provider.connect();
-                const resp = await provider.connect();
-                const address = resp.publicKey.toString();
-                await base44.auth.updateMe({ wallet_address: address });
-                window.location.reload();
-              } catch (err) {
-                console.error('Failed to connect:', err);
-                alert('Failed to connect wallet: ' + err.message);
-              }
+              await connect();
+              // Wait a bit for wallet to save, then refresh
+              setTimeout(() => refreshUser(), 1000);
             }}
+            disabled={isConnecting}
             className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8"
           >
             <Wallet className="w-4 h-4 mr-2" />
-            Connect Phantom Wallet
+            {isConnecting ? 'Connecting...' : 'Connect Phantom Wallet'}
           </Button>
         </motion.div>
       </div>
