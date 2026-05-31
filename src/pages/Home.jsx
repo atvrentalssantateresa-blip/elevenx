@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, ArrowRight, Flame, TrendingUp, Zap, Globe, Star, ChevronRight, Clock, Users, DollarSign } from 'lucide-react';
+import { Trophy, ArrowRight, Flame, TrendingUp, Zap, Globe, Star, ChevronRight, Clock, Users, DollarSign, Earth } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MatchCard from '@/components/betting/MatchCard';
 
@@ -382,7 +382,11 @@ export default function Home() {
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-primary/10 blur-3xl rounded-full" />
         <div className="relative z-10">
-          <div className="text-4xl mb-3">🏆⚽🌍</div>
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Trophy className="w-10 h-10 text-primary" />
+            <div className="w-10 h-10 flex items-center justify-center text-4xl">⚽</div>
+            <Earth className="w-10 h-10 text-accent" />
+          </div>
           <h2 className="font-heading font-black text-2xl md:text-3xl mb-2">
             48 Teams. 104 Matches. <span className="text-primary">One Champion.</span>
           </h2>
