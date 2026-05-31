@@ -4,7 +4,6 @@ import bs58 from 'npm:bs58@5.0.0';
 
 Deno.serve(async (req) => {
   try {
-    // Initialize SDK with explicit service role access
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
@@ -16,7 +15,7 @@ Deno.serve(async (req) => {
 
     console.log('walletAuth called:', { walletAddress, register, username: username ? username : 'N/A' });
 
-    // If signature provided, verify it (optional for registration flow)
+    // If signature provided, verify it
     if (signature && message) {
       try {
         const publicKey = bs58.decode(walletAddress);
@@ -41,7 +40,7 @@ Deno.serve(async (req) => {
       console.log('User lookup result:', users?.length || 0, 'users found');
       user = users[0] || null;
       if (user) {
-        console.log('Found existing user:', user.username, user.id);
+        console.log('Found existing user:', user.full_name, user.id);
       }
     } catch (err) {
       console.log('User lookup failed:', err.message);
@@ -75,22 +74,19 @@ Deno.serve(async (req) => {
       
       try {
         console.log('Creating user with email:', walletEmail);
-        // Create user using service role
+        // Create user with wallet address as the initial password
         const newUser = await serviceRole.entities.User.create({
           email: walletEmail,
           full_name: username,
           username: username,
           wallet_address: walletAddress,
           role: 'user',
+          // Store wallet address as a temporary password field (platform will hash it)
+          password_hash: walletAddress,
         });
         
-        console.log('✓ User created successfully:', newUser.id, newUser.username);
+        console.log('✓ User created successfully:', newUser.id, newUser.full_name);
         
-        // Generate a platform login by creating a session token
-        // We'll use the user's email to trigger the platform auth
-        const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
-        
-        // Return success with user info and flag to trigger login
         return Response.json({
           success: true,
           needsRegistration: false,
@@ -103,8 +99,7 @@ Deno.serve(async (req) => {
             role: newUser.role
           },
           walletAddress,
-          isNewUser: true,
-          autoLogin: true
+          isNewUser: true
         });
       } catch (createErr) {
         console.error('✗ User creation failed:', createErr);
@@ -121,19 +116,15 @@ Deno.serve(async (req) => {
       }, { status: 404 });
     }
 
-    // User exists - return user info for login
-    const walletEmail = user.email;
-    
-    console.log('✓ User authenticated:', user.username, user.id);
+    // User exists - return user info
+    console.log('✓ User authenticated:', user.full_name, user.id);
     return Response.json({
       success: true,
       userId: user.id,
       walletAddress: user.wallet_address,
       role: user.role,
       full_name: user.full_name,
-      username: user.username,
-      email: walletEmail,
-      needsPlatformLogin: true
+      username: user.username
     });
 
   } catch (error) {

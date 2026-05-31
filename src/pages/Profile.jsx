@@ -22,11 +22,11 @@ export default function Profile() {
 
   // Auto-logout when wallet disconnects
   React.useEffect(() => {
-    if (currentUser && !isConnected) {
+    if ((currentUser || walletAddress) && !isConnected) {
       console.log('Wallet disconnected, logging out...');
       logout();
     }
-  }, [isConnected, currentUser]);
+  }, [isConnected, currentUser, walletAddress]);
 
   const { data: myBets = [] } = useQuery({
     queryKey: ['myBetsProfile'],
@@ -45,8 +45,8 @@ export default function Profile() {
 
   const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
 
-  // Show loading while wallet connects
-  if (!walletAddress || !currentUser) {
+  // Show connect prompt if wallet not connected (even if platform user exists)
+  if (!walletAddress) {
     return (
       <div className="space-y-6 max-w-lg mx-auto">
         <motion.div
@@ -88,18 +88,20 @@ export default function Profile() {
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <User className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="font-heading font-bold text-xl">{currentUser?.username || currentUser?.full_name || 'User'}</h1>
-        <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
+        <h1 className="font-heading font-bold text-xl">{currentUser?.username || currentUser?.full_name || walletAddress.slice(0, 8)}</h1>
+        {currentUser?.email && <p className="text-sm text-muted-foreground">{currentUser.email}</p>}
         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg border border-border/30">
           <Wallet className="w-3 h-3 text-primary" />
           <span className="text-xs font-mono text-primary">
             {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
           </span>
         </div>
-        <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
-          <Trophy className="w-3 h-3 text-primary" />
-          <span className="text-xs font-semibold text-primary">{currentUser?.role || 'user'}</span>
-        </div>
+        {currentUser?.role && (
+          <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
+            <Trophy className="w-3 h-3 text-primary" />
+            <span className="text-xs font-semibold text-primary">{currentUser.role}</span>
+          </div>
+        )}
       </motion.div>
 
       <div className="grid grid-cols-2 gap-3">

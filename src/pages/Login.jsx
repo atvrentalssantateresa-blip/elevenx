@@ -47,83 +47,50 @@ export default function Login() {
     try {
       let walletAddress = preconnectedWallet;
       
-      // If no preconnected wallet, connect to Phantom and sign message
+      // If no preconnected wallet, connect to Phantom
       if (!walletAddress) {
         const resp = await phantom.connect();
         walletAddress = resp.publicKey.toString();
+      }
 
-        // Create a message to sign
-        const message = `Sign in to ElevenX\n\nWallet: ${walletAddress}\n\nNonce: ${Date.now()}`;
-        const encodedMessage = new TextEncoder().encode(message);
+      // Verify user exists with backend
+      const response = await base44.functions.invoke('walletAuth', {
+        walletAddress
+      });
 
-        // Request signature
-        const signature = await phantom.signMessage(encodedMessage, 'utf8');
-        const signatureBase58 = signature.signature;
-
-        // Verify signature with backend
-        const response = await base44.functions.invoke('walletAuth', {
-          walletAddress,
-          signature: signatureBase58,
-          message
-        });
-
-        if (response.data.needsRegistration) {
-          setError('Wallet not registered. Please register first.');
-          await phantom.disconnect();
-          setTimeout(() => {
-            window.location.href = '/register';
-          }, 2000);
-          return;
-        }
-
-        if (response.data.success && response.data.email) {
-          console.log('✓ Login successful, logging into platform...');
-          try {
-            // Use platform auth with the wallet email
-            // Password is the wallet address (acts as a secret key)
-            await base44.auth.loginViaEmailPassword(response.data.email, walletAddress);
-            console.log('✓ Platform login complete');
-            window.location.href = '/';
-          } catch (loginErr) {
-            console.error('Platform login failed:', loginErr);
-            // Fallback: just redirect, user will be prompted to login again
-            window.location.href = '/';
-          }
-          return;
-        } else if (response.data.success) {
-          console.log('✓ Login successful (no email returned)');
-          window.location.href = '/';
-          return;
-        }
-      } else {
-        // Wallet already connected during registration, just verify user exists
-        const response = await base44.functions.invoke('walletAuth', {
-          walletAddress
-        });
-
-        if (response.data.needsRegistration) {
-          // User was not created properly, redirect to register
+      if (response.data.needsRegistration) {
+        setError('Wallet not registered. Please register first.');
+        if (phantom) await phantom.disconnect();
+        setTimeout(() => {
           window.location.href = '/register';
-          return;
-        }
+        }, 2000);
+        return;
+      }
 
-        if (response.data.success && response.data.email) {
-          console.log('✓ Login successful, logging into platform...');
-          try {
-            // Use platform auth with the wallet email
-            await base44.auth.loginViaEmailPassword(response.data.email, walletAddress);
-            console.log('✓ Platform login complete');
-            window.location.href = '/';
-          } catch (loginErr) {
-            console.error('Platform login failed:', loginErr);
-            window.location.href = '/';
-          }
-          return;
-        } else if (response.data.success) {
-          console.log('✓ Login successful');
-          window.location.href = '/';
+      if (response.data.success) {
+        console.log('✓ Login successful, user verified:', response.data.username);
+        // User verified - use the email created during registration to login
+        const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
+        
+        // Try to login with platform using wallet email and wallet address as password
+        // This works because we'll update the user creation to use wallet address as password
+        try {
+          await base44.auth.loginViaEmailPassword(walletEmail, walletAddress);
+          console.log('✓ Platform session established');
+        } catch (loginErr) {
+          console.error('Platform login failed:', loginErr.message);
+          // If login fails, the user might not have a password set yet
+          // Trigger password reset email
+          console.log('Triggering password reset for:', walletEmail);
+          await base44.auth.resetPasswordRequest(walletEmail);
+          setError('Account created! Please check your email to set a password, then login.');
+          setIsConnecting(false);
           return;
         }
+        
+        // Hard redirect to reload app with auth state
+        window.location.href = '/';
+        return;
       }
 
     } catch (err) {

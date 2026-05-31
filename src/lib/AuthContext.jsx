@@ -23,20 +23,31 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
       
+      // Check for wallet-based session marker (set by Login page after wallet verification)
+      const walletSession = localStorage.getItem('elevenx_wallet');
+      const isAuthenticatedMarker = localStorage.getItem('elevenx_authenticated');
+      
       // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
       const appClient = createAxiosClient({
         baseURL: `/api/apps/public`,
         headers: {
           'X-App-Id': appParams.appId
         },
-        token: appParams.token, // Include token if available
+        token: appParams.token,
         interceptResponses: true
       });
       
       try {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
+        
+        // If we have a wallet session marker, try to authenticate
+        if (walletSession && isAuthenticatedMarker === 'true') {
+          console.log('Wallet session detected, authenticating...');
+          await checkUserAuth();
+          setIsLoadingPublicSettings(false);
+          return;
+        }
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
@@ -50,7 +61,6 @@ export const AuthProvider = ({ children }) => {
       } catch (appError) {
         console.error('App state check failed:', appError);
         
-        // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
