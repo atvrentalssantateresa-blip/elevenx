@@ -19,16 +19,21 @@ Deno.serve(async (req) => {
     }
 
     // Verify user exists with this wallet address (check both data.wallet_address and root wallet_address)
-    const allUsers = await serviceRole.entities.User.list();
-    const user = allUsers.find(u => 
+    // Use filter instead of list to avoid auth issues
+    const usersByData = await serviceRole.entities.User.filter({});
+    const user = usersByData.find(u => 
       (u.data?.wallet_address === walletAddress) || 
       (u.wallet_address === walletAddress)
     );
     
     if (!user) {
-      console.log('User not found for wallet:', walletAddress);
-      console.log('Available users:', allUsers.map(u => ({ id: u.id, wallet: u.data?.wallet_address || u.wallet_address })));
-      return Response.json({ error: 'Wallet not registered. Please connect your wallet first.' }, { status: 401 });
+      console.log('❌ User not found for wallet:', walletAddress);
+      console.log('Wallet being checked:', walletAddress);
+      return Response.json({ 
+        error: 'Wallet not registered. Please connect your wallet and register first.',
+        registeredWallet: user?.data?.wallet_address || user?.wallet_address,
+        connectedWallet: walletAddress
+      }, { status: 401 });
     }
 
     console.log('✓ User found:', user.id, 'wallet:', user.data?.wallet_address || user.wallet_address);
