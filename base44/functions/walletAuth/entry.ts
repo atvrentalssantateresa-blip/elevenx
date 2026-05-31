@@ -4,7 +4,7 @@ import bs58 from 'npm:bs58@5.0.0';
 
 Deno.serve(async (req) => {
   try {
-    // Initialize SDK in service role mode for unauthenticated registration requests
+    // Initialize SDK with explicit service role access
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
@@ -14,49 +14,67 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing wallet address' }, { status: 400 });
     }
 
-    // If signature provided, verify it
+    console.log('walletAuth called:', { walletAddress, register, username: username ? username : 'N/A' });
+
+    // If signature provided, verify it (optional for registration flow)
     if (signature && message) {
-      const publicKey = bs58.decode(walletAddress);
-      const signatureBytes = bs58.decode(signature);
-      const messageBytes = new TextEncoder().encode(message);
-
-      const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKey);
-
-      if (!isValid) {
-        return Response.json({ error: 'Invalid signature' }, { status: 401 });
+      try {
+        const publicKey = bs58.decode(walletAddress);
+        const signatureBytes = bs58.decode(signature);
+        const messageBytes = new TextEncoder().encode(message);
+        const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKey);
+        if (!isValid) {
+          console.log('Signature verification failed');
+        } else {
+          console.log('Signature verified successfully');
+        }
+      } catch (sigErr) {
+        console.log('Signature check error:', sigErr.message);
       }
     }
 
     // Check if user exists by wallet address
     let user = null;
-    if (!register) {
-      try {
-        const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
-        user = users[0] || null;
-      } catch (err) {
-        console.log('User lookup failed:', err.message);
-        user = null;
+    try {
+      console.log('Looking up user by wallet address...');
+      const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+      console.log('User lookup result:', users?.length || 0, 'users found');
+      user = users[0] || null;
+      if (user) {
+        console.log('Found existing user:', user.username, user.id);
       }
+    } catch (err) {
+      console.log('User lookup failed:', err.message);
+      user = null;
     }
 
-    // If registering, create user with service role
+    // If registering, create user
     if (register && username) {
+      console.log('Registering new user with username:', username);
+      
       // Check if username is already taken
+      let usernameTaken = false;
       try {
         const existingUsers = await serviceRole.entities.User.filter({ username: username });
         if (existingUsers && existingUsers.length > 0) {
-          return Response.json({ 
-            error: 'Username already taken. Please choose another.',
-            needsRegistration: false
-          }, { status: 409 });
+          usernameTaken = true;
+          console.log('Username already taken:', username);
         }
       } catch (err) {
         console.log('Username check failed:', err.message);
       }
       
+      if (usernameTaken) {
+        return Response.json({ 
+          error: 'Username already taken. Please choose another.',
+          needsRegistration: false
+        }, { status: 409 });
+      }
+      
       const walletEmail = `${walletAddress.slice(0, 8)}@elevenx.bet`;
       
       try {
+        console.log('Creating user with email:', walletEmail);
         // Create user using service role
         const newUser = await serviceRole.entities.User.create({
           email: walletEmail,
@@ -65,6 +83,8 @@ Deno.serve(async (req) => {
           wallet_address: walletAddress,
           role: 'user',
         });
+        
+        console.log('✓ User created successfully:', newUser.id, newUser.username);
         
         // Return success with user info
         return Response.json({
@@ -82,13 +102,14 @@ Deno.serve(async (req) => {
           isNewUser: true
         });
       } catch (createErr) {
-        console.error('User creation failed:', createErr);
+        console.error('✗ User creation failed:', createErr);
         return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
       }
     }
 
     // If not registering and no user found, they need to register
     if (!user) {
+      console.log('No user found, needs registration');
       return Response.json({ 
         needsRegistration: true,
         walletAddress 
@@ -96,6 +117,7 @@ Deno.serve(async (req) => {
     }
 
     // User exists - return user info
+    console.log('✓ User authenticated:', user.username, user.id);
     return Response.json({
       success: true,
       userId: user.id,

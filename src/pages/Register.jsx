@@ -72,8 +72,10 @@ export default function Register() {
         throw new Error(response.data.error);
       }
 
-      // User was created successfully
+      // User was created successfully - redirect to login with wallet address
       if (response.data.success && response.data.user) {
+        console.log('✓ User created, redirecting to login...');
+        // Redirect to login page which will auto-authenticate
         window.location.href = `/login?wallet=${walletAddress}&registered=true`;
       } else if (response.data.needsRegistration) {
         throw new Error('User already exists, please login instead');
