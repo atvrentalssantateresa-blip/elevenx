@@ -24,21 +24,23 @@ export default function Login() {
     const registered = params.get('registered');
     if (walletFromUrl && registered) {
       console.log('Registration detected, auto-logging in with wallet:', walletFromUrl);
-      // Set wallet session
+      // Set wallet session marker FIRST
       localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletFromUrl, connectedAt: Date.now() }));
       localStorage.setItem('elevenx_authenticated', 'true');
       // Verify with backend and redirect
       base44.functions.invoke('walletAuth', { walletAddress: walletFromUrl })
         .then((response) => {
           if (response.data.success) {
-            console.log('✓ Auto-login successful:', response.data.full_name || response.data.username);
+            console.log('✓ Auto-login successful, user:', response.data.full_name || response.data.username);
             setTimeout(() => {
               window.location.href = '/';
             }, 100);
+          } else {
+            console.error('Auto-login failed - user not found');
           }
         })
         .catch((err) => {
-          console.error('Auto-login verification failed:', err);
+          console.error('Auto-login verification failed:', err.message);
         });
     }
   }, []);
