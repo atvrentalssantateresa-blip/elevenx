@@ -1,0 +1,68 @@
+{
+  "name": "Match",
+  "type": "object",
+  "properties": {
+    "team_a": {
+      "type": "string",
+      "description": "First team name"
+    },
+    "team_b": {
+      "type": "string",
+      "description": "Second team name"
+    },
+    "team_a_flag": {
+      "type": "string",
+      "description": "Country code or flag emoji for team A"
+    },
+    "team_b_flag": {
+      "type": "string",
+      "description": "Country code or flag emoji for team B"
+    },
+    "group_stage": {
+      "type": "string",
+      "description": "Group or round label (e.g. Group A, Quarter-Final)"
+    },
+    "match_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Scheduled match kick-off time"
+    },
+    "venue": {
+      "type": "string",
+      "description": "Stadium / city"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "upcoming",
+        "live",
+        "finished",
+        "cancelled"
+      ],
+      "default": "upcoming"
+    },
+    "score_a": {
+      "type": "number",
+      "default": 0
+    },
+    "score_b": {
+      "type": "number",
+      "default": 0
+    },
+    "winner": {
+      "type": "string",
+      "enum": [
+        "team_a",
+        "team_b",
+        "draw",
+        ""
+      ],
+      "default": ""
+    }
+  },
+  "required": [
+    "team_a",
+    "team_b",
+    "match_time"
+  ]
+}

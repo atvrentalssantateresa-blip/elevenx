@@ -1,0 +1,77 @@
+{
+  "name": "Bet",
+  "type": "object",
+  "properties": {
+    "match_id": {
+      "type": "string",
+      "description": "Reference to Match entity"
+    },
+    "title": {
+      "type": "string",
+      "description": "Bet display title"
+    },
+    "outcome_a": {
+      "type": "string",
+      "description": "Label for outcome A (e.g. team name)"
+    },
+    "outcome_b": {
+      "type": "string",
+      "description": "Label for outcome B"
+    },
+    "open_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Betting closes at this time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed",
+        "settled",
+        "void"
+      ],
+      "default": "open"
+    },
+    "winning_outcome": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b",
+        ""
+      ],
+      "default": "",
+      "description": "Which outcome won after settlement"
+    },
+    "total_a": {
+      "type": "number",
+      "default": 0,
+      "description": "Total staked on outcome A"
+    },
+    "total_b": {
+      "type": "number",
+      "default": 0,
+      "description": "Total staked on outcome B"
+    },
+    "total_pool": {
+      "type": "number",
+      "default": 0,
+      "description": "Total pool (A + B)"
+    },
+    "fee_percent": {
+      "type": "number",
+      "default": 200,
+      "description": "Fee in basis points (200 = 2%)"
+    },
+    "total_bettors": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "match_id",
+    "outcome_a",
+    "outcome_b",
+    "open_until"
+  ]
+}

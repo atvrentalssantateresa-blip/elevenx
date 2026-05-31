@@ -1,0 +1,62 @@
+{
+  "name": "UserBet",
+  "type": "object",
+  "properties": {
+    "bet_id": {
+      "type": "string",
+      "description": "Reference to Bet entity"
+    },
+    "match_id": {
+      "type": "string",
+      "description": "Reference to Match entity"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b"
+      ],
+      "description": "Which outcome the user bet on"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Stake amount"
+    },
+    "potential_payout": {
+      "type": "number",
+      "default": 0,
+      "description": "Calculated potential payout"
+    },
+    "actual_payout": {
+      "type": "number",
+      "default": 0,
+      "description": "Actual payout after settlement"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "won",
+        "lost",
+        "claimed",
+        "refunded",
+        "void"
+      ],
+      "default": "active"
+    },
+    "outcome_label": {
+      "type": "string",
+      "description": "Display label of chosen outcome"
+    },
+    "match_title": {
+      "type": "string",
+      "description": "Display title for quick reference"
+    }
+  },
+  "required": [
+    "bet_id",
+    "match_id",
+    "outcome",
+    "amount"
+  ]
+}
