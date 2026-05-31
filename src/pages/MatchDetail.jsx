@@ -14,7 +14,7 @@ import { useWallet } from '@/lib/WalletContext';
 
 function totalAvailable(offers, outcome) {
   return offers
-    .filter(o => o.outcome === outcome && (o.status === 'open' || o.status === 'partially_matched'))
+    .filter(o => o.outcome === outcome && (o.status === 'open' || o.status === 'partially_matched' || o.status === 'pending'))
     .reduce((s, o) => s + (o.amount_unmatched || 0), 0);
 }
 
@@ -346,7 +346,7 @@ export default function MatchDetail() {
     { key: 'b', label: bet?.outcome_b || match.team_b, flag: match.team_b_flag, odds: oddsB, available: avB, color: 'accent' },
   ];
 
-  const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched');
+  const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched' || o.status === 'pending');
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
