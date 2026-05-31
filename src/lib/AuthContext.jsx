@@ -189,9 +189,33 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const currentUser = await base44.auth.me();
-      console.log('refreshUser got:', currentUser);
-      setUser(currentUser);
+      const walletSession = localStorage.getItem('elevenx_wallet_session');
+      if (walletSession) {
+        let address = walletSession;
+        try {
+          const parsed = JSON.parse(walletSession);
+          address = parsed.address || walletSession;
+        } catch {}
+        const response = await base44.functions.invoke('walletAuth', {
+          walletAddress: address
+        });
+        if (response.data.success) {
+          const userData = {
+            id: response.data.userId || response.data.user?.id,
+            full_name: response.data.full_name || response.data.user?.full_name,
+            username: response.data.username || response.data.user?.username,
+            wallet_address: response.data.walletAddress || response.data.user?.wallet_address,
+            role: response.data.role || response.data.user?.role,
+            email: response.data.email || response.data.user?.email
+          };
+          console.log('refreshUser got:', userData);
+          setUser(userData);
+        }
+      } else {
+        const currentUser = await base44.auth.me();
+        console.log('refreshUser got:', currentUser);
+        setUser(currentUser);
+      }
     } catch (error) {
       console.error('Failed to refresh user:', error);
     }

@@ -23,6 +23,8 @@ export default function Profile() {
   const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
   
   console.log('Profile - currentUser:', currentUser);
+  console.log('Profile - currentUser.full_name:', currentUser?.full_name);
+  console.log('Profile - currentUser.username:', currentUser?.username);
   console.log('Profile - user (auth):', user);
   console.log('Profile - connectedWalletAddress:', connectedWalletAddress);
   console.log('Profile - isConnected:', isConnected);
