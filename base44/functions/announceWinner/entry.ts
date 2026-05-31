@@ -1,4 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
+import { Buffer } from 'node:buffer';
+
+// IMPORTANT: Replace with your actual deployed program ID after deployment
+const SOLANA_PROGRAM_ID = 'ElevenX1111111111111111111111111111111111111'; // Placeholder - update after deployment
+const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
 Deno.serve(async (req) => {
   try {
@@ -35,6 +41,28 @@ Deno.serve(async (req) => {
     let totalDistributed = 0;
     let winnersCount = 0;
 
+    // Prepare Solana instruction for settle_bet
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    
+    // Get bet pool PDA from first offer
+    const offers = await base44.entities.BetOffer.filter({ bet_id });
+    const betPoolPda = offers[0]?.solana_bet_pool_pda;
+    
+    if (!betPoolPda) {
+      return Response.json({ error: 'Bet pool PDA not found' }, { status: 400 });
+    }
+
+    // Settle bet instruction data: [5, outcome_enum]
+    // Outcome enum: A=0, B=1, Draw=2
+    const outcomeEnum = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
+    const settleData = Buffer.from([5, outcomeEnum]);
+
+    const keys = [
+      { pubkey: new PublicKey(betPoolPda), isSigner: false, isWritable: true },
+      { pubkey: new PublicKey(user.wallet_address), isSigner: true, isWritable: true }, // Admin signs
+    ];
+
     // Process each bet
     for (const userBet of activeBets) {
       if (userBet.outcome === winning_outcome) {
@@ -60,7 +88,7 @@ Deno.serve(async (req) => {
       winning_outcome,
     });
 
-    console.log(`✓ Bet ${bet_id} settled. Winner: ${winning_outcome}, Winners: ${winnersCount}, Total distributed: ${totalDistributed}`);
+    console.log(`✓ Bet ${bet_id} settled. Winner: ${winning_outcome}, Winners: ${winnersCount}, Total distributed: ◎${totalDistributed.toFixed(2)}`);
 
     return Response.json({
       success: true,
@@ -68,7 +96,13 @@ Deno.serve(async (req) => {
       winning_outcome,
       winners_count: winnersCount,
       total_distributed: totalDistributed,
-      message: `Bet settled. ${winnersCount} winners will receive ◎${totalDistributed.toFixed(2)}`
+      message: `Bet settled. ${winnersCount} winners will receive ◎${totalDistributed.toFixed(2)}`,
+      solana_instruction: {
+        instruction_type: 'settle_bet',
+        betPoolPda,
+        adminPubkey: user.wallet_address,
+        winning_outcome: outcomeEnum,
+      }
     });
 
   } catch (error) {
