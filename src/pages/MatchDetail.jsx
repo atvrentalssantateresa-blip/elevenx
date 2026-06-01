@@ -108,9 +108,14 @@ export default function MatchDetail() {
       const walletSession = localStorage.getItem('elevenx_wallet_session');
       let walletAddr = null;
       if (walletSession) {
-        try { walletAddr = JSON.parse(walletSession).address || walletSession; } catch { walletAddr = walletSession; }
+        try {
+          const parsed = JSON.parse(walletSession);
+          walletAddr = parsed.address || parsed;
+        } catch {
+          walletAddr = walletSession;
+        }
       }
-      if (!walletAddr) throw new Error('Wallet not connected. Please connect your wallet first.');
+      if (!walletAddr || walletAddr.length < 32) throw new Error('Wallet not connected or invalid. Please reconnect your wallet.');
 
       const response = await base44.functions.invoke('provideLiquidity', {
         bet_id: bet.id,
@@ -144,9 +149,14 @@ export default function MatchDetail() {
       const walletSession = localStorage.getItem('elevenx_wallet_session');
       let walletAddr = null;
       if (walletSession) {
-        try { walletAddr = JSON.parse(walletSession).address || walletSession; } catch { walletAddr = walletSession; }
+        try {
+          const parsed = JSON.parse(walletSession);
+          walletAddr = parsed.address || parsed;
+        } catch {
+          walletAddr = walletSession;
+        }
       }
-      if (!walletAddr) throw new Error('Wallet not connected. Please connect your wallet first.');
+      if (!walletAddr || walletAddr.length < 32) throw new Error('Wallet not connected or invalid. Please reconnect your wallet.');
 
       const response = await base44.functions.invoke('placeBet', {
         bet_id: bet.id,
