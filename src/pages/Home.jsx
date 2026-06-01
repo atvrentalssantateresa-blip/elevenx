@@ -220,7 +220,7 @@ export default function Home() {
               className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
             >
               {/* Match photo strip */}
-              <div className="relative h-32 overflow-hidden flex-shrink-0">
+              <div className="relative h-40 overflow-hidden flex-shrink-0">
                 <img
                   src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                   alt="match"
