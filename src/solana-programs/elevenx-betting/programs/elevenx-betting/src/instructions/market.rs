@@ -15,6 +15,10 @@ pub struct CreateMarketParams {
     pub fee_percent_override: u16,
     /// 2 = binary, 3 = football (adds Draw).
     pub outcome_count: u8,
+    /// Oracle-provided fixed odds for each outcome in basis points (odds * 100).
+    /// e.g. [210, 320, 340] → TeamA=2.10x, TeamB=3.20x, Draw=3.40x.
+    /// Set to [0,0,0] for outcomes not used (e.g. binary markets ignore index 2).
+    pub oracle_odds: [u64; 3],
 }
 
 // ── create_market ─────────────────────────────────────────────────────────────
@@ -48,8 +52,10 @@ pub fn create_market(ctx: Context<CreateMarket>, params: CreateMarketParams) -> 
     market.fee_percent = fee_percent;
     market.outcome_count = params.outcome_count;
     market.winning_outcome = 0;
-    market.total_by_outcome = [0u64; 3];
-    market.total_all = 0;
+    market.oracle_odds = params.oracle_odds;
+    market.total_matched = [0u64; 3];
+    market.total_pending = [0u64; 3];
+    market.total_lp_committed = 0;
     market.accrued_fees = 0;
     market.settled = false;
     market.voided = false;

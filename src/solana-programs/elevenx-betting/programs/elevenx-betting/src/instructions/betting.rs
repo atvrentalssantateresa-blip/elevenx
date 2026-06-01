@@ -1,9 +1,18 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use crate::state::{BetMarket, BetPosition};
+use crate::state::{BetMarket, BetPosition, LpOffer};
 use crate::errors::BettingError;
 
 // ── place_bet ─────────────────────────────────────────────────────────────────
+//
+// Hybrid fixed-odds model:
+//   1. Bettor picks an outcome and stakes SOL.
+//   2. We read oracle_odds from the market for that outcome.
+//   3. We try to match the bettor's stake against the LP offer for that outcome.
+//      - "Matching" means: the LP has committed SOL to cover this outcome,
+//        so if the bettor wins, we pay them from the LP's committed pool.
+//   4. Any portion that cannot be matched immediately enters pending state.
+//   5. potential_payout = matched_stake * odds_bps / 100.
 
 pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
     let clock = Clock::get()?;
@@ -15,7 +24,10 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
     require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
     require!(amount > 0, BettingError::ZeroStake);
 
-    // Transfer SOL from bettor to the market PDA (acts as escrow).
+    let odds_bps = market.oracle_odds[outcome as usize];
+    require!(odds_bps > 100, BettingError::InvalidOutcome); // odds must be > 1.00x
+
+    // Transfer SOL from bettor to market escrow.
     let cpi_ctx = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
         system_program::Transfer {
@@ -25,26 +37,73 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
     );
     system_program::transfer(cpi_ctx, amount)?;
 
-    // Update market totals.
-    market.total_by_outcome[outcome as usize] = market
-        .total_by_outcome[outcome as usize]
-        .checked_add(amount)
-        .ok_or(BettingError::Overflow)?;
-    market.total_all = market.total_all.checked_add(amount).ok_or(BettingError::Overflow)?;
+    // ── Match against LP offer ────────────────────────────────────────────────
+    //
+    // The LP offer covers bettors betting on the SAME outcome (the LP is
+    // providing liquidity for that side). If the bettor wins, LP pays out;
+    // if the bettor loses, LP earns the stake.
 
-    // Update (or initialize) bettor position.
+    let (matched_now, pending_now) = {
+        let offer = &mut ctx.accounts.lp_offer;
+        let available = offer.available();
+
+        if available == 0 || offer.closed {
+            // No LP liquidity — entire bet is pending.
+            (0u64, amount)
+        } else {
+            let matched = available.min(amount);
+            let pending = amount.saturating_sub(matched);
+
+            offer.amount_matched = offer
+                .amount_matched
+                .checked_add(matched)
+                .ok_or(BettingError::Overflow)?;
+
+            (matched, pending)
+        }
+    };
+
+    // Update market tracking.
+    market.total_matched[outcome as usize] = market.total_matched[outcome as usize]
+        .checked_add(matched_now)
+        .ok_or(BettingError::Overflow)?;
+    market.total_pending[outcome as usize] = market.total_pending[outcome as usize]
+        .checked_add(pending_now)
+        .ok_or(BettingError::Overflow)?;
+
+    // potential_payout = matched_stake * odds_bps / 100
+    // e.g. 1 SOL at odds 2.10 (210 bps) → 2.10 SOL gross payout.
+    let potential_payout = (matched_now as u128)
+        .checked_mul(odds_bps as u128)
+        .and_then(|v| v.checked_div(100))
+        .unwrap_or(0) as u64;
+
+    // ── Initialize / update BetPosition ──────────────────────────────────────
     let position = &mut ctx.accounts.bet_position;
     if position.market == Pubkey::default() {
-        // First bet — initialize.
         position.market = market.key();
         position.bettor = ctx.accounts.bettor.key();
-        position.stakes = [0u64; 3];
+        position.outcome = outcome;
+        position.matched_stake = 0;
+        position.pending_stake = 0;
+        position.odds_bps = odds_bps;
+        position.potential_payout = 0;
         position.claimable = 0;
         position.claimed = false;
         position.bump = ctx.bumps.bet_position;
     }
-    position.stakes[outcome as usize] = position.stakes[outcome as usize]
-        .checked_add(amount)
+
+    position.matched_stake = position
+        .matched_stake
+        .checked_add(matched_now)
+        .ok_or(BettingError::Overflow)?;
+    position.pending_stake = position
+        .pending_stake
+        .checked_add(pending_now)
+        .ok_or(BettingError::Overflow)?;
+    position.potential_payout = position
+        .potential_payout
+        .checked_add(potential_payout)
         .ok_or(BettingError::Overflow)?;
 
     Ok(())
@@ -61,6 +120,14 @@ pub struct PlaceBet<'info> {
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,
+
+    /// The LP offer for this outcome — bettor's stake matches against this pool.
+    #[account(
+        mut,
+        seeds = [b"lp_offer", market.key().as_ref(), lp_offer.lp.as_ref(), &[outcome]],
+        bump = lp_offer.bump,
+    )]
+    pub lp_offer: Account<'info, LpOffer>,
 
     #[account(
         init_if_needed,

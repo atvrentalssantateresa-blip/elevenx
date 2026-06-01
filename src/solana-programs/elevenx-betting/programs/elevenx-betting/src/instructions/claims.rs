@@ -4,6 +4,12 @@ use crate::state::{BetMarket, BetPosition, FeeVault};
 use crate::errors::BettingError;
 
 // ── claim_winnings ────────────────────────────────────────────────────────────
+//
+// Hybrid fixed-odds payout:
+//   - Bettor's payout = potential_payout (locked in at bet placement).
+//   - potential_payout = matched_stake * odds_bps / 100.
+//   - Fee is deducted from payout at claim time.
+//   - Only matched_stake is eligible; pending_stake is refunded separately.
 
 pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
     let market = &ctx.accounts.market;
@@ -11,31 +17,32 @@ pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
 
     require!(market.settled && !market.voided, BettingError::AlreadySettled);
     require!(!position.claimed, BettingError::ClaimNothing);
+    require!(
+        position.outcome == market.winning_outcome,
+        BettingError::ClaimNothing
+    );
+    require!(position.matched_stake > 0, BettingError::ClaimNothing);
 
-    let winning_outcome = market.winning_outcome as usize;
-    let stake = position.stakes[winning_outcome];
-    require!(stake > 0, BettingError::ClaimNothing);
+    let gross = position.potential_payout;
+    require!(gross > 0, BettingError::ClaimNothing);
 
-    let winners_pool = market.total_by_outcome[winning_outcome];
-    let losers_pool = market.total_all.saturating_sub(winners_pool);
     let fee_percent = market.fee_percent as u64;
-
-    // gross = stake + (stake * losers_pool) / winners_pool
-    let proportional = (stake as u128)
-        .checked_mul(losers_pool as u128)
-        .and_then(|v| v.checked_div(winners_pool as u128))
-        .unwrap_or(0) as u64;
-
-    let gross = stake.checked_add(proportional).ok_or(BettingError::Overflow)?;
-    let fee = gross.checked_mul(fee_percent).and_then(|v| v.checked_div(10_000)).unwrap_or(0);
+    let fee = gross
+        .checked_mul(fee_percent)
+        .and_then(|v| v.checked_div(10_000))
+        .unwrap_or(0);
     let payout = gross.saturating_sub(fee);
 
-    // Mark position as claimed before transfer (reentrancy guard).
+    // Also refund any pending (unmatched) stake back to the bettor.
+    let pending_refund = position.pending_stake;
+    let total_transfer = payout.checked_add(pending_refund).ok_or(BettingError::Overflow)?;
+
+    // Mark claimed before transfers (reentrancy guard).
     let position_mut = &mut ctx.accounts.bet_position;
     position_mut.claimed = true;
     position_mut.claimable = payout;
 
-    // Transfer fee to fee vault via lamport manipulation (PDA-owned SOL).
+    // Transfer fee to fee vault.
     if fee > 0 {
         let fee_vault = &mut ctx.accounts.fee_vault;
         **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= fee;
@@ -43,14 +50,16 @@ pub fn claim_winnings(ctx: Context<ClaimWinnings>) -> Result<()> {
         fee_vault.total_fees = fee_vault.total_fees.saturating_add(fee);
     }
 
-    // Transfer payout from market PDA to bettor.
-    **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= payout;
-    **ctx.accounts.bettor.try_borrow_mut_lamports()? += payout;
+    // Transfer payout + pending refund from market PDA to bettor.
+    **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= total_transfer;
+    **ctx.accounts.bettor.try_borrow_mut_lamports()? += total_transfer;
 
     Ok(())
 }
 
 // ── refund ────────────────────────────────────────────────────────────────────
+//
+// On voided market: return matched_stake + pending_stake to bettor.
 
 pub fn refund(ctx: Context<Refund>) -> Result<()> {
     let market = &ctx.accounts.market;
@@ -59,14 +68,17 @@ pub fn refund(ctx: Context<Refund>) -> Result<()> {
     require!(market.voided, BettingError::NotVoided);
     require!(!position.claimed, BettingError::NothingToRefund);
 
-    let total_stake: u64 = position.stakes.iter().sum();
+    let total_stake = position
+        .matched_stake
+        .checked_add(position.pending_stake)
+        .ok_or(BettingError::Overflow)?;
     require!(total_stake > 0, BettingError::NothingToRefund);
 
     let position_mut = &mut ctx.accounts.bet_position;
     position_mut.claimed = true;
-    position_mut.stakes = [0u64; 3];
+    position_mut.matched_stake = 0;
+    position_mut.pending_stake = 0;
 
-    // Return full stake from market PDA to bettor.
     **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= total_stake;
     **ctx.accounts.bettor.try_borrow_mut_lamports()? += total_stake;
 

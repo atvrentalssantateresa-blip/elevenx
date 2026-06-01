@@ -25,11 +25,23 @@ pub struct BetMarket {
     /// Filled in after settlement.
     pub winning_outcome: u8,
 
-    /// Total lamports staked per outcome.
-    pub total_by_outcome: [u64; 3],
+    // ── Hybrid fixed-odds LP model ────────────────────────────────────────────
 
-    /// Sum of all staked lamports.
-    pub total_all: u64,
+    /// Oracle-provided fixed odds for each outcome in basis points (odds * 100).
+    /// e.g. 210 = 2.10x.  Set at market creation and can be updated by admin
+    /// before betting opens.
+    pub oracle_odds: [u64; 3],
+
+    /// Total bettor stakes that have been matched (backed by LP liquidity).
+    pub total_matched: [u64; 3],
+
+    /// Total bettor stakes that are pending (waiting for LP liquidity).
+    pub total_pending: [u64; 3],
+
+    /// Total LP liquidity locked in this market.
+    pub total_lp_committed: u64,
+
+    // ── Legacy / settlement fields ─────────────────────────────────────────────
 
     /// Fees accrued during settlement (transferred to fee vault on finalize).
     pub accrued_fees: u64,
@@ -51,8 +63,10 @@ impl BetMarket {
         + 2    // fee_percent
         + 1    // outcome_count
         + 1    // winning_outcome
-        + 24   // total_by_outcome (3 × 8)
-        + 8    // total_all
+        + 24   // oracle_odds (3 × 8)
+        + 24   // total_matched (3 × 8)
+        + 24   // total_pending (3 × 8)
+        + 8    // total_lp_committed
         + 8    // accrued_fees
         + 1    // settled
         + 1    // voided

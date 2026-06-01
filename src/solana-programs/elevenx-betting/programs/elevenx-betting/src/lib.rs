@@ -40,9 +40,23 @@ pub mod elevenx_betting {
         instructions::market::void_market(ctx)
     }
 
+    // ── Liquidity (LP) ──────────────────────────────────────────────────────
+
+    /// LP deposits SOL to cover bettors on a specific outcome at oracle odds.
+    pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u64) -> Result<()> {
+        instructions::liquidity::provide_liquidity(ctx, outcome, amount)
+    }
+
+    /// LP withdraws unmatched liquidity before market closes.
+    pub fn withdraw_liquidity(ctx: Context<WithdrawLiquidity>) -> Result<()> {
+        instructions::liquidity::withdraw_liquidity(ctx)
+    }
+
     // ── Betting ─────────────────────────────────────────────────────────────
 
-    /// Place a bet on a specific outcome (0, 1, or 2).
+    /// Place a bet on a specific outcome (0, 1, or 2) at the oracle fixed odds.
+    /// Stake is matched against available LP liquidity immediately; any remainder
+    /// enters a pending state until more liquidity is provided.
     pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
         instructions::betting::place_bet(ctx, outcome, amount)
     }

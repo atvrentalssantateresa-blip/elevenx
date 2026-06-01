@@ -8,10 +8,23 @@ pub struct BetPosition {
     pub market: Pubkey,
     pub bettor: Pubkey,
 
-    /// Lamports staked per outcome (index 0-2).
-    pub stakes: [u64; 3],
+    /// Which outcome (0, 1, 2) this position is on.
+    pub outcome: u8,
 
-    /// Pre-computed payout set during settlement. 0 = not yet settled or lost.
+    /// Lamports that have been matched against LP liquidity (locked in).
+    pub matched_stake: u64,
+
+    /// Lamports that are waiting for LP coverage (not yet locked).
+    pub pending_stake: u64,
+
+    /// Fixed odds (in bps) at the time the bet was placed. e.g. 210 = 2.10x.
+    pub odds_bps: u64,
+
+    /// Pre-computed payout if bettor wins: matched_stake * odds_bps / 100.
+    /// This is the gross amount the bettor receives (before fee deduction at claim time).
+    pub potential_payout: u64,
+
+    /// Actual payout after settlement and fee deduction.
     pub claimable: u64,
 
     /// True once claim() or refund() has been called.
@@ -24,7 +37,11 @@ impl BetPosition {
     pub const LEN: usize = 8   // discriminator
         + 32  // market
         + 32  // bettor
-        + 24  // stakes (3 × 8)
+        + 1   // outcome
+        + 8   // matched_stake
+        + 8   // pending_stake
+        + 8   // odds_bps
+        + 8   // potential_payout
         + 8   // claimable
         + 1   // claimed
         + 1;  // bump
