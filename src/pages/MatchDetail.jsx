@@ -598,9 +598,11 @@ export default function MatchDetail() {
                         onClick={() => openOfferMutation.mutate({ outcome: selectedOutcome, offerAmount: stakeNum })}
                         disabled={stakeNum <= 0 || openOfferMutation.isPending}
                         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                        {openOfferMutation.isPending
-                          ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                          : `Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
+                        {openOfferMutation.isPending ? (
+                          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        ) : (
+                          `Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`
+                        )}
                       </Button>
                     )}
                   </motion.div>
@@ -747,11 +749,13 @@ export default function MatchDetail() {
                         disabled={stakeNum <= 0 || matchOfferMutation.isPending || !isConnected}
                         className="w-full h-12 font-heading font-bold text-sm bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl"
                       >
-                        {matchOfferMutation.isPending
-                          ? <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                          : !isConnected
-                          ? 'Connect Wallet First'
-                          : `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`}
+                        {matchOfferMutation.isPending ? (
+                          <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                        ) : !isConnected ? (
+                          'Connect Wallet First'
+                        ) : (
+                          `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} on ${getOutcomeLabel(selectedOutcome)}`
+                        )}
                       </Button>
                     )}
                   </motion.div>
