@@ -232,7 +232,7 @@ export default function Home() {
                   <span className="text-[10px] font-bold bg-black/50 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">{fm.group}</span>
                 </div>
                 <div className="absolute top-2 right-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border" style={{ background: 'rgba(33,196,93,0.15)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.3)' }}>OPEN</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white text-green-500 border-green-500/30 shadow-sm">OPEN</span>
                 </div>
               </div>
 
