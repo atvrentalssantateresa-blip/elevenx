@@ -217,7 +217,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 + i * 0.08 }}
-              className="flex-shrink-0 w-64 h-96 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
+              className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
             >
               {/* Match photo strip */}
               <div className="relative h-24 overflow-hidden flex-shrink-0">
