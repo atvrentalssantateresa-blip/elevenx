@@ -99,7 +99,7 @@ pub struct CreateMarket<'info> {
         init,
         payer = admin,
         space = BetMarket::LEN,
-        seeds = [b"market", &params.match_id],
+        seeds = [b"market", params.match_id.as_ref()],
         bump,
     )]
     pub market: Account<'info, BetMarket>,
@@ -124,7 +124,7 @@ pub struct CreateMarket<'info> {
 
 #[derive(Accounts)]
 pub struct SetMarketPaused<'info> {
-    #[account(mut, seeds = [b"market", &market.match_id], bump = market.bump)]
+    #[account(mut, seeds = [b"market", market.match_id.as_ref()], bump = market.bump)]
     pub market: Account<'info, BetMarket>,
 
     #[account(seeds = [b"platform"], bump = platform_config.bump)]
@@ -136,7 +136,7 @@ pub struct SetMarketPaused<'info> {
 
 #[derive(Accounts)]
 pub struct VoidMarket<'info> {
-    #[account(mut, seeds = [b"market", &market.match_id], bump = market.bump)]
+    #[account(mut, seeds = [b"market", market.match_id.as_ref()], bump = market.bump)]
     pub market: Account<'info, BetMarket>,
 
     #[account(seeds = [b"platform"], bump = platform_config.bump)]

@@ -12,14 +12,17 @@ use crate::errors::BettingError;
 
 pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u64) -> Result<()> {
     let clock = Clock::get()?;
-    let market = &mut ctx.accounts.market;
 
-    require!(!market.paused, BettingError::MarketPaused);
-    require!(!market.settled && !market.voided, BettingError::AlreadySettled);
-    require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
-    require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
-    require!(amount > 0, BettingError::ZeroStake);
-    require!(market.oracle_odds[outcome as usize] > 100, BettingError::InvalidOutcome);
+    // Read-only checks before mutating.
+    {
+        let market = &ctx.accounts.market;
+        require!(!market.paused, BettingError::MarketPaused);
+        require!(!market.settled && !market.voided, BettingError::AlreadySettled);
+        require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
+        require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
+        require!(amount > 0, BettingError::ZeroStake);
+        require!(market.oracle_odds[outcome as usize] > 100, BettingError::InvalidOutcome);
+    }
 
     // Transfer SOL from LP into market escrow.
     let cpi_ctx = CpiContext::new(
@@ -32,6 +35,7 @@ pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u6
     system_program::transfer(cpi_ctx, amount)?;
 
     // Update market totals.
+    let market = &mut ctx.accounts.market;
     market.total_lp_committed = market
         .total_lp_committed
         .checked_add(amount)
@@ -91,7 +95,7 @@ pub fn withdraw_liquidity(ctx: Context<WithdrawLiquidity>) -> Result<()> {
 pub struct ProvideLiquidity<'info> {
     #[account(
         mut,
-        seeds = [b"market", &market.match_id],
+        seeds = [b"market", market.match_id.as_ref()],
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,
@@ -115,7 +119,7 @@ pub struct ProvideLiquidity<'info> {
 pub struct WithdrawLiquidity<'info> {
     #[account(
         mut,
-        seeds = [b"market", &market.match_id],
+        seeds = [b"market", market.match_id.as_ref()],
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,

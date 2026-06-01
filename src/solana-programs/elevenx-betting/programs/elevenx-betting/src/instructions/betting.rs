@@ -16,16 +16,20 @@ use crate::errors::BettingError;
 
 pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
     let clock = Clock::get()?;
-    let market = &mut ctx.accounts.market;
 
-    require!(!market.paused, BettingError::MarketPaused);
-    require!(!market.settled && !market.voided, BettingError::AlreadySettled);
-    require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
-    require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
-    require!(amount > 0, BettingError::ZeroStake);
+    // Read-only checks before mutating.
+    {
+        let market = &ctx.accounts.market;
+        require!(!market.paused, BettingError::MarketPaused);
+        require!(!market.settled && !market.voided, BettingError::AlreadySettled);
+        require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
+        require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
+        require!(amount > 0, BettingError::ZeroStake);
+        let odds_bps = market.oracle_odds[outcome as usize];
+        require!(odds_bps > 100, BettingError::InvalidOutcome);
+    }
 
-    let odds_bps = market.oracle_odds[outcome as usize];
-    require!(odds_bps > 100, BettingError::InvalidOutcome); // odds must be > 1.00x
+    let odds_bps = ctx.accounts.market.oracle_odds[outcome as usize];
 
     // Transfer SOL from bettor to market escrow.
     let cpi_ctx = CpiContext::new(
@@ -36,6 +40,8 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
         },
     );
     system_program::transfer(cpi_ctx, amount)?;
+
+    let market = &mut ctx.accounts.market;
 
     // ── Match against LP offer ────────────────────────────────────────────────
     //
@@ -116,7 +122,7 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
 pub struct PlaceBet<'info> {
     #[account(
         mut,
-        seeds = [b"market", &market.match_id],
+        seeds = [b"market", market.match_id.as_ref()],
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,

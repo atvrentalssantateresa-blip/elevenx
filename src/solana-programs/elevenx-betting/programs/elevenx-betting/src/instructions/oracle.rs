@@ -9,7 +9,7 @@ fn execute_settlement(market: &mut BetMarket, fee_vault: &mut FeeVault, winning_
     market.winning_outcome = winning_outcome;
     market.settlement_finalized = true;
 
-    let winners_pool = market.total_by_outcome[winning_outcome as usize];
+    let winners_pool = market.total_matched[winning_outcome as usize];
 
     // If nobody backed the winning outcome, void the market instead.
     if winners_pool == 0 {
@@ -17,7 +17,8 @@ fn execute_settlement(market: &mut BetMarket, fee_vault: &mut FeeVault, winning_
         return Ok(());
     }
 
-    let losers_pool = market.total_all.saturating_sub(winners_pool);
+    let total_all: u64 = market.total_matched.iter().sum();
+    let losers_pool = total_all.saturating_sub(winners_pool);
 
     // Compute per-market accrued fees (will be collected when winners claim).
     // We store total fees and track them in accrued_fees for accounting.
@@ -97,7 +98,7 @@ pub fn emergency_settle(ctx: Context<EmergencySettle>, winning_outcome: u8) -> R
 pub struct SubmitOracleVote<'info> {
     #[account(
         mut,
-        seeds = [b"market", &market.match_id],
+        seeds = [b"market", market.match_id.as_ref()],
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,
@@ -134,7 +135,7 @@ pub struct SubmitOracleVote<'info> {
 pub struct EmergencySettle<'info> {
     #[account(
         mut,
-        seeds = [b"market", &market.match_id],
+        seeds = [b"market", market.match_id.as_ref()],
         bump = market.bump,
     )]
     pub market: Account<'info, BetMarket>,
