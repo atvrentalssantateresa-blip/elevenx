@@ -6,7 +6,7 @@ pub mod errors;
 
 use instructions::*;
 
-declare_id!("11111111111111111111111111111111"); // Replace after `anchor build`
+declare_id!("ElevenXProgramID1111111111111111111111111"); // Update with your deployed program ID
 
 #[program]
 pub mod elevenx_betting {

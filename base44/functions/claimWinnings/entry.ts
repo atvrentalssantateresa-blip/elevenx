@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'YOUR_PROGRAM_ID_HERE';
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'ElevenXProgramID1111111111111111111111111';
 
 /**
  * Prepare claim_winnings instruction for the winning bettor.
@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
       message: `Sign to claim ◎${netPayout.toFixed(4)} (◎${fee.toFixed(4)} fee deducted)`,
       solana_instruction: {
         instruction_type: 'claim_winnings',
+        programId: SOLANA_PROGRAM_ID,
         marketPda:    marketPda.toBase58(),
         positionPda:  positionPda.toBase58(),
         feeVaultPda:  feeVaultPda.toBase58(),

@@ -4,7 +4,7 @@ import { Wallet, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Buffer } from 'buffer';
-import { Connection } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 
 export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, isOffer, onSuccess, onError }) {
   const { isConnected, connect } = useWallet();
@@ -33,25 +33,30 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         await provider.connect();
       }
 
-      // Create transaction from instruction
-      const { Transaction, PublicKey, SystemProgram, TransactionInstruction } = await import('@solana/web3.js');
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-      
       const transaction = new Transaction();
       
-      // Check if this is a claim_winnings instruction or a bet/offer instruction
+      // Check instruction type and build appropriate transaction
       if (instruction.instruction_type === 'claim_winnings') {
-        // Claim winnings - program will transfer SOL from pool to user
+        // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId);
-        const keys = instruction.keys.map(k => ({
+        const programId = new PublicKey('ElevenXProgramID1111111111111111111111111');
+        const keys = instruction.keys?.map(k => ({
           pubkey: new PublicKey(k.pubkey),
           isSigner: k.isSigner,
           isWritable: k.isWritable,
-        }));
+        })) || [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.positionPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.feeVaultPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.bettorPubkey), isSigner: false, isWritable: true },
+        ];
         
-        const data = Buffer.from(instruction.data, 'base64');
+        // Create instruction data for claim_winnings (discriminator + net payout)
+        const data = Buffer.alloc(9);
+        data.writeUInt8(6, 0); // claim_winnings discriminator
+        data.writeBigUInt64LE(BigInt(instruction.netPayoutLamports || 0), 1);
         
         const claimIx = new TransactionInstruction({
           keys,
@@ -60,10 +65,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(claimIx);
-      } else if (instruction.amountLamports) {
+        
+      } else if (instruction.instruction_type === 'place_bet' || instruction.instruction_type === 'provide_liquidity') {
         // place_bet / provide_liquidity — transfer SOL from user to market PDA (escrow)
         const fromPubkey = provider.publicKey;
-        // marketPda is the escrow for both place_bet and provide_liquidity
         const toPubkey = new PublicKey(instruction.marketPda || instruction.betPoolPda);
 
         console.log('Transfer to market escrow:', {
@@ -71,6 +76,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           to: toPubkey.toString(),
           lamports: instruction.amountLamports,
           type: instruction.instruction_type,
+        });
+
+        const transferIx = SystemProgram.transfer({
+          fromPubkey,
+          toPubkey,
+          lamports: instruction.amountLamports,
+        });
+        transaction.add(transferIx);
+        
+      } else if (instruction.instruction_type === 'match_bet') {
+        // match_bet — transfer SOL to match existing offer
+        const fromPubkey = provider.publicKey;
+        const toPubkey = new PublicKey(instruction.betPoolPda);
+
+        console.log('Match bet - transfer to pool:', {
+          from: fromPubkey.toString(),
+          to: toPubkey.toString(),
+          lamports: instruction.amountLamports,
         });
 
         const transferIx = SystemProgram.transfer({

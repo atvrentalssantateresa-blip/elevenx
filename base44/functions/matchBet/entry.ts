@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.95.3';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = 'YOUR_PROGRAM_ID_HERE'; // Update with your deployed program ID from anchor deploy
-const SOLANA_RPC_URL = 'https://api.devnet.solana.com'; // Using devnet for testing
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'ElevenXProgramID1111111111111111111111111';
+const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
 Deno.serve(async (req) => {
   try {
