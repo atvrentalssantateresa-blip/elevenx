@@ -20,6 +20,15 @@ Deno.serve(async (req) => {
     }
     if (amount <= 0) return Response.json({ error: 'Amount must be positive' }, { status: 400 });
 
+    // Validate wallet address is a valid Solana base58 address (32-44 chars, valid base58)
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+    if (!base58Regex.test(walletAddress)) {
+      return Response.json({ 
+        error: 'Invalid wallet address format. Please reconnect your wallet.', 
+        hint: 'Address contains invalid characters or is corrupted'
+      }, { status: 400 });
+    }
+
     const bets = await base44.entities.Bet.filter({ id: bet_id });
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Bet not open' }, { status: 400 });

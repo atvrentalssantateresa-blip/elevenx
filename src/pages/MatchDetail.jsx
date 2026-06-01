@@ -115,7 +115,11 @@ export default function MatchDetail() {
           walletAddr = walletSession;
         }
       }
-      if (!walletAddr || walletAddr.length < 32) throw new Error('Wallet not connected or invalid. Please reconnect your wallet.');
+      // Validate Solana address format (base58, 32-44 chars)
+      const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+      if (!walletAddr || !base58Regex.test(walletAddr)) {
+        throw new Error('Wallet address invalid or corrupted. Please reconnect your wallet.');
+      }
 
       const response = await base44.functions.invoke('provideLiquidity', {
         bet_id: bet.id,
@@ -156,7 +160,11 @@ export default function MatchDetail() {
           walletAddr = walletSession;
         }
       }
-      if (!walletAddr || walletAddr.length < 32) throw new Error('Wallet not connected or invalid. Please reconnect your wallet.');
+      // Validate Solana address format (base58, 32-44 chars)
+      const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+      if (!walletAddr || !base58Regex.test(walletAddr)) {
+        throw new Error('Wallet address invalid or corrupted. Please reconnect your wallet.');
+      }
 
       const response = await base44.functions.invoke('placeBet', {
         bet_id: bet.id,
