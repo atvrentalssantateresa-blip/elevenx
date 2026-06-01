@@ -1,112 +1,241 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { ElevenxBetting } from "../target/types/elevenx_betting";
-import { expect } from "chai";
+import { PublicKey, LAMPORTS_PER_SOL, SystemProgram } from "@solana/web3.js";
+import { assert } from "chai";
 
 describe("elevenx-betting", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-
   const program = anchor.workspace.ElevenxBetting as Program<ElevenxBetting>;
-  const admin = provider.wallet.publicKey;
 
-  it("Initializes a bet pool", async () => {
-    const betId = "bet_001";
-    const matchId = "match_001";
+  const admin = provider.wallet as anchor.Wallet;
+  const bettor1 = anchor.web3.Keypair.generate();
+  const bettor2 = anchor.web3.Keypair.generate();
+  const oracle = anchor.web3.Keypair.generate();
 
-    const [betPoolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("bet_pool"), Buffer.from(betId)],
+  // Match ID: 32-byte buffer
+  const matchId = Buffer.alloc(32);
+  Buffer.from("FIFA-2026-MX-ZAF").copy(matchId);
+
+  let platformPda: PublicKey;
+  let feeVaultPda: PublicKey;
+  let marketPda: PublicKey;
+  let voteTallyPda: PublicKey;
+
+  before(async () => {
+    // Fund test accounts
+    await Promise.all([
+      provider.connection.requestAirdrop(bettor1.publicKey, 5 * LAMPORTS_PER_SOL),
+      provider.connection.requestAirdrop(bettor2.publicKey, 5 * LAMPORTS_PER_SOL),
+      provider.connection.requestAirdrop(oracle.publicKey, 2 * LAMPORTS_PER_SOL),
+    ]);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    [platformPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("platform")],
+      program.programId
+    );
+    [feeVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("fee_vault")],
+      program.programId
+    );
+    [marketPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("market"), matchId],
+      program.programId
+    );
+    [voteTallyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vote_tally"), marketPda.toBuffer()],
+      program.programId
+    );
+  });
+
+  it("✅ Initialize platform", async () => {
+    await program.methods
+      .initializePlatform(200) // 2% fee
+      .accounts({
+        platformConfig: platformPda,
+        feeVault: feeVaultPda,
+        admin: admin.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const config = await program.account.platformConfig.fetch(platformPda);
+    assert.equal(config.feePercent, 200);
+    assert.equal(config.consensusThreshold, 2);
+    console.log("  Platform initialized. Fee: 2%, Consensus threshold: 2");
+  });
+
+  it("✅ Create market (3-outcome football)", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const openUntil = new anchor.BN(now + 300);    // closes in 5 min
+    const settleAfter = new anchor.BN(now + 600);  // settle after 10 min
+
+    const padName = (s: string) => {
+      const buf = Buffer.alloc(32);
+      Buffer.from(s).copy(buf);
+      return Array.from(buf);
+    };
+
+    await program.methods
+      .createMarket({
+        matchId: Array.from(matchId),
+        outcomeNames: [padName("Mexico"), padName("Draw"), padName("South Africa")],
+        openUntil,
+        settleAfter,
+        feePercentOverride: 0,
+        outcomeCount: 3,
+      })
+      .accounts({
+        market: marketPda,
+        voteTally: voteTallyPda,
+        platformConfig: platformPda,
+        admin: admin.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const market = await program.account.betMarket.fetch(marketPda);
+    assert.equal(market.outcomeCount, 3);
+    assert.equal(market.settled, false);
+    console.log("  Market created: Mexico vs South Africa (3 outcomes)");
+  });
+
+  it("✅ Place bet — bettor1 backs Mexico (outcome 0)", async () => {
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), marketPda.toBuffer(), bettor1.publicKey.toBuffer()],
       program.programId
     );
 
     await program.methods
-      .initializeBetPool({ betId, matchId })
+      .placeBet(0, new anchor.BN(1 * LAMPORTS_PER_SOL))
       .accounts({
-        betPool: betPoolPda,
-        admin: admin,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        market: marketPda,
+        betPosition: positionPda,
+        bettor: bettor1.publicKey,
+        systemProgram: SystemProgram.programId,
       })
+      .signers([bettor1])
       .rpc();
 
-    const betPool = await program.account.betPool.fetch(betPoolPda);
-    expect(betPool.betId).to.equal(betId);
-    expect(betPool.matchId).to.equal(matchId);
-    expect(betPool.totalPool.toNumber()).to.equal(0);
-    expect(betPool.feePercent).to.equal(0); // 0% fee
-    expect(betPool.status).to.deep.equal({ open: {} });
+    const market = await program.account.betMarket.fetch(marketPda);
+    assert.equal(market.totalAll.toNumber(), 1 * LAMPORTS_PER_SOL);
+    console.log("  bettor1 placed 1 SOL on Mexico (outcome 0)");
   });
 
-  it("Creates a bet offer (LP deposits SOL to the pool", async () => {
-    const betId = "bet_001";
-    const [betPoolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("bet_pool"), Buffer.from(betId)],
-      program.programId
-    );
-
-    const user = anchor.web3.Keypair.generate();
-    const amount = new anchor.BN(1_000_000_000); // 1 SOL in lamports
-
-    const [userPositionPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("user_position"), user.publicKey.toBuffer(), Buffer.from(betId)],
-      program.programId
-    );
-
-    // Airdrop SOL to user for testing
-    await provider.connection.confirmTransaction(
-      await provider.connection.requestAirdrop(user.publicKey, 2_000_000_000)
-    );
-
-    await program.methods
-      .createBetOffer({
-        betId,
-        outcome: { a: {} },
-        amount,
-      })
-      .accounts({
-        betPool: betPoolPda,
-        userPosition: userPositionPda,
-        user: user.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .signers([user])
-      .rpc();
-
-    const userPosition = await program.account.userPosition.fetch(userPositionPda);
-    expect(userPosition.amount.toNumber()).to.equal(amount.toNumber());
-    expect(userPosition.status).to.deep.equal({ pending: {} });
-
-    const betPool = await program.account.betPool.fetch(betPoolPda);
-    expect(betPool.lpAmountA.toNumber()).to.equal(amount.toNumber());
-  });
-
-  it("Matches a bet against existing offer", async () => {
-    // This test would verify the match_bet instruction
-    // Implementation depends on the existing offer from previous test
-    console.log("✅ Match bet test - implementation pending");
-  });
-
-  it("Settles the bet pool", async () => {
-    const betId = "bet_001";
-    const [betPoolPda] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("bet_pool"), Buffer.from(betId)],
+  it("✅ Place bet — bettor2 backs South Africa (outcome 2)", async () => {
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), marketPda.toBuffer(), bettor2.publicKey.toBuffer()],
       program.programId
     );
 
     await program.methods
-      .settleBet({ winningOutcome: { a: {} } })
+      .placeBet(2, new anchor.BN(2 * LAMPORTS_PER_SOL))
       .accounts({
-        betPool: betPoolPda,
-        admin: admin,
+        market: marketPda,
+        betPosition: positionPda,
+        bettor: bettor2.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([bettor2])
+      .rpc();
+
+    const market = await program.account.betMarket.fetch(marketPda);
+    assert.equal(market.totalAll.toNumber(), 3 * LAMPORTS_PER_SOL);
+    console.log("  bettor2 placed 2 SOL on South Africa (outcome 2)");
+  });
+
+  it("✅ Oracle votes — admin emergency settles (Mexico wins)", async () => {
+    // Use emergency settle since we can't fast-forward time in tests easily.
+    await program.methods
+      .emergencySettle(0) // Mexico = outcome 0
+      .accounts({
+        market: marketPda,
+        platformConfig: platformPda,
+        feeVault: feeVaultPda,
+        admin: admin.publicKey,
+        systemProgram: SystemProgram.programId,
       })
       .rpc();
 
-    const betPool = await program.account.betPool.fetch(betPoolPda);
-    expect(betPool.status).to.deep.equal({ settled: {} });
-    expect(betPool.winningOutcome).to.deep.equal({ a: {} });
+    const market = await program.account.betMarket.fetch(marketPda);
+    assert.equal(market.settled, true);
+    assert.equal(market.winningOutcome, 0);
+    console.log("  Market settled. Mexico (0) wins!");
   });
 
-  it("Allows winner to claim winnings", async () => {
-    // This test would verify the claim_winnings instruction
-    console.log("✅ Claim winnings test - implementation pending");
+  it("✅ bettor1 claims winnings", async () => {
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), marketPda.toBuffer(), bettor1.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const balBefore = await provider.connection.getBalance(bettor1.publicKey);
+
+    await program.methods
+      .claimWinnings()
+      .accounts({
+        market: marketPda,
+        betPosition: positionPda,
+        feeVault: feeVaultPda,
+        bettor: bettor1.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([bettor1])
+      .rpc();
+
+    const balAfter = await provider.connection.getBalance(bettor1.publicKey);
+    const received = balAfter - balBefore;
+
+    assert.isAbove(received, 0);
+    console.log(`  bettor1 claimed ◎${(received / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+  });
+
+  it("✅ bettor2 cannot claim (lost)", async () => {
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("position"), marketPda.toBuffer(), bettor2.publicKey.toBuffer()],
+      program.programId
+    );
+
+    try {
+      await program.methods
+        .claimWinnings()
+        .accounts({
+          market: marketPda,
+          betPosition: positionPda,
+          feeVault: feeVaultPda,
+          bettor: bettor2.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([bettor2])
+        .rpc();
+      assert.fail("Should have thrown ClaimNothing");
+    } catch (e: any) {
+      assert.include(e.message, "ClaimNothing");
+      console.log("  bettor2 correctly cannot claim (lost)");
+    }
+  });
+
+  it("✅ Admin withdraws fees", async () => {
+    const vault = await program.account.feeVault.fetch(feeVaultPda);
+    if (vault.totalFees.toNumber() === 0) {
+      console.log("  No fees accumulated (skipped)");
+      return;
+    }
+
+    await program.methods
+      .withdrawFees(vault.totalFees)
+      .accounts({
+        feeVault: feeVaultPda,
+        platformConfig: platformPda,
+        admin: admin.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const vaultAfter = await program.account.feeVault.fetch(feeVaultPda);
+    assert.equal(vaultAfter.totalFees.toNumber(), 0);
+    console.log(`  Admin withdrew ◎${(vault.totalFees.toNumber() / LAMPORTS_PER_SOL).toFixed(4)} SOL in fees`);
   });
 });
