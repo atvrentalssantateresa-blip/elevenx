@@ -118,8 +118,12 @@ export default function MatchDetail() {
       // Validate Solana address format (base58, 32-44 chars)
       const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
       if (!walletAddr || !base58Regex.test(walletAddr)) {
-        throw new Error('Wallet address invalid or corrupted. Please reconnect your wallet.');
+        console.error('Invalid wallet address in localStorage:', walletAddr?.toString().slice(0, 20));
+        // Clear invalid address
+        localStorage.removeItem('elevenx_wallet_session');
+        throw new Error('Wallet address corrupted. Please reconnect your Phantom wallet.');
       }
+      console.log('Using wallet address:', walletAddr);
 
       const response = await base44.functions.invoke('provideLiquidity', {
         bet_id: bet.id,
@@ -163,8 +167,12 @@ export default function MatchDetail() {
       // Validate Solana address format (base58, 32-44 chars)
       const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
       if (!walletAddr || !base58Regex.test(walletAddr)) {
-        throw new Error('Wallet address invalid or corrupted. Please reconnect your wallet.');
+        console.error('Invalid wallet address in localStorage:', walletAddr?.toString().slice(0, 20));
+        // Clear invalid address
+        localStorage.removeItem('elevenx_wallet_session');
+        throw new Error('Wallet address corrupted. Please reconnect your Phantom wallet.');
       }
+      console.log('Using wallet address:', walletAddr);
 
       const response = await base44.functions.invoke('placeBet', {
         bet_id: bet.id,
@@ -555,6 +563,8 @@ export default function MatchDetail() {
                     {!isConnected ? (
                       <Button
                         onClick={async () => {
+                          // Clear any corrupted wallet session first
+                          localStorage.removeItem('elevenx_wallet_session');
                           await connect();
                           setTimeout(() => refreshUser(), 1000);
                         }}
@@ -699,6 +709,8 @@ export default function MatchDetail() {
                     {!isConnected ? (
                       <Button
                         onClick={async () => {
+                          // Clear any corrupted wallet session first
+                          localStorage.removeItem('elevenx_wallet_session');
                           await connect();
                           setTimeout(() => refreshUser(), 1000);
                         }}

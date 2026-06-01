@@ -16,11 +16,20 @@ export function WalletProvider({ children }) {
       try {
         const parsed = JSON.parse(saved);
         const address = parsed.address || parsed;
-        if (address) {
+        // Validate Solana address format (base58, 32-44 chars)
+        const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+        if (address && base58Regex.test(address)) {
           setWalletAddress(address);
           setIsConnected(true);
+        } else {
+          // Clear corrupted address
+          console.error('Corrupted wallet address in localStorage, clearing');
+          localStorage.removeItem(WALLET_SESSION_KEY);
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to parse wallet session:', err);
+        localStorage.removeItem(WALLET_SESSION_KEY);
+      }
     }
   }, []);
 
@@ -41,6 +50,15 @@ export function WalletProvider({ children }) {
     try {
       const resp = await phantom.connect();
       const address = resp.publicKey.toString();
+      
+      // Validate Solana address format (base58, 32-44 chars)
+      const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+      if (!base58Regex.test(address)) {
+        console.error('Invalid wallet address from Phantom:', address);
+        throw new Error('Invalid wallet address format');
+      }
+      
+      console.log('Wallet connected:', address);
       setWalletAddress(address);
       setIsConnected(true);
       localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
