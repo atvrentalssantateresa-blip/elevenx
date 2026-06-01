@@ -220,7 +220,7 @@ export default function Home() {
               className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
             >
               {/* Match photo strip */}
-              <div className="relative h-24 overflow-hidden flex-shrink-0">
+              <div className="relative h-32 overflow-hidden flex-shrink-0">
                 <img
                   src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                   alt="match"
@@ -236,9 +236,9 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="p-4 flex flex-col flex-1">
+              <div className="p-4 flex flex-col flex-1 justify-center">
                 {/* Teams */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div className="text-center flex-1">
                     <div className="text-2xl mb-1">{fm.flag_a}</div>
                     <p className="font-heading font-bold text-xs leading-tight">{fm.team_a}</p>
