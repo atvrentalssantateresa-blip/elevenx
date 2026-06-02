@@ -24,6 +24,7 @@ import Admin from '@/pages/Admin';
 import MatchDetail from '@/pages/MatchDetail.jsx';
 import LpDashboard from '@/pages/LpDashboard';
 import Futures from '@/pages/Futures';
+import RecreateMarket from '@/pages/RecreateMarket';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/lp" element={<LpDashboard />} />
         <Route path="/futures" element={<Futures />} />
+      <Route path="/recreate-market" element={<RecreateMarket />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
