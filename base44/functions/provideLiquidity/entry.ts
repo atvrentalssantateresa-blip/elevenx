@@ -195,6 +195,14 @@ Deno.serve(async (req) => {
       wallet_address: walletAddress,
     });
 
+    // Platform config PDA - use the same derivation as initPlatformConfig
+    const [platformConfigPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('platform_config')],
+      programId
+    );
+
+    console.log('Platform config PDA:', platformConfigPda.toBase58());
+
     return Response.json({
       success: true,
       offerId: offer.id,
@@ -202,8 +210,11 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'provide_liquidity',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(),
+        accounts: {
+          market: marketPda.toBase58(),
+          lpOffer: lpOfferPda.toBase58(),
+          platformConfig: platformConfigPda.toBase58(),
+        },
         outcome: outcomeIndex,
         amountLamports: Math.round(amount * 1_000_000_000),
       },

@@ -153,6 +153,12 @@ Deno.serve(async (req) => {
     // Max payout the offer creator could win = amount * odds
     const max_liability = parseFloat((amount * (odds - 1)).toFixed(6));
 
+    // Derive platform_config PDA
+    const [platformConfigPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('platform_config')],
+      programId
+    );
+
     return Response.json({
       success: true,
       amount,
@@ -161,8 +167,11 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'provide_liquidity',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(),
+        accounts: {
+          market: marketPda.toBase58(),
+          lpOffer: lpOfferPda.toBase58(),
+          platformConfig: platformConfigPda.toBase58(),
+        },
         outcome: outcomeIndex,
         amountLamports,
       },

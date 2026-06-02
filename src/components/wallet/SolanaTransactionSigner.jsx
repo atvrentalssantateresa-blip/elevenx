@@ -174,12 +174,26 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('Creating provide_liquidity program instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
-        const keys = [
-          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
-          { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
-          { pubkey: provider.publicKey, isSigner: true, isWritable: true },
-          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
-        ];
+        
+        // Build keys in the EXACT order required by the Rust ProvideLiquidity struct:
+        // market, lp_offer, platform_config, lp (signer), system_program
+        const keys = [];
+        if (instruction.accounts) {
+          const accounts = instruction.accounts;
+          keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
+          keys.push({ pubkey: new PublicKey(accounts.lpOffer), isSigner: false, isWritable: true });
+          if (accounts.platformConfig) {
+            keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
+          }
+          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // lp signer
+          keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }); // system_program
+        } else {
+          // Fallback for legacy format
+          keys.push({ pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true });
+          keys.push({ pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true });
+          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true });
+          keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false });
+        }
         
         // Anchor discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
         const disc = await anchorDiscriminator('provide_liquidity');
