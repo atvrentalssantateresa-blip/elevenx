@@ -16,11 +16,23 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
   const [instruction, setInstruction] = useState(null);
   const [showSigner, setShowSigner] = useState(false);
   const [createMarketMutation, setCreateMarketMutation] = useState({ isPending: false });
-  const [initPlatformMutation, setInitPlatformMutation] = useState({ isPending: false });
+  const [isInitializingPlatform, setIsInitializingPlatform] = useState(false);
 
   useEffect(() => {
     checkMarketStatus();
   }, [match_id]);
+
+  const checkMarketStatus = async () => {
+    try {
+      console.log('[ProvideLiquidityPanel] Checking market status for match:', match_id);
+      const response = await base44.functions.invoke('checkMarketStatus', { match_id });
+      console.log('[ProvideLiquidityPanel] Market status response:', response.data);
+      setMarketStatus(response.data);
+    } catch (err) {
+      console.error('[ProvideLiquidityPanel] checkMarketStatus error:', err);
+      setMarketStatus({ status: 'error', message: err.message });
+    }
+  };
 
   const handleCreateMarket = async () => {
     setCreateMarketMutation({ isPending: true });
@@ -35,66 +47,42 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       console.log('[ProvideLiquidityPanel] createMarketOnChain response:', response.data);
       
       // Check if platform needs initialization
-      if (response.data.needsPlatformInit) {
-        console.log('[ProvideLiquidityPanel] Platform config not initialized');
-        // Store the platform init instruction for signing
-        if (response.data.solana_instruction) {
-          setInstruction(response.data.solana_instruction);
-          setShowSigner(true);
-        } else {
-          setError('Platform not initialized. Admin must initialize platform first.');
-        }
+      if (response.data.needsPlatformInit && response.data.solana_instruction) {
+        console.log('[ProvideLiquidityPanel] Platform config not initialized - showing init transaction');
+        const instr = {
+          ...response.data.solana_instruction,
+          needsPlatformInit: true,
+        };
+        setInstruction(instr);
+        setIsInitializingPlatform(true);
+        setShowSigner(true);
         setCreateMarketMutation({ isPending: false });
         return;
       }
       
-      // Check if platform config account doesn't exist (error 3007 scenario)
-      if (response.data.solana_instruction && response.data.solana_instruction.accounts?.platformConfig) {
-        // Platform config PDA exists in response, but may not be initialized on-chain
-        // The transaction will fail with 3007 if platform isn't initialized
-        console.log('[ProvideLiquidityPanel] Platform config PDA:', response.data.solana_instruction.accounts.platformConfig);
-      }
-      
       if (response.data.error) {
         setError(response.data.error);
-      } else if (response.data.solana_instruction) {
-        // Need to sign transaction to create market
-        console.log('[ProvideLiquidityPanel] Setting instruction for Phantom signing:', response.data.solana_instruction);
+        setCreateMarketMutation({ isPending: false });
+        return;
+      }
+      
+      if (response.data.solana_instruction) {
+        console.log('[ProvideLiquidityPanel] Setting instruction for market creation:', response.data.solana_instruction);
         const instr = {
           ...response.data.solana_instruction,
-          amount: 0, // No SOL amount for market creation
+          amount: 0,
         };
         setInstruction(instr);
         setShowSigner(true);
       } else {
-        // Market already exists
         console.log('[ProvideLiquidityPanel] Market already exists, refreshing status');
         await checkMarketStatus();
       }
     } catch (err) {
       console.error('[ProvideLiquidityPanel] handleCreateMarket error:', err);
-      const errorMsg = err.message || 'Failed to create market';
-      
-      // Check if it's a platform config error
-      if (errorMsg.includes('3007') || errorMsg.includes('Platform config')) {
-        setError('Platform not initialized. Admin must initialize platform first.');
-      } else {
-        setError(errorMsg);
-      }
+      setError(err.message || 'Failed to create market');
     } finally {
       setCreateMarketMutation({ isPending: false });
-    }
-  };
-
-  const checkMarketStatus = async () => {
-    try {
-      console.log('[ProvideLiquidityPanel] Checking market status for match:', match_id);
-      const response = await base44.functions.invoke('checkMarketStatus', { match_id });
-      console.log('[ProvideLiquidityPanel] Market status response:', response.data);
-      setMarketStatus(response.data);
-    } catch (err) {
-      console.error('[ProvideLiquidityPanel] checkMarketStatus error:', err);
-      setMarketStatus({ status: 'error', message: err.message });
     }
   };
 
@@ -136,22 +124,24 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       setInstruction(null);
       setShowSigner(false);
       
-      // Wait a bit for Solana to propagate the change
-      console.log('Waiting 3 seconds for Solana to propagate...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // If platform was just initialized, proceed to create market
       if (isPlatformInit) {
-        console.log('Platform initialized, now creating market...');
+        setIsInitializingPlatform(false);
+        console.log('Platform initialized, waiting 5 seconds before creating market...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.log('Now creating market...');
+        setError(null);
         await handleCreateMarket();
         return;
       }
       
-      // Refresh market status after transaction
-      console.log('Checking market status after transaction...');
+      console.log('Market creation completed, waiting 5 seconds for Solana to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      console.log('Checking market status after market creation...');
       await checkMarketStatus();
     } catch (err) {
       console.error('Failed to finalize:', err);
+      setError(err.message);
     }
   };
 
@@ -159,7 +149,6 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
   const oddsField = selectedOutcome === 'a' ? 'oracle_odds_a' : selectedOutcome === 'b' ? 'oracle_odds_b' : 'oracle_odds_draw';
   const oddsBps = bet[oddsField] || 200;
 
-  // Render based on market status
   if (!marketStatus) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -182,7 +171,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
           <SolanaTransactionSigner
             instruction={instruction}
             amount={0}
-            isPlatformInit={instruction.needsPlatformInit || false}
+            isPlatformInit={isInitializingPlatform}
             onSuccess={handleTransactionSuccess}
             onError={(err) => setError(err.message)}
           />
@@ -229,7 +218,6 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
     );
   }
 
-  // Market is initialized - show liquidity form
   return (
     <div className="space-y-4">
       {marketStatus.status === 'initialized' && (
@@ -295,15 +283,12 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       )}
 
       {showSigner && instruction ? (
-        <>
-          {console.log('[ProvideLiquidityPanel] Rendering SolanaTransactionSigner with instruction:', instruction)}
-          <SolanaTransactionSigner
-            instruction={instruction}
-            amount={instruction.instruction_type === 'create_market' ? 0 : amount}
-            onSuccess={handleTransactionSuccess}
-            onError={(err) => setError(err.message)}
-          />
-        </>
+        <SolanaTransactionSigner
+          instruction={instruction}
+          amount={instruction.instruction_type === 'create_market' ? 0 : amount}
+          onSuccess={handleTransactionSuccess}
+          onError={(err) => setError(err.message)}
+        />
       ) : (
         <Button
           className="w-full"
