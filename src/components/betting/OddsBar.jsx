@@ -1,17 +1,25 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+// Helper to convert country code to flag emoji
+function getFlagEmoji(countryCode) {
+  if (!countryCode) return '🏳️';
+  const code = countryCode.toUpperCase();
+  return code.split('').map(c => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('');
+}
+
 /**
  * Fixed-odds outcome selector.
  * Shows oracle-fixed odds (e.g. 2.10x) for each outcome and available LP liquidity.
  */
-export default function OddsBar({ bet, selected, onSelect, canSelect = true }) {
+export default function OddsBar({ bet, match, selected, onSelect, canSelect = true }) {
   if (!bet) return null;
 
   const outcomes = [
     {
       key: 'a',
       label: bet.outcome_a,
+      flag: getFlagEmoji(match?.team_a_flag),
       oddsBps: bet.oracle_odds_a || 200,
       liquidity: bet.lp_amount_a || 0,
       matched: bet.backed_amount_a || 0,
@@ -20,6 +28,7 @@ export default function OddsBar({ bet, selected, onSelect, canSelect = true }) {
     ...(bet.outcome_draw ? [{
       key: 'draw',
       label: bet.outcome_draw || 'Draw',
+      flag: '🤝',
       oddsBps: bet.oracle_odds_draw || 300,
       liquidity: bet.lp_amount_draw || 0,
       matched: bet.backed_amount_draw || 0,
@@ -28,6 +37,7 @@ export default function OddsBar({ bet, selected, onSelect, canSelect = true }) {
     {
       key: 'b',
       label: bet.outcome_b,
+      flag: getFlagEmoji(match?.team_b_flag),
       oddsBps: bet.oracle_odds_b || 300,
       liquidity: bet.lp_amount_b || 0,
       matched: bet.backed_amount_b || 0,
@@ -61,7 +71,10 @@ export default function OddsBar({ bet, selected, onSelect, canSelect = true }) {
                   : 'border-border/50 bg-card hover:border-border'
               } ${!canSelect ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
             >
-              <p className="font-heading font-bold text-sm truncate">{o.label}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">{o.flag}</span>
+                <p className="font-heading font-bold text-sm truncate">{o.label}</p>
+              </div>
 
               {/* Fixed odds — the headline number */}
               <p className={`text-2xl font-heading font-black mt-1 ${isSelected ? c.text : 'text-foreground'}`}>

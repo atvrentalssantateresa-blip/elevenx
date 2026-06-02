@@ -145,6 +145,7 @@ export default function BetDetail() {
         <h3 className="font-heading font-bold text-sm mb-4">Fixed Odds</h3>
         <OddsBar
           bet={bet}
+          match={match}
           selected={selectedOutcome}
           onSelect={setSelectedOutcome}
           canSelect={isOpen && !myBet && isConnected}
