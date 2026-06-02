@@ -40,15 +40,27 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       if (instruction.instruction_type === 'initialize_platform') {
         // Initialize platform config
         console.log('Creating initialize_platform instruction:', instruction);
+        console.log('Full instruction object:', JSON.stringify(instruction, null, 2));
         console.log('Platform config PDA:', instruction.accounts?.platformConfig);
         console.log('Fee vault PDA:', instruction.accounts?.feeVault);
         console.log('Program ID:', instruction.programId);
         console.log('Admin signer:', provider.publicKey.toBase58());
         
         try {
+          // Validate all required fields exist
+          if (!instruction.programId) throw new Error('Missing programId');
+          if (!instruction.accounts?.platformConfig) throw new Error('Missing accounts.platformConfig');
+          if (!instruction.accounts?.feeVault) throw new Error('Missing accounts.feeVault');
+          
           const programId = new PublicKey(instruction.programId);
           const platformPda = new PublicKey(instruction.accounts.platformConfig);
           const feeVaultPda = new PublicKey(instruction.accounts.feeVault);
+          
+          console.log('PublicKeys created:', {
+            programId: programId.toBase58(),
+            platformPda: platformPda.toBase58(),
+            feeVaultPda: feeVaultPda.toBase58(),
+          });
           
           const keys = [
             { pubkey: platformPda, isSigner: false, isWritable: true }, // platform_config
@@ -75,6 +87,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           transaction.add(initIx);
         } catch (ixError) {
           console.error('Failed to create initialize_platform instruction:', ixError);
+          console.error('Instruction object was:', instruction);
           throw new Error('Failed to create instruction: ' + ixError.message);
         }
         
