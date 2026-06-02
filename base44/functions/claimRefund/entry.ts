@@ -47,10 +47,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Market has not been settled yet' }, { status: 400 });
     }
 
-    // Get wallet address
-    const walletAddress = userBet.wallet_address;
+    // Get wallet address - try UserBet first, then fall back to BetOffer for LPs
+    let walletAddress = userBet.wallet_address;
+    
+    if (!walletAddress && userBet.role === 'lp' && userBet.offer_id) {
+      // For LPs, get wallet from BetOffer
+      const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
+      const offer = offers[0];
+      if (offer && offer.lp_wallet_address) {
+        walletAddress = offer.lp_wallet_address;
+      }
+    }
+    
     if (!walletAddress) {
-      return Response.json({ error: 'No wallet address associated with this bet' }, { status: 400 });
+      console.error('Claim refund failed - UserBet:', userBetId, 'role:', userBet.role, 'offer_id:', userBet.offer_id, 'wallet_address:', userBet.wallet_address);
+      return Response.json({ error: 'No wallet address found. Please ensure your wallet is connected and try again.' }, { status: 400 });
     }
     
     if (!base58Regex.test(walletAddress)) {

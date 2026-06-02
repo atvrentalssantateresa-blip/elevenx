@@ -129,10 +129,11 @@ Deno.serve(async (req) => {
       outcome: matcherOutcome,
       amount,
       role: 'matcher',
-      status: 'pending', // Changed from 'active' - will update after signing
+      status: 'pending',
       outcome_label: matcherLabel,
       match_title: `${match.team_a} vs ${match.team_b}`,
       potential_payout: potentialPayout,
+      wallet_address: walletAddress,
       solana_position_pda: matcherPositionPda.toBase58(),
     });
 
