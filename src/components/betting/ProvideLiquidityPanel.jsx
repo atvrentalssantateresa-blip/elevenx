@@ -14,6 +14,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [instruction, setInstruction] = useState(null);
+  const [showSigner, setShowSigner] = useState(false);
   const [createMarketMutation, setCreateMarketMutation] = useState({ isPending: false });
 
   useEffect(() => {
@@ -37,10 +38,12 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       } else if (response.data.solana_instruction) {
         // Need to sign transaction to create market
         console.log('[ProvideLiquidityPanel] Setting instruction for Phantom signing:', response.data.solana_instruction);
-        setInstruction({
+        const instr = {
           ...response.data.solana_instruction,
           amount: 0, // No SOL amount for market creation
-        });
+        };
+        setInstruction(instr);
+        setShowSigner(true);
       } else {
         // Market already exists
         console.log('[ProvideLiquidityPanel] Market already exists, refreshing status');
@@ -103,6 +106,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       console.log('Transaction successful:', signature);
       setAmount('');
       setInstruction(null);
+      setShowSigner(false);
       // Refresh market status after transaction
       await checkMarketStatus();
       // If this was a market creation, the user might want to provide liquidity
@@ -243,7 +247,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         </Alert>
       )}
 
-      {instruction ? (
+      {showSigner && instruction ? (
         <>
           {console.log('[ProvideLiquidityPanel] Rendering SolanaTransactionSigner with instruction:', instruction)}
           <SolanaTransactionSigner
