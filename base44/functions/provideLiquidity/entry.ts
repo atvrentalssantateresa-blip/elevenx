@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Check if market exists on-chain
+    // Check if market exists on-chain and is properly initialized
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     const marketInfo = await connection.getAccountInfo(marketPda);
     if (!marketInfo) {
@@ -76,7 +76,19 @@ Deno.serve(async (req) => {
         marketPda: marketPda.toBase58()
       }, { status: 400 });
     }
-    console.log('Market account exists on-chain, size:', marketInfo.data.length);
+    
+    // BetMarket struct should be ~215 bytes (8 discriminator + 207 data)
+    const expectedMinSize = 200;
+    if (marketInfo.data.length < expectedMinSize) {
+      return Response.json({ 
+        error: 'Market account exists but is not properly initialized. The market creation may have failed. Please contact support.',
+        marketPda: marketPda.toBase58(),
+        actualSize: marketInfo.data.length,
+        expectedSize: expectedMinSize
+      }, { status: 400 });
+    }
+    
+    console.log('Market account properly initialized, size:', marketInfo.data.length);
 
     // Fetch market account data to check the stored bump
     const marketAccountInfo = await connection.getAccountInfo(marketPda);
@@ -171,6 +183,7 @@ Deno.serve(async (req) => {
       oddsBps,
       solana_instruction: {
         instruction_type: 'provide_liquidity',
+        programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
         lpOfferPda: lpOfferPda.toBase58(),
         outcome: outcomeIndex,

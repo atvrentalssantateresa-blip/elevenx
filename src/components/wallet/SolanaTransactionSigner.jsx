@@ -65,8 +65,36 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         transaction.add(claimIx);
         
-      } else if (instruction.instruction_type === 'place_bet' || instruction.instruction_type === 'provide_liquidity') {
-        // place_bet / provide_liquidity — transfer SOL from user to market PDA (escrow)
+      } else if (instruction.instruction_type === 'provide_liquidity') {
+        // provide_liquidity — call the actual program instruction
+        console.log('Creating provide_liquidity program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId || 'ElevenXProgramID1111111111111111111111111');
+        const keys = [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true },
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
+        ];
+        
+        // Anchor 8-byte discriminator for provide_liquidity (instruction index 4)
+        // Plus params: outcome (u8) + amount (u64)
+        const data = Buffer.alloc(17);
+        data.writeUInt32LE(4, 0); // instruction index
+        data.writeUInt32LE(0, 4); // padding
+        data.writeUInt8(instruction.outcome, 8); // outcome parameter
+        data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9); // amount parameter
+        
+        const provideIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(provideIx);
+        
+      } else if (instruction.instruction_type === 'place_bet') {
+        // place_bet — transfer SOL from user to market PDA (escrow)
         const fromPubkey = provider.publicKey;
         const toPubkey = new PublicKey(instruction.marketPda || instruction.betPoolPda);
 
