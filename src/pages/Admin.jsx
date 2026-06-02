@@ -81,16 +81,26 @@ export default function Admin() {
 
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
+      console.log('[Admin] Initializing platform config...');
       const response = await base44.functions.invoke('initPlatformConfig', {});
+      console.log('[Admin] initPlatformConfig response:', response.data);
       if (response.data.error) throw new Error(response.data.error);
       return response.data;
     },
     onSuccess: (data) => {
+      console.log('[Admin] Mutation onSuccess:', data);
       if (data.alreadyExists) {
         alert('Platform config already initialized on-chain');
       } else if (data.solana_instruction) {
+        console.log('[Admin] Setting pendingPlatformInit:', data.solana_instruction);
         setPendingPlatformInit(data.solana_instruction);
+      } else {
+        alert('Unexpected response: ' + JSON.stringify(data));
       }
+    },
+    onError: (err) => {
+      console.error('[Admin] initPlatformMutation error:', err);
+      alert('Failed to initialize platform: ' + err.message);
     },
   });
 
