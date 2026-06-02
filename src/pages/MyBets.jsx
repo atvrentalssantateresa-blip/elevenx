@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight, Wallet } from 'lucide-react';
-import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -155,8 +154,6 @@ function BetRow({ bet, index, walletAddress }) {
   const config = statusConfig[displayStatus] || statusConfig.active;
   const StatusIcon = config.icon;
 
-  const [pendingTx, setPendingTx] = useState(null);
-
   const claimMutation = useMutation({
     mutationFn: () => base44.functions.invoke('claimWinnings', { userBetId: bet.id }),
     onSuccess: () => {
@@ -171,48 +168,17 @@ function BetRow({ bet, index, walletAddress }) {
         walletAddress,
       });
       if (response.data.error) throw new Error(response.data.error);
-      if (!response.data.solana_instruction) throw new Error('No solana_instruction returned');
-      return { response, amount: response.data.amount, userBetId: bet.id };
+      return { amount: response.data.amount, userBetId: bet.id };
     },
-    onSuccess: (result) => {
-      setPendingTx({
-        instruction: result.response.data.solana_instruction,
-        amount: result.amount,
-        userBetId: result.userBetId,
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBets'] });
+      alert('Withdrawal successful!');
     },
     onError: (error) => {
       const backendError = error.response?.data?.error || error.message || 'Unknown error';
       alert('Failed to withdraw: ' + backendError);
     },
   });
-
-  const handleTransactionSuccess = async (result) => {
-    // Update database records after successful transaction
-    if (pendingTx?.userBetId) {
-      const ub = await base44.entities.UserBet.list().then(bets => bets.find(b => b.id === pendingTx.userBetId));
-      if (ub) {
-        await base44.entities.UserBet.update(ub.id, { status: 'refunded' });
-        if (ub.offer_id) {
-          await base44.entities.BetOffer.update(ub.offer_id, { status: 'cancelled' });
-        }
-        const lpField = ub.outcome === 'a' ? 'lp_amount_a' : ub.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
-        const currentBet = await base44.entities.Bet.list().then(bets => bets.find(b => b.id === ub.bet_id));
-        if (currentBet) {
-          await base44.entities.Bet.update(ub.bet_id, {
-            [lpField]: Math.max(0, (currentBet[lpField] || 0) - (ub.amount || 0)),
-          });
-        }
-      }
-    }
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    setPendingTx(null);
-  };
-
-  const handleTransactionError = (err) => {
-    console.error('Withdraw transaction failed:', err);
-    setPendingTx(null);
-  };
 
   const isWonAndClaimable = bet.status === 'won';
   
@@ -261,36 +227,25 @@ function BetRow({ bet, index, walletAddress }) {
           ) : canWithdraw ? (
             <>
               <span className="text-sm font-bold text-yellow-400">◎{bet.amount?.toFixed(4)}</span>
-              {pendingTx?.userBetId === bet.id ? (
-                <SolanaTransactionSigner
-                  instruction={pendingTx.instruction}
-                  amount={pendingTx.amount}
-                  userBetId={pendingTx.userBetId}
-                  isOffer={false}
-                  onSuccess={handleTransactionSuccess}
-                  onError={handleTransactionError}
-                />
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (confirm('Withdraw your unmatched LP offer? Your funds will be refunded.')) {
-                      withdrawMutation.mutate();
-                    }
-                  }}
-                  disabled={withdrawMutation.isPending}
-                  className="h-8 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold rounded-lg border border-yellow-500/30"
-                >
-                  {withdrawMutation.isPending ? (
-                    <div className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Withdraw
-                    </>
-                  )}
-                </Button>
-              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (confirm('Withdraw your unmatched LP offer? Your funds will be refunded.')) {
+                    withdrawMutation.mutate();
+                  }
+                }}
+                disabled={withdrawMutation.isPending}
+                className="h-8 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold rounded-lg border border-yellow-500/30"
+              >
+                {withdrawMutation.isPending ? (
+                  <div className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Wallet className="w-3 h-3 mr-1" />
+                    Withdraw
+                  </>
+                )}
+              </Button>
             </>
           ) : (
             <>

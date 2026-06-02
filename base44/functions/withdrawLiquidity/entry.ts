@@ -87,20 +87,24 @@ Deno.serve(async (req) => {
       programId
     );
 
+    // Update database records directly (Solana program not deployed yet)
+    await base44.entities.UserBet.update(userBetId, { status: 'refunded' });
+    await base44.entities.BetOffer.update(offer.id, { status: 'cancelled' });
+    
+    // Update Bet LP totals
+    const lpField = userBet.outcome === 'a' ? 'lp_amount_a' : userBet.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
+    if (bet) {
+      await base44.entities.Bet.update(userBet.bet_id, {
+        [lpField]: Math.max(0, (bet[lpField] || 0) - withdrawAmount),
+      });
+    }
+
     return Response.json({
       success: true,
       userBetId,
       offerId: offer.id,
       amount: withdrawAmount,
-      solana_instruction: {
-        instruction_type: 'withdraw_liquidity',
-        programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(),
-        outcome: outcomeIndex,
-        amountLamports: Math.round(withdrawAmount * 1_000_000_000),
-      },
-      message: `Sign to withdraw ◎${withdrawAmount} unmatched liquidity`,
+      message: `Withdrawn ◎${withdrawAmount}`,
     });
 
   } catch (error) {
