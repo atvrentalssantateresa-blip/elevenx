@@ -211,26 +211,58 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('Transaction confirmation result:', confirmation);
       } catch (confirmError) {
         console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);
-        // Extract on-chain error from the error object
-        let onChainErr = confirmError.value?.err || confirmError.err;
         
-        // Check if error is directly in confirmError.value
-        if (confirmError.value && typeof confirmError.value === 'object' && !onChainErr) {
-          onChainErr = confirmError.value;
+        // Extract on-chain error code from various possible locations
+        let customCode = null;
+        
+        // Check confirmError directly for InstructionError
+        if (confirmError.InstructionError) {
+          customCode = confirmError.InstructionError[1]?.Custom;
         }
         
-        // If error is nested differently, try to find it
-        if (!onChainErr && confirmError.message && confirmError.message.includes('Custom')) {
+        // Check nested in value
+        if (!customCode && confirmError.value?.InstructionError) {
+          customCode = confirmError.value.InstructionError[1]?.Custom;
+        }
+        
+        // Check nested in err
+        if (!customCode && confirmError.err?.InstructionError) {
+          customCode = confirmError.err.InstructionError[1]?.Custom;
+        }
+        
+        // Try parsing from message
+        if (!customCode && confirmError.message) {
           const match = confirmError.message.match(/Custom["\s:]*(\d+)/);
           if (match) {
-            throw new Error(`On-chain program error code ${match[1]}. Check your Solana program.`);
+            customCode = parseInt(match[1]);
           }
         }
         
-        if (onChainErr && onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
-          const customCode = onChainErr.InstructionError[1].Custom;
-          throw new Error(`On-chain program error code ${customCode}. Check your Solana program.`);
+        if (customCode !== null) {
+          const errorMessages = {
+            100: 'Betting window has closed for this market',
+            101: 'Market has already been settled',
+            102: 'Market has been voided',
+            103: 'Stake amount must be greater than zero',
+            104: 'Invalid outcome index',
+            105: 'Too early to settle this market',
+            106: 'Market is paused',
+            107: 'Fee percentage exceeds maximum (5%)',
+            108: 'Invalid market timeline',
+            109: 'Nothing to claim',
+            110: 'Nothing to refund',
+            111: 'Market is not voided',
+            112: 'Oracle has already voted',
+            113: 'Insufficient oracle consensus',
+            114: 'Invalid outcome count',
+            115: 'Market is already initialized',
+            116: 'Arithmetic overflow',
+            117: 'Unauthorized',
+          };
+          const errorMsg = errorMessages[customCode] || `Unknown program error`;
+          throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
         }
+        
         throw new Error('Transaction confirmation failed: ' + (confirmError.message || 'Unknown error'));
       }
 
