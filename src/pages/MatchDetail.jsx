@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import ProvideLiquidityPanel from '@/components/betting/ProvideLiquidityPanel';
+import { calculateParimutuelOdds, formatOdds } from '@/utils/parimutuel';
 
 // Convert country code to emoji flag
 const getFlagEmoji = (countryCode) => {
@@ -29,14 +29,17 @@ function totalAvailable(offers, outcome) {
     .reduce((s, o) => s + (o.amount_unmatched || 0), 0);
 }
 
-// Oracle odds (from bet entity) take precedence; fall back to computed ratio only as display hint
-function getOracleOdds(bet) {
+// Pari-mutuel odds: calculated from pool ratios
+function getParimutuelOdds(bet) {
   if (!bet) return { oddsA: null, oddsB: null, oddsDraw: null };
-  return {
-    oddsA:    bet.oracle_odds_a    ? bet.oracle_odds_a / 100    : null,
-    oddsB:    bet.oracle_odds_b    ? bet.oracle_odds_b / 100    : null,
-    oddsDraw: bet.oracle_odds_draw ? bet.oracle_odds_draw / 100 : null,
-  };
+  
+  const poolA = bet.pool_a || 0;
+  const poolB = bet.pool_b || 0;
+  const poolDraw = bet.pool_draw || 0;
+  const totalPool = bet.total_pool || 0;
+  const feePercent = bet.fee_percent || 200;
+  
+  return calculateParimutuelOdds(poolA, poolB, poolDraw, totalPool, feePercent);
 }
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
@@ -143,9 +146,8 @@ export default function MatchDetail() {
         outcome_b: match.team_b,
         outcome_draw: 'Draw',
         status: 'open',
-        lp_amount_a: 0, lp_amount_b: 0, lp_amount_draw: 0,
-        backed_amount_a: 0, backed_amount_b: 0, backed_amount_draw: 0,
-        total_pool: 0, total_bettors: 0, fee_percent: FEE_BPS,
+        pool_a: 0, pool_b: 0, pool_draw: 0,
+        total_pool: 0, total_bettors: 0, fee_percent: 200,
       });
       
       console.log('[MatchDetail] Bet created with ID:', newBet.id);
@@ -411,15 +413,11 @@ export default function MatchDetail() {
   const isOpen = bet?.status === 'open';
   const isSettled = bet?.status === 'settled';
 
-  const totalLpA = bet ? (bet.lp_amount_a || 0) : 0;
-  const totalLpB = bet ? (bet.lp_amount_b || 0) : 0;
-  const totalLpDraw = bet ? (bet.lp_amount_draw || 0) : 0;
-  const avA = bet ? (bet.lp_amount_a || 0) - (bet.backed_amount_a || 0) : 0;
-  const avB = bet ? (bet.lp_amount_b || 0) - (bet.backed_amount_b || 0) : 0;
-  const avDraw = bet ? (bet.lp_amount_draw || 0) - (bet.backed_amount_draw || 0) : 0;
-  const { oddsA, oddsB, oddsDraw } = getOracleOdds(bet);
-  const totalLiquidity = avA + avB + avDraw;
-  const totalPool = totalLpA + totalLpB + totalLpDraw;
+  const poolA = bet ? (bet.pool_a || 0) : 0;
+  const poolB = bet ? (bet.pool_b || 0) : 0;
+  const poolDraw = bet ? (bet.pool_draw || 0) : 0;
+  const totalPool = bet ? (bet.total_pool || 0) : 0;
+  const { oddsA, oddsB, oddsDraw } = getParimutuelOdds(bet);
 
   const stakeNum = parseFloat(amount) || 0;
   const matchOdds = selectedOutcome === 'a' ? oddsA : selectedOutcome === 'b' ? oddsB : oddsDraw;
@@ -432,9 +430,9 @@ export default function MatchDetail() {
   const matchPayout = stakeNum + matchWin - matchFee;
 
   const OUTCOMES = [
-    { key: 'a',    label: bet?.outcome_a || match.team_a, flag: getFlagEmoji(match.team_a_flag), odds: oddsA,    available: avA,    totalLp: totalLpA,    color: 'primary' },
-    { key: 'draw', label: 'Draw',                          flag: '🤝',                            odds: oddsDraw, available: avDraw, totalLp: totalLpDraw, color: 'yellow'  },
-    { key: 'b',    label: bet?.outcome_b || match.team_b,  flag: getFlagEmoji(match.team_b_flag), odds: oddsB,    available: avB,    totalLp: totalLpB,    color: 'accent'  },
+    { key: 'a',    label: bet?.outcome_a || match.team_a, flag: getFlagEmoji(match.team_a_flag), odds: oddsA,    pool: poolA,    color: 'primary' },
+    { key: 'draw', label: 'Draw',                          flag: '🤝',                            odds: oddsDraw, pool: poolDraw, color: 'yellow'  },
+    { key: 'b',    label: bet?.outcome_b || match.team_b,  flag: getFlagEmoji(match.team_b_flag), odds: oddsB,    pool: poolB,    color: 'accent'  },
   ];
 
   const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched' || o.status === 'pending');
@@ -546,14 +544,9 @@ export default function MatchDetail() {
                 }`}>
                   {o.odds !== null ? `${o.odds.toFixed(2)}x` : '—'}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {o.odds !== null ? 'oracle fixed odds' : 'odds not set'}
-                </p>
                 <div className="flex items-center justify-center gap-2 mt-1">
-                  <span className="text-[10px] font-bold text-foreground">◎{o.totalLp.toFixed(2)} LP</span>
-                  {o.available > 0 && (
-                    <span className="text-[10px] text-accent">· ◎{o.available.toFixed(2)} unmatched</span>
-                  )}
+                  <span className="text-[10px] font-bold text-foreground">◎{o.pool.toFixed(2)} pooled</span>
+                  {o.odds && <span className="text-[10px] text-accent">· {o.odds.toFixed(2)}x</span>}
                 </div>
               </div>
             ))}
@@ -561,53 +554,20 @@ export default function MatchDetail() {
 
           {totalPool > 0 && (
             <div className="text-xs text-center">
-              <span className="font-bold text-foreground">◎{totalPool.toFixed(2)} total LP</span>
-              {totalLiquidity > 0 && (
-                <span className="text-muted-foreground"> · <span className="text-accent">◎{totalLiquidity.toFixed(2)} unmatched</span></span>
-              )}
+              <span className="font-bold text-foreground">◎{totalPool.toFixed(2)} total pool</span>
             </div>
           )}
 
-          {totalLiquidity === 0 && (
+          {totalPool === 0 && (
             <div className="text-center py-2 text-xs text-muted-foreground bg-secondary/30 rounded-xl px-4">
-              No open offers yet — be the first to provide liquidity below!
+              No bets yet — be the first to bet!
             </div>
           )}
+          
+          <div className="text-[10px] text-center text-muted-foreground mt-2">
+            Odds update dynamically based on pool ratios (pari-mutuel)
+          </div>
         </motion.div>
-      )}
-
-      {/* ── How It Works (collapsible) — shown right after odds ── */}
-      {hasBet && isOpen && (
-        <div className="bg-card border border-border/50 rounded-2xl overflow-hidden">
-          <button
-            onClick={() => setShowHowItWorks(v => !v)}
-            className="w-full flex items-center justify-between p-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span className="flex items-center gap-2"><Info className="w-4 h-4" /> How does P2P betting work?</span>
-            {showHowItWorks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-          <AnimatePresence>
-            {showHowItWorks && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden">
-                <div className="px-4 pb-4 grid gap-3">
-                  <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
-                    <p className="text-xs font-bold text-primary mb-1">🏦 Open an Offer (be the "house")</p>
-                    <p className="text-xs text-muted-foreground">Put up funds backing an outcome (e.g. Mexico wins). You collect the other person's stake if you're right. Others bet against you.</p>
-                  </div>
-                  <div className="bg-accent/5 border border-accent/15 rounded-xl p-3">
-                    <p className="text-xs font-bold text-accent mb-1">🎯 Match a Bet (bet against an offer)</p>
-                    <p className="text-xs text-muted-foreground">Pick your outcome and stake against someone else's open offer. Odds are determined by the ratio of liquidity on each side.</p>
-                  </div>
-                  <div className="bg-secondary/50 rounded-xl p-3">
-                    <p className="text-xs font-bold text-foreground mb-1">💡 Odds explained</p>
-                    <p className="text-xs text-muted-foreground">Odds = how much you win per ◎1 staked. 2.00x means stake ◎10, win ◎10 profit (◎20 total). A 2% fee applies to winnings only.</p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       )}
 
       {/* ── Action Panel ── */}
@@ -615,44 +575,14 @@ export default function MatchDetail() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-card border border-primary/20 rounded-2xl p-5">
 
-          {/* Mode selector */}
-          {!mode && (
-            <div className="space-y-3">
+          <div className="space-y-4">
+            <div>
               <h3 className="font-heading font-bold text-base mb-1">Place a Bet</h3>
-              <p className="text-xs text-muted-foreground mb-4">Choose how you want to participate in this market.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setMode('offer')}
-                  className="flex flex-col items-start gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 hover:border-primary/60 transition-all text-left">
-                  <div className="flex items-center gap-2">
-                    <Plus className="w-5 h-5 text-primary" />
-                    <p className="font-heading font-bold text-sm text-primary">Open Offer</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">Back an outcome with your funds. Others bet against you. You earn their stake if you're right.</p>
-                </button>
-                <button onClick={() => setMode('match')} disabled={totalLiquidity <= 0}
-                  className="flex flex-col items-start gap-2 rounded-xl border-2 border-accent/30 bg-accent/5 p-4 hover:border-accent/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-left">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-accent" />
-                    <p className="font-heading font-bold text-sm text-accent">Match a Bet</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {totalLiquidity > 0
-                      ? 'Bet against an open offer. Pick your outcome and stake at live odds.'
-                      : 'No open offers yet. Be the first to open one!'}
-                  </p>
-                </button>
-              </div>
+              <p className="text-xs text-muted-foreground">Pick your outcome and stake amount. Odds update dynamically as the pool grows.</p>
             </div>
-          )}
 
-          {/* OFFER MODE - Using ProvideLiquidityPanel */}
-          {mode === 'offer' && (
-            <ProvideLiquidityPanel bet={bet} match={match} match_id={matchId} />
-          )}
-
-          {/* MATCH MODE */}
-          {mode === 'match' && (
-            <div className="space-y-4">
+          {/* Betting Form - Always shown now */}
+          <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-heading font-bold text-sm">Match a Bet</h3>
@@ -801,7 +731,7 @@ export default function MatchDetail() {
                 )}
               </AnimatePresence>
             </div>
-          )}
+          </div>
         </motion.div>
       )}
 

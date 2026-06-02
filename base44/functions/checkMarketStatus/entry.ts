@@ -3,7 +3,7 @@ import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 /**
- * Checks if a market is properly initialized on-chain.
+ * Checks if a pari-mutuel market is properly initialized on-chain.
  * Returns status: 'not_created' | 'not_initialized' | 'initialized'
  */
 Deno.serve(async (req) => {
@@ -28,9 +28,9 @@ Deno.serve(async (req) => {
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
     
-    // Derive market PDA
+    // Use new pari-mutuel PDA seed: "pm_market"
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('market'), matchIdBytes],
+      [Buffer.from('pm_market'), matchIdBytes],
       programId
     );
     
@@ -50,12 +50,13 @@ Deno.serve(async (req) => {
       size: accountInfo.data.length,
       lamports: accountInfo.lamports,
       owner: accountInfo.owner.toBase58(),
-      dataHex: accountInfo.data.slice(0, 16).toString('hex'),
     });
     
-    // Market exists, check if it's properly initialized
-    // BetMarket: 8 (discriminator) + 244 (struct) = 252 bytes
-    const expectedMinSize = 250;
+    // PoolMarket: 8 (discriminator) + 204 (struct) = 212 bytes
+    // match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + 
+    // outcome_count(1) + winning_outcome(1) + pool(24) + total_pool(8) + 
+    // accrued_fees(8) + settled(1) + voided(1) + paused(1) + settlement_finalized(1) + bump(1) = 204
+    const expectedMinSize = 210;
     const actualSize = accountInfo.data.length;
     
     console.log('Account size check:', { actualSize, expectedMinSize, isInitialized: actualSize >= expectedMinSize });

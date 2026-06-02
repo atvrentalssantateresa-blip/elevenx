@@ -49,55 +49,25 @@
       "default": "",
       "description": "Which outcome won after settlement"
     },
-    "oracle_odds_a": {
-      "type": "number",
-      "default": 200,
-      "description": "Oracle fixed odds for outcome A in basis points (e.g. 210 = 2.10x)"
-    },
-    "oracle_odds_b": {
-      "type": "number",
-      "default": 300,
-      "description": "Oracle fixed odds for outcome B in basis points"
-    },
-    "oracle_odds_draw": {
-      "type": "number",
-      "default": 320,
-      "description": "Oracle fixed odds for Draw in basis points"
-    },
-    "lp_amount_a": {
+    "pool_a": {
       "type": "number",
       "default": 0,
-      "description": "Total LP liquidity committed for outcome A"
+      "description": "Total SOL in pool for outcome A"
     },
-    "lp_amount_b": {
+    "pool_b": {
       "type": "number",
       "default": 0,
-      "description": "Total LP liquidity committed for outcome B"
+      "description": "Total SOL in pool for outcome B"
     },
-    "lp_amount_draw": {
+    "pool_draw": {
       "type": "number",
       "default": 0,
-      "description": "Total LP liquidity committed for Draw"
-    },
-    "backed_amount_a": {
-      "type": "number",
-      "default": 0,
-      "description": "Total matched bettor stakes on outcome A"
-    },
-    "backed_amount_b": {
-      "type": "number",
-      "default": 0,
-      "description": "Total matched bettor stakes on outcome B"
-    },
-    "backed_amount_draw": {
-      "type": "number",
-      "default": 0,
-      "description": "Total matched bettor stakes on Draw"
+      "description": "Total SOL in pool for Draw"
     },
     "total_pool": {
       "type": "number",
       "default": 0,
-      "description": "Total SOL in the market (matched + pending)"
+      "description": "Total SOL in all pools combined"
     },
     "fee_percent": {
       "type": "number",
