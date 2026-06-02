@@ -161,7 +161,32 @@ function BetRow({ bet, index }) {
     },
   });
 
+  const withdrawMutation = useMutation({
+    mutationFn: async () => {
+      // Update UserBet status to refunded
+      await base44.entities.UserBet.update(bet.id, { status: 'refunded' });
+      // Update BetOffer status to cancelled
+      if (bet.offer_id) {
+        await base44.entities.BetOffer.update(bet.offer_id, { status: 'cancelled' });
+      }
+      // Update Bet LP totals
+      const lpField = bet.outcome === 'a' ? 'lp_amount_a' : bet.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
+      const currentBet = await base44.entities.Bet.list().then(bets => bets.find(b => b.id === bet.bet_id));
+      if (currentBet) {
+        await base44.entities.Bet.update(bet.bet_id, {
+          [lpField]: Math.max(0, (currentBet[lpField] || 0) - (bet.amount || 0)),
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBets'] });
+    },
+  });
+
   const isWonAndClaimable = bet.status === 'won';
+  
+  // Check if this is an unmatched LP bet that can be withdrawn
+  const canWithdraw = bet.role === 'lp' && bet.status === 'pending' && (!offer || offer.status === 'open');
 
   return (
     <motion.div
@@ -198,6 +223,29 @@ function BetRow({ bet, index }) {
                   <>
                     <Wallet className="w-3 h-3 mr-1" />
                     Claim
+                  </>
+                )}
+              </Button>
+            </>
+          ) : canWithdraw ? (
+            <>
+              <span className="text-sm font-bold text-yellow-400">◎{bet.amount?.toFixed(4)}</span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (confirm('Withdraw your unmatched LP offer? Your funds will be refunded.')) {
+                    withdrawMutation.mutate();
+                  }
+                }}
+                disabled={withdrawMutation.isPending}
+                className="h-8 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold rounded-lg border border-yellow-500/30"
+              >
+                {withdrawMutation.isPending ? (
+                  <div className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Wallet className="w-3 h-3 mr-1" />
+                    Withdraw
                   </>
                 )}
               </Button>
