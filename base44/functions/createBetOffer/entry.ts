@@ -112,9 +112,9 @@ Deno.serve(async (req) => {
     const amountLamports = Math.round(amount * 1_000_000_000);
     const max_liability = parseFloat((amount * (odds - 1)).toFixed(6));
 
-    // Derive platform_config PDA
+    // Derive platform_config PDA - MUST match Solana program seeds [b"platform"]
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform_config')],
+      [Buffer.from('platform')],
       programId
     );
 
