@@ -257,6 +257,14 @@ export default function MatchDetail() {
               const res = await base44.functions.invoke('createMarketOnChain', { bet_id: bet.id, match_id: match.id });
               if (res.data.error) {
                 alert('Error: ' + res.data.error);
+              } else if (res.data.alreadyExists) {
+                // Market already exists on-chain, just update the DB
+                await base44.entities.Bet.update(bet.id, {
+                  solana_market_created: true,
+                  solana_market_pda: res.data.marketPda,
+                });
+                alert('Market already exists on-chain!');
+                queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
               } else {
                 setMarketCreationTx(res.data.solana_instruction);
               }
@@ -269,7 +277,12 @@ export default function MatchDetail() {
               instruction={marketCreationTx}
               amount={0}
               isConnected={!!provider}
-              onSuccess={() => {
+              onSuccess={async () => {
+                // Update DB after successful transaction
+                await base44.entities.Bet.update(bet.id, {
+                  solana_market_created: true,
+                  solana_market_pda: marketCreationTx.accounts.market,
+                });
                 alert('Market created on-chain!');
                 setMarketCreationTx(null);
                 queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
