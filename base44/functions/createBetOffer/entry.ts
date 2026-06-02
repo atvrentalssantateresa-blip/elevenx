@@ -24,7 +24,13 @@ Deno.serve(async (req) => {
     // Verify wallet is authenticated (exists in User entity)
     const trimmedWallet = wallet_address.trim();
     console.log('[createBetOffer] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
-    const users = await base44.asServiceRole.entities.User.filter({ wallet_address: trimmedWallet });
+    
+    // Check data.wallet_address first (new format), then root-level (legacy)
+    let users = await base44.asServiceRole.entities.User.filter({ 'data.wallet_address': trimmedWallet });
+    if (!users || users.length === 0) {
+      users = await base44.asServiceRole.entities.User.filter({ wallet_address: trimmedWallet });
+    }
+    
     console.log('[createBetOffer] User lookup result:', users?.length || 0, 'users found');
     if (!users || users.length === 0) {
       console.error('[createBetOffer] Authentication failed - no user found for wallet');
