@@ -42,7 +42,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
 
   const validateWalletAddress = (addr) => {
     if (!addr || typeof addr !== 'string') return false;
-    return base58Regex.test(addr);
+    const valid = base58Regex.test(addr);
+    if (!valid) {
+      console.error('[PlaceBetPanel] Invalid address:', addr);
+      console.error('[PlaceBetPanel] Length:', addr.length);
+      console.error('[PlaceBetPanel] Char codes:', addr.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`).join(' '));
+      // Find specific invalid chars
+      const invalid = addr.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
+      console.error('[PlaceBetPanel] Invalid chars:', invalid.map((c, i) => `${c}@${addr.indexOf(c)}(${c.charCodeAt(0)})`).join(', '));
+    }
+    return valid;
   };
 
   const [isPreparing, setIsPreparing] = useState(false);

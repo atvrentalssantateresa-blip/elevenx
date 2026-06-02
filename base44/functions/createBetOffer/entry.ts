@@ -50,15 +50,21 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Try to create PublicKey to validate
+    // Try to create PublicKey to validate - this catches subtle base58 issues
+    let lpPubkey;
     try {
-      new PublicKey(wallet_address);
+      lpPubkey = new PublicKey(wallet_address);
     } catch (e) {
-      console.error('[createBetOffer] PublicKey validation failed:', e.message, 'for address:', wallet_address);
+      console.error('[createBetOffer] PublicKey validation failed:', e.message);
+      console.error('[createBetOffer] Address:', wallet_address);
+      console.error('[createBetOffer] Char codes:', wallet_address.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`).join(' '));
       return Response.json({ 
         error: 'Invalid Solana wallet address', 
         hint: e.message,
-        debug: { address: wallet_address }
+        debug: { 
+          address: wallet_address,
+          charCodes: wallet_address.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`)
+        }
       }, { status: 400 });
     }
 
@@ -92,7 +98,7 @@ Deno.serve(async (req) => {
     );
 
     const outcomeIndex = outcome === 'a' ? 0 : outcome === 'draw' ? 1 : 2;
-    const lpPubkey = new PublicKey(wallet_address);
+    // lpPubkey already declared above in validation
 
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('pm_position'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
