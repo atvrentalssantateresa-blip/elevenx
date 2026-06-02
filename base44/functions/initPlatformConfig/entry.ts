@@ -51,24 +51,15 @@ Deno.serve(async (req) => {
     }
 
     // Prepare initialize_platform instruction
-    // Discriminator: SHA256("global:initialize_platform")
+    // Discriminator: SHA256("global:initialize_platform") - Anchor namespace
     const discriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
     console.log('Initialize platform discriminator:', discriminator.toString('hex'));
     console.log('Discriminator length:', discriminator.length);
 
-    // Initialize_platform params based on PlatformConfig struct:
-    // - default_fee_percent: u16
-    // - max_fee_percent: u16  
-    const paramsData = Buffer.alloc(4);
-    let offset = 0;
-    
-    // default_fee_percent (u16 = 2 bytes) - 2% default (200 basis points)
-    paramsData.writeUInt16LE(200, offset);
-    offset += 2;
-    
-    // max_fee_percent (u16 = 2 bytes) - 5% max (500 basis points)
-    paramsData.writeUInt16LE(500, offset);
-    offset += 2;
+    // Initialize_platform params: only fee_percent (u16) per Rust definition
+    // The Rust function signature: pub fn initialize_platform(ctx: Context<InitializePlatform>, fee_percent: u16)
+    const paramsData = Buffer.alloc(2);
+    paramsData.writeUInt16LE(200, 0); // 2% fee (200 basis points)
 
     const instructionData = Buffer.concat([discriminator, paramsData]);
     console.log('Total instruction data length:', instructionData.length);
