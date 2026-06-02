@@ -136,7 +136,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
         
-        const programId = new PublicKey('ElevenXProgramID1111111111111111111111111');
+        const programId = new PublicKey('4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
         const keys = instruction.keys?.map(k => ({
           pubkey: new PublicKey(k.pubkey),
           isSigner: k.isSigner,
@@ -165,7 +165,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // provide_liquidity — call the actual program instruction
         console.log('Creating provide_liquidity program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId || 'ElevenXProgramID1111111111111111111111111');
+        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
@@ -255,7 +255,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // claim_refund — program instruction to refund user's stake (uses on-chain 'refund' instruction)
         console.log('Creating claim_refund program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId || 'ElevenXProgramID1111111111111111111111111');
+        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.positionPda), isSigner: false, isWritable: true },
