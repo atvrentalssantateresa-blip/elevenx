@@ -38,7 +38,10 @@ Deno.serve(async (req) => {
     }
 
     // Verify wallet is authenticated (exists in User entity)
-    const users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
+    let users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
+    if (!users || users.length === 0) {
+      users = await base44.asServiceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
+    }
     if (!users || users.length === 0) {
       return Response.json({ 
         error: 'Wallet not authenticated. Please sign in with your wallet first.', 

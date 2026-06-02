@@ -50,6 +50,20 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
+    // Verify wallet is authenticated (exists in User entity)
+    let users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
+    if (!users || users.length === 0) {
+      users = await base44.asServiceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
+    }
+    if (!users || users.length === 0) {
+      return Response.json({ 
+        error: 'Wallet not authenticated. Please sign in with your wallet first.', 
+        hint: 'Connect your wallet on the Profile page to authenticate'
+      }, { status: 401 });
+    }
+    const user = users[0];
+    console.log('provideLiquidity: Authenticated user:', user.username || user.full_name);
+
     const bets = await base44.entities.Bet.filter({ id: bet_id });
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Bet not open' }, { status: 400 });
