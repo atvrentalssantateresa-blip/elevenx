@@ -3,8 +3,7 @@ import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 /**
- * Checks if a market is properly initialized on-chain.
- * Returns status: 'not_created' | 'not_initialized' | 'initialized'
+ * Debug function to check market account details on-chain.
  */
 Deno.serve(async (req) => {
   try {
@@ -35,54 +34,40 @@ Deno.serve(async (req) => {
     );
     
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    console.log('[checkMarketStatus] Checking account at PDA:', marketPda.toBase58());
+    console.log('[debugMarketAccount] Checking account at PDA:', marketPda.toBase58());
     const accountInfo = await connection.getAccountInfo(marketPda);
     
     if (!accountInfo) {
-      console.log('[checkMarketStatus] Account NOT FOUND - status: not_created');
+      console.log('[debugMarketAccount] Account does not exist');
       return Response.json({
-        status: 'not_created',
+        exists: false,
         marketPda: marketPda.toBase58(),
+        message: 'Account does not exist on-chain',
       });
     }
     
-    console.log('[checkMarketStatus] Account FOUND:', {
+    console.log('[debugMarketAccount] Account exists:', {
       size: accountInfo.data.length,
       lamports: accountInfo.lamports,
       owner: accountInfo.owner.toBase58(),
-      dataHex: accountInfo.data.slice(0, 16).toString('hex'),
     });
     
-    // Market exists, check if it's properly initialized
-    // BetMarket: 8 (discriminator) + 244 (struct) = 252 bytes
-    const expectedMinSize = 250;
-    const actualSize = accountInfo.data.length;
+    // Try to parse the first 8 bytes as discriminator
+    const discriminator = accountInfo.data.slice(0, 8);
+    console.log('[debugMarketAccount] Discriminator (hex):', discriminator.toString('hex'));
     
-    console.log('Account size check:', { actualSize, expectedMinSize, isInitialized: actualSize >= expectedMinSize });
-    
-    if (actualSize < expectedMinSize) {
-      console.log('Account too small - status: not_initialized');
-      return Response.json({
-        status: 'not_initialized',
-        marketPda: marketPda.toBase58(),
-        actualSize,
-        expectedMinSize,
-        lamports: accountInfo.lamports,
-        owner: accountInfo.owner.toBase58(),
-      });
-    }
-    
-    console.log('Account properly initialized - status: initialized, size:', actualSize);
     return Response.json({
-      status: 'initialized',
+      exists: true,
       marketPda: marketPda.toBase58(),
-      size: actualSize,
+      size: accountInfo.data.length,
       lamports: accountInfo.lamports,
       owner: accountInfo.owner.toBase58(),
+      discriminatorHex: discriminator.toString('hex'),
+      dataSample: accountInfo.data.slice(0, 64).toString('hex'),
     });
     
   } catch (error) {
-    console.error('checkMarketStatus error:', error);
+    console.error('debugMarketAccount error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

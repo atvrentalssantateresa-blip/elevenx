@@ -211,23 +211,36 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
             onError={(err) => setError(err.message)}
           />
         ) : (
-          <Button
-            onClick={handleCreateMarket}
-            disabled={createMarketMutation.isPending}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl"
-          >
-            {createMarketMutation.isPending ? (
-              <>
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-                Creating Market...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Market On-Chain
-              </>
-            )}
-          </Button>
+          <>
+            <Button
+              onClick={handleCreateMarket}
+              disabled={createMarketMutation.isPending}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl"
+            >
+              {createMarketMutation.isPending ? (
+                <>
+                  <Loader className="w-4 h-4 mr-2 animate-spin" />
+                  Creating Market...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Market On-Chain
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={async () => {
+                const res = await base44.functions.invoke('debugMarketAccount', { match_id });
+                console.log('DEBUG MARKET ACCOUNT:', res.data);
+                alert('Debug info logged to console. Check browser console (F12).');
+              }}
+              variant="outline"
+              className="w-full border-destructive/50 text-destructive text-xs"
+            >
+              Debug: Check On-Chain Account
+            </Button>
+          </>
         )}
       </div>
     );
