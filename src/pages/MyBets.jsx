@@ -137,7 +137,21 @@ export default function MyBets() {
 
 function BetRow({ bet, index }) {
   const queryClient = useQueryClient();
-  const config = statusConfig[bet.status] || statusConfig.active;
+
+  // For LP bets, fetch the offer to check if it's been matched
+  const { data: offer } = useQuery({
+    queryKey: ['betOffer', bet.offer_id],
+    queryFn: () => base44.entities.BetOffer.list().then(offers => offers.find(o => o.id === bet.offer_id)),
+    enabled: !!bet.offer_id && bet.role === 'lp',
+  });
+
+  // Determine actual display status: if LP offer is matched, show "active" instead of "pending"
+  let displayStatus = bet.status;
+  if (bet.role === 'lp' && bet.status === 'pending' && offer && (offer.status === 'partially_matched' || offer.status === 'fully_matched')) {
+    displayStatus = 'active';
+  }
+
+  const config = statusConfig[displayStatus] || statusConfig.active;
   const StatusIcon = config.icon;
 
   const claimMutation = useMutation({
@@ -164,7 +178,7 @@ function BetRow({ bet, index }) {
             <p className="font-heading font-bold text-sm">{bet.match_title || 'Match'}</p>
             <p className="text-xs text-muted-foreground">
               Picked: <span className="text-primary font-medium">{bet.outcome_label}</span> · ◎{bet.amount?.toFixed(4)}
-              {bet.status === 'pending' && <span className="ml-1 text-yellow-400 font-medium">· awaiting LP</span>}
+              {bet.role === 'lp' && bet.status === 'pending' && (!offer || (offer.status !== 'partially_matched' && offer.status !== 'fully_matched')) && <span className="ml-1 text-yellow-400 font-medium">· awaiting matcher</span>}
             </p>
           </div>
         </Link>
