@@ -176,15 +176,12 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
         
         // Build keys in the EXACT order required by the Rust ProvideLiquidity struct:
-        // market, lp_offer, platform_config, lp (signer), system_program
+        // market, lp_offer, lp (signer), system_program
         const keys = [];
         if (instruction.accounts) {
           const accounts = instruction.accounts;
           keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
           keys.push({ pubkey: new PublicKey(accounts.lpOffer), isSigner: false, isWritable: true });
-          if (accounts.platformConfig) {
-            keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
-          }
           keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // lp signer
           keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }); // system_program
         } else {
