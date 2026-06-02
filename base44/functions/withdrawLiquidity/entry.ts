@@ -37,17 +37,22 @@ Deno.serve(async (req) => {
     if (userBet.role !== 'lp') return Response.json({ error: 'Not an LP bet' }, { status: 400 });
     if (userBet.status !== 'pending') return Response.json({ error: 'Bet is not pending' }, { status: 400 });
 
-    // Fetch BetOffer to verify it's still open/unmatched
+    // Fetch BetOffer to get the unmatched amount
     if (!userBet.offer_id) return Response.json({ error: 'No offer linked' }, { status: 400 });
     const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
     const offer = offers[0];
     if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
-    if (offer.status !== 'open' && offer.status !== 'partially_matched') {
-      return Response.json({ error: 'Offer is not open (may be fully matched or cancelled)' }, { status: 400 });
+    
+    console.log('Withdraw check - Offer status:', offer.status, 'amount_unmatched:', offer.amount_unmatched, 'userBet.status:', userBet.status);
+    
+    // Check if offer is in a terminal state
+    if (offer.status === 'cancelled' || offer.status === 'settled') {
+      return Response.json({ error: 'Offer is ' + offer.status + ', cannot withdraw' }, { status: 400 });
     }
-    // Verify there's actually unmatched liquidity
-    if (!offer.amount_unmatched || offer.amount_unmatched <= 0) {
-      return Response.json({ error: 'No unmatched liquidity remaining' }, { status: 400 });
+    // Verify there's unmatched liquidity
+    const withdrawAmount = offer.amount_unmatched || 0;
+    if (withdrawAmount <= 0) {
+      return Response.json({ error: 'No unmatched liquidity remaining (offer may be fully matched)' }, { status: 400 });
     }
 
     // Fetch Bet and Match
@@ -80,15 +85,15 @@ Deno.serve(async (req) => {
       success: true,
       userBetId,
       offerId: offer.id,
-      amount: userBet.amount,
+      amount: withdrawAmount,
       solana_instruction: {
         instruction_type: 'withdraw_liquidity',
         marketPda: marketPda.toBase58(),
         lpOfferPda: lpOfferPda.toBase58(),
         outcome: outcomeIndex,
-        amountLamports: Math.round((userBet.amount || 0) * 1_000_000_000),
+        amountLamports: Math.round(withdrawAmount * 1_000_000_000),
       },
-      message: `Sign to withdraw ◎${userBet.amount} unmatched liquidity`,
+      message: `Sign to withdraw ◎${withdrawAmount} unmatched liquidity`,
     });
 
   } catch (error) {
