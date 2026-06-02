@@ -145,6 +145,13 @@ Deno.serve(async (req) => {
       message: `Sign transaction to provide ◎${amount} liquidity on ${outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw'}`,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[createBetOffer] Top-level catch:', error.message);
+    console.error('[createBetOffer] Error stack:', error.stack);
+    console.error('[createBetOffer] Error constructor:', error.constructor.name);
+    return Response.json({ 
+      error: error.message,
+      error_type: error.constructor.name,
+      stack: error.stack
+    }, { status: 500 });
   }
 });
