@@ -59,7 +59,7 @@ export default function AppLayout() {
             })}
 
             {isAdmin && (
-              <Link to="/recreate-market"
+              <Link to="/admin"
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
                   location.pathname === '/admin'
                     ? 'border-destructive/40 bg-destructive/10 text-destructive'
