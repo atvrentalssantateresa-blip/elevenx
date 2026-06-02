@@ -73,11 +73,12 @@ Deno.serve(async (req) => {
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
     const match = matches[0];
 
-    // Use stored PDA from offer (derived at creation time)
-    const lpOfferPda = offer.solana_position_pda;
+    // Derive outcome index (0=a, 1=b, 2=draw) - MUST match provideLiquidity
+    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
     
-    // Derive market PDA
+    // Derive PDAs - MUST match Solana program exactly
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    const lpPubkey = new PublicKey(walletAddress);
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
     
@@ -86,10 +87,19 @@ Deno.serve(async (req) => {
       programId
     );
     
-    console.log('Using stored PDAs:', {
+    // Re-derive lp_offer PDA with correct seeds: ["lp_offer", market_pubkey, lp_pubkey, &[outcome]]
+    const [lpOfferPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      programId
+    );
+    
+    console.log('Re-derived PDAs for withdrawal:', {
       marketPda: marketPda.toBase58(),
-      lpOfferPda,
+      lpOfferPda: lpOfferPda.toBase58(),
       stored_market_pda: offer.solana_bet_pool_pda,
+      stored_lp_pda: offer.solana_position_pda,
+      outcomeIndex,
+      userBet_outcome: userBet.outcome,
     });
 
     return Response.json({
