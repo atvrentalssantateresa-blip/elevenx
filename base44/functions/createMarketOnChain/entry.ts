@@ -199,12 +199,28 @@ Deno.serve(async (req) => {
     // Check if platform config exists
     const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
     if (!platformConfigInfo) {
+      // Return platform initialization instruction
+      const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
+      const initParams = Buffer.alloc(2);
+      initParams.writeUInt16LE(200, 0); // fee_percent: 2%
+      const initInstructionData = Buffer.concat([initDiscriminator, initParams]);
+      
       return Response.json({
         success: false,
         error: 'Platform config not initialized',
         needsPlatformInit: true,
         platformConfigPda: platformConfigPda.toBase58(),
         message: 'Platform config must be initialized first by admin',
+        solana_instruction: {
+          instruction_type: 'initialize_platform',
+          programId: SOLANA_PROGRAM_ID,
+          instruction_data: initInstructionData.toString('base64'),
+          accounts: {
+            platformConfig: platformConfigPda.toBase58(),
+            admin: '', // Will be filled by frontend with signer's public key
+            systemProgram: '11111111111111111111111111111111',
+          }
+        }
       });
     }
 
