@@ -182,9 +182,9 @@ export default function LpDashboard() {
                       <label className="text-xs text-muted-foreground mb-1.5 block">Back Outcome (you profit if this wins)</label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { key: 'a', label: selectedBet.outcome_a, odds: selectedBet.oracle_odds_a },
-                          { key: 'draw', label: 'Draw', odds: selectedBet.oracle_odds_draw },
-                          { key: 'b', label: selectedBet.outcome_b, odds: selectedBet.oracle_odds_b },
+                          { key: 'a', label: selectedBet.outcome_a, odds: selectedBet.odds_a || selectedBet.oracle_odds_a },
+                          { key: 'draw', label: 'Draw', odds: selectedBet.odds_draw || selectedBet.oracle_odds_draw },
+                          { key: 'b', label: selectedBet.outcome_b, odds: selectedBet.odds_b || selectedBet.oracle_odds_b },
                         ].map(o => (
                           <button key={o.key}
                             onClick={() => setSelectedOutcome(o.key)}
