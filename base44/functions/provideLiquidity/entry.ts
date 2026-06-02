@@ -78,6 +78,16 @@ Deno.serve(async (req) => {
     }
     console.log('Market account exists on-chain, size:', marketInfo.data.length);
 
+    // Fetch market account data to check the stored bump
+    const marketAccountInfo = await connection.getAccountInfo(marketPda);
+    let storedBump = null;
+    if (marketAccountInfo) {
+      // Market account layout: discriminator (8) + match_id (32) + ... + bump (1 byte at end)
+      const data = marketAccountInfo.data;
+      storedBump = data[data.length - 1]; // Last byte is the bump
+      console.log('Market account stored bump:', storedBump);
+    }
+
     console.log('=== provideLiquidity PDA Debug ===', {
       outcome,
       outcomeIndex,
@@ -86,6 +96,9 @@ Deno.serve(async (req) => {
       match_id_bytes: matchIdBytes.toString('hex'),
       marketPda: marketPda.toBase58(),
       lpOfferPda: lpOfferPda.toBase58(),
+      derived_bump: PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId)[1],
+      stored_bump: storedBump,
+      bump_matches: storedBump === null || storedBump === PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId)[1],
       seeds_used: [
         'lp_offer',
         marketPda.toBase58(),
