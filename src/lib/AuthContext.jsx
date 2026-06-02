@@ -103,9 +103,41 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      // Check for wallet session first (wallet-only auth)
+      // Check for wallet auth token first (highest priority)
+      const authToken = localStorage.getItem('elevenx_auth_token');
       const walletSession = localStorage.getItem('elevenx_wallet_session');
-      console.log('🔑 checkUserAuth: walletSession=', walletSession);
+      console.log('🔑 checkUserAuth: authToken=', authToken ? 'present' : 'missing', 'walletSession=', walletSession);
+      
+      if (authToken) {
+        console.log('Auth token found, decoding...');
+        // Decode the token to get user info
+        try {
+          const [header, payload, sig] = authToken.split('.');
+          const decoded = JSON.parse(atob(payload));
+          console.log('Token decoded:', decoded);
+          
+          if (decoded.userId && decoded.exp && decoded.exp > Math.floor(Date.now() / 1000)) {
+            // Token is valid
+            const userData = {
+              id: decoded.userId,
+              wallet_address: decoded.walletAddress,
+              role: decoded.role,
+              email: decoded.email || `${decoded.walletAddress?.slice(0, 8)}@elevenx.bet`
+            };
+            setUser(userData);
+            setIsAuthenticated(true);
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            return;
+          } else {
+            console.log('Token expired or invalid');
+            localStorage.removeItem('elevenx_auth_token');
+          }
+        } catch (decodeErr) {
+          console.error('Failed to decode auth token:', decodeErr);
+          localStorage.removeItem('elevenx_auth_token');
+        }
+      }
       
       if (walletSession) {
         // Wallet-based session - fetch user from backend using wallet address

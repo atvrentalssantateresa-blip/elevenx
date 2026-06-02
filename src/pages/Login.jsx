@@ -72,14 +72,29 @@ export default function Login() {
         register: true
       });
 
-      if (response.data.success) {
-        console.log('✓ Login successful, wallet:', walletAddress);
+      console.log('walletAuth response:', response.data);
+      
+      if (response.data.success || response.data.userId) {
+        console.log('✓ Login successful, wallet:', walletAddress, 'userId:', response.data.userId);
         // Set wallet session marker for AuthContext to recognize (JSON format)
         localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletAddress, connectedAt: Date.now() }));
         localStorage.setItem('elevenx_authenticated', 'true');
         
+        // Store auth token if provided
+        if (response.data.authToken) {
+          localStorage.setItem('elevenx_auth_token', response.data.authToken);
+          console.log('Auth token stored');
+        }
+        
         // Hard redirect to reload app with auth state
         window.location.href = '/';
+        return;
+      }
+      
+      // If needsRegistration, redirect to register page
+      if (response.data.needsRegistration) {
+        console.log('User needs registration, redirecting...');
+        window.location.href = `/register?wallet=${walletAddress}`;
         return;
       }
 
