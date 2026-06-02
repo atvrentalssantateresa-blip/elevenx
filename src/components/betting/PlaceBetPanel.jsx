@@ -98,15 +98,18 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
     setIsPreparing(true);
     setPrepareError(null);
     try {
+      console.log('[PlaceBetPanel] === BETTING REQUEST ===', {
+        wallet_full: wallet,
+        wallet_length: wallet?.length,
+        wallet_trimmed: wallet?.trim(),
+        mode,
+        bet_id: bet?.id,
+        matchId,
+      });
+      
       let res;
       if (mode === 'offer') {
-        console.log('[PlaceBetPanel] Calling createBetOffer:', {
-          bet_id: bet.id,
-          match_id: matchId,
-          outcome: selectedOutcome,
-          amount: stakeNum,
-          wallet_address: wallet?.slice(0, 8) + '...',
-        });
+        console.log('[PlaceBetPanel] Calling createBetOffer with wallet:', wallet);
         res = await base44.functions.invoke('createBetOffer', {
           bet_id: bet.id,
           match_id: matchId,
@@ -116,11 +119,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         });
         console.log('[PlaceBetPanel] createBetOffer response:', res.data);
       } else {
-        console.log('[PlaceBetPanel] Calling matchBet:', {
-          offer_id: selectedOffer.id,
-          amount: stakeNum,
-          wallet_address: wallet?.slice(0, 8) + '...',
-        });
+        console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet);
         res = await base44.functions.invoke('matchBet', {
           offer_id: selectedOffer.id,
           amount: stakeNum,
