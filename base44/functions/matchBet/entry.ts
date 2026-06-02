@@ -26,17 +26,20 @@ Deno.serve(async (req) => {
     const trimmedWallet = wallet_address.trim();
     console.log('[matchBet] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
     
-    // Try both direct wallet_address and data.wallet_address
-    let users = await serviceRole.entities.User.filter({ wallet_address: trimmedWallet });
-    if (!users || users.length === 0) {
-      users = await serviceRole.entities.User.filter({ 'data.wallet_address': trimmedWallet });
+    try {
+      // Query User entity by wallet_address
+      let users = await serviceRole.entities.User.filter({ wallet_address: trimmedWallet });
+      console.log('[matchBet] User lookup result:', users?.length || 0, 'users found');
+      
+      if (!users || users.length === 0) {
+        console.error('[matchBet] Authentication failed - no user found for wallet:', trimmedWallet);
+        return Response.json({ error: 'Wallet not authenticated. Please sign in with your wallet first.' }, { status: 401 });
+      }
+      console.log('[matchBet] ✓ Authenticated user:', users[0].username || users[0].full_name);
+    } catch (authErr) {
+      console.error('[matchBet] User lookup error:', authErr.message);
+      return Response.json({ error: 'Authentication failed: ' + authErr.message }, { status: 500 });
     }
-    console.log('[matchBet] User lookup result:', users?.length || 0, 'users found');
-    if (!users || users.length === 0) {
-      console.error('[matchBet] Authentication failed - no user found for wallet');
-      return Response.json({ error: 'Wallet not authenticated. Please sign in with your wallet first.' }, { status: 401 });
-    }
-    console.log('[matchBet] ✓ Authenticated user:', users[0].username || users[0].full_name);
 
     // Validate base58 format
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
