@@ -173,21 +173,17 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // Anchor discriminator: first 8 bytes of SHA256("global:provide_liquidity")
-        // Pre-computed: [0x18, 0x72, 0x28, 0x4d, 0x23, 0x5f, 0x7a, 0xf7]
+        // Use borsh serialization for Anchor compatibility
+        // Discriminator (8 bytes) + outcome (u8) + amount (u64 LE)
         const data = Buffer.alloc(17);
-        // Anchor discriminator (8 bytes)
-        data.writeUInt8(0x18, 0);
-        data.writeUInt8(0x72, 1);
-        data.writeUInt8(0x28, 2);
-        data.writeUInt8(0x4d, 3);
-        data.writeUInt8(0x23, 4);
-        data.writeUInt8(0x5f, 5);
-        data.writeUInt8(0x7a, 6);
-        data.writeUInt8(0xf7, 7);
-        // Params: outcome (u8) + amount (u64)
+        // Anchor discriminator for provide_liquidity
+        data.writeBigUInt64LE(BigInt("7006049193013063754"), 0); // SHA256("global:provide_liquidity").slice(0,8) as u64
+        // Params
         data.writeUInt8(instruction.outcome, 8);
         data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9);
+        
+        console.log('[SolanaTransactionSigner] provide_liquidity instruction data:', data.toString('hex'));
+        console.log('[SolanaTransactionSigner] Discriminant (first 8 bytes):', data.slice(0, 8).toString('hex'));
         
         const provideIx = new TransactionInstruction({
           keys,
