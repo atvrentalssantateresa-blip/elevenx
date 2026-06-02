@@ -37,15 +37,16 @@ export default function MyBets() {
   const walletAddress = getWalletAddress();
 
   const { data: myBets = [], isLoading } = useQuery({
-    queryKey: ['myBets', walletAddress],
+    queryKey: ['myBets', walletAddress, user?.id],
     queryFn: async () => {
       const all = await base44.entities.UserBet.list('-created_date', 100);
       // Filter by wallet address (for wallet-only users) or user ID (for registered users)
+      // Also include legacy bets without wallet_address for backwards compatibility
       if (walletAddress) {
-        return all.filter(ub => ub.wallet_address === walletAddress);
+        return all.filter(ub => ub.wallet_address === walletAddress || !ub.wallet_address);
       }
       if (user?.id) {
-        return all.filter(ub => ub.created_by_id === user.id);
+        return all.filter(ub => ub.created_by_id === user.id || !ub.wallet_address);
       }
       return [];
     },
