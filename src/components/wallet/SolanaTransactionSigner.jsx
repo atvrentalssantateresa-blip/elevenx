@@ -52,10 +52,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey(instruction.bettorPubkey), isSigner: false, isWritable: true },
         ];
         
-        // Create instruction data for claim_winnings (discriminator + net payout)
-        const data = Buffer.alloc(9);
-        data.writeUInt8(6, 0); // claim_winnings discriminator
-        data.writeBigUInt64LE(BigInt(instruction.netPayoutLamports || 0), 1);
+        // Create instruction data for claim_winnings (discriminator only - no params needed)
+        // claim_winnings is instruction #10 in the program
+        const data = Buffer.alloc(1);
+        data.writeUInt8(10, 0); // claim_winnings discriminator
         
         const claimIx = new TransactionInstruction({
           keys,
@@ -116,11 +116,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // LP wallet receiving funds
         ];
         
-        // Create instruction data for withdraw_liquidity (discriminator 7 + amount + outcome)
-        const data = Buffer.alloc(17);
-        data.writeUInt8(7, 0); // withdraw_liquidity discriminator
-        data.writeBigUInt64LE(BigInt(instruction.amountLamports || 0), 1);
-        data.writeUInt8(instruction.outcome || 0, 9); // outcome index
+        // Create instruction data for withdraw_liquidity (discriminator only - no params needed)
+        // withdraw_liquidity is instruction #5 in the program (0-indexed)
+        const data = Buffer.alloc(1);
+        data.writeUInt8(5, 0); // withdraw_liquidity discriminator
         
         const withdrawIx = new TransactionInstruction({
           keys,
@@ -140,9 +139,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey(instruction.bettorPubkey), isSigner: false, isWritable: true },
         ];
         
-        // Create instruction data for refund (discriminator 5, no amount needed - reads from position)
+        // Create instruction data for refund (discriminator only - no params needed)
+        // refund is instruction #11 in the program
         const data = Buffer.alloc(1);
-        data.writeUInt8(5, 0); // refund discriminator
+        data.writeUInt8(11, 0); // refund discriminator
         
         const refundIx = new TransactionInstruction({
           keys,
@@ -163,11 +163,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey(instruction.lpWalletPubkey), isSigner: false, isWritable: true },
         ];
         
-        // Create instruction data for withdraw_lp_winnings (discriminator 8 + amount + outcome)
-        const data = Buffer.alloc(17);
-        data.writeUInt8(8, 0); // withdraw_lp_winnings discriminator
+        // Create instruction data for withdraw_lp_winnings (discriminator + amount parameter)
+        // withdraw_lp_winnings is instruction #6 in the program (takes amount as u64 parameter)
+        const data = Buffer.alloc(9);
+        data.writeUInt8(6, 0); // withdraw_lp_winnings discriminator
         data.writeBigUInt64LE(BigInt(instruction.withdrawAmountLamports || 0), 1);
-        data.writeUInt8(instruction.outcome || 0, 9);
         
         const withdrawIx = new TransactionInstruction({
           keys,
@@ -239,27 +239,28 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         }
         
         if (customCode !== null) {
+          // Anchor error codes are zero-indexed based on enum order
           const errorMessages = {
-            100: 'Betting window has closed for this market',
-            101: 'Market has already been settled',
-            102: 'Market has been voided',
-            103: 'Stake amount must be greater than zero',
-            104: 'Invalid outcome index',
-            105: 'Too early to settle this market',
-            106: 'Market is paused',
-            107: 'Fee percentage exceeds maximum (5%)',
-            108: 'Invalid market timeline',
-            109: 'Nothing to claim',
-            110: 'Nothing to refund',
-            111: 'Market is not voided',
-            112: 'Oracle has already voted',
-            113: 'Insufficient oracle consensus',
-            114: 'Invalid outcome count',
-            115: 'Market is already initialized',
-            116: 'Arithmetic overflow',
-            117: 'Unauthorized',
+            0: 'Betting window has closed for this market',
+            1: 'Market has already been settled',
+            2: 'Market has been voided',
+            3: 'Stake amount must be greater than zero',
+            4: 'Invalid outcome index',
+            5: 'Too early to settle this market',
+            6: 'Market is paused',
+            7: 'Fee percentage exceeds maximum (5%)',
+            8: 'Invalid market timeline',
+            9: 'Nothing to claim (or already withdrawn)',
+            10: 'Nothing to refund',
+            11: 'Market is not voided',
+            12: 'Oracle has already voted',
+            13: 'Insufficient oracle consensus',
+            14: 'Invalid outcome count',
+            15: 'Market is already initialized',
+            16: 'Arithmetic overflow',
+            17: 'Unauthorized',
           };
-          const errorMsg = errorMessages[customCode] || `Unknown program error`;
+          const errorMsg = errorMessages[customCode] || `Unknown program error (code ${customCode})`;
           throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
         }
         
