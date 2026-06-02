@@ -138,9 +138,14 @@ export const AuthProvider = ({ children }) => {
               baseURL: '',
               headers: {
                 Authorization: `Bearer ${authToken}`,
+                'X-App-Id': appParams.appId,
               },
             });
-            const sdkWithAuth = createClient({ axiosClient });
+            const sdkWithAuth = createClient({ 
+              axiosClient,
+              appId: appParams.appId,
+              functionsVersion: appParams.functionsVersion,
+            });
             window.base44WithAuth = sdkWithAuth;
             console.log('✓ SDK initialized with auth token for backend calls');
             return;
@@ -183,9 +188,14 @@ export const AuthProvider = ({ children }) => {
               baseURL: '',
               headers: {
                 Authorization: `Bearer ${response.data.authToken}`,
+                'X-App-Id': appParams.appId,
               },
             });
-            const sdkWithAuth = createClient({ axiosClient });
+            const sdkWithAuth = createClient({ 
+              axiosClient,
+              appId: appParams.appId,
+              functionsVersion: appParams.functionsVersion,
+            });
             window.base44WithAuth = sdkWithAuth;
             console.log('✓ SDK initialized with auth token from walletAuth');
           }
