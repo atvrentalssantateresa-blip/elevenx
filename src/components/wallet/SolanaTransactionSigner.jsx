@@ -22,29 +22,20 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
     setError(null);
 
     try {
-      // Get Phantom wallet
       const provider = window.solana;
-      console.log('[SolanaTransactionSigner] Phantom provider:', provider);
-      console.log('[SolanaTransactionSigner] Provider isConnected:', provider?.isConnected);
-      console.log('[SolanaTransactionSigner] Provider publicKey:', provider?.publicKey?.toString());
       
       if (!provider) {
-        throw new Error('Phantom wallet not found. Please install Phantom extension.');
+        throw new Error('Phantom wallet not found');
       }
 
-      // Ensure wallet is connected
       if (!provider.isConnected) {
-        console.log('[SolanaTransactionSigner] Connecting to Phantom...');
         await provider.connect();
-        console.log('[SolanaTransactionSigner] Connected, publicKey:', provider.publicKey?.toString());
       }
 
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const transaction = new Transaction();
       
       // Check instruction type and build appropriate transaction
-      console.log('[SolanaTransactionSigner] Starting transaction with instruction:', instruction);
-      
       if (instruction.instruction_type === 'claim_winnings') {
         // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
@@ -145,45 +136,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = provider.publicKey;
 
-      console.log('[SolanaTransactionSigner] Transaction built, ready to send:', transaction);
-      console.log('[SolanaTransactionSigner] Transaction instructions:', transaction.instructions.length);
-      console.log('[SolanaTransactionSigner] Sending to Phantom for signature...');
+      console.log('[SolanaTransactionSigner] Transaction built, ready to send');
+      console.log('[SolanaTransactionSigner] Instructions count:', transaction.instructions.length);
       
-      // Request signature - this should trigger Phantom popup
-      try {
-        const { signature: sig } = await provider.signAndSendTransaction(transaction, {
-          skipPreflight: true,
-          preflightCommitment: 'confirmed'
-        });
+      const { signature: sig } = await provider.signAndSendTransaction(transaction, {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed'
+      });
       
       console.log('Transaction signed, signature:', sig);
       setSignature(sig);
 
-      // Wait for confirmation (with timeout)
       console.log('Waiting for confirmation...');
-      try {
-        await connection.confirmTransaction(sig, 'confirmed');
-        console.log('Transaction confirmed!');
-      } catch (confirmErr) {
-        console.warn('Transaction confirmation timeout, but proceeding:', confirmErr);
-      }
+      await connection.confirmTransaction(sig, 'confirmed');
+      console.log('Transaction confirmed!');
 
       onSuccess({ signature: sig, status: 'confirmed' });
-      } catch (signErr) {
-        console.error('[SolanaTransactionSigner] Sign/send failed:', signErr);
-        // For withdraw, if program ID is invalid, still consider it a success with a mock signature
-        if (instruction.instruction_type === 'withdraw_liquidity' && signErr.message?.includes('Unknown')) {
-          console.log('Withdrawing with mock signature due to unknown program');
-          const mockSig = 'mock_' + Math.random().toString(36).substr(2, 32);
-          setSignature(mockSig);
-          onSuccess({ signature: mockSig, status: 'confirmed', isMock: true });
-          return;
-        }
-        throw signErr;
-      }
     } catch (err) {
-      console.error('Transaction failed:', err);
-      console.error('Error stack:', err.stack);
+      console.error('[SolanaTransactionSigner] Transaction error:', err.message);
       setError(err.message || 'Transaction failed');
       onError?.(err);
     } finally {
