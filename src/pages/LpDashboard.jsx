@@ -185,7 +185,16 @@ export default function LpDashboard() {
                           { key: 'a', label: selectedBet.outcome_a, odds: selectedBet.odds_a || selectedBet.oracle_odds_a },
                           { key: 'draw', label: 'Draw', odds: selectedBet.odds_draw || selectedBet.oracle_odds_draw },
                           { key: 'b', label: selectedBet.outcome_b, odds: selectedBet.odds_b || selectedBet.oracle_odds_b },
-                        ].map(o => (
+                        ].map(o => {
+                          // Handle both basis points (200 = 2.00x) and decimal (2.0 = 2.00x) formats
+                          let displayOdds = '—';
+                          if (o.odds) {
+                            const oddsNum = typeof o.odds === 'string' ? parseFloat(o.odds) : o.odds;
+                            // If odds < 10, treat as decimal; otherwise treat as basis points
+                            const actualOdds = oddsNum < 10 ? oddsNum : oddsNum / 100;
+                            displayOdds = actualOdds.toFixed(2) + 'x';
+                          }
+                          return (
                           <button key={o.key}
                             onClick={() => setSelectedOutcome(o.key)}
                             className={`rounded-xl p-3 border-2 text-center transition-all ${
@@ -194,9 +203,10 @@ export default function LpDashboard() {
                                 : 'border-border/50 bg-secondary/30 hover:border-border'
                             }`}>
                             <p className="font-heading font-bold text-xs">{o.label}</p>
-                            <p className="text-primary font-bold text-sm mt-0.5">{o.odds ? (o.odds / 100).toFixed(2) + 'x' : '—'}</p>
+                            <p className="text-primary font-bold text-sm mt-0.5">{displayOdds}</p>
                           </button>
-                        ))}
+);
+})}
                       </div>
                     </div>
 
