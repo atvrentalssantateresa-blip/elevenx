@@ -134,11 +134,24 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         return;
       }
       
-      console.log('Market creation completed, waiting 5 seconds for Solana to propagate...');
+      // Market creation transaction confirmed
+      console.log('Market creation transaction confirmed, waiting 5 seconds for Solana to propagate...');
       await new Promise(resolve => setTimeout(resolve, 5000));
       
-      console.log('Checking market status after market creation...');
-      await checkMarketStatus();
+      // Force a fresh check by calling the backend function directly
+      console.log('Forcing fresh market status check...');
+      const response = await base44.functions.invoke('checkMarketStatus', { match_id });
+      console.log('Fresh market status:', response.data);
+      setMarketStatus(response.data);
+      
+      // If still showing not_created or not_initialized, wait more and check again
+      if (response.data.status === 'not_created' || response.data.status === 'not_initialized') {
+        console.log('Market still not ready, waiting additional 5 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        const retryResponse = await base44.functions.invoke('checkMarketStatus', { match_id });
+        console.log('Retry market status:', retryResponse.data);
+        setMarketStatus(retryResponse.data);
+      }
     } catch (err) {
       console.error('Failed to finalize:', err);
       setError(err.message);
