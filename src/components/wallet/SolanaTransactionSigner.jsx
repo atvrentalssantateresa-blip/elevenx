@@ -24,19 +24,27 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
     try {
       // Get Phantom wallet
       const provider = window.solana;
+      console.log('[SolanaTransactionSigner] Phantom provider:', provider);
+      console.log('[SolanaTransactionSigner] Provider isConnected:', provider?.isConnected);
+      console.log('[SolanaTransactionSigner] Provider publicKey:', provider?.publicKey?.toString());
+      
       if (!provider) {
         throw new Error('Phantom wallet not found. Please install Phantom extension.');
       }
 
       // Ensure wallet is connected
       if (!provider.isConnected) {
+        console.log('[SolanaTransactionSigner] Connecting to Phantom...');
         await provider.connect();
+        console.log('[SolanaTransactionSigner] Connected, publicKey:', provider.publicKey?.toString());
       }
 
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const transaction = new Transaction();
       
       // Check instruction type and build appropriate transaction
+      console.log('[SolanaTransactionSigner] Starting transaction with instruction:', instruction);
+      
       if (instruction.instruction_type === 'claim_winnings') {
         // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
@@ -106,14 +114,18 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // withdraw_liquidity — program instruction to withdraw unmatched LP funds
         console.log('Creating withdraw_liquidity program instruction:', instruction);
         
-        const programId = new PublicKey('ElevenXProgramID1111111111111111111111111');
+        // Use the program ID from instruction (passed from backend)
+        if (!instruction.programId) {
+          throw new Error('Missing programId in instruction');
+        }
+        const programId = new PublicKey(instruction.programId);
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
           { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // LP wallet receiving funds
         ];
         
-        // Create instruction data for withdraw_liquidity (discriminator 7 + amount)
+        // Create instruction data for withdraw_liquidity (discriminator 7 + amount + outcome)
         const data = Buffer.alloc(17);
         data.writeUInt8(7, 0); // withdraw_liquidity discriminator
         data.writeBigUInt64LE(BigInt(instruction.amountLamports || 0), 1);
@@ -133,13 +145,16 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = provider.publicKey;
 
-      console.log('Sending transaction to Phantom for signature...');
+      console.log('[SolanaTransactionSigner] Transaction built, ready to send:', transaction);
+      console.log('[SolanaTransactionSigner] Transaction instructions:', transaction.instructions.length);
+      console.log('[SolanaTransactionSigner] Sending to Phantom for signature...');
       
       // Request signature - this should trigger Phantom popup
-      const { signature: sig } = await provider.signAndSendTransaction(transaction, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed'
-      });
+      try {
+        const { signature: sig } = await provider.signAndSendTransaction(transaction, {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed'
+        });
       
       console.log('Transaction signed, signature:', sig);
       setSignature(sig);
@@ -150,6 +165,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       console.log('Transaction confirmed!');
 
       onSuccess({ signature: sig, status: 'confirmed' });
+      } catch (signErr) {
+        console.error('[SolanaTransactionSigner] Sign/send failed:', signErr);
+        throw signErr;
+      }
     } catch (err) {
       console.error('Transaction failed:', err);
       console.error('Error stack:', err.stack);

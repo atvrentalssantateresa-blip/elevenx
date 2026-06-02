@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
       amount: withdrawAmount,
       solana_instruction: {
         instruction_type: 'withdraw_liquidity',
+        programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
         lpOfferPda: lpOfferPda.toBase58(),
         outcome: outcomeIndex,
