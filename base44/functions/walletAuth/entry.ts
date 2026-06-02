@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nacl from 'npm:tweetnacl@1.0.3';
 import bs58 from 'npm:bs58@5.0.0';
+import { subtle } from 'node:crypto';
 
 Deno.serve(async (req) => {
   try {
@@ -13,7 +14,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing wallet address' }, { status: 400 });
     }
 
-    console.log('walletAuth called - walletAddress:', walletAddress, 'register:', register, 'username:', username || 'N/A');
+    console.log('walletAuth called - walletAddress:', walletAddress, 'register:', register);
 
     // If signature provided, verify it
     if (signature && message) {
@@ -24,11 +25,12 @@ Deno.serve(async (req) => {
         const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKey);
         if (!isValid) {
           console.log('Signature verification failed');
-        } else {
-          console.log('Signature verified successfully');
+          return Response.json({ error: 'Invalid signature' }, { status: 401 });
         }
+        console.log('Signature verified successfully');
       } catch (sigErr) {
         console.log('Signature check error:', sigErr.message);
+        return Response.json({ error: 'Signature verification failed' }, { status: 401 });
       }
     }
 
@@ -40,7 +42,7 @@ Deno.serve(async (req) => {
       console.log('User lookup - found:', users?.length || 0, 'users');
       if (users && users.length > 0) {
         user = users[0];
-        console.log('✓ Found user - username:', user.username, 'wallet:', user.wallet_address);
+        console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address);
       }
     } catch (err) {
       console.log('User lookup failed:', err.message);
@@ -48,36 +50,26 @@ Deno.serve(async (req) => {
     }
 
     // If registering, auto-create user with wallet address as identifier
-    if (register) {
+    if (register && !user) {
       console.log('Registering user - wallet:', walletAddress);
       
       try {
         // Create user with wallet address at root level (not in data)
-        const newUser = await serviceRole.entities.User.create({
+        user = await serviceRole.entities.User.create({
           email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
           wallet_address: walletAddress,
           username: walletAddress.slice(0, 8),
           role: 'user',
         });
         
-        console.log('✓ User created - id:', newUser.id, 'wallet:', walletAddress);
-        
-        return Response.json({
-          success: true,
-          needsRegistration: false,
-          userId: newUser.id,
-          walletAddress: newUser.wallet_address,
-          role: newUser.role,
-          email: newUser.email,
-          isNewUser: true
-        });
+        console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
       } catch (createErr) {
         console.error('✗ User creation failed:', createErr);
         return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
       }
     }
 
-    // If not registering (just checking), return user info if exists
+    // If no user found and not registering
     if (!user) {
       console.log('No user found, needs registration');
       return Response.json({ 
@@ -86,15 +78,54 @@ Deno.serve(async (req) => {
       });
     }
 
-    // User exists - return user info
-    console.log('✓ User authenticated - username:', user.username, 'id:', user.id);
+    // Generate a JWT-like token for wallet-based auth
+    // This token will be stored in localStorage and used for auth
+    const tokenPayload = {
+      userId: user.id,
+      walletAddress: user.wallet_address,
+      role: user.role,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
+    };
+
+    // Create a simple signed token (HMAC-SHA256)
+    const encoder = new TextEncoder();
+    const header = bs58.encode(encoder.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
+    const payload = bs58.encode(encoder.encode(JSON.stringify(tokenPayload)));
+    
+    // Get secret key from env or use app ID
+    const secretKey = Deno.env.get('BASE44_APP_ID') || 'elevenx-secret';
+    const keyData = encoder.encode(secretKey);
+    
+    const key = await subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureData = await subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(`${header}.${payload}`)
+    );
+    
+    const tokenSignature = bs58.encode(new Uint8Array(signatureData));
+
+    const token = `${header}.${payload}.${tokenSignature}`;
+
+    console.log('✓ User authenticated - token generated for userId:', user.id);
+    
     return Response.json({
       success: true,
       userId: user.id,
       walletAddress: user.wallet_address,
       role: user.role,
       username: user.username,
-      email: user.email
+      email: user.email,
+      authToken: token,
+      isNewUser: !!(register && user.created_date === user.updated_date),
     });
 
   } catch (error) {

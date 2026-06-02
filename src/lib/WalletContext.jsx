@@ -87,8 +87,9 @@ export function WalletProvider({ children }) {
       setWalletAddress(address);
       setIsConnected(true);
       localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
+      localStorage.setItem('elevenx_authenticated', 'true');
       
-      // Auto-register wallet with backend (creates user if doesn't exist)
+      // Auto-register wallet with backend and get auth token
       try {
         const { base44 } = await import('@/api/base44Client');
         console.log('[WalletContext] Calling walletAuth to register/check user...');
@@ -98,6 +99,12 @@ export function WalletProvider({ children }) {
         });
         console.log('[WalletContext] walletAuth response:', authRes.data);
         
+        if (authRes.data.authToken) {
+          // Store auth token in localStorage for backend auth
+          localStorage.setItem('elevenx_auth_token', authRes.data.authToken);
+          console.log('[WalletContext] Auth token stored');
+        }
+        
         if (authRes.data.isNewUser) {
           console.log('[WalletContext] New user registered:', authRes.data.userId);
         } else {
@@ -105,7 +112,6 @@ export function WalletProvider({ children }) {
         }
       } catch (err) {
         console.error('[WalletContext] walletAuth failed:', err);
-        // Don't block connection - user can still bet, just won't have DB record
       }
     } catch (err) {
       console.error('Wallet connect failed:', err);
