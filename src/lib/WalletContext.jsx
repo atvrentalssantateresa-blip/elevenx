@@ -56,16 +56,34 @@ export function WalletProvider({ children }) {
     setIsConnecting(true);
     try {
       const resp = await phantom.connect();
-      const address = resp.publicKey.toString();
+      // Get address from publicKey - handle different response formats
+      let address;
+      if (resp.publicKey) {
+        // If it's a PublicKey object, convert to base58 string
+        if (typeof resp.publicKey.toBase58 === 'function') {
+          address = resp.publicKey.toBase58();
+        } else if (typeof resp.publicKey.toString === 'function') {
+          address = resp.publicKey.toString();
+        } else {
+          address = String(resp.publicKey);
+        }
+      } else {
+        throw new Error('No publicKey in response');
+      }
+      
+      console.log('[WalletContext] Raw address from Phantom:', address);
+      console.log('[WalletContext] Address type:', typeof address);
+      console.log('[WalletContext] Address length:', address.length);
       
       // Validate Solana address format (base58, 32-44 chars)
       const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
       if (!base58Regex.test(address)) {
-        console.error('Invalid wallet address from Phantom:', address);
-        throw new Error('Invalid wallet address format');
+        console.error('[WalletContext] Invalid wallet address from Phantom:', address);
+        console.error('[WalletContext] Invalid characters:', address.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c)));
+        throw new Error('Invalid wallet address format — contains non-base58 characters');
       }
       
-      console.log('Wallet connected:', address);
+      console.log('[WalletContext] Wallet connected:', address.slice(0, 8) + '...');
       setWalletAddress(address);
       setIsConnected(true);
       localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
@@ -110,7 +128,17 @@ export function WalletProvider({ children }) {
 
     const handleAccountChange = (publicKey) => {
       if (publicKey) {
-        const address = publicKey.toString();
+        // Handle PublicKey object or string
+        let address;
+        if (typeof publicKey.toBase58 === 'function') {
+          address = publicKey.toBase58();
+        } else if (typeof publicKey.toString === 'function') {
+          address = publicKey.toString();
+        } else {
+          address = String(publicKey);
+        }
+        
+        console.log('[WalletContext] Account changed:', address);
         setWalletAddress(address);
         localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
       } else {

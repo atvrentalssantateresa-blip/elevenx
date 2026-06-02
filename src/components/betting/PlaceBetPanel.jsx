@@ -14,7 +14,7 @@ const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
-  const { isConnected, connect, isConnecting } = useWallet();
+  const { isConnected, connect, isConnecting, walletAddress } = useWallet();
 
   const stakeNum = parseFloat(amount) || 0;
 
@@ -41,15 +41,19 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
   };
 
   const validateWalletAddress = (addr) => {
-    if (!addr || typeof addr !== 'string') return false;
+    if (!addr || typeof addr !== 'string') {
+      console.error('[PlaceBetPanel] Wallet address is not a string:', addr, 'type:', typeof addr);
+      return false;
+    }
     const valid = base58Regex.test(addr);
     if (!valid) {
       console.error('[PlaceBetPanel] Invalid address:', addr);
       console.error('[PlaceBetPanel] Length:', addr.length);
-      console.error('[PlaceBetPanel] Char codes:', addr.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`).join(' '));
       // Find specific invalid chars
       const invalid = addr.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
-      console.error('[PlaceBetPanel] Invalid chars:', invalid.map((c, i) => `${c}@${addr.indexOf(c)}(${c.charCodeAt(0)})`).join(', '));
+      if (invalid.length > 0) {
+        console.error('[PlaceBetPanel] Invalid chars:', invalid.map((c, i) => `'${c}'@pos${addr.indexOf(c)}(code${c.charCodeAt(0)})`).join(', '));
+      }
     }
     return valid;
   };
@@ -63,10 +67,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
   };
 
   const handleGetInstruction = async () => {
-    const wallet = getWalletAddress();
+    // Use walletAddress from context instead of localStorage
+    const wallet = walletAddress || getWalletAddress();
     console.log('[PlaceBetPanel] handleGetInstruction called:', {
       mode,
       wallet,
+      walletSource: walletAddress ? 'context' : 'localStorage',
       walletValid: validateWalletAddress(wallet),
       bet_id: bet?.id,
       matchId,
