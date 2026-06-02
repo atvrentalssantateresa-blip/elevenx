@@ -159,11 +159,16 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
       console.log('Waiting for confirmation...');
       try {
-        await connection.confirmTransaction(sig, 'confirmed');
-        console.log('Transaction confirmed!');
+        const confirmation = await connection.confirmTransaction(sig, 'confirmed');
+        console.log('Transaction confirmation result:', confirmation);
+        if (confirmation.value.err) {
+          console.error('Transaction failed on-chain:', confirmation.value.err);
+          throw new Error('Transaction failed on-chain: ' + JSON.stringify(confirmation.value.err));
+        }
+        console.log('Transaction confirmed on-chain!');
       } catch (confirmError) {
-        console.warn('[SolanaTransactionSigner] Confirmation error:', confirmError);
-        // Continue even if confirmation times out
+        console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);
+        throw confirmError;
       }
 
       onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId });

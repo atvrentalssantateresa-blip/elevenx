@@ -245,13 +245,19 @@ function BetRow({ bet, index, walletAddress }) {
                   onSuccess={async (result) => {
                     if (result.signature) {
                       try {
-                        await base44.functions.invoke('finalizeWithdrawal', {
+                        const finalizeResult = await base44.functions.invoke('finalizeWithdrawal', {
                           userBetId: result.userBetId,
                           offerId: bet.offer_id,
                           signature: result.signature,
                         });
+                        console.log('Finalize result:', finalizeResult.data);
+                        if (finalizeResult.data.error) {
+                          throw new Error(finalizeResult.data.error);
+                        }
                       } catch (err) {
                         console.error('Failed to finalize withdrawal:', err);
+                        alert('Transaction signed but failed to finalize: ' + err.message);
+                        return;
                       }
                     }
                     setWithdrawInstruction(null);
