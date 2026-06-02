@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import OddsPanel from '@/components/betting/OddsPanel';
 import OfferBook from '@/components/betting/OfferBook';
 import PlaceBetPanel from '@/components/betting/PlaceBetPanel';
+import StatsApiMatchSearch from '@/components/betting/StatsApiMatchSearch';
 
 const getFlagEmoji = (countryCode) => {
   if (!countryCode) return '🏳️';
@@ -266,6 +267,11 @@ export default function MatchDetail() {
               {isRefreshingOdds ? <><RefreshCw className="w-3 h-3 animate-spin mr-1" />Fetching...</> : 'Fetch Odds'}
             </Button>
           </div>
+          <StatsApiMatchSearch
+            teamA={match.team_a}
+            teamB={match.team_b}
+            onSelect={(id) => setStatsApiMatchId(id)}
+          />
         </motion.div>
       )}
 
