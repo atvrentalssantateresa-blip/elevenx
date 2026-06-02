@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Wallet, Loader2 } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
+import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
 // Mode: 'offer' = place a new bet offer (LP), 'match' = bet against existing offer
 export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
   const [amount, setAmount] = useState('');
+  const [instruction, setInstruction] = useState(null);
   const { isConnected, connect, isConnecting } = useWallet();
-  const queryClient = useQueryClient();
-
-  const getWalletAddress = () => {
-    const s = localStorage.getItem('elevenx_wallet_session');
-    if (!s) return null;
-    try { const p = JSON.parse(s); return p.address || p; } catch { return s; }
-  };
 
   const stakeNum = parseFloat(amount) || 0;
 
@@ -37,37 +32,48 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
     ? stakeNum + (stakeNum / (selectedOffer.odds_at_creation - 1))
     : 0;
 
-  const placeMutation = useMutation({
-    mutationFn: async () => {
-      const wallet = getWalletAddress();
-      if (mode === 'offer') {
-        const res = await base44.functions.invoke('createBetOffer', {
-          bet_id: bet.id,
-          match_id: matchId,
-          outcome: selectedOutcome,
-          amount: stakeNum,
-          wallet_address: wallet,
-        });
-        if (res.data.error) throw new Error(res.data.error);
-        return res.data;
-      } else {
-        const res = await base44.functions.invoke('matchBet', {
-          offer_id: selectedOffer.id,
-          amount: stakeNum,
-          wallet_address: wallet,
-        });
-        if (res.data.error) throw new Error(res.data.error);
-        return res.data;
-      }
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['offers', bet.id] });
-      queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-      queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId] });
-      setAmount('');
-      onSuccess && onSuccess(data);
-    },
-  });
+  const getWalletAddress = () => {
+    const s = localStorage.getItem('elevenx_wallet_session');
+    if (!s) return null;
+    try { const p = JSON.parse(s); return p.address || p; } catch { return s; }
+  };
+
+  const handleGetInstruction = async () => {
+    const wallet = getWalletAddress();
+    if (!wallet) throw new Error('Wallet not connected');
+
+    if (mode === 'offer') {
+      const res = await base44.functions.invoke('createBetOffer', {
+        bet_id: bet.id,
+        match_id: matchId,
+        outcome: selectedOutcome,
+        amount: stakeNum,
+        wallet_address: wallet,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      setInstruction(res.data.solana_instruction);
+      return res.data;
+    } else {
+      const res = await base44.functions.invoke('matchBet', {
+        offer_id: selectedOffer.id,
+        amount: stakeNum,
+        wallet_address: wallet,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      setInstruction(res.data.solana_instruction);
+      return res.data;
+    }
+  };
+
+  const handleTransactionSuccess = (result) => {
+    setAmount('');
+    setInstruction(null);
+    onSuccess && onSuccess(result);
+  };
+
+  const handleTransactionError = (error) => {
+    console.error('Transaction failed:', error);
+  };
 
   const outcomeLabel = mode === 'offer'
     ? selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'
@@ -81,7 +87,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         <Wallet className="w-8 h-8 text-primary mx-auto mb-2" />
         <p className="text-sm font-medium mb-3">Connect wallet to place bet</p>
         <Button onClick={connect} disabled={isConnecting} className="bg-primary hover:bg-primary/90 font-heading font-bold h-10 rounded-xl px-6">
-          {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect Phantom'}
+          Connect Phantom
         </Button>
       </div>
     );
@@ -171,19 +177,27 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         )}
       </AnimatePresence>
 
-      <Button
-        onClick={() => placeMutation.mutate()}
-        disabled={stakeNum <= 0 || placeMutation.isPending || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake)}
-        className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-      >
-        {placeMutation.isPending ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
-        ) : mode === 'offer' ? (
-          `Place Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
-        ) : (
-          `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
-        )}
-      </Button>
+      {instruction ? (
+        <SolanaTransactionSigner
+          instruction={instruction}
+          amount={stakeNum}
+          isOffer={mode === 'offer'}
+          onSuccess={handleTransactionSuccess}
+          onError={handleTransactionError}
+        />
+      ) : (
+        <Button
+          onClick={handleGetInstruction}
+          disabled={stakeNum <= 0 || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake)}
+          className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+        >
+          {mode === 'offer' ? (
+            `Place Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
+          ) : (
+            `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
+          )}
+        </Button>
+      )}
     </div>
   );
 }

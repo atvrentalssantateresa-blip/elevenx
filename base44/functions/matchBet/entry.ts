@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
+import { Buffer } from 'node:buffer';
 
 // Match against an existing offer — bettor takes the opposing side
 // Bettor stakes at opposing odds: if LP offered Home @ 2.0, bettor bets Away
@@ -17,6 +19,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing offer_id or amount' }, { status: 400 });
     }
 
+    if (!wallet_address) {
+      return Response.json({ error: 'Wallet address required' }, { status: 400 });
+    }
+
     // Load offer
     const offers = await base44.entities.BetOffer.filter({ id: offer_id });
     const offer = offers[0];
@@ -30,100 +36,59 @@ Deno.serve(async (req) => {
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Market not open' }, { status: 400 });
 
-    // The opposing outcome(s): if LP backed 'a', matcher bets 'b' or 'draw'
-    // For simplicity: matcher always takes the exact opposite of the offer
-    // Max the bettor can stake = offer.amount_unmatched * (lp_odds - 1) / lp_odds
-    // because LP put up: amount, which covers payout of amount * lp_odds
-    // bettor's stake to cover = amount_unmatched / (lp_odds - 1) * something
-    // 
-    // Fixed-odds P2P math:
-    //   LP offers outcome A @ odds 2.0, puts up 100 SOL
-    //   If LP wins: LP gets bettor's stake (100 SOL @ 2.0 → bettor could put max 100 SOL to win 200)
-    //   Wait — bettor puts 100, LP puts 100 (their liability = their stake since odds=2.0)
-    //   Actually: LP stake = their potential payout if they LOSE = what bettor wins
-    //   So: LP puts 100 @ odds 2.0 → LP wins 100*(2.0-1)=100 if win, loses 100 if they lose
-    //   Bettor stakes X to win LP's 100 → bettor's odds = 100/X + 1
-    //   But odds are fixed at creation. LP odds = 2.0 means bettor odds = 1/(1-1/2.0) = 2.0 (even money)
-    //   Cleaner: LP_odds + Bettor_odds form a matched pair
-    //   LP backs A @ 2.0: bettor must take NOT-A. 
-    //   Max bettor can stake = LP_stake (amount_unmatched) since odds=2 is even money.
-    //   General: max_bettor_stake = amount_unmatched (LP's liability IS their stake at 2x)
-    //   For non-2x: LP puts up `liability`, bettor puts up `stake` such that:
-    //     stake * bettor_odds = liability + stake (bettor wins LP's liability)
-    //     LP's liability = LP_stake * (LP_odds - 1)
-    //   So max_bettor_stake = LP_stake * (LP_odds - 1) / some bettor_odds
-    //   Simplest model: max bettor stake = offer.amount_unmatched * (offer.odds_at_creation - 1)
-    //   That way bettor puts up less, and if bettor wins they get LP's stake back + their own
-
-    const maxBettorStake = offer.amount_unmatched * (offer.odds_at_creation - 1);
-
-    if (amount > maxBettorStake + 0.000001) {
-      return Response.json({
-        error: `Max you can bet against this offer is ◎${maxBettorStake.toFixed(4)}`,
-        max_stake: maxBettorStake,
-      }, { status: 400 });
+    const lp_odds = offer.odds_at_creation;
+    const max_stake = offer.amount_unmatched / (lp_odds - 1);
+    
+    if (amount > max_stake) {
+      return Response.json({ error: `Maximum stake for this offer is ◎${max_stake.toFixed(4)}` }, { status: 400 });
     }
 
-    // How much of LP's offer is being consumed
-    const lpStakeConsumed = amount / (offer.odds_at_creation - 1);
-    const newUnmatched = Math.max(0, offer.amount_unmatched - lpStakeConsumed);
-    const newMatched = (offer.amount_matched || 0) + lpStakeConsumed;
+    // Determine opposing outcome
+    let matcher_outcome = '';
+    if (offer.outcome === 'a') matcher_outcome = 'b';
+    else if (offer.outcome === 'b') matcher_outcome = 'a';
+    else matcher_outcome = 'a';
 
-    // Bettor's payout if they win = their stake + LP's consumed stake
-    const bettorPayout = amount + lpStakeConsumed;
+    const matcher_outcome_label = matcher_outcome === 'a' ? bet.outcome_a : matcher_outcome === 'b' ? bet.outcome_b : 'Draw';
+    const potential_payout = amount * lp_odds;
 
-    // Determine bettor's outcome (opposite of LP's)
-    let bettorOutcome;
-    if (offer.outcome === 'a') bettorOutcome = 'b';
-    else if (offer.outcome === 'b') bettorOutcome = 'a';
-    else bettorOutcome = 'a'; // draw -> home team
-
-    const bettorOutcomeLabel = bettorOutcome === 'a' ? bet.outcome_a : bettorOutcome === 'b' ? bet.outcome_b : 'Draw';
-
-    // Update the offer
-    const newStatus = newUnmatched < 0.000001 ? 'fully_matched' : 'partially_matched';
-    await base44.entities.BetOffer.update(offer_id, {
-      amount_matched: newMatched,
-      amount_unmatched: newUnmatched,
-      status: newStatus,
-    });
-
-    // Create UserBet for the matcher
-    const matcherBet = await base44.entities.UserBet.create({
-      bet_id: offer.bet_id,
-      match_id: offer.match_id,
-      offer_id,
-      role: 'matcher',
-      outcome: bettorOutcome,
-      amount,
-      potential_payout: parseFloat(bettorPayout.toFixed(6)),
-      status: 'active', // immediately locked
-      outcome_label: bettorOutcomeLabel,
-      match_title: `${bet.outcome_a} vs ${bet.outcome_b}`,
-      wallet_address: wallet_address || null,
-    });
-
-    // Update LP's UserBet status to active (partial or full match)
-    const lpBets = await base44.entities.UserBet.filter({ offer_id, role: 'lp' });
-    if (lpBets[0]) {
-      await base44.entities.UserBet.update(lpBets[0].id, { status: 'active' });
+    // Get Solana program ID and derive PDAs
+    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
+    if (!SOLANA_PROGRAM_ID) {
+      return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
     }
 
-    // Update pool stats
-    const poolField = bettorOutcome === 'a' ? 'pool_a' : bettorOutcome === 'b' ? 'pool_b' : 'pool_draw';
-    await base44.entities.Bet.update(offer.bet_id, {
-      [poolField]: (bet[poolField] || 0) + amount,
-      total_pool: (bet.total_pool || 0) + amount,
-      total_bettors: (bet.total_bettors || 0) + 1,
-    });
+    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    const matchIdBytes = Buffer.alloc(32);
+    Buffer.from(offer.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(offer.match_id.length, 32));
+
+    const [marketPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('pm_market'), matchIdBytes],
+      programId
+    );
+
+    const bettorPubkey = new PublicKey(wallet_address);
+    const outcomeIndex = matcher_outcome === 'a' ? 0 : matcher_outcome === 'draw' ? 1 : 2;
+
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('pm_position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      programId
+    );
+
+    const amountLamports = Math.round(amount * 1_000_000_000);
 
     return Response.json({
       success: true,
-      user_bet_id: matcherBet.id,
-      payout_if_win: bettorPayout,
-      lp_stake_consumed: lpStakeConsumed,
-      remaining_in_offer: newUnmatched,
-      message: `Bet matched! You staked ◎${amount} to win ◎${bettorPayout.toFixed(4)} if ${bettorOutcomeLabel} wins.`,
+      potential_payout,
+      matcher_outcome_label,
+      solana_instruction: {
+        instruction_type: 'place_bet',
+        marketPda: marketPda.toBase58(),
+        bettorPositionPda: positionPda.toBase58(),
+        outcome: outcomeIndex,
+        amountLamports,
+      },
+      message: `Sign to bet ◎${amount.toFixed(4)} on ${matcher_outcome_label} to win ◎${potential_payout.toFixed(4)}`,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
