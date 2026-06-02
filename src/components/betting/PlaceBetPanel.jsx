@@ -38,30 +38,39 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
     try { const p = JSON.parse(s); return p.address || p; } catch { return s; }
   };
 
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState(null);
+
   const handleGetInstruction = async () => {
     const wallet = getWalletAddress();
-    if (!wallet) throw new Error('Wallet not connected');
+    if (!wallet) { setPrepareError('Wallet not connected'); return; }
 
-    if (mode === 'offer') {
-      const res = await base44.functions.invoke('createBetOffer', {
-        bet_id: bet.id,
-        match_id: matchId,
-        outcome: selectedOutcome,
-        amount: stakeNum,
-        wallet_address: wallet,
-      });
-      if (res.data.error) throw new Error(res.data.error);
+    setIsPreparing(true);
+    setPrepareError(null);
+    try {
+      let res;
+      if (mode === 'offer') {
+        res = await base44.functions.invoke('createBetOffer', {
+          bet_id: bet.id,
+          match_id: matchId,
+          outcome: selectedOutcome,
+          amount: stakeNum,
+          wallet_address: wallet,
+        });
+      } else {
+        res = await base44.functions.invoke('matchBet', {
+          offer_id: selectedOffer.id,
+          amount: stakeNum,
+          wallet_address: wallet,
+        });
+      }
+      if (res.data?.error) throw new Error(res.data.error);
       setInstruction(res.data.solana_instruction);
-      return res.data;
-    } else {
-      const res = await base44.functions.invoke('matchBet', {
-        offer_id: selectedOffer.id,
-        amount: stakeNum,
-        wallet_address: wallet,
-      });
-      if (res.data.error) throw new Error(res.data.error);
-      setInstruction(res.data.solana_instruction);
-      return res.data;
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Failed to prepare transaction';
+      setPrepareError(msg);
+    } finally {
+      setIsPreparing(false);
     }
   };
 
@@ -177,6 +186,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         )}
       </AnimatePresence>
 
+      {prepareError && (
+        <p className="text-xs text-destructive text-center">{prepareError}</p>
+      )}
+
       {instruction ? (
         <SolanaTransactionSigner
           instruction={instruction}
@@ -188,10 +201,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       ) : (
         <Button
           onClick={handleGetInstruction}
-          disabled={stakeNum <= 0 || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake)}
+          disabled={stakeNum <= 0 || isPreparing || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake)}
           className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
         >
-          {mode === 'offer' ? (
+          {isPreparing ? 'Preparing...' : mode === 'offer' ? (
             `Place Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
           ) : (
             `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
