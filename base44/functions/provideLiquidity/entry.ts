@@ -10,6 +10,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
+    // Note: No auth check - wallet-only authentication
     // Check program ID is configured
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {

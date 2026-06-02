@@ -27,9 +27,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid Solana program ID configuration. Please contact support.' }, { status: 500 });
     }
     
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
     const payload = await req.json();
     const { walletAddress, bet_id, match_id, outcome, amount } = payload;
 
