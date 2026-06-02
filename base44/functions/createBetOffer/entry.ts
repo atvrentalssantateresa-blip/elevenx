@@ -23,18 +23,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
     }
 
-    // Validate base58 format
+    // Validate base58 format - check each character
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     if (!base58Regex.test(wallet_address)) {
       console.error('[createBetOffer] Invalid wallet address:', wallet_address);
-      console.error('[createBetOffer] Failed regex test');
+      console.error('[createBetOffer] Length:', wallet_address.length);
+      
+      // Find invalid characters
+      const invalidChars = [];
+      for (let i = 0; i < wallet_address.length; i++) {
+        const char = wallet_address[i];
+        if (!/^[1-9A-HJ-NP-Za-km-z]$/.test(char)) {
+          invalidChars.push({ position: i, char: char, code: char.charCodeAt(0) });
+        }
+      }
+      console.error('[createBetOffer] Invalid characters:', invalidChars);
+      
       return Response.json({ 
         error: 'Invalid wallet address format — contains non-base58 characters', 
-        hint: 'Address must be 32-44 base58 characters',
+        hint: 'Address must be 32-44 base58 characters. Invalid chars: ' + invalidChars.map(c => `'${c.char}'@${c.position}`).join(', '),
         debug: {
           address: wallet_address,
           length: wallet_address.length,
-          passedRegex: base58Regex.test(wallet_address)
+          invalidCharacters: invalidChars
         }
       }, { status: 400 });
     }
