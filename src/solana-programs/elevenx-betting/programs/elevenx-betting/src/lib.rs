@@ -52,6 +52,11 @@ pub mod elevenx_betting {
         instructions::liquidity::withdraw_liquidity(ctx)
     }
 
+    /// LP withdraws winnings from a settled market (winning outcome).
+    pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Result<()> {
+        instructions::claims::withdraw_lp_winnings(ctx, amount)
+    }
+
     // ── Betting ─────────────────────────────────────────────────────────────
 
     /// Place a bet on a specific outcome (0, 1, or 2) at the oracle fixed odds.
@@ -90,6 +95,11 @@ pub mod elevenx_betting {
     /// Bettor reclaims stake if market was voided.
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
         instructions::claims::refund(ctx)
+    }
+
+    /// LP withdraws winnings from a settled market.
+    pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Result<()> {
+        instructions::claims::withdraw_lp_winnings(ctx, amount)
     }
 
     // ── Fee Vault ───────────────────────────────────────────────────────────

@@ -51,6 +51,8 @@ pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u6
         offer.amount_committed = 0;
         offer.amount_matched = 0;
         offer.closed = false;
+        offer.matched_stake = 0;
+        offer.withdrawn = false;
         offer.bump = ctx.bumps.lp_offer;
     }
 
@@ -71,7 +73,10 @@ pub fn withdraw_liquidity(ctx: Context<WithdrawLiquidity>) -> Result<()> {
     let market = &mut ctx.accounts.market;
     let offer = &mut ctx.accounts.lp_offer;
 
-    require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
+    // Allow withdrawal if market is still open OR if market is settled (for unmatched funds)
+    let is_open = clock.unix_timestamp < market.open_until;
+    let is_settled = market.settled;
+    require!(is_open || is_settled, BettingError::BettingClosed);
     require!(!offer.closed, BettingError::ClaimNothing);
 
     let available = offer.available();

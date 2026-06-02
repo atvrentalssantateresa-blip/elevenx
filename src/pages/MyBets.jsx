@@ -252,13 +252,24 @@ function BetRow({ bet, index, walletAddress }) {
   const canWithdraw = bet.role === 'lp' && bet.status === 'pending';
   const canClaimRefund = bet.status === 'refunded';
   
-  // Check if this is a winning LP bet from a settled market
-  const { data: betForLpWinnings } = useQuery({
+  // For LP bets: check the offer to determine withdrawal type
+  const { data: betForLpCheck } = useQuery({
     queryKey: ['bet', bet.bet_id],
     queryFn: () => base44.entities.Bet.list().then(bets => bets.find(b => b.id === bet.bet_id)),
     enabled: bet.role === 'lp',
   });
-  const canWithdrawLpWinnings = bet.role === 'lp' && betForLpWinnings && betForLpWinnings.status === 'settled' && bet.outcome === betForLpWinnings.winning_outcome;
+  
+  // Check if LP has matched funds (winnings) or unmatched funds (withdrawal)
+  const hasMatchedFunds = offer && offer.amount_matched > 0;
+  const hasUnmatchedFunds = offer && offer.amount_unmatched > 0;
+  const isMarketSettled = betForLpCheck && betForLpCheck.status === 'settled';
+  const lpWon = betForLpCheck && bet.outcome === betForLpCheck.winning_outcome;
+  
+  // Show "Withdraw Winnings" only if LP has matched funds AND market settled AND LP won
+  const canWithdrawLpWinnings = bet.role === 'lp' && isMarketSettled && lpWon && hasMatchedFunds;
+  
+  // Show "Withdraw" for unmatched funds (even in settled markets)
+  const canWithdrawUnmatched = bet.role === 'lp' && hasUnmatchedFunds && (bet.status === 'pending' || (isMarketSettled && !hasMatchedFunds));
 
   return (
     <motion.div
@@ -299,13 +310,14 @@ function BetRow({ bet, index, walletAddress }) {
                 )}
               </Button>
             </>
-          ) : canWithdraw ? (
+          ) : canWithdraw || canWithdrawUnmatched ? (
             withdrawInstruction ? (
               <div className="flex-1">
                 <SolanaTransactionSigner
                   instruction={withdrawInstruction}
                   amount={withdrawInstruction.amount}
                   userBetId={withdrawInstruction.userBetId}
+                  offerId={withdrawInstruction.offerId}
                   onSuccess={async (result) => {
                     if (result.signature) {
                       try {
@@ -325,7 +337,6 @@ function BetRow({ bet, index, walletAddress }) {
                         console.error('Failed to finalize withdrawal:', err);
                         alert('Transaction failed on-chain. Your funds are still in the pool: ' + err.message);
                         setWithdrawInstruction(null);
-                        // Refresh data to ensure UI shows correct state
                         queryClient.invalidateQueries({ queryKey: ['myBets'] });
                       }
                     }
@@ -334,7 +345,6 @@ function BetRow({ bet, index, walletAddress }) {
                     console.error('Withdrawal transaction error:', err);
                     alert('Transaction failed: ' + (err.message || 'Unknown error'));
                     setWithdrawInstruction(null);
-                    // Refresh data to ensure UI shows correct state
                     queryClient.invalidateQueries({ queryKey: ['myBets'] });
                   }}
                 />

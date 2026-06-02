@@ -60,20 +60,15 @@ Deno.serve(async (req) => {
     // Fetch Bet and Match
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
-    if (!bet || bet.status !== 'open') return Response.json({ error: 'Bet not open' }, { status: 400 });
+    if (!bet) return Response.json({ error: 'Bet not found' }, { status: 400 });
+    
+    // Allow withdrawal if bet is open OR settled (for unmatched funds in settled markets)
+    if (bet.status !== 'open' && bet.status !== 'settled') {
+      return Response.json({ error: 'Cannot withdraw from this market' }, { status: 400 });
+    }
 
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
     const match = matches[0];
-    
-    // Check if betting window is still open (use match_time as fallback if open_until is not set)
-    const openUntil = bet.open_until || match.match_time;
-    if (openUntil) {
-      const now = new Date();
-      const deadline = new Date(openUntil);
-      if (now > deadline) {
-        return Response.json({ error: 'Betting window has closed for this market' }, { status: 400 });
-      }
-    }
 
     // Derive outcome index (0=a, 1=draw, 2=b)
     const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;

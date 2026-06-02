@@ -90,13 +90,13 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Calculate payout: original stake + share of losing side (minus fees)
-    // For simplicity, return the full amount that should be in the pool
-    const totalPoolLamports = Math.round((userBet.amount || 0) * 1_000_000_000);
+    // Calculate LP winnings: matched stake from the offer
+    // The LP earns the losing side's stakes (matched against their liquidity)
+    const withdrawAmountLamports = Math.round((offer.amount_matched || 0) * 1_000_000_000);
 
     return Response.json({
       success: true,
-      withdrawAmount: userBet.amount || 0,
+      withdrawAmount: offer.amount_matched || 0,
       userBetId,
       offerId: offer.id,
       solana_instruction: {
@@ -106,10 +106,10 @@ Deno.serve(async (req) => {
         lpOfferPda: lpOfferPda.toBase58(),
         feeVaultPda: feeVaultPda.toBase58(),
         lpWalletPubkey: userPubkey.toBase58(),
-        withdrawAmountLamports: totalPoolLamports,
+        withdrawAmountLamports,
         outcome: userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2,
       },
-      message: `Sign to withdraw ◎${userBet.amount || 0} from settled market`,
+      message: `Sign to withdraw ◎${offer.amount_matched || 0} from settled market`,
     });
 
   } catch (error) {
