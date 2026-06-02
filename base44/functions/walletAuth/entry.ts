@@ -32,15 +32,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if user exists by wallet address
+    // Check if user exists by wallet address (check both root and data fields)
     let user = null;
     try {
       console.log('Looking up user by wallet:', walletAddress?.slice(0, 8));
-      const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+      // Try data.wallet_address first (new format)
+      let users = await serviceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
+      // If not found, try root-level wallet_address (legacy format)
+      if (!users || users.length === 0) {
+        users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+      }
       console.log('User lookup - found:', users?.length || 0, 'users');
       if (users && users.length > 0) {
         user = users[0];
-        console.log('✓ Found user - full_name:', user.full_name, 'username:', user.username);
+        console.log('✓ Found user - full_name:', user.full_name, 'username:', user.username, 'wallet:', user.data?.wallet_address || user.wallet_address);
       }
     } catch (err) {
       console.log('User lookup failed:', err.message);
@@ -55,7 +60,10 @@ Deno.serve(async (req) => {
         // Create user with wallet address and placeholder email (platform requires email)
         const newUser = await serviceRole.entities.User.create({
           email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
-          wallet_address: walletAddress,
+          data: {
+            wallet_address: walletAddress,
+            role: 'user',
+          },
           role: 'user',
         });
         
