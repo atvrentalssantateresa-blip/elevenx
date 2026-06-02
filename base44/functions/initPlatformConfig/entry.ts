@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { Connection, PublicKey, SystemProgram, Transaction } from 'npm:@solana/web3.js@1.98.4';
+import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
 
-    // Derive platform config PDA
+    // Derive platform config PDA (seed: "platform")
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('platform')],
       programId
@@ -45,23 +45,20 @@ Deno.serve(async (req) => {
     const discriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
     console.log('Initialize platform discriminator:', discriminator.toString('hex'));
 
-    // Initialize_platform params (based on program struct):
+    // Initialize_platform params based on PlatformConfig struct:
     // - default_fee_percent: u16
-    // - max_fee_percent: u16
-    // - admin: Pubkey (will be set to signer in the instruction)
+    // - max_fee_percent: u16  
+    // - admin: Pubkey (set via account, not param)
     const paramsData = Buffer.alloc(64);
     let offset = 0;
     
-    // default_fee_percent (u16 = 2 bytes) - 2% default
+    // default_fee_percent (u16 = 2 bytes) - 2% default (200 basis points)
     paramsData.writeUInt16LE(200, offset);
     offset += 2;
     
-    // max_fee_percent (u16 = 2 bytes) - 5% max
+    // max_fee_percent (u16 = 2 bytes) - 5% max (500 basis points)
     paramsData.writeUInt16LE(500, offset);
     offset += 2;
-    
-    // Padding to match struct size
-    // The rest will be zeros
 
     const instructionData = Buffer.concat([discriminator, paramsData]);
 

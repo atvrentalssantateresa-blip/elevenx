@@ -33,6 +33,21 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       
       console.log('[ProvideLiquidityPanel] createMarketOnChain response:', response.data);
       
+      // Check if platform needs initialization
+      if (response.data.needsPlatformInit) {
+        console.log('[ProvideLiquidityPanel] Platform config not initialized');
+        setError('Platform not initialized. Admin must initialize platform first using the Admin panel.');
+        setCreateMarketMutation({ isPending: false });
+        return;
+      }
+      
+      // Check if platform config account doesn't exist (error 3007 scenario)
+      if (response.data.solana_instruction && response.data.solana_instruction.accounts?.platformConfig) {
+        // Platform config PDA exists in response, but may not be initialized on-chain
+        // The transaction will fail with 3007 if platform isn't initialized
+        console.log('[ProvideLiquidityPanel] Platform config PDA:', response.data.solana_instruction.accounts.platformConfig);
+      }
+      
       if (response.data.error) {
         setError(response.data.error);
       } else if (response.data.solana_instruction) {
@@ -51,7 +66,14 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       }
     } catch (err) {
       console.error('[ProvideLiquidityPanel] handleCreateMarket error:', err);
-      setError(err.message || 'Failed to create market');
+      const errorMsg = err.message || 'Failed to create market';
+      
+      // Check if it's a platform config error
+      if (errorMsg.includes('3007') || errorMsg.includes('Platform config')) {
+        setError('Platform not initialized. Admin must initialize platform first.');
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setCreateMarketMutation({ isPending: false });
     }

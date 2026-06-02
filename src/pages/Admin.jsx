@@ -17,6 +17,7 @@ export default function Admin() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // All hooks must be called unconditionally at the top
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: () => base44.entities.Match.list('-created_date', 100),
@@ -40,6 +41,23 @@ export default function Admin() {
     refetchInterval: 30000,
   });
 
+  const initPlatformMutation = useMutation({
+    mutationFn: async () => {
+      const response = await base44.functions.invoke('initPlatformConfig', {});
+      if (response.data.error) throw new Error(response.data.error);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.alreadyExists) {
+        alert('Platform config already initialized on-chain');
+      } else if (data.solana_instruction) {
+        alert('Platform initialization transaction ready. Please use a wallet to sign.');
+        localStorage.setItem('pending_platform_init', JSON.stringify(data.solana_instruction));
+      }
+    },
+  });
+
+  // Now conditional render after all hooks
   if (user?.role !== 'admin') {
     return (
       <div className="text-center py-20">
@@ -51,6 +69,33 @@ export default function Admin() {
 
   return (
     <div className="space-y-8">
+      {/* Platform Initialization */}
+      <div className="bg-card border border-primary/20 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Zap className="w-5 h-5 text-primary" />
+            <div>
+              <p className="text-sm font-bold text-foreground">Platform Config</p>
+              <p className="text-xs text-muted-foreground">Initialize the platform on Solana (one-time setup)</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => initPlatformMutation.mutate()}
+            disabled={initPlatformMutation.isPending}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
+          >
+            {initPlatformMutation.isPending ? (
+              <>
+                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                Initializing...
+              </>
+            ) : (
+              'Initialize Platform'
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* Oracle Status Banner */}
       <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">

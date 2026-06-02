@@ -302,36 +302,39 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         // Try parsing from message
         if (!customCode && confirmError.message) {
-          const match = confirmError.message.match(/Custom["\s:]*(\d+)/);
-          if (match) {
-            customCode = parseInt(match[1]);
-          }
+        const match = confirmError.message.match(/Custom["\s:]*(\d+)/);
+        if (match) {
+          customCode = parseInt(match[1]);
         }
-        
+        }
+
         if (customCode !== null) {
-          // Anchor error codes are zero-indexed based on enum order
-          const errorMessages = {
-            0: 'Betting window has closed for this market',
-            1: 'Market has already been settled',
-            2: 'Market has been voided',
-            3: 'Stake amount must be greater than zero',
-            4: 'Invalid outcome index',
-            5: 'Too early to settle this market',
-            6: 'Market is paused',
-            7: 'Fee percentage exceeds maximum (5%)',
-            8: 'Invalid market timeline',
-            9: 'Nothing to claim (or already withdrawn)',
-            10: 'Nothing to refund',
-            11: 'Market is not voided',
-            12: 'Oracle has already voted',
-            13: 'Insufficient oracle consensus',
-            14: 'Invalid outcome count',
-            15: 'Market is already initialized',
-            16: 'Arithmetic overflow',
-            17: 'Unauthorized',
-          };
-          const errorMsg = errorMessages[customCode] || `Unknown program error (code ${customCode})`;
-          throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
+        // Anchor error codes - check both BettingError and standard Anchor errors
+        const errorMessages = {
+          // BettingError codes (0-17)
+          0: 'Betting window has closed for this market',
+          1: 'Market has already been settled',
+          2: 'Market has been voided',
+          3: 'Stake amount must be greater than zero',
+          4: 'Invalid outcome index',
+          5: 'Too early to settle this market',
+          6: 'Market is paused',
+          7: 'Fee percentage exceeds maximum (5%)',
+          8: 'Invalid market timeline',
+          9: 'Nothing to claim (or already withdrawn)',
+          10: 'Nothing to refund',
+          11: 'Market is not voided',
+          12: 'Oracle has already voted',
+          13: 'Insufficient oracle consensus',
+          14: 'Invalid outcome count',
+          15: 'Market is already initialized',
+          16: 'Arithmetic overflow',
+          17: 'Unauthorized',
+          // Anchor/Account errors (3000+)
+          3007: 'Platform config not initialized - admin must initialize platform first',
+        };
+        const errorMsg = errorMessages[customCode] || `Program error code ${customCode}`;
+        throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
         }
         
         throw new Error('Transaction confirmation failed: ' + (confirmError.message || 'Unknown error'));
