@@ -55,20 +55,17 @@ export function WalletProvider({ children }) {
     }
     setIsConnecting(true);
     try {
-      const resp = await phantom.connect();
-      // Get address from publicKey - handle different response formats
+      // Phantom's connect() returns { publicKey: PublicKey } directly
+      const { publicKey } = await phantom.connect();
+      
+      // Handle publicKey - it's a PublicKey object with toBase58() method
       let address;
-      if (resp.publicKey) {
-        // If it's a PublicKey object, convert to base58 string
-        if (typeof resp.publicKey.toBase58 === 'function') {
-          address = resp.publicKey.toBase58();
-        } else if (typeof resp.publicKey.toString === 'function') {
-          address = resp.publicKey.toString();
-        } else {
-          address = String(resp.publicKey);
-        }
+      if (publicKey && typeof publicKey.toBase58 === 'function') {
+        address = publicKey.toBase58();
+      } else if (publicKey && typeof publicKey.toString === 'function') {
+        address = publicKey.toString();
       } else {
-        throw new Error('No publicKey in response');
+        address = String(publicKey);
       }
       
       // Trim and clean the address
