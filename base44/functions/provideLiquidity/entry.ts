@@ -44,17 +44,6 @@ Deno.serve(async (req) => {
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Bet not open' }, { status: 400 });
 
-    // Check if market exists on-chain
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    const marketInfo = await connection.getAccountInfo(marketPda);
-    if (!marketInfo) {
-      return Response.json({ 
-        error: 'Market account does not exist on-chain. The market must be created before providing liquidity.',
-        marketPda: marketPda.toBase58()
-      }, { status: 400 });
-    }
-    console.log('Market account exists on-chain, size:', marketInfo.data.length);
-
     // Fetch match for display title
     const matches = await base44.entities.Match.filter({ id: match_id });
     const match = matches[0];
@@ -77,6 +66,17 @@ Deno.serve(async (req) => {
       [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
+
+    // Check if market exists on-chain
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const marketInfo = await connection.getAccountInfo(marketPda);
+    if (!marketInfo) {
+      return Response.json({ 
+        error: 'Market account does not exist on-chain. The market must be created before providing liquidity.',
+        marketPda: marketPda.toBase58()
+      }, { status: 400 });
+    }
+    console.log('Market account exists on-chain, size:', marketInfo.data.length);
 
     console.log('=== provideLiquidity PDA Debug ===', {
       outcome,
