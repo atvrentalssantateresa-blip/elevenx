@@ -23,16 +23,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
     }
 
+    // Trim whitespace
+    const trimmedWallet = wallet_address.trim();
+    
     // Validate base58 format - check each character
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-    if (!base58Regex.test(wallet_address)) {
-      console.error('[createBetOffer] Invalid wallet address:', wallet_address);
-      console.error('[createBetOffer] Length:', wallet_address.length);
+    if (!base58Regex.test(trimmedWallet)) {
+      console.error('[createBetOffer] Invalid wallet address:', trimmedWallet);
+      console.error('[createBetOffer] Length:', trimmedWallet.length);
       
       // Find invalid characters
       const invalidChars = [];
-      for (let i = 0; i < wallet_address.length; i++) {
-        const char = wallet_address[i];
+      for (let i = 0; i < trimmedWallet.length; i++) {
+        const char = trimmedWallet[i];
         if (!/^[1-9A-HJ-NP-Za-km-z]$/.test(char)) {
           invalidChars.push({ position: i, char: char, code: char.charCodeAt(0) });
         }
@@ -43,8 +46,8 @@ Deno.serve(async (req) => {
         error: 'Invalid wallet address format — contains non-base58 characters', 
         hint: 'Address must be 32-44 base58 characters. Invalid chars: ' + invalidChars.map(c => `'${c.char}'@${c.position}`).join(', '),
         debug: {
-          address: wallet_address,
-          length: wallet_address.length,
+          address: trimmedWallet,
+          length: trimmedWallet.length,
           invalidCharacters: invalidChars
         }
       }, { status: 400 });
@@ -53,17 +56,17 @@ Deno.serve(async (req) => {
     // Try to create PublicKey to validate - this catches subtle base58 issues
     let lpPubkey;
     try {
-      lpPubkey = new PublicKey(wallet_address);
+      lpPubkey = new PublicKey(trimmedWallet);
     } catch (e) {
       console.error('[createBetOffer] PublicKey validation failed:', e.message);
-      console.error('[createBetOffer] Address:', wallet_address);
-      console.error('[createBetOffer] Char codes:', wallet_address.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`).join(' '));
+      console.error('[createBetOffer] Address:', trimmedWallet);
+      console.error('[createBetOffer] Char codes:', trimmedWallet.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`).join(' '));
       return Response.json({ 
         error: 'Invalid Solana wallet address', 
         hint: e.message,
         debug: { 
-          address: wallet_address,
-          charCodes: wallet_address.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`)
+          address: trimmedWallet,
+          charCodes: trimmedWallet.split('').map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`)
         }
       }, { status: 400 });
     }

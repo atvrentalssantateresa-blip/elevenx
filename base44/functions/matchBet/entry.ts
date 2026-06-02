@@ -23,30 +23,36 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
     }
 
+    // Trim whitespace
+    const trimmedWallet = wallet_address.trim();
+    
     // Validate base58 format
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-    if (!base58Regex.test(wallet_address)) {
-      console.error('[matchBet] Invalid wallet address:', wallet_address);
+    if (!base58Regex.test(trimmedWallet)) {
+      console.error('[matchBet] Invalid wallet address:', trimmedWallet);
+      const invalidChars = trimmedWallet.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
+      console.error('[matchBet] Invalid characters:', invalidChars.map((c, i) => `pos${i}:'${c}'(code${c.charCodeAt(0)})`).join(', '));
       return Response.json({ 
         error: 'Invalid wallet address format — contains non-base58 characters', 
-        hint: 'Address must be 32-44 base58 characters',
+        hint: 'Address must be 32-44 base58 characters. Invalid: ' + invalidChars.join(', '),
         debug: {
-          address: wallet_address,
-          length: wallet_address.length,
-          passedRegex: base58Regex.test(wallet_address)
+          address: trimmedWallet,
+          length: trimmedWallet.length,
+          passedRegex: base58Regex.test(trimmedWallet),
+          invalidCharacters: invalidChars.map((c, i) => ({ position: i, char: c, code: c.charCodeAt(0) }))
         }
       }, { status: 400 });
     }
 
     // Try to create PublicKey to validate
     try {
-      new PublicKey(wallet_address);
+      new PublicKey(trimmedWallet);
     } catch (e) {
-      console.error('[matchBet] PublicKey validation failed:', e.message, 'for address:', wallet_address);
+      console.error('[matchBet] PublicKey validation failed:', e.message, 'for address:', trimmedWallet);
       return Response.json({ 
         error: 'Invalid Solana wallet address', 
         hint: e.message,
-        debug: { address: wallet_address }
+        debug: { address: trimmedWallet }
       }, { status: 400 });
     }
 
@@ -94,7 +100,7 @@ Deno.serve(async (req) => {
       programId
     );
 
-    const bettorPubkey = new PublicKey(wallet_address);
+    const bettorPubkey = new PublicKey(trimmedWallet);
     const outcomeIndex = matcher_outcome === 'a' ? 0 : matcher_outcome === 'draw' ? 1 : 2;
 
     const [positionPda] = PublicKey.findProgramAddressSync(

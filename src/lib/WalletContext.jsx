@@ -71,6 +71,8 @@ export function WalletProvider({ children }) {
         throw new Error('No publicKey in response');
       }
       
+      // Trim and clean the address
+      address = address.trim();
       console.log('[WalletContext] Raw address from Phantom:', address);
       console.log('[WalletContext] Address type:', typeof address);
       console.log('[WalletContext] Address length:', address.length);
@@ -79,8 +81,9 @@ export function WalletProvider({ children }) {
       const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
       if (!base58Regex.test(address)) {
         console.error('[WalletContext] Invalid wallet address from Phantom:', address);
-        console.error('[WalletContext] Invalid characters:', address.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c)));
-        throw new Error('Invalid wallet address format — contains non-base58 characters');
+        const invalidChars = address.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
+        console.error('[WalletContext] Invalid characters:', invalidChars.map((c, i) => `pos${i}:'${c}'(code${c.charCodeAt(0)})`));
+        throw new Error('Invalid wallet address format — contains non-base58 characters. Invalid: ' + invalidChars.join(', '));
       }
       
       console.log('[WalletContext] Wallet connected:', address.slice(0, 8) + '...');

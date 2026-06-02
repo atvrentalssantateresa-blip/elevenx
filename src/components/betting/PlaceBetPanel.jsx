@@ -37,7 +37,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
   const getWalletAddress = () => {
     const s = localStorage.getItem('elevenx_wallet_session');
     if (!s) return null;
-    try { const p = JSON.parse(s); return p.address || p; } catch { return s; }
+    try { const p = JSON.parse(s); return (p.address || p)?.toString().trim(); } catch { return s?.toString().trim(); }
   };
 
   const validateWalletAddress = (addr) => {
@@ -45,14 +45,15 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       console.error('[PlaceBetPanel] Wallet address is not a string:', addr, 'type:', typeof addr);
       return false;
     }
-    const valid = base58Regex.test(addr);
+    const trimmed = addr.trim();
+    const valid = base58Regex.test(trimmed);
     if (!valid) {
-      console.error('[PlaceBetPanel] Invalid address:', addr);
-      console.error('[PlaceBetPanel] Length:', addr.length);
+      console.error('[PlaceBetPanel] Invalid address:', trimmed);
+      console.error('[PlaceBetPanel] Length:', trimmed.length);
       // Find specific invalid chars
-      const invalid = addr.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
+      const invalid = trimmed.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c));
       if (invalid.length > 0) {
-        console.error('[PlaceBetPanel] Invalid chars:', invalid.map((c, i) => `'${c}'@pos${addr.indexOf(c)}(code${c.charCodeAt(0)})`).join(', '));
+        console.error('[PlaceBetPanel] Invalid chars:', invalid.map((c, i) => `'${c}'@pos${i}(code${c.charCodeAt(0)})`).join(', '));
       }
     }
     return valid;
@@ -68,7 +69,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
 
   const handleGetInstruction = async () => {
     // Use walletAddress from context instead of localStorage
-    const wallet = walletAddress || getWalletAddress();
+    const wallet = (walletAddress || getWalletAddress())?.trim();
     console.log('[PlaceBetPanel] handleGetInstruction called:', {
       mode,
       wallet,
