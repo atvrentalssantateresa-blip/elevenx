@@ -141,23 +141,36 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
             Market not created on-chain. The market must be initialized before liquidity can be provided.
           </AlertDescription>
         </Alert>
-        <Button
-          onClick={handleCreateMarket}
-          disabled={createMarketMutation.isPending}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl"
-        >
-          {createMarketMutation.isPending ? (
-            <>
-              <Loader className="w-4 h-4 mr-2 animate-spin" />
-              Creating Market...
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Market On-Chain
-            </>
-          )}
-        </Button>
+        
+        {showSigner && instruction ? (
+          <>
+            {console.log('[ProvideLiquidityPanel] Rendering SolanaTransactionSigner for market creation:', instruction)}
+            <SolanaTransactionSigner
+              instruction={instruction}
+              amount={0}
+              onSuccess={handleTransactionSuccess}
+              onError={(err) => setError(err.message)}
+            />
+          </>
+        ) : (
+          <Button
+            onClick={handleCreateMarket}
+            disabled={createMarketMutation.isPending}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl"
+          >
+            {createMarketMutation.isPending ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+                Creating Market...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Market On-Chain
+              </>
+            )}
+          </Button>
+        )}
       </div>
     );
   }
