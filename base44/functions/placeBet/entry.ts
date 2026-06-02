@@ -11,6 +11,12 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
+    // Check authentication
+    const user = await base44.auth.me();
+    if (!user) {
+      return Response.json({ error: 'Authentication required. Please log in to place bets.' }, { status: 401 });
+    }
+    
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
       return Response.json({ error: 'Solana program ID not configured. Please contact support.' }, { status: 500 });
