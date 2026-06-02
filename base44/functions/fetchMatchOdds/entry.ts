@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     }
 
     // Default: fetch odds
-    const res = await fetch(`https://api.thestatsapi.com/api/football/odds?match_id=${stats_api_match_id}`, {
+    const res = await fetch(`https://api.thestatsapi.com/api/football/matches/${stats_api_match_id}/odds`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
 
@@ -43,24 +43,29 @@ Deno.serve(async (req) => {
     }
 
     const data = await res.json();
-    const bookmakers = data?.data || [];
+    // Real response: { data: { match_id, bookmakers: [{ bookmaker, markets: { match_odds: { home: { last_seen }, draw: { last_seen }, away: { last_seen } } } }] } }
+    const bookmakers = data?.data?.bookmakers || [];
 
-    // Prefer Pinnacle, fallback to first available
-    const bm = bookmakers.find(b => b.bookmaker === 'Pinnacle') || bookmakers[0];
-    if (!bm) return Response.json({ odds: null, message: 'No odds available yet' });
+    // Prefer Pinnacle → Bet365 → first available
+    const priority = ['Pinnacle', 'Bet365', 'Betfair Exchange', 'Kambi'];
+    let chosen = null;
+    for (const name of priority) {
+      chosen = bookmakers.find(b => b.bookmaker === name);
+      if (chosen?.markets?.match_odds) break;
+    }
+    if (!chosen) chosen = bookmakers.find(b => b.markets?.match_odds);
+    if (!chosen) return Response.json({ odds: null, message: 'No odds available yet' });
 
-    // Find 1X2 market
-    const mo = bm.markets?.find(mk => mk.name === '1X2') || bm.markets?.[0];
-    if (!mo) return Response.json({ odds: null, message: 'No 1X2 market available' });
+    const mo = chosen.markets.match_odds;
+    const getOdd = (side) => parseFloat(mo[side]?.last_seen || mo[side]?.opening || 0);
 
-    const outcomes = mo.outcomes || {};
     return Response.json({
       odds: {
-        home: parseFloat(outcomes.home?.price || outcomes['1']?.price || 0),
-        draw: parseFloat(outcomes.draw?.price || outcomes['X']?.price || 0),
-        away: parseFloat(outcomes.away?.price || outcomes['2']?.price || 0),
+        home: getOdd('home'),
+        draw: getOdd('draw'),
+        away: getOdd('away'),
       },
-      bookmaker: bm.bookmaker,
+      bookmaker: chosen.bookmaker,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
