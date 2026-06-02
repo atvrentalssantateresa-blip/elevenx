@@ -296,11 +296,15 @@ export default function MatchDetail() {
   const isOpen = bet?.status === 'open';
   const isSettled = bet?.status === 'settled';
 
+  const totalLpA = bet ? (bet.lp_amount_a || 0) : 0;
+  const totalLpB = bet ? (bet.lp_amount_b || 0) : 0;
+  const totalLpDraw = bet ? (bet.lp_amount_draw || 0) : 0;
   const avA = bet ? (bet.lp_amount_a || 0) - (bet.backed_amount_a || 0) : 0;
   const avB = bet ? (bet.lp_amount_b || 0) - (bet.backed_amount_b || 0) : 0;
   const avDraw = bet ? (bet.lp_amount_draw || 0) - (bet.backed_amount_draw || 0) : 0;
   const { oddsA, oddsB, oddsDraw } = getOracleOdds(bet);
   const totalLiquidity = avA + avB + avDraw;
+  const totalPool = totalLpA + totalLpB + totalLpDraw;
 
   const stakeNum = parseFloat(amount) || 0;
   const matchOdds = selectedOutcome === 'a' ? oddsA : selectedOutcome === 'b' ? oddsB : oddsDraw;
@@ -313,9 +317,9 @@ export default function MatchDetail() {
   const matchPayout = stakeNum + matchWin - matchFee;
 
   const OUTCOMES = [
-    { key: 'a',    label: bet?.outcome_a || match.team_a, flag: getFlagEmoji(match.team_a_flag), odds: oddsA,    available: avA,    color: 'primary' },
-    { key: 'draw', label: 'Draw',                          flag: '🤝',                            odds: oddsDraw, available: avDraw, color: 'yellow'  },
-    { key: 'b',    label: bet?.outcome_b || match.team_b,  flag: getFlagEmoji(match.team_b_flag), odds: oddsB,    available: avB,    color: 'accent'  },
+    { key: 'a',    label: bet?.outcome_a || match.team_a, flag: getFlagEmoji(match.team_a_flag), odds: oddsA,    available: avA,    totalLp: totalLpA,    color: 'primary' },
+    { key: 'draw', label: 'Draw',                          flag: '🤝',                            odds: oddsDraw, available: avDraw, totalLp: totalLpDraw, color: 'yellow'  },
+    { key: 'b',    label: bet?.outcome_b || match.team_b,  flag: getFlagEmoji(match.team_b_flag), odds: oddsB,    available: avB,    totalLp: totalLpB,    color: 'accent'  },
   ];
 
   const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched' || o.status === 'pending');
@@ -421,15 +425,15 @@ export default function MatchDetail() {
                   {o.odds !== null ? 'oracle fixed odds' : 'odds not set'}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  ◎{Math.max(0, o.available).toFixed(2)} LP avail.
+                  ◎{o.totalLp.toFixed(2)} total LP · ◎{Math.max(0, o.available).toFixed(2)} avail.
                 </p>
               </div>
             ))}
           </div>
 
-          {totalLiquidity > 0 && (
+          {totalPool > 0 && (
             <div className="text-xs text-muted-foreground text-center">
-              ◎{totalLiquidity.toLocaleString()} total liquidity available across all outcomes
+              ◎{totalPool.toLocaleString()} total pool · ◎{totalLiquidity.toLocaleString()} available across all outcomes
             </div>
           )}
 
