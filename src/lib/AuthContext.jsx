@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }) => {
             
             // Initialize SDK with auth token for backend function calls
             const axiosClient = createAxiosClient({
-              baseURL: appParams.appBaseUrl || '/api',
+              baseURL: '',
               headers: {
                 Authorization: `Bearer ${authToken}`,
               },
@@ -180,7 +180,7 @@ export const AuthProvider = ({ children }) => {
             
             // Initialize SDK with the new auth token
             const axiosClient = createAxiosClient({
-              baseURL: appParams.appBaseUrl || '/api',
+              baseURL: '',
               headers: {
                 Authorization: `Bearer ${response.data.authToken}`,
               },
