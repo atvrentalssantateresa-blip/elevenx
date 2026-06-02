@@ -110,7 +110,7 @@ export default function MatchDetail() {
     mutationFn: async () => {
       console.log('[MatchDetail] createMarketMutation triggered');
       // First create the Bet entity
-      await base44.entities.Bet.create({
+      const newBet = await base44.entities.Bet.create({
         match_id: matchId,
         outcome_a: match.team_a,
         outcome_b: match.team_b,
@@ -121,10 +121,12 @@ export default function MatchDetail() {
         total_pool: 0, total_bettors: 0, fee_percent: FEE_BPS,
       });
       
+      console.log('[MatchDetail] Bet created with ID:', newBet.id);
+      
       // Then call createMarketOnChain to get the Solana instruction
       console.log('[MatchDetail] Calling createMarketOnChain');
       const response = await base44.functions.invoke('createMarketOnChain', {
-        bet_id: bet.id || matchId,
+        bet_id: newBet.id,
         match_id: matchId,
       });
       
@@ -133,7 +135,7 @@ export default function MatchDetail() {
       if (response.data.error) throw new Error(response.data.error);
       if (!response.data.solana_instruction) throw new Error('No solana_instruction returned');
       
-      return { response, betId: response.data.betId || bet.id };
+      return { response, betId: newBet.id };
     },
     onSuccess: (result) => {
       console.log('[MatchDetail] createMarketMutation onSuccess:', result);
