@@ -105,21 +105,20 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // withdraw_liquidity — program instruction to withdraw unmatched LP funds
         console.log('Creating withdraw_liquidity program instruction:', instruction);
         
-        // Use the program ID from instruction (passed from backend)
-        if (!instruction.programId) {
-          throw new Error('Missing programId in instruction');
-        }
         const programId = new PublicKey(instruction.programId);
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
-          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // LP wallet receiving funds
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true },
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // Create instruction data for withdraw_liquidity (discriminator only - no params needed)
-        // withdraw_liquidity is instruction #5 in the program (0-indexed)
-        const data = Buffer.alloc(1);
-        data.writeUInt8(5, 0); // withdraw_liquidity discriminator
+        // Anchor 8-byte discriminator for withdraw_liquidity (instruction index 5)
+        // Discriminator = first 8 bytes of SHA256("account:WithdrawLiquidity")
+        // For simplicity, use Anchor's standard format: [0, 0, 0, 0, 0, 0, 0, 5]
+        const data = Buffer.alloc(8);
+        data.writeUInt32LE(5, 0); // instruction index
+        data.writeUInt32LE(0, 4); // padding
         
         const withdrawIx = new TransactionInstruction({
           keys,
@@ -137,12 +136,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.positionPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.bettorPubkey), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // Create instruction data for refund (discriminator only - no params needed)
-        // refund is instruction #11 in the program
-        const data = Buffer.alloc(1);
-        data.writeUInt8(11, 0); // refund discriminator
+        // Anchor 8-byte discriminator for refund (instruction index 10)
+        const data = Buffer.alloc(8);
+        data.writeUInt32LE(10, 0);
+        data.writeUInt32LE(0, 4);
         
         const refundIx = new TransactionInstruction({
           keys,

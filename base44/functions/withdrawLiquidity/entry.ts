@@ -73,23 +73,24 @@ Deno.serve(async (req) => {
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
     const match = matches[0];
 
-    // Derive outcome index (0=a, 1=draw, 2=b)
-    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;
-
-    // Derive PDAs
-    const lpPubkey = new PublicKey(walletAddress);
+    // Use stored PDA from offer (derived at creation time)
+    const lpOfferPda = offer.solana_position_pda;
+    
+    // Derive market PDA
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
-
+    
     const [marketPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('market'), matchIdBytes],
       programId
     );
-    const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
-      programId
-    );
+    
+    console.log('Using stored PDAs:', {
+      marketPda: marketPda.toBase58(),
+      lpOfferPda,
+      stored_market_pda: offer.solana_bet_pool_pda,
+    });
 
     return Response.json({
       success: true,
@@ -101,8 +102,6 @@ Deno.serve(async (req) => {
         programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
         lpOfferPda: lpOfferPda.toBase58(),
-        outcome: outcomeIndex,
-        amountLamports: Math.round(withdrawAmount * 1_000_000_000),
       },
       message: `Sign to withdraw ◎${withdrawAmount}`,
     });
