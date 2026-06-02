@@ -363,59 +363,6 @@ function BetRow({ bet, index, walletAddress }) {
                 </Button>
               </>
             )
-          ) : canClaimRefund ? (
-            withdrawInstruction ? (
-              <div className="flex-1">
-                <SolanaTransactionSigner
-                  instruction={withdrawInstruction}
-                  amount={withdrawInstruction.amount}
-                  userBetId={withdrawInstruction.userBetId}
-                  onSuccess={async (result) => {
-                    if (result.signature) {
-                      try {
-                        await base44.entities.UserBet.update(result.userBetId, {
-                          status: 'claimed',
-                          actual_payout: withdrawInstruction.amount,
-                        });
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                        alert('Refund successful! Your stake has been returned.');
-                      } catch (err) {
-                        console.error('Failed to process refund:', err);
-                        alert('Transaction failed on-chain: ' + err.message);
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                      }
-                    }
-                  }}
-                  onError={(err) => {
-                    console.error('Refund transaction error:', err);
-                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
-                    setWithdrawInstruction(null);
-                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-secondary-foreground">◎{bet.amount?.toFixed(4)}</span>
-                <Button
-                  size="sm"
-                  onClick={() => refundMutation.mutate()}
-                  disabled={refundMutation.isPending}
-                  className="h-8 text-xs bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold rounded-lg border border-border"
-                >
-                  {refundMutation.isPending ? (
-                    <div className="w-3 h-3 border-2 border-secondary-foreground/30 border-t-secondary-foreground rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Claim Refund
-                    </>
-                  )}
-                </Button>
-              </>
-            )
           ) : canWithdrawLpWinnings ? (
             withdrawInstruction ? (
               <div className="flex-1">
@@ -465,6 +412,59 @@ function BetRow({ bet, index, walletAddress }) {
                     <>
                       <Wallet className="w-3 h-3 mr-1" />
                       Withdraw Winnings
+                    </>
+                  )}
+                </Button>
+              </>
+            )
+          ) : canClaimRefund ? (
+            withdrawInstruction ? (
+              <div className="flex-1">
+                <SolanaTransactionSigner
+                  instruction={withdrawInstruction}
+                  amount={withdrawInstruction.amount}
+                  userBetId={withdrawInstruction.userBetId}
+                  onSuccess={async (result) => {
+                    if (result.signature) {
+                      try {
+                        await base44.entities.UserBet.update(result.userBetId, {
+                          status: 'claimed',
+                          actual_payout: withdrawInstruction.amount,
+                        });
+                        setWithdrawInstruction(null);
+                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
+                        alert('Refund successful! Your stake has been returned.');
+                      } catch (err) {
+                        console.error('Failed to process refund:', err);
+                        alert('Transaction failed on-chain: ' + err.message);
+                        setWithdrawInstruction(null);
+                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
+                      }
+                    }
+                  }}
+                  onError={(err) => {
+                    console.error('Refund transaction error:', err);
+                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
+                    setWithdrawInstruction(null);
+                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-secondary-foreground">◎{bet.amount?.toFixed(4)}</span>
+                <Button
+                  size="sm"
+                  onClick={() => refundMutation.mutate()}
+                  disabled={refundMutation.isPending}
+                  className="h-8 text-xs bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold rounded-lg border border-border"
+                >
+                  {refundMutation.isPending ? (
+                    <div className="w-3 h-3 border-2 border-secondary-foreground/30 border-t-secondary-foreground rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Wallet className="w-3 h-3 mr-1" />
+                      Claim Refund
                     </>
                   )}
                 </Button>
