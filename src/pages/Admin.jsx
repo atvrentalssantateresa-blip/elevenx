@@ -583,13 +583,19 @@ function AdminBetRow({ bet, matches, index }) {
       force_recreate: true,
     }),
     onSuccess: (data) => {
+      console.log('[AdminBetRow] createMarketOnChain response:', data);
       if (data.solana_instruction) {
+        console.log('[AdminBetRow] Setting pendingRecreate:', data.solana_instruction);
         setPendingRecreate(data.solana_instruction);
       } else {
         alert(data.message || 'Market recreated');
       }
       queryClient.invalidateQueries({ queryKey: ['bets'] });
       queryClient.invalidateQueries({ queryKey: ['marketStatus', match?.id] });
+    },
+    onError: (err) => {
+      console.error('[AdminBetRow] createMarketOnChain error:', err);
+      alert('Failed to recreate market: ' + err.message);
     },
   });
 
@@ -663,6 +669,7 @@ function AdminBetRow({ bet, matches, index }) {
         )}
         {pendingRecreate ? (
           <div className="w-64">
+            {console.log('[AdminBetRow] Rendering SolanaTransactionSigner with instruction:', pendingRecreate)}
             <SolanaTransactionSigner
               instruction={pendingRecreate}
               amount={0}
