@@ -189,6 +189,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // Extract on-chain error from the error object
         let onChainErr = confirmError.value?.err || confirmError.err;
         
+        // Check if error is directly in confirmError.value
+        if (confirmError.value && typeof confirmError.value === 'object' && !onChainErr) {
+          onChainErr = confirmError.value;
+        }
+        
         // If error is nested differently, try to find it
         if (!onChainErr && confirmError.message && confirmError.message.includes('Custom')) {
           const match = confirmError.message.match(/Custom["\s:]*(\d+)/);
