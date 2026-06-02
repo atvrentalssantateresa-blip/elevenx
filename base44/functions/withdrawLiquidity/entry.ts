@@ -45,18 +45,14 @@ Deno.serve(async (req) => {
     
     console.log('Withdraw check - Offer status:', offer.status, 'amount_unmatched:', offer.amount_unmatched, 'userBet.status:', userBet.status);
     
-    // If offer is cancelled/settled but UserBet is still pending, allow withdrawal of the original amount
-    // This handles the case where DB wasn't updated after on-chain withdrawal
-    let withdrawAmount = offer.amount_unmatched || 0;
-    if ((offer.status === 'cancelled' || offer.status === 'settled') && userBet.status === 'pending') {
-      // Use the UserBet amount since offer was cancelled but funds weren't returned
-      withdrawAmount = userBet.amount || 0;
-      console.log('Allowing withdrawal for cancelled offer with pending UserBet, amount:', withdrawAmount);
-    } else if (offer.status === 'cancelled' || offer.status === 'settled') {
-      return Response.json({ error: 'Offer is ' + offer.status + ' and UserBet is ' + userBet.status + ', cannot withdraw' }, { status: 400 });
+    // Only allow withdrawal if offer is still open in our DB
+    // If offer is cancelled/settled, the on-chain withdrawal already happened
+    if (offer.status === 'cancelled' || offer.status === 'settled') {
+      return Response.json({ error: 'This offer has already been withdrawn or settled. Funds are already in your wallet.' }, { status: 400 });
     }
     
     // Verify there's unmatched liquidity
+    const withdrawAmount = offer.amount_unmatched || 0;
     if (withdrawAmount <= 0) {
       return Response.json({ error: 'No unmatched liquidity remaining (offer may be fully matched)' }, { status: 400 });
     }
@@ -68,6 +64,16 @@ Deno.serve(async (req) => {
 
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
     const match = matches[0];
+    
+    // Check if betting window is still open (use match_time as fallback if open_until is not set)
+    const openUntil = bet.open_until || match.match_time;
+    if (openUntil) {
+      const now = new Date();
+      const deadline = new Date(openUntil);
+      if (now > deadline) {
+        return Response.json({ error: 'Betting window has closed for this market' }, { status: 400 });
+      }
+    }
 
     // Derive outcome index (0=a, 1=draw, 2=b)
     const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;
