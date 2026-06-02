@@ -67,6 +67,10 @@
     "match_title": {
       "type": "string",
       "description": "Display title for quick reference"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Solana wallet address of the bettor/LP"
     }
   },
   "required": [

@@ -20,14 +20,36 @@ const statusConfig = {
 
 export default function MyBets() {
   const { user } = useAuth();
+  
+  // Get wallet address from localStorage
+  const getWalletAddress = () => {
+    const walletSession = localStorage.getItem('elevenx_wallet_session');
+    if (walletSession) {
+      try {
+        const parsed = JSON.parse(walletSession);
+        return parsed.address || parsed;
+      } catch {
+        return walletSession;
+      }
+    }
+    return null;
+  };
+  const walletAddress = getWalletAddress();
 
   const { data: myBets = [], isLoading } = useQuery({
-    queryKey: ['myBets'],
+    queryKey: ['myBets', walletAddress],
     queryFn: async () => {
       const all = await base44.entities.UserBet.list('-created_date', 100);
-      return all.filter(ub => ub.created_by_id === user?.id);
+      // Filter by wallet address (for wallet-only users) or user ID (for registered users)
+      if (walletAddress) {
+        return all.filter(ub => ub.wallet_address === walletAddress);
+      }
+      if (user?.id) {
+        return all.filter(ub => ub.created_by_id === user.id);
+      }
+      return [];
     },
-    enabled: !!user,
+    enabled: !!walletAddress || !!user,
   });
 
   const totalStaked = myBets.reduce((s, b) => s + (b.amount || 0), 0);

@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
       outcome_label: outcomeLabel,
       match_title: `${match?.team_a} vs ${match?.team_b}`,
       potential_payout: potentialPayout,
+      wallet_address: walletAddress,
     });
 
     return Response.json({

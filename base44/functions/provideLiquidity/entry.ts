@@ -99,6 +99,21 @@ Deno.serve(async (req) => {
       [lpField]: (bet[lpField] || 0) + amount,
     });
 
+    // Create UserBet record for LP position
+    await base44.entities.UserBet.create({
+      bet_id,
+      match_id,
+      offer_id: offer.id,
+      outcome,
+      amount,
+      role: 'lp',
+      status: 'pending',
+      outcome_label: outcomeLabel,
+      match_title: `${match?.team_a} vs ${match?.team_b}`,
+      potential_payout: 0,
+      wallet_address: walletAddress,
+    });
+
     return Response.json({
       success: true,
       offerId: offer.id,

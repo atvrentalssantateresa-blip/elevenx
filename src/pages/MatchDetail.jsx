@@ -74,12 +74,30 @@ export default function MatchDetail() {
     refetchInterval: 10000,
   });
 
+  // Get wallet address from localStorage
+  const getWalletAddress = () => {
+    const walletSession = localStorage.getItem('elevenx_wallet_session');
+    if (walletSession) {
+      try {
+        const parsed = JSON.parse(walletSession);
+        return parsed.address || parsed;
+      } catch {
+        return walletSession;
+      }
+    }
+    return null;
+  };
+  const walletAddress = getWalletAddress();
+
   const { data: myUserBets = [] } = useQuery({
-    queryKey: ['myUserBets', matchId, user?.id],
+    queryKey: ['myUserBets', matchId, walletAddress, user?.id],
     queryFn: () => base44.entities.UserBet.filter({ match_id: matchId }),
-    enabled: !!matchId && !!user,
+    enabled: !!matchId,
   });
-  const myActiveBets = myUserBets.filter(ub => ub.created_by_id === user?.id);
+  const myActiveBets = myUserBets.filter(ub => 
+    (walletAddress && ub.wallet_address === walletAddress) || 
+    (user?.id && ub.created_by_id === user.id)
+  );
 
   const { data: allUserBets = [] } = useQuery({
     queryKey: ['allUserBetsForBet', bet?.id],
@@ -205,7 +223,7 @@ export default function MatchDetail() {
     mutationFn: async (ubId) => {
       await base44.entities.UserBet.update(ubId, { status: 'claimed' });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, walletAddress, user?.id] }),
   });
 
   const cancelOfferMutation = useMutation({
@@ -213,7 +231,11 @@ export default function MatchDetail() {
       await base44.entities.UserBet.update(ub.id, { status: 'refunded' });
       if (ub.offer_id || ub.role === 'lp') {
         const lpOffers = await base44.entities.BetOffer.filter({ bet_id: ub.bet_id, outcome: ub.outcome });
-        const myOffer = lpOffers.find(o => o.created_by_id === user?.id && (o.status === 'open' || o.status === 'partially_matched'));
+        const myOffer = lpOffers.find(o => 
+          ((walletAddress && o.lp_wallet_address === walletAddress) || 
+          (user?.id && o.created_by_id === user.id)) && 
+          (o.status === 'open' || o.status === 'partially_matched')
+        );
         if (myOffer) {
           await base44.entities.BetOffer.update(myOffer.id, { status: 'cancelled' });
           const lpField = ub.outcome === 'a' ? 'lp_amount_a' : ub.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
@@ -224,7 +246,7 @@ export default function MatchDetail() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, walletAddress, user?.id] });
       queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
       queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
     },
@@ -241,7 +263,7 @@ export default function MatchDetail() {
     // Just refresh all relevant queries.
     queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
     queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-    queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, walletAddress, user?.id] });
     queryClient.invalidateQueries({ queryKey: ['allUserBetsForBet', bet?.id] });
     resetForm();
   };
@@ -787,7 +809,7 @@ export default function MatchDetail() {
                         if (res.data.success) {
                           alert(res.data.message);
                           queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-                          queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+                          queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, walletAddress, user?.id] });
                         } else {
                           alert('Error: ' + res.data.error);
                         }
