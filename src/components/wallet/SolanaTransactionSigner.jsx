@@ -41,26 +41,39 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // Initialize platform config
         console.log('Creating initialize_platform instruction:', instruction);
         console.log('Platform config PDA:', instruction.accounts?.platformConfig);
+        console.log('Program ID:', instruction.programId);
         console.log('Admin signer:', provider.publicKey.toBase58());
         
-        const programId = new PublicKey(instruction.programId);
-        const keys = [
-          { pubkey: new PublicKey(instruction.accounts.platformConfig), isSigner: false, isWritable: true },
-          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // admin
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        ];
-        
-        const initData = Buffer.from(instruction.instruction_data, 'base64');
-        console.log('Init data (hex):', initData.toString('hex'));
-        console.log('Init data length:', initData.length);
-        
-        const initIx = new TransactionInstruction({
-          keys,
-          programId,
-          data: initData,
-        });
-        
-        transaction.add(initIx);
+        try {
+          const programId = new PublicKey(instruction.programId);
+          const platformPda = new PublicKey(instruction.accounts.platformConfig);
+          
+          const keys = [
+            { pubkey: platformPda, isSigner: false, isWritable: true },
+            { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // admin
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          ];
+          
+          const initData = Buffer.from(instruction.instruction_data, 'base64');
+          console.log('Init data (hex):', initData.toString('hex'));
+          console.log('Init data length:', initData.length);
+          
+          const initIx = new TransactionInstruction({
+            keys,
+            programId,
+            data: initData,
+          });
+          
+          console.log('Instruction created successfully:', {
+            programId: initIx.programId.toBase58(),
+            keys: initIx.keys.map(k => k.pubkey.toBase58()),
+          });
+          
+          transaction.add(initIx);
+        } catch (ixError) {
+          console.error('Failed to create initialize_platform instruction:', ixError);
+          throw new Error('Failed to create instruction: ' + ixError.message);
+        }
         
       } else if (instruction.instruction_type === 'create_market') {
         // create_market - program instruction to initialize a new market
