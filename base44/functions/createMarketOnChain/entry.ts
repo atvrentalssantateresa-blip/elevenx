@@ -205,10 +205,17 @@ Deno.serve(async (req) => {
     // Check if platform config exists
     const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
     if (!platformConfigInfo) {
+      // Derive fee vault PDA
+      const [feeVaultPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fee_vault')],
+        programId
+      );
+      
       // Return platform initialization instruction
       const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
-      const initParams = Buffer.alloc(2);
-      initParams.writeUInt16LE(200, 0); // fee_percent: 2%
+      const initParams = Buffer.alloc(4);
+      initParams.writeUInt16LE(200, 0); // default_fee_percent: 2%
+      initParams.writeUInt16LE(500, 2); // max_fee_percent: 5%
       const initInstructionData = Buffer.concat([initDiscriminator, initParams]);
       
       return Response.json({
@@ -216,6 +223,7 @@ Deno.serve(async (req) => {
         error: 'Platform config not initialized',
         needsPlatformInit: true,
         platformConfigPda: platformConfigPda.toBase58(),
+        feeVaultPda: feeVaultPda.toBase58(),
         message: 'Platform config must be initialized first by admin',
         solana_instruction: {
           instruction_type: 'initialize_platform',
@@ -223,6 +231,7 @@ Deno.serve(async (req) => {
           instruction_data: initInstructionData.toString('base64'),
           accounts: {
             platformConfig: platformConfigPda.toBase58(),
+            feeVault: feeVaultPda.toBase58(),
             admin: '', // Will be filled by frontend with signer's public key
             systemProgram: '11111111111111111111111111111111',
           }
