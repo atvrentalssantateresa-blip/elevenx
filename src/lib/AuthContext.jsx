@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import bs58 from 'bs58';
 
 const AuthContext = createContext();
 
@@ -110,19 +111,21 @@ export const AuthProvider = ({ children }) => {
       
       if (authToken) {
         console.log('Auth token found, decoding...');
-        // Decode the token to get user info
+        // Decode the token to get user info (base58 encoded, not base64)
         try {
           const [header, payload, sig] = authToken.split('.');
-          const decoded = JSON.parse(atob(payload));
-          console.log('Token decoded:', decoded);
+          const payloadBytes = bs58.decode(payload);
+          const decoded = new TextDecoder().decode(payloadBytes);
+          const payloadJson = JSON.parse(decoded);
+          console.log('Token decoded:', payloadJson);
           
-          if (decoded.userId && decoded.exp && decoded.exp > Math.floor(Date.now() / 1000)) {
+          if (payloadJson.userId && payloadJson.exp && payloadJson.exp > Math.floor(Date.now() / 1000)) {
             // Token is valid
             const userData = {
-              id: decoded.userId,
-              wallet_address: decoded.walletAddress,
-              role: decoded.role,
-              email: decoded.email || `${decoded.walletAddress?.slice(0, 8)}@elevenx.bet`
+              id: payloadJson.userId,
+              wallet_address: payloadJson.walletAddress,
+              role: payloadJson.role,
+              email: payloadJson.email || `${payloadJson.walletAddress?.slice(0, 8)}@elevenx.bet`
             };
             setUser(userData);
             setIsAuthenticated(true);
