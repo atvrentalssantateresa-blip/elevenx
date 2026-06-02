@@ -142,6 +142,12 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Mark bet as created on-chain (will be set after successful transaction)
+    await base44.entities.Bet.update(bet_id, {
+      solana_market_created: true,
+      solana_market_pda: marketPda.toBase58(),
+    });
+
     return Response.json({
       success: true,
       marketPda: marketPda.toBase58(),

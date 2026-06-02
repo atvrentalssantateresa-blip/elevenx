@@ -105,6 +105,15 @@
     "total_bettors": {
       "type": "number",
       "default": 0
+    },
+    "solana_market_created": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the market has been created on Solana"
+    },
+    "solana_market_pda": {
+      "type": "string",
+      "description": "Solana PDA for the market account"
     }
   },
   "required": [

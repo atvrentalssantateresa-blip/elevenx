@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -12,6 +12,8 @@ import OddsPanel from '@/components/betting/OddsPanel';
 import OfferBook from '@/components/betting/OfferBook';
 import PlaceBetPanel from '@/components/betting/PlaceBetPanel';
 import StatsApiMatchSearch from '@/components/betting/StatsApiMatchSearch';
+import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import { useWallet } from '@/lib/WalletContext';
 
 const getFlagEmoji = (countryCode) => {
   if (!countryCode) return '🏳️';
@@ -28,6 +30,8 @@ export default function MatchDetail() {
   const [betMode, setBetMode] = useState('offer'); // 'offer' | 'match'
   const [isRefreshingOdds, setIsRefreshingOdds] = useState(false);
   const [statsApiMatchId, setStatsApiMatchId] = useState('');
+  const [marketCreationTx, setMarketCreationTx] = useState(null);
+  const { provider } = useWallet();
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -241,10 +245,70 @@ export default function MatchDetail() {
         </motion.div>
       )}
 
+      {/* ── Admin: Create Market On-Chain ── */}
+      {hasBet && isAdmin && isOpen && !bet.solana_market_created && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
+          <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
+          <h3 className="font-heading font-bold mb-1">Create Market On-Chain</h3>
+          <p className="text-xs text-muted-foreground mb-4">Initialize the pari-mutuel market on Solana</p>
+          {!marketCreationTx ? (
+            <Button onClick={async () => {
+              const res = await base44.functions.invoke('createMarketOnChain', { bet_id: bet.id, match_id: match.id });
+              if (res.data.error) {
+                alert('Error: ' + res.data.error);
+              } else {
+                setMarketCreationTx(res.data.solana_instruction);
+              }
+            }}
+              className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
+              Prepare Transaction
+            </Button>
+          ) : (
+            <SolanaTransactionSigner
+              instruction={marketCreationTx}
+              amount={0}
+              isConnected={!!provider}
+              onSuccess={() => {
+                alert('Market created on-chain!');
+                setMarketCreationTx(null);
+                queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+              }}
+              onError={(err) => alert('Failed: ' + err.message)}
+            />
+          )}
+        </motion.div>
+      )}
+
       {!hasBet && !isAdmin && (
         <div className="text-center py-10 bg-card border border-border/50 rounded-2xl">
           <p className="text-muted-foreground text-sm">Betting market not open yet. Check back soon!</p>
         </div>
+      )}
+
+      {/* ── Admin: Create Market On-Chain ── */}
+      {hasBet && isAdmin && isOpen && !bet.solana_market_created && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
+          <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
+          <h3 className="font-heading font-bold mb-1">Create Market On-Chain</h3>
+          <p className="text-xs text-muted-foreground mb-4">Initialize the pari-mutuel market on Solana</p>
+          <Button onClick={async () => {
+            const res = await base44.functions.invoke('createMarketOnChain', { bet_id: bet.id, match_id: match.id });
+            if (res.data.error) {
+              alert('Error: ' + res.data.error);
+            } else {
+              // Sign the transaction
+              const { solana_instruction } = res.data;
+              // This will be handled by a transaction signer component
+              alert('Market creation transaction ready! Sign to continue.');
+              // TODO: Add transaction signer here
+            }
+          }}
+            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
+            Create On-Chain
+          </Button>
+        </motion.div>
       )}
 
       {/* ── Admin: Set Stats API ID + Fetch Odds ── */}
