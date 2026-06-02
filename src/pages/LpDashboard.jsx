@@ -117,6 +117,9 @@ export default function LpDashboard() {
       });
 
       if (res.data.error) throw new Error(res.data.error);
+      if (!res.data.solana_instruction) {
+        throw new Error(res.data.hint || 'Market not initialized on-chain. Please initialize the market from the Admin panel first.');
+      }
       return res.data;
     },
     onSuccess: (data) => {
@@ -125,6 +128,9 @@ export default function LpDashboard() {
         amount: parseFloat(amount),
         type: 'provide_liquidity',
       });
+    },
+    onError: (err) => {
+      console.error('[LpDashboard] LP mutation error:', err);
     },
   });
 
