@@ -98,6 +98,14 @@ export default function LpDashboard() {
       if (!selectedBet) throw new Error('No bet selected');
       if (!walletAddress) throw new Error('Wallet not connected');
 
+      console.log('[LpDashboard] === WALLET ADDRESS DEBUG ===', {
+        walletAddress,
+        walletAddress_length: walletAddress?.length,
+        walletAddress_first8: walletAddress?.slice(0, 8),
+        walletAddress_last8: walletAddress?.slice(-8),
+        type: typeof walletAddress,
+      });
+
       const res = await base44.functions.invoke('provideLiquidity', {
         walletAddress,
         bet_id: selectedBet.id,
