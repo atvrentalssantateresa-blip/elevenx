@@ -108,6 +108,7 @@ export default function MatchDetail() {
 
   const createMarketMutation = useMutation({
     mutationFn: async () => {
+      // First create the Bet entity
       await base44.entities.Bet.create({
         match_id: matchId,
         outcome_a: match.team_a,
@@ -118,8 +119,33 @@ export default function MatchDetail() {
         backed_amount_a: 0, backed_amount_b: 0, backed_amount_draw: 0,
         total_pool: 0, total_bettors: 0, fee_percent: FEE_BPS,
       });
+      
+      // Then call createMarketOnChain to get the Solana instruction
+      const response = await base44.functions.invoke('createMarketOnChain', {
+        bet_id: bet.id || matchId,
+        match_id: matchId,
+      });
+      
+      if (response.data.error) throw new Error(response.data.error);
+      if (!response.data.solana_instruction) throw new Error('No solana_instruction returned');
+      
+      return { response, betId: response.data.betId || bet.id };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] }),
+    onSuccess: (result) => {
+      if (result.response.data.solana_instruction) {
+        // Need to sign transaction to create market on-chain
+        setPendingTransaction({
+          instruction: result.response.data.solana_instruction,
+          amount: 0,
+          isOffer: false,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+    },
+    onError: (error) => {
+      const backendError = error.response?.data?.error || error.message || 'Unknown error';
+      alert('Failed to create market: ' + backendError);
+    },
   });
 
   const openOfferMutation = useMutation({
@@ -261,6 +287,7 @@ export default function MatchDetail() {
   const handleTransactionSuccess = async (txResult) => {
     // placeBet backend already updated all DB records before returning the instruction.
     // provideLiquidity backend also updated BetOffer + Bet LP totals.
+    // createMarketOnChain just creates the market, no DB updates needed.
     // Just refresh all relevant queries.
     queryClient.invalidateQueries({ queryKey: ['offersForBet', bet?.id] });
     queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
