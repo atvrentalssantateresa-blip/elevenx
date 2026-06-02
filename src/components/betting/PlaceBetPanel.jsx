@@ -48,6 +48,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState(null);
 
+  const handleReconnect = async () => {
+    localStorage.removeItem('elevenx_wallet_session');
+    window.location.reload();
+  };
+
   const handleGetInstruction = async () => {
     const wallet = getWalletAddress();
     console.log('[PlaceBetPanel] handleGetInstruction called:', {
@@ -64,6 +69,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
     if (!wallet) { setPrepareError('Wallet not connected'); return; }
 
     if (!validateWalletAddress(wallet)) {
+      console.error('[PlaceBetPanel] Invalid wallet address:', wallet);
       setPrepareError('Invalid wallet address — please reconnect your wallet');
       return;
     }
@@ -224,6 +230,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         )}
       </AnimatePresence>
 
+      {prepareError && prepareError.includes('reconnect') && (
+        <Button onClick={handleReconnect} className="w-full h-8 text-xs bg-secondary hover:bg-secondary/80 rounded-lg mb-2">
+          Reconnect Wallet
+        </Button>
+      )}
       {prepareError && (
         <p className="text-xs text-destructive text-center">{prepareError}</p>
       )}
