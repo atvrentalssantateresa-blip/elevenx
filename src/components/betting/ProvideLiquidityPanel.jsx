@@ -32,7 +32,10 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         setError(response.data.error);
       } else if (response.data.solana_instruction) {
         // Need to sign transaction to create market
-        setInstruction(response.data.solana_instruction);
+        setInstruction({
+          ...response.data.solana_instruction,
+          amount: 0, // No SOL amount for market creation
+        });
       } else {
         // Market already exists
         await checkMarketStatus();
@@ -93,6 +96,11 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       setInstruction(null);
       // Refresh market status after transaction
       await checkMarketStatus();
+      // If this was a market creation, the user might want to provide liquidity
+      if (marketStatus?.status === 'not_created') {
+        // Market was just created, user can now provide liquidity
+        console.log('Market created successfully, ready for liquidity provision');
+      }
     } catch (err) {
       console.error('Failed to finalize:', err);
     }

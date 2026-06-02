@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
 
     // Additional data for create_market instruction
     // Format: discriminator (8) + params
-    const paramsData = Buffer.alloc(100); // Adjust size as needed
+    // Total size needed: 32 (match_id) + 96 (outcome_names) + 8 + 8 + 2 + 1 + 24 = 171 bytes
+    const paramsData = Buffer.alloc(200); // Sufficient buffer
     let offset = 0;
     
     // match_id (32 bytes)

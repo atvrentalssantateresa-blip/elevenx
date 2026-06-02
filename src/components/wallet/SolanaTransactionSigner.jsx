@@ -36,7 +36,29 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       const transaction = new Transaction();
       
       // Check instruction type and build appropriate transaction
-      if (instruction.instruction_type === 'claim_winnings') {
+      if (instruction.instruction_type === 'create_market') {
+        // create_market - program instruction to initialize a new market
+        console.log('Creating create_market program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // payer
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
+        ];
+        
+        // Use the instruction_data from backend (base64 encoded)
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        
+        const createMarketIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(createMarketIx);
+        
+      } else if (instruction.instruction_type === 'claim_winnings') {
         // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
         
