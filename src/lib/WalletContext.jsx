@@ -141,7 +141,7 @@ export function WalletProvider({ children }) {
       localStorage.removeItem(WALLET_SESSION_KEY);
     };
 
-    const handleAccountChange = (publicKey) => {
+    const handleAccountChange = async (publicKey) => {
       if (publicKey) {
         // Handle PublicKey object or string
         let address;
@@ -156,6 +156,24 @@ export function WalletProvider({ children }) {
         console.log('[WalletContext] Account changed:', address);
         setWalletAddress(address);
         localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
+        
+        // Auto-register/authenticate the new wallet
+        try {
+          const { base44 } = await import('@/api/base44Client');
+          console.log('[WalletContext] Calling walletAuth for new account...');
+          const authRes = await base44.functions.invoke('walletAuth', {
+            walletAddress: address,
+            register: true,
+          });
+          console.log('[WalletContext] walletAuth response:', authRes.data);
+          
+          if (authRes.data.authToken) {
+            localStorage.setItem('elevenx_auth_token', authRes.data.authToken);
+            console.log('[WalletContext] Auth token stored for new account');
+          }
+        } catch (err) {
+          console.error('[WalletContext] walletAuth failed on account change:', err);
+        }
       } else {
         handleDisconnect();
       }
