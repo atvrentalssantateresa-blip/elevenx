@@ -28,9 +28,8 @@ Deno.serve(async (req) => {
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
     
-    // Use new pari-mutuel PDA seed: "pm_market"
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
     

@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     Buffer.from(offer.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(offer.match_id.length, 32));
 
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
 
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     const outcomeIndex = matcher_outcome === 'a' ? 0 : matcher_outcome === 'draw' ? 1 : 2;
 
     const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
       programId
     );
 

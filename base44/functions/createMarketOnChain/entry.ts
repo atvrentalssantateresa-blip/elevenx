@@ -33,9 +33,8 @@ Deno.serve(async (req) => {
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
 
-    // Use new pari-mutuel PDA seed: "pm_market"
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
 
@@ -100,22 +99,20 @@ Deno.serve(async (req) => {
     console.log('Market PDA derived:', marketPda.toBase58());
     console.log('Instruction data length:', instructionData.length);
 
-    // Derive vote tally PDA with new seed
     const [voteTallyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_vote_tally'), marketPda.toBuffer()],
+      [Buffer.from('vote_tally'), marketPda.toBuffer()],
       programId
     );
-    
-    // Platform config uses new seed ["pm_platform"]
+
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_platform')],
+      [Buffer.from('platform')],
       programId
     );
 
     const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
     if (!platformConfigInfo) {
       const [feeVaultPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('pm_fee_vault')],
+        [Buffer.from('fee_vault')],
         programId
       );
       

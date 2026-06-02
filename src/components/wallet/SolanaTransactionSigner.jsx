@@ -109,19 +109,20 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('[SolanaTransactionSigner] Decoded instruction data length:', data.length);
         console.log('[SolanaTransactionSigner] First 8 bytes (discriminator):', data.slice(0, 8).toString('hex'));
         
-        // Build keys from accounts object if provided
+        // Build keys in the EXACT order required by the Rust CreateMarket struct:
+        // market, vote_tally, platform_config, admin, system_program
         const keys = [];
         if (instruction.accounts) {
           const accounts = instruction.accounts;
           keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
-          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // payer
-          keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
           if (accounts.voteTally) {
             keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
           }
           if (accounts.platformConfig) {
             keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
           }
+          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // admin payer
+          keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
         } else {
           // Fallback for legacy format
           keys.push({ pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true });
