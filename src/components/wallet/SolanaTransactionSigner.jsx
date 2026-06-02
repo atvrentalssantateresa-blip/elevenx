@@ -199,7 +199,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           const err = confirmation.value.err;
           if (err.InstructionError && err.InstructionError[1]?.Custom !== undefined) {
             const customCode = err.InstructionError[1].Custom;
-            errorMsg = `Program error (code ${customCode}). The on-chain state may be out of sync. Try using a different market or redeploying the program.`;
+            errorMsg = `On-chain program error code ${customCode}. Check your Solana program's error definitions.`;
           } else {
             errorMsg = 'On-chain error: ' + JSON.stringify(err);
           }
