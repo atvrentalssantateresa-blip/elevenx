@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
+import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'ElevenXProgramID1111111111111111111111111';
 const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
@@ -114,9 +115,9 @@ Deno.serve(async (req) => {
     }
 
     // Prepare create_market instruction
-    // Anchor discriminator for create_market (first 8 bytes of SHA256("account:CreateMarket"))
-    // Using Anchor's instruction discriminator format
-    const discriminator = Buffer.from([0x17, 0x88, 0x06, 0x4f, 0x3b, 0x87, 0x70, 0x14]);
+    // Anchor discriminator: first 8 bytes of SHA256("global:create_market")
+    const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
+    console.log('Create market discriminator:', discriminator.toString('hex'));
 
     // Prepare params for create_market
     const openUntil = bet.open_until ? Math.floor(new Date(bet.open_until).getTime() / 1000) : Math.floor(Date.now() / 1000) + 86400;
