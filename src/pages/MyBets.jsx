@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 const statusConfig = {
   active:   { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock },
@@ -21,17 +20,14 @@ const statusConfig = {
 
 export default function MyBets() {
   const { user } = useAuth();
-  
-  // Get wallet address from localStorage
+
   const getWalletAddress = () => {
     const walletSession = localStorage.getItem('elevenx_wallet_session');
     if (walletSession) {
       try {
         const parsed = JSON.parse(walletSession);
         return parsed.address || parsed;
-      } catch {
-        return walletSession;
-      }
+      } catch { return walletSession; }
     }
     return null;
   };
@@ -41,14 +37,8 @@ export default function MyBets() {
     queryKey: ['myBets', walletAddress, user?.id],
     queryFn: async () => {
       const all = await base44.entities.UserBet.list('-created_date', 100);
-      // Filter by wallet address (for wallet-only users) or user ID (for registered users)
-      // Also include legacy bets without wallet_address for backwards compatibility
-      if (walletAddress) {
-        return all.filter(ub => ub.wallet_address === walletAddress || !ub.wallet_address);
-      }
-      if (user?.id) {
-        return all.filter(ub => ub.created_by_id === user.id || !ub.wallet_address);
-      }
+      if (walletAddress) return all.filter(ub => ub.wallet_address === walletAddress);
+      if (user?.id) return all.filter(ub => ub.created_by_id === user.id);
       return [];
     },
     enabled: !!walletAddress || !!user,
@@ -66,59 +56,37 @@ export default function MyBets() {
         <p className="text-sm text-muted-foreground">Track all your bets and winnings</p>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border/50 rounded-2xl p-4"
-        >
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Staked</p>
-          <p className="font-heading font-bold text-xl">◎{totalStaked.toLocaleString()}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="bg-card border border-border/50 rounded-2xl p-4"
-        >
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Won</p>
-          <p className="font-heading font-bold text-xl text-accent">◎{totalWon.toLocaleString()}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card border border-border/50 rounded-2xl p-4"
-        >
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active</p>
-          <p className="font-heading font-bold text-xl text-primary">{activeBets.length}</p>
-        </motion.div>
+        {[
+          { label: 'Total Staked', value: `◎${totalStaked.toFixed(2)}`, color: '' },
+          { label: 'Total Won', value: `◎${totalWon.toFixed(2)}`, color: 'text-accent' },
+          { label: 'Active', value: activeBets.length.toString(), color: 'text-primary' },
+        ].map((stat, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className="bg-card border border-border/50 rounded-2xl p-4">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</p>
+            <p className={`font-heading font-bold text-xl ${stat.color}`}>{stat.value}</p>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Active bets */}
       {activeBets.length > 0 && (
         <section>
           <h2 className="font-heading font-bold text-sm mb-3 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Active Bets
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Active Bets
           </h2>
           <div className="space-y-2">
-            {activeBets.map((bet, i) => (
-              <BetRow key={bet.id} bet={bet} index={i} walletAddress={walletAddress} />
-            ))}
+            {activeBets.map((bet, i) => <BetRow key={bet.id} bet={bet} index={i} walletAddress={walletAddress} />)}
           </div>
         </section>
       )}
 
-      {/* Completed */}
       {completedBets.length > 0 && (
         <section>
           <h2 className="font-heading font-bold text-sm mb-3">History</h2>
           <div className="space-y-2">
-            {completedBets.map((bet, i) => (
-              <BetRow key={bet.id} bet={bet} index={i} walletAddress={walletAddress} />
-            ))}
+            {completedBets.map((bet, i) => <BetRow key={bet.id} bet={bet} index={i} walletAddress={walletAddress} />)}
           </div>
         </section>
       )}
@@ -127,412 +95,61 @@ export default function MyBets() {
         <div className="text-center py-20">
           <Trophy className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">No bets yet</p>
-          <Link to="/matches" className="text-primary text-sm hover:underline mt-2 inline-block">
-            Browse matches →
-          </Link>
+          <Link to="/matches" className="text-primary text-sm hover:underline mt-2 inline-block">Browse matches →</Link>
         </div>
       )}
     </div>
   );
 }
 
-function BetRow({ bet, index, walletAddress }) {
+function BetRow({ bet, index }) {
   const queryClient = useQueryClient();
-  const [withdrawInstruction, setWithdrawInstruction] = useState(null);
 
-  // For LP bets, fetch the offer to check if it's been matched
-  const { data: offer } = useQuery({
-    queryKey: ['betOffer', bet.offer_id],
-    queryFn: () => base44.entities.BetOffer.list().then(offers => offers.find(o => o.id === bet.offer_id)),
-    enabled: !!bet.offer_id && bet.role === 'lp',
-  });
-
-  // Determine actual display status: if LP offer is matched, show "active" instead of "pending"
-  let displayStatus = bet.status;
-  if (bet.role === 'lp' && bet.status === 'pending' && offer && (offer.status === 'partially_matched' || offer.status === 'fully_matched')) {
-    displayStatus = 'active';
-  }
-
-  const config = statusConfig[displayStatus] || statusConfig.active;
+  const config = statusConfig[bet.status] || statusConfig.active;
   const StatusIcon = config.icon;
 
   const claimMutation = useMutation({
     mutationFn: () => base44.functions.invoke('claimWinnings', { userBetId: bet.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myBets'] }),
+    onError: (error) => alert('Claim failed: ' + (error.message || 'Unknown error')),
   });
-
-  const withdrawMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('withdrawLiquidity', {
-        userBetId: bet.id,
-        walletAddress,
-      });
-      if (response.data.error) throw new Error(response.data.error);
-      if (response.data.solana_instruction) {
-        setWithdrawInstruction({
-          ...response.data.solana_instruction,
-          amount: response.data.amount,
-          userBetId: bet.id,
-        });
-        return null; // Don't complete mutation yet, wait for signing
-      }
-      return { amount: response.data.amount, userBetId: bet.id };
-    },
-    onSuccess: (data) => {
-      if (!data) return; // Waiting for signing
-      queryClient.invalidateQueries({ queryKey: ['myBets'] });
-      alert('Withdrawal successful!');
-    },
-    onError: (error) => {
-      const backendError = error.response?.data?.error || error.message || 'Unknown error';
-      alert('Failed to withdraw: ' + backendError);
-    },
-  });
-
-  const refundMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('claimRefund', {
-        userBetId: bet.id,
-      });
-      if (response.data.error) throw new Error(response.data.error);
-      if (response.data.solana_instruction) {
-        setWithdrawInstruction({
-          ...response.data.solana_instruction,
-          amount: response.data.refundAmount,
-          userBetId: bet.id,
-        });
-        return null;
-      }
-      return { amount: response.data.refundAmount, userBetId: bet.id };
-    },
-    onSuccess: async (data) => {
-      if (!data) return;
-      queryClient.invalidateQueries({ queryKey: ['myBets'] });
-      alert('Refund successful!');
-    },
-    onError: (error) => {
-      const backendError = error.response?.data?.error || error.message || 'Unknown error';
-      alert('Failed to claim refund: ' + backendError);
-    },
-  });
-
-  const withdrawLpWinningsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('withdrawLpWinnings', {
-        userBetId: bet.id,
-      });
-      if (response.data.error) throw new Error(response.data.error);
-      if (response.data.solana_instruction) {
-        setWithdrawInstruction({
-          ...response.data.solana_instruction,
-          amount: response.data.withdrawAmount,
-          userBetId: bet.id,
-          offerId: bet.offer_id,
-        });
-        return null;
-      }
-      return { amount: response.data.withdrawAmount, userBetId: bet.id, offerId: bet.offer_id };
-    },
-    onSuccess: async (data) => {
-      if (!data) return; // Waiting for signing
-      queryClient.invalidateQueries({ queryKey: ['myBets'] });
-      alert('Withdrawal successful!');
-    },
-    onError: (error) => {
-      const backendError = error.response?.data?.error || error.message || 'Unknown error';
-      alert('Failed to withdraw winnings: ' + backendError);
-    },
-  });
-
-  const adminWithdrawMutation = useMutation({
-    mutationFn: async () => {
-      const response = await base44.functions.invoke('adminWithdrawLiquidity', {
-        userBetId: bet.id,
-        walletAddress,
-      });
-      if (response.data.error) throw new Error(response.data.error);
-      return { amount: response.data.amount, walletAddress: response.data.walletAddress };
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['myBets'] });
-      alert(`Database updated! Admin must manually transfer ◎${data.amount} to ${data.walletAddress}`);
-    },
-    onError: (error) => {
-      const backendError = error.response?.data?.error || error.message || 'Unknown error';
-      alert('Admin withdrawal failed: ' + backendError);
-    },
-  });
-
-  const isWonAndClaimable = bet.status === 'won';
-  
-  // For LP bets: check the offer and bet to determine withdrawal type
-  const { data: betForLpCheck } = useQuery({
-    queryKey: ['bet', bet.bet_id],
-    queryFn: () => base44.entities.Bet.list().then(bets => bets.find(b => b.id === bet.bet_id)),
-    enabled: bet.role === 'lp',
-  });
-  
-  // Check if LP has matched funds (winnings) or unmatched funds (withdrawal)
-  const hasMatchedFunds = offer && offer.amount_matched > 0;
-  const hasUnmatchedFunds = offer && offer.amount_unmatched > 0;
-  const isMarketSettled = betForLpCheck && betForLpCheck.status === 'settled';
-  const lpWon = betForLpCheck && bet.outcome === betForLpCheck.winning_outcome;
-  
-  // Show "Withdraw Winnings" only if LP has matched funds AND market settled AND LP won
-  const canWithdrawLpWinnings = bet.role === 'lp' && isMarketSettled && lpWon && hasMatchedFunds;
-  
-  // Show "Withdraw" for unmatched funds (pending LP offers OR settled markets with unmatched funds)
-  const canWithdrawUnmatched = bet.role === 'lp' && hasUnmatchedFunds && (bet.status === 'pending' || bet.status === 'refunded');
-  
-  // Show "Claim Refund" for regular bettors (non-LP) with refunded status
-  const canClaimRefund = bet.role !== 'lp' && bet.status === 'refunded';
-  
-  // Admin withdrawal for settled markets with unmatched funds (workaround)
-  const canAdminWithdraw = bet.role === 'lp' && hasUnmatchedFunds && betForLpCheck?.status === 'settled' && bet.status === 'refunded';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
       <div className="group flex items-center justify-between p-4 bg-card border border-border/50 rounded-xl">
-        <Link to={`/bet/${bet.bet_id}`} className="flex items-center gap-3 flex-1">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${config.color}`}>
+        <Link to={`/match/${bet.match_id}`} className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${config.color}`}>
             <StatusIcon className="w-4 h-4" />
           </div>
-          <div>
-            <p className="font-heading font-bold text-sm">{bet.match_title || 'Match'}</p>
+          <div className="min-w-0">
+            <p className="font-heading font-bold text-sm truncate">{bet.match_title || 'Match'}</p>
             <p className="text-xs text-muted-foreground">
-              Picked: <span className="text-primary font-medium">{bet.outcome_label}</span> · ◎{bet.amount?.toFixed(4)}
-              {bet.role === 'lp' && bet.status === 'pending' && (!offer || (offer.status !== 'partially_matched' && offer.status !== 'fully_matched')) && <span className="ml-1 text-yellow-400 font-medium">· awaiting matcher</span>}
+              Backed: <span className="text-primary font-medium">{bet.outcome_label}</span> · ◎{bet.amount?.toFixed(4)}
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-3">
-          {isWonAndClaimable ? (
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {bet.status === 'won' ? (
             <>
               <span className="text-sm font-bold text-accent">◎{bet.potential_payout?.toFixed(4)}</span>
-              <Button
-                size="sm"
-                onClick={() => claimMutation.mutate()}
-                disabled={claimMutation.isPending}
-                className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg"
-              >
+              <Button size="sm" onClick={() => claimMutation.mutate()} disabled={claimMutation.isPending}
+                className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg">
                 {claimMutation.isPending ? (
                   <div className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <Wallet className="w-3 h-3 mr-1" />
-                    Claim
-                  </>
+                  <><Wallet className="w-3 h-3 mr-1" />Claim</>
                 )}
               </Button>
             </>
-          ) : canAdminWithdraw ? (
-            adminWithdrawMutation.isPending ? (
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            ) : (
-              <>
-                <span className="text-sm font-bold text-yellow-400">◎{bet.amount?.toFixed(4)}</span>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (confirm('ADMIN WITHDRAWAL: This will update the database. You must manually transfer ◎' + bet.amount?.toFixed(4) + ' to the LP wallet.')) {
-                      adminWithdrawMutation.mutate();
-                    }
-                  }}
-                  disabled={adminWithdrawMutation.isPending}
-                  className="h-8 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold rounded-lg border border-red-500/30"
-                >
-                  <Wallet className="w-3 h-3 mr-1" />
-                  Admin Withdraw
-                </Button>
-              </>
-            )
-          ) : canWithdrawUnmatched ? (
-            withdrawInstruction ? (
-              <div className="flex-1">
-                <SolanaTransactionSigner
-                  instruction={withdrawInstruction}
-                  amount={withdrawInstruction.amount}
-                  userBetId={withdrawInstruction.userBetId}
-                  offerId={withdrawInstruction.offerId}
-                  onSuccess={async (result) => {
-                    if (result.signature) {
-                      try {
-                        const finalizeResult = await base44.functions.invoke('finalizeWithdrawal', {
-                          userBetId: result.userBetId,
-                          offerId: bet.offer_id,
-                          signature: result.signature,
-                        });
-                        console.log('Finalize result:', finalizeResult.data);
-                        if (finalizeResult.data.error) {
-                          throw new Error(finalizeResult.data.error);
-                        }
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                        alert('Withdrawal successful!');
-                      } catch (err) {
-                        console.error('Failed to finalize withdrawal:', err);
-                        alert('Transaction failed on-chain. Your funds are still in the pool: ' + err.message);
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                      }
-                    }
-                  }}
-                  onError={(err) => {
-                    console.error('Withdrawal transaction error:', err);
-                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
-                    setWithdrawInstruction(null);
-                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-yellow-400">◎{bet.amount?.toFixed(4)}</span>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (confirm('Withdraw your unmatched LP offer? Your funds will be refunded.')) {
-                      withdrawMutation.mutate();
-                    }
-                  }}
-                  disabled={withdrawMutation.isPending}
-                  className="h-8 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 font-bold rounded-lg border border-yellow-500/30"
-                >
-                  {withdrawMutation.isPending ? (
-                    <div className="w-3 h-3 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Withdraw
-                    </>
-                  )}
-                </Button>
-              </>
-            )
-          ) : canWithdrawLpWinnings ? (
-            withdrawInstruction ? (
-              <div className="flex-1">
-                <SolanaTransactionSigner
-                  instruction={withdrawInstruction}
-                  amount={withdrawInstruction.amount}
-                  userBetId={withdrawInstruction.userBetId}
-                  offerId={withdrawInstruction.offerId}
-                  onSuccess={async (result) => {
-                    if (result.signature) {
-                      try {
-                        await base44.entities.UserBet.update(result.userBetId, {
-                          status: 'claimed',
-                          actual_payout: withdrawInstruction.amount,
-                        });
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                        alert('Winnings withdrawn successfully!');
-                      } catch (err) {
-                        console.error('Failed to withdraw LP winnings:', err);
-                        alert('Transaction failed on-chain: ' + err.message);
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                      }
-                    }
-                  }}
-                  onError={(err) => {
-                    console.error('LP winnings withdrawal error:', err);
-                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
-                    setWithdrawInstruction(null);
-                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-accent">◎{bet.amount?.toFixed(4)}</span>
-                <Button
-                  size="sm"
-                  onClick={() => withdrawLpWinningsMutation.mutate()}
-                  disabled={withdrawLpWinningsMutation.isPending}
-                  className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg"
-                >
-                  {withdrawLpWinningsMutation.isPending ? (
-                    <div className="w-3 h-3 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Withdraw Winnings
-                    </>
-                  )}
-                </Button>
-              </>
-            )
-          ) : canClaimRefund ? (
-            withdrawInstruction ? (
-              <div className="flex-1">
-                <SolanaTransactionSigner
-                  instruction={withdrawInstruction}
-                  amount={withdrawInstruction.amount}
-                  userBetId={withdrawInstruction.userBetId}
-                  onSuccess={async (result) => {
-                    if (result.signature) {
-                      try {
-                        await base44.entities.UserBet.update(result.userBetId, {
-                          status: 'claimed',
-                          actual_payout: withdrawInstruction.amount,
-                        });
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                        alert('Refund successful! Your stake has been returned.');
-                      } catch (err) {
-                        console.error('Failed to process refund:', err);
-                        alert('Transaction failed on-chain: ' + err.message);
-                        setWithdrawInstruction(null);
-                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                      }
-                    }
-                  }}
-                  onError={(err) => {
-                    console.error('Refund transaction error:', err);
-                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
-                    setWithdrawInstruction(null);
-                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-secondary-foreground">◎{bet.amount?.toFixed(4)}</span>
-                <Button
-                  size="sm"
-                  onClick={() => refundMutation.mutate()}
-                  disabled={refundMutation.isPending}
-                  className="h-8 text-xs bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold rounded-lg border border-border"
-                >
-                  {refundMutation.isPending ? (
-                    <div className="w-3 h-3 border-2 border-secondary-foreground/30 border-t-secondary-foreground rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-1" />
-                      Claim Refund
-                    </>
-                  )}
-                </Button>
-              </>
-            )
           ) : (
             <>
-              {(bet.status === 'won' || bet.status === 'claimed') && (
+              {(bet.status === 'claimed') && (
                 <span className="text-sm font-bold text-accent">◎{bet.actual_payout?.toFixed(4)}</span>
               )}
-              <Badge className={`text-[10px] border ${config.color}`}>
-                {bet.status}
-              </Badge>
+              <Badge className={`text-[10px] border ${config.color}`}>{bet.status}</Badge>
             </>
           )}
-          <Link to={`/bet/${bet.bet_id}`}>
+          <Link to={`/match/${bet.match_id}`}>
             <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </Link>
         </div>
