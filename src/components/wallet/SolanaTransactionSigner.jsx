@@ -102,6 +102,30 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           lamports: instruction.amountLamports,
         });
         transaction.add(transferIx);
+      } else if (instruction.instruction_type === 'withdraw_liquidity') {
+        // withdraw_liquidity — program instruction to withdraw unmatched LP funds
+        console.log('Creating withdraw_liquidity program instruction:', instruction);
+        
+        const programId = new PublicKey('ElevenXProgramID1111111111111111111111111');
+        const keys = [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // LP wallet receiving funds
+        ];
+        
+        // Create instruction data for withdraw_liquidity (discriminator 7 + amount)
+        const data = Buffer.alloc(17);
+        data.writeUInt8(7, 0); // withdraw_liquidity discriminator
+        data.writeBigUInt64LE(BigInt(instruction.amountLamports || 0), 1);
+        data.writeUInt8(instruction.outcome || 0, 9); // outcome index
+        
+        const withdrawIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(withdrawIx);
       }
 
       // Get recent blockhash for transaction
