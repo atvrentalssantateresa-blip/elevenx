@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
 
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
 
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     // lpPubkey already declared above in validation
 
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_position'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
