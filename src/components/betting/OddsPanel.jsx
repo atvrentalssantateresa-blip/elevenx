@@ -3,28 +3,33 @@ import { TrendingUp, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome, onRefreshOdds, isRefreshing }) {
-  const hasOdds = bet?.odds_a > 0 || bet?.odds_b > 0;
+export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome, onRefreshOdds, isRefreshingOdds }) {
+  // Use odds_a/b/draw first, fallback to oracle_odds (convert from basis points to decimal)
+  const oddsA = bet?.odds_a || (bet?.oracle_odds_a ? bet.oracle_odds_a / 100 : 0);
+  const oddsB = bet?.odds_b || (bet?.oracle_odds_b ? bet.oracle_odds_b / 100 : 0);
+  const oddsDraw = bet?.odds_draw || (bet?.oracle_odds_draw ? bet.oracle_odds_draw / 100 : 0);
+  
+  const hasOdds = oddsA > 0 || oddsB > 0 || oddsDraw > 0;
 
   const outcomes = [
     {
       key: 'a',
       label: bet?.outcome_a || match?.team_a,
-      odds: bet?.odds_a,
+      odds: oddsA,
       pool: bet?.pool_a || 0,
       color: 'primary',
     },
     {
       key: 'draw',
       label: 'Draw',
-      odds: bet?.odds_draw,
+      odds: oddsDraw,
       pool: bet?.pool_draw || 0,
       color: 'yellow',
     },
     {
       key: 'b',
       label: bet?.outcome_b || match?.team_b,
-      odds: bet?.odds_b,
+      odds: oddsB,
       pool: bet?.pool_b || 0,
       color: 'accent',
     },
@@ -45,8 +50,8 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
             {bet?.status}
           </Badge>
           {onRefreshOdds && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefreshOdds} disabled={isRefreshing}>
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefreshOdds} disabled={isRefreshingOdds}>
+              <RefreshCw className={`w-3 h-3 ${isRefreshingOdds ? 'animate-spin' : ''}`} />
             </Button>
           )}
         </div>

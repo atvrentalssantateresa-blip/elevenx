@@ -65,7 +65,7 @@ export default function MatchDetail() {
     (walletAddress && ub.wallet_address === walletAddress) || (user?.id && ub.created_by_id === user.id)
   );
 
-  // Admin: create market
+  // Admin: create market with default odds
   const createMarketMutation = useMutation({
     mutationFn: async () => {
       return base44.entities.Bet.create({
@@ -76,6 +76,8 @@ export default function MatchDetail() {
         status: 'open',
         pool_a: 0, pool_b: 0, pool_draw: 0,
         total_pool: 0, total_bettors: 0, fee_percent: 0,
+        oracle_odds_a: 200, oracle_odds_draw: 320, oracle_odds_b: 300,
+        odds_a: 2.0, odds_draw: 3.2, odds_b: 3.0,
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] }),
