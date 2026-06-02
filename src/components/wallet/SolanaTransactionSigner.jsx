@@ -151,7 +151,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       await connection.confirmTransaction(sig, 'confirmed');
       console.log('Transaction confirmed!');
 
-      onSuccess({ signature: sig, status: 'confirmed' });
+      onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId });
     } catch (err) {
       console.error('[SolanaTransactionSigner] Transaction error:', err.message);
       setError(err.message || 'Transaction failed');

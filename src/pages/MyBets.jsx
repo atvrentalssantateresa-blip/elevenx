@@ -242,7 +242,18 @@ function BetRow({ bet, index, walletAddress }) {
                   instruction={withdrawInstruction}
                   amount={withdrawInstruction.amount}
                   userBetId={withdrawInstruction.userBetId}
-                  onSuccess={() => {
+                  onSuccess={async (result) => {
+                    if (result.signature) {
+                      try {
+                        await base44.functions.invoke('finalizeWithdrawal', {
+                          userBetId: result.userBetId,
+                          offerId: bet.offer_id,
+                          signature: result.signature,
+                        });
+                      } catch (err) {
+                        console.error('Failed to finalize withdrawal:', err);
+                      }
+                    }
                     setWithdrawInstruction(null);
                     queryClient.invalidateQueries({ queryKey: ['myBets'] });
                     alert('Withdrawal successful!');
