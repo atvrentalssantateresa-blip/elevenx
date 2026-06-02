@@ -388,12 +388,15 @@ function AdminMatchRow({ match, bets, index }) {
   // Check on-chain market status
   const { data: marketStatus } = useQuery({
     queryKey: ['marketStatus', match.id],
-    queryFn: () => base44.functions.invoke('checkMarketStatus', { match_id: match.id }),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
+      return res.data;
+    },
     enabled: !!existingBet,
     refetchInterval: 10000,
   });
 
-  const isMarketInitialized = existingBet?.solana_market_created || marketStatus?.data?.status === 'initialized';
+  const isMarketInitialized = existingBet?.solana_market_created || marketStatus?.status === 'initialized';
 
   const createBetMutation = useMutation({
     mutationFn: () => base44.entities.Bet.create({
