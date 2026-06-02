@@ -132,6 +132,13 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
     
+    // Check if lp_offer already exists (from previous failed attempt)
+    const lpOfferInfo = await connection.getAccountInfo(lpOfferPda);
+    if (lpOfferInfo && lpOfferInfo.data.length > 8) {
+      console.log('[provideLiquidity] lp_offer already exists, user can add more liquidity to existing position');
+      // This is OK - the program will update the existing account
+    }
+    
     // BetMarket struct should be ~215 bytes (8 discriminator + 207 data)
     const expectedMinSize = 200;
     if (marketInfo.data.length < expectedMinSize) {
@@ -180,6 +187,34 @@ Deno.serve(async (req) => {
     const oddsBps = Math.round(oddsDecimal * 100); // Convert to basis points
     
     console.log('Odds lookup:', { outcome, oddsField, oddsDecimal, oddsBps });
+
+    // Fetch market account to check on-chain oracle_odds (reuse existing marketAccountInfo)
+    if (marketAccountInfo) {
+      const data = marketAccountInfo.data;
+      // BetMarket layout: discriminator(8) + match_id(32) + vote_tally(32) + open_until(8) + settle_after(8) + 
+      // fee_percent(2) + outcome_count(1) + oracle_odds[3](24) + ... + bump(1)
+      // oracle_odds starts at offset: 8+32+32+8+8+2+1 = 91
+      const oracleOddsA = data.readBigUInt64LE(91);
+      const oracleOddsB = data.readBigUInt64LE(99);
+      const oracleOddsDraw = data.readBigUInt64LE(107);
+      console.log('On-chain oracle_odds (bps):', {
+        a: Number(oracleOddsA) / 100,
+        b: Number(oracleOddsB) / 100,
+        draw: Number(oracleOddsDraw) / 100,
+      });
+      
+      // Check if the odds for this outcome are valid (> 1.0x = 100 bps)
+      const onChainOdds = outcomeIndex === 0 ? oracleOddsA : outcomeIndex === 1 ? oracleOddsB : oracleOddsDraw;
+      if (onChainOdds <= BigInt(100)) {
+        return Response.json({
+          error: 'Invalid odds for this outcome on-chain',
+          hint: `The market oracle odds for ${outcomeLabel} are ${Number(onChainOdds) / 100}x (must be > 1.0x)`,
+          onChainOddsBps: Number(onChainOdds),
+          outcomeIndex,
+          oddsField,
+        }, { status: 400 });
+      }
+    }
 
     // Record in BetOffer entity
     const existingOffers = await base44.entities.BetOffer.filter({ bet_id, lp_wallet_address: walletAddress, outcome });
