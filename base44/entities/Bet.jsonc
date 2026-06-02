@@ -12,11 +12,11 @@
     },
     "outcome_a": {
       "type": "string",
-      "description": "Label for outcome A (team name)"
+      "description": "Label for outcome A (home team)"
     },
     "outcome_b": {
       "type": "string",
-      "description": "Label for outcome B (team name)"
+      "description": "Label for outcome B (away team)"
     },
     "outcome_draw": {
       "type": "string",
@@ -49,30 +49,58 @@
       "default": "",
       "description": "Which outcome won after settlement"
     },
+    "odds_a": {
+      "type": "number",
+      "default": 0,
+      "description": "Fixed decimal odds for outcome A (from TheStatsAPI)"
+    },
+    "odds_b": {
+      "type": "number",
+      "default": 0,
+      "description": "Fixed decimal odds for outcome B (from TheStatsAPI)"
+    },
+    "odds_draw": {
+      "type": "number",
+      "default": 0,
+      "description": "Fixed decimal odds for Draw (from TheStatsAPI)"
+    },
+    "odds_bookmaker": {
+      "type": "string",
+      "description": "Bookmaker source for the odds (e.g. Pinnacle)"
+    },
+    "odds_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When odds were last fetched"
+    },
+    "stats_api_match_id": {
+      "type": "string",
+      "description": "TheStatsAPI match ID (e.g. mt_14502) for fetching odds and results"
+    },
     "pool_a": {
       "type": "number",
       "default": 0,
-      "description": "Total SOL in pool for outcome A"
+      "description": "Total SOL in offers for outcome A"
     },
     "pool_b": {
       "type": "number",
       "default": 0,
-      "description": "Total SOL in pool for outcome B"
+      "description": "Total SOL in offers for outcome B"
     },
     "pool_draw": {
       "type": "number",
       "default": 0,
-      "description": "Total SOL in pool for Draw"
+      "description": "Total SOL in offers for Draw"
     },
     "total_pool": {
       "type": "number",
       "default": 0,
-      "description": "Total SOL in all pools combined"
+      "description": "Total SOL across all offers"
     },
     "fee_percent": {
       "type": "number",
-      "default": 200,
-      "description": "Fee in basis points (200 = 2%)"
+      "default": 0,
+      "description": "Fee in basis points (0 = no fee for now)"
     },
     "total_bettors": {
       "type": "number",

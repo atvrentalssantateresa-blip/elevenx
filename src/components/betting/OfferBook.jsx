@@ -1,68 +1,128 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/AuthContext';
 
-// Shows open LP offers for a given outcome so other users can match them
-export default function OfferBook({ offers = [], outcome, outcomeLabel, color = 'primary', onMatch, canMatch = true }) {
-  const openOffers = offers.filter(o => o.outcome === outcome && (o.status === 'open' || o.status === 'partially_matched'));
+export default function OfferBook({ betId, bet, onSelectOffer }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  if (openOffers.length === 0) {
+  const { data: offers = [], isLoading } = useQuery({
+    queryKey: ['offers', betId],
+    queryFn: () => base44.entities.BetOffer.filter({ bet_id: betId }),
+    enabled: !!betId,
+    refetchInterval: 10000,
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: (offerId) => base44.functions.invoke('withdrawOffer', { offer_id: offerId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['offers', betId] });
+      queryClient.invalidateQueries({ queryKey: ['betsForMatch'] });
+    },
+  });
+
+  const openOffers = offers.filter(o => o.status === 'open' || o.status === 'partially_matched');
+
+  const getOutcomeColor = (outcome) => {
+    if (outcome === 'a') return 'text-primary';
+    if (outcome === 'b') return 'text-accent';
+    return 'text-yellow-400';
+  };
+
+  const getOutcomeBg = (outcome) => {
+    if (outcome === 'a') return 'bg-primary/10 border-primary/20';
+    if (outcome === 'b') return 'bg-accent/10 border-accent/20';
+    return 'bg-yellow-500/10 border-yellow-500/20';
+  };
+
+  if (isLoading) {
     return (
-      <div className="text-center py-4 text-xs text-muted-foreground">
-        No open offers for {outcomeLabel} yet
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {openOffers.map((offer, i) => (
-        <motion.div
-          key={offer.id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className={`flex items-center justify-between rounded-xl px-3 py-2.5 border ${
-            color === 'primary' ? 'border-primary/15 bg-primary/5' :
-            color === 'accent' ? 'border-accent/15 bg-accent/5' :
-            'border-yellow-500/15 bg-yellow-500/5'
-          }`}
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className={`text-xs font-bold ${
-                color === 'primary' ? 'text-primary' :
-                color === 'accent' ? 'text-accent' :
-                'text-yellow-400'
-              }`}>{outcomeLabel}</span>
-              <Badge className={`text-[9px] py-0 ${
-                offer.status === 'partially_matched' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-secondary text-secondary-foreground'
-              }`}>
-                {offer.status === 'partially_matched' ? 'partial' : 'open'}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>Available: <span className="font-bold text-foreground">${offer.amount_unmatched?.toFixed(2)}</span></span>
-              <span>of ${offer.amount_offered?.toFixed(2)}</span>
-            </div>
-          </div>
-          {canMatch && (
-            <Button
-              size="sm"
-              onClick={() => onMatch(offer)}
-              className={`h-8 text-xs font-bold rounded-lg ml-3 ${
-                color === 'primary' ? 'bg-primary/10 hover:bg-primary/20 text-primary' :
-                color === 'accent' ? 'bg-accent/10 hover:bg-accent/20 text-accent' :
-                'bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400'
-              }`}
-              variant="ghost"
-            >
-              Match
-            </Button>
-          )}
-        </motion.div>
-      ))}
+    <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-heading font-bold text-sm">Open Offers</h3>
+        <span className="text-xs text-muted-foreground">{openOffers.length} available</span>
+      </div>
+
+      {openOffers.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">
+          No open offers yet. Be the first to place a bet!
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {openOffers.map(offer => {
+            const isOwn = offer.created_by_id === user?.id;
+            const maxMatcherStake = offer.amount_unmatched * (offer.odds_at_creation - 1);
+            const outcomeLabel = offer.outcome === 'a' ? bet?.outcome_a : offer.outcome === 'b' ? bet?.outcome_b : 'Draw';
+            const oppositeLabel = offer.outcome === 'a' ? bet?.outcome_b : offer.outcome === 'b' ? bet?.outcome_a : `${bet?.outcome_a} or ${bet?.outcome_b}`;
+
+            return (
+              <div
+                key={offer.id}
+                className={`rounded-xl border p-3 ${getOutcomeBg(offer.outcome)}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`font-heading font-bold text-sm ${getOutcomeColor(offer.outcome)}`}>
+                        {outcomeLabel}
+                      </span>
+                      <span className="text-xs font-bold text-foreground bg-secondary px-2 py-0.5 rounded-full">
+                        @ {offer.odds_at_creation?.toFixed(2)}x
+                      </span>
+                      {offer.status === 'partially_matched' && (
+                        <Badge className="text-[9px] bg-yellow-500/20 text-yellow-400 py-0">partial</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <div>Offered: <span className="font-medium text-foreground">◎{offer.amount_offered?.toFixed(4)}</span></div>
+                      <div>Unmatched: <span className="font-medium text-foreground">◎{offer.amount_unmatched?.toFixed(4)}</span></div>
+                      {!isOwn && (
+                        <div className="text-accent font-medium mt-1">
+                          → Bet up to ◎{maxMatcherStake.toFixed(4)} on {oppositeLabel}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    {isOwn ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => withdrawMutation.mutate(offer.id)}
+                        disabled={withdrawMutation.isPending}
+                      >
+                        {withdrawMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                        <span className="ml-1">Withdraw</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg"
+                        onClick={() => onSelectOffer && onSelectOffer(offer)}
+                      >
+                        Bet Against
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

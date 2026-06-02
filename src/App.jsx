@@ -21,7 +21,7 @@ import BetDetail from '@/pages/BetDetail';
 import MyBets from '@/pages/MyBets';
 import Profile from '@/pages/Profile';
 import Admin from '@/pages/Admin';
-import MatchDetail from '@/pages/MatchDetail';
+import MatchDetail from '@/pages/MatchDetail.jsx';
 import LpDashboard from '@/pages/LpDashboard';
 import Futures from '@/pages/Futures';
 
