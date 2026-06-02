@@ -204,6 +204,13 @@ Deno.serve(async (req) => {
 
     // Check if platform config exists
     const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
+    console.log('Platform config check:', {
+      pda: platformConfigPda.toBase58(),
+      exists: !!platformConfigInfo,
+      size: platformConfigInfo?.data.length,
+      lamports: platformConfigInfo?.lamports,
+      owner: platformConfigInfo?.owner.toBase58(),
+    });
     if (!platformConfigInfo) {
       // Derive fee vault PDA
       const [feeVaultPda] = PublicKey.findProgramAddressSync(
