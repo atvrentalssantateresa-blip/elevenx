@@ -69,8 +69,27 @@ Deno.serve(async (req) => {
     }
 
     // Load the bet/market
-    const bets = await base44.entities.Bet.filter({ id: bet_id });
-    const bet = bets[0];
+    console.log('[createBetOffer] Fetching bet with ID:', bet_id);
+    console.log('[createBetOffer] Bet ID type:', typeof bet_id);
+    console.log('[createBetOffer] Bet ID length:', bet_id?.length);
+    
+    let bet;
+    try {
+      const bets = await base44.entities.Bet.filter({ id: bet_id });
+      console.log('[createBetOffer] Bet query result:', bets);
+      bet = bets[0];
+    } catch (fetchError) {
+      console.error('[createBetOffer] Failed to fetch bet:', fetchError.message);
+      console.error('[createBetOffer] Error type:', fetchError.constructor.name);
+      console.error('[createBetOffer] Full error:', fetchError);
+      return Response.json({ 
+        error: 'Failed to load bet market', 
+        details: fetchError.message,
+        bet_id: bet_id,
+        bet_id_type: typeof bet_id
+      }, { status: 500 });
+    }
+    
     if (!bet) return Response.json({ error: 'Bet market not found' }, { status: 404 });
     if (bet.status !== 'open') return Response.json({ error: 'Market is not open' }, { status: 400 });
 
