@@ -254,18 +254,24 @@ function BetRow({ bet, index, walletAddress }) {
                         if (finalizeResult.data.error) {
                           throw new Error(finalizeResult.data.error);
                         }
+                        setWithdrawInstruction(null);
+                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
+                        alert('Withdrawal successful!');
                       } catch (err) {
                         console.error('Failed to finalize withdrawal:', err);
-                        alert('Transaction signed but failed to finalize: ' + err.message);
-                        return;
+                        alert('Transaction failed on-chain. Your funds are still in the pool: ' + err.message);
+                        setWithdrawInstruction(null);
+                        // Refresh data to ensure UI shows correct state
+                        queryClient.invalidateQueries({ queryKey: ['myBets'] });
                       }
                     }
-                    setWithdrawInstruction(null);
-                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                    alert('Withdrawal successful!');
                   }}
-                  onError={() => {
+                  onError={(err) => {
+                    console.error('Withdrawal transaction error:', err);
+                    alert('Transaction failed: ' + (err.message || 'Unknown error'));
                     setWithdrawInstruction(null);
+                    // Refresh data to ensure UI shows correct state
+                    queryClient.invalidateQueries({ queryKey: ['myBets'] });
                   }}
                 />
               </div>

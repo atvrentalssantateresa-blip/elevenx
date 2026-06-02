@@ -158,19 +158,35 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       setSignature(sig);
 
       console.log('Waiting for confirmation...');
+      let confirmation;
       try {
-        const confirmation = await connection.confirmTransaction(sig, 'confirmed');
+        confirmation = await connection.confirmTransaction(sig, 'confirmed');
         console.log('Transaction confirmation result:', confirmation);
-        if (confirmation.value.err) {
-          console.error('Transaction failed on-chain:', confirmation.value.err);
-          throw new Error('Transaction failed on-chain: ' + JSON.stringify(confirmation.value.err));
-        }
-        console.log('Transaction confirmed on-chain!');
       } catch (confirmError) {
         console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);
-        throw confirmError;
+        throw new Error('Transaction confirmation failed: ' + confirmError.message);
       }
 
+      // Check for on-chain errors
+      if (confirmation.value.err) {
+        console.error('Transaction failed on-chain:', confirmation.value.err);
+        let errorMsg = 'Transaction failed on-chain';
+        
+        if (typeof confirmation.value.err === 'object') {
+          // Parse Anchor program errors
+          const err = confirmation.value.err;
+          if (err.InstructionError && err.InstructionError[1]?.Custom !== undefined) {
+            const customCode = err.InstructionError[1].Custom;
+            errorMsg = `Program error (code ${customCode}). The on-chain state may be out of sync. Try using a different market or redeploying the program.`;
+          } else {
+            errorMsg = 'On-chain error: ' + JSON.stringify(err);
+          }
+        }
+        
+        throw new Error(errorMsg);
+      }
+
+      console.log('Transaction confirmed on-chain!');
       onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId });
     } catch (err) {
       console.error('[SolanaTransactionSigner] Transaction error:', err);
