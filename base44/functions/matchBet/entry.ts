@@ -23,10 +23,14 @@ Deno.serve(async (req) => {
 
     // Verify wallet is authenticated (exists in User entity)
     const trimmedWallet = wallet_address.trim();
+    console.log('[matchBet] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
     const users = await base44.asServiceRole.entities.User.filter({ wallet_address: trimmedWallet });
+    console.log('[matchBet] User lookup result:', users?.length || 0, 'users found');
     if (!users || users.length === 0) {
+      console.error('[matchBet] Authentication failed - no user found for wallet');
       return Response.json({ error: 'Wallet not authenticated. Please sign in with your wallet first.' }, { status: 401 });
     }
+    console.log('[matchBet] ✓ Authenticated user:', users[0].full_name || users[0].email);
 
     // Validate base58 format
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
