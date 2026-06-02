@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }) => {
             
             // Initialize SDK with auth token for backend function calls
             const axiosClient = createAxiosClient({
-              baseURL: appParams.apiUrl,
+              baseURL: appParams.appBaseUrl || '/api',
               headers: {
                 Authorization: `Bearer ${authToken}`,
               },
@@ -177,6 +177,17 @@ export const AuthProvider = ({ children }) => {
           if (response.data.authToken) {
             localStorage.setItem('elevenx_auth_token', response.data.authToken);
             console.log('✓ Auth token stored');
+            
+            // Initialize SDK with the new auth token
+            const axiosClient = createAxiosClient({
+              baseURL: appParams.appBaseUrl || '/api',
+              headers: {
+                Authorization: `Bearer ${response.data.authToken}`,
+              },
+            });
+            const sdkWithAuth = createClient({ axiosClient });
+            window.base44WithAuth = sdkWithAuth;
+            console.log('✓ SDK initialized with auth token from walletAuth');
           }
           // Build user object from response (handle both direct fields and nested user.*)
           const userData = {
