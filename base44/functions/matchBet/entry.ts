@@ -92,13 +92,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Maximum stake for this offer is ◎${max_stake.toFixed(4)}` }, { status: 400 });
     }
 
-    // Determine opposing outcome
-    let matcher_outcome = '';
-    if (offer.outcome === 'a') matcher_outcome = 'b';
-    else if (offer.outcome === 'b') matcher_outcome = 'a';
-    else matcher_outcome = 'a';
-
-    const matcher_outcome_label = matcher_outcome === 'a' ? bet.outcome_a : matcher_outcome === 'b' ? bet.outcome_b : 'Draw';
+    // Bettor bets on the SAME outcome as the LP offer
+    // LP provides liquidity FOR that outcome - if it wins, LP pays bettor; if it loses, LP keeps bettor's stake
+    const bettor_outcome = offer.outcome;
+    const bettor_outcome_label = offer.outcome_label;
     const potential_payout = amount * lp_odds;
 
     // Get Solana program ID and derive PDAs
@@ -117,7 +114,7 @@ Deno.serve(async (req) => {
     );
 
     const bettorPubkey = new PublicKey(trimmedWallet);
-    const outcomeIndex = matcher_outcome === 'a' ? 0 : matcher_outcome === 'draw' ? 1 : 2;
+    const outcomeIndex = bettor_outcome === 'a' ? 0 : bettor_outcome === 'b' ? 1 : 2;
 
     const [positionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
@@ -126,20 +123,39 @@ Deno.serve(async (req) => {
 
     const amountLamports = Math.round(amount * 1_000_000_000);
 
+    // Derive the actual LP offer PDA using the LP's wallet from the offer
+    const lpPubkey = new PublicKey(offer.lp_wallet_address);
+    const [lpOfferPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      programId
+    );
+
+    console.log('[matchBet] Preparing place_bet instruction:', {
+      bettor_outcome,
+      bettor_outcome_label,
+      outcomeIndex,
+      lpWallet: offer.lp_wallet_address,
+      lpOfferPda: lpOfferPda.toBase58(),
+      marketPda: marketPda.toBase58(),
+      positionPda: positionPda.toBase58(),
+    });
+
     return Response.json({
       success: true,
       potential_payout,
-      matcher_outcome_label,
+      matcher_outcome_label: bettor_outcome_label,
       solana_instruction: {
         instruction_type: 'place_bet',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: offer.solana_bet_pool_pda || marketPda.toBase58(),
-        bettorPositionPda: positionPda.toBase58(),
+        accounts: {
+          market: marketPda.toBase58(),
+          lpOffer: lpOfferPda.toBase58(),
+          betPosition: positionPda.toBase58(),
+        },
         outcome: outcomeIndex,
         amountLamports,
       },
-      message: `Sign to bet ◎${amount.toFixed(4)} on ${matcher_outcome_label} to win ◎${potential_payout.toFixed(4)}`,
+      message: `Sign to bet ◎${amount.toFixed(4)} on ${bettor_outcome_label} to win ◎${potential_payout.toFixed(4)}`,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
