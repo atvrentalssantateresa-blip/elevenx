@@ -186,26 +186,27 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('Transaction confirmation result:', confirmation);
       } catch (confirmError) {
         console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);
+        // Check if error is in the confirmation value
+        if (confirmError.value?.err) {
+          const onChainErr = confirmError.value.err;
+          console.error('On-chain error:', onChainErr);
+          if (onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
+            const customCode = onChainErr.InstructionError[1].Custom;
+            throw new Error(`On-chain program error code ${customCode}. Check your Solana program error definitions.`);
+          }
+        }
         throw new Error('Transaction confirmation failed: ' + confirmError.message);
       }
 
       // Check for on-chain errors
       if (confirmation.value.err) {
         console.error('Transaction failed on-chain:', confirmation.value.err);
-        let errorMsg = 'Transaction failed on-chain';
-        
-        if (typeof confirmation.value.err === 'object') {
-          // Parse Anchor program errors
-          const err = confirmation.value.err;
-          if (err.InstructionError && err.InstructionError[1]?.Custom !== undefined) {
-            const customCode = err.InstructionError[1].Custom;
-            errorMsg = `On-chain program error code ${customCode}. Check your Solana program's error definitions.`;
-          } else {
-            errorMsg = 'On-chain error: ' + JSON.stringify(err);
-          }
+        const onChainErr = confirmation.value.err;
+        if (onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
+          const customCode = onChainErr.InstructionError[1].Custom;
+          throw new Error(`On-chain program error code ${customCode}. Check your Solana program.`);
         }
-        
-        throw new Error(errorMsg);
+        throw new Error('On-chain error: ' + JSON.stringify(onChainErr));
       }
 
       console.log('Transaction confirmed on-chain!');
