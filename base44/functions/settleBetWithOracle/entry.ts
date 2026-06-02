@@ -34,19 +34,28 @@ Deno.serve(async (req) => {
       else if (result === 'team_b') winningOutcome = 'b';
       else winningOutcome = 'draw';
 
-      // Update bet status
-      await base44.entities.Bet.update(bet.id, {
-        status: 'settled',
-        winning_outcome: winningOutcome,
-      });
-
       // Get all user bets for this bet
       const userBets = await base44.entities.UserBet.filter({ bet_id: bet.id });
+
+      // Check if there are any winners (winners_pool > 0)
+      const hasWinners = userBets.some(ub => ub.outcome === winningOutcome && (ub.status === 'active' || ub.status === 'won'));
+
+      // Update bet status - void if no winners, settled otherwise
+      await base44.entities.Bet.update(bet.id, {
+        status: hasWinners ? 'settled' : 'void',
+        winning_outcome: hasWinners ? winningOutcome : '',
+      });
 
       for (const ub of userBets) {
         if (ub.status !== 'active') continue;
 
-        if (ub.outcome === winningOutcome) {
+        if (!hasWinners) {
+          // No winners - void the market and refund everyone
+          await base44.entities.UserBet.update(ub.id, {
+            status: 'refunded',
+            actual_payout: ub.amount,
+          });
+        } else if (ub.outcome === winningOutcome) {
           // User won
           await base44.entities.UserBet.update(ub.id, {
             status: 'won',
@@ -54,38 +63,6 @@ Deno.serve(async (req) => {
           });
         } else {
           // User lost
-          await base44.entities.UserBet.update(ub.id, {
-            status: 'lost',
-            actual_payout: 0,
-          });
-        }
-      }
-    }
-
-    // Determine winning outcome code
-    let winningOutcome = '';
-    if (result === 'team_a') winningOutcome = 'a';
-    else if (result === 'team_b') winningOutcome = 'b';
-    else winningOutcome = 'draw';
-
-    // Settle all bets for this match
-    for (const bet of bets) {
-      await base44.entities.Bet.update(bet.id, {
-        status: 'settled',
-        winning_outcome: winningOutcome,
-      });
-
-      // Update user bets
-      const userBets = await base44.entities.UserBet.filter({ bet_id: bet.id });
-      for (const ub of userBets) {
-        if (ub.status !== 'active') continue;
-
-        if (ub.outcome === winningOutcome) {
-          await base44.entities.UserBet.update(ub.id, {
-            status: 'won',
-            actual_payout: ub.potential_payout,
-          });
-        } else {
           await base44.entities.UserBet.update(ub.id, {
             status: 'lost',
             actual_payout: 0,

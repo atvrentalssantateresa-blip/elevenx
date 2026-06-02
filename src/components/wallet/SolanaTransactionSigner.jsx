@@ -129,6 +129,28 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(withdrawIx);
+      } else if (instruction.instruction_type === 'claim_refund') {
+        // claim_refund — program instruction to refund user's stake (uses on-chain 'refund' instruction)
+        console.log('Creating claim_refund program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId || 'ElevenXProgramID1111111111111111111111111');
+        const keys = [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.positionPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.bettorPubkey), isSigner: false, isWritable: true },
+        ];
+        
+        // Create instruction data for refund (discriminator 5, no amount needed - reads from position)
+        const data = Buffer.alloc(1);
+        data.writeUInt8(5, 0); // refund discriminator
+        
+        const refundIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(refundIx);
       }
 
       // Get recent blockhash for transaction
