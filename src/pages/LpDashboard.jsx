@@ -5,12 +5,63 @@ import { useAuth } from '@/lib/AuthContext';
 import { useWallet } from '@/lib/WalletContext';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Wallet, TrendingUp, DollarSign, ArrowRight, Plus, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, ArrowRight, Plus, Clock, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+
+const SuccessDialog = ({ open, onClose, data }) => {
+  const solscanUrl = `https://solscan.io/tx/${data?.signature}?cluster=devnet`;
+  
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-card border-border/50 max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-heading flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-accent" />
+            Liquidity Provided!
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
+            <p className="text-sm text-muted-foreground">You committed</p>
+            <p className="font-heading font-bold text-2xl text-accent">◎{data?.amount.toFixed(4)} SOL</p>
+            <p className="text-xs text-muted-foreground mt-2">for <span className="text-foreground font-bold">{data?.team}</span></p>
+            <p className="text-[10px] text-muted-foreground">{data?.match}</p>
+          </div>
+          
+          <div className="bg-secondary/40 rounded-xl p-3 space-y-2">
+            <p className="text-xs text-muted-foreground">Transaction Signature:</p>
+            <p className="text-xs font-mono text-primary break-all">{data?.signature}</p>
+          </div>
+          
+          <Button
+            onClick={() => {
+              window.open(solscanUrl, '_blank');
+              onClose();
+            }}
+            className="w-full h-11 font-heading font-bold rounded-xl"
+            style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            View on Solscan
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="w-full h-10 text-sm rounded-xl border-border/50"
+          >
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function LpDashboard() {
   const { user } = useAuth();
@@ -21,6 +72,7 @@ export default function LpDashboard() {
   const [selectedOutcome, setSelectedOutcome] = useState('a');
   const [amount, setAmount] = useState('');
   const [pendingTx, setPendingTx] = useState(null);
+  const [successDialog, setSuccessDialog] = useState(null);
 
   const { data: openBets = [] } = useQuery({
     queryKey: ['openBets'],
@@ -69,6 +121,17 @@ export default function LpDashboard() {
   });
 
   const handleTxSuccess = (txResult) => {
+    const signature = txResult.signature;
+    const committedAmount = parseFloat(amount);
+    const outcomeLabel = selectedOutcome === 'a' ? selectedBet.outcome_a : selectedOutcome === 'b' ? selectedBet.outcome_b : 'Draw';
+    
+    setSuccessDialog({
+      signature,
+      amount: committedAmount,
+      team: outcomeLabel,
+      match: `${selectedBet.outcome_a} vs ${selectedBet.outcome_b}`,
+    });
+    
     setPendingTx(null);
     setAmount('');
     setSelectedBet(null);
@@ -102,6 +165,12 @@ export default function LpDashboard() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
+      <SuccessDialog
+        open={!!successDialog}
+        data={successDialog}
+        onClose={() => setSuccessDialog(null)}
+      />
+      
       <div>
         <h1 className="font-heading font-black text-2xl mb-1">LP Dashboard</h1>
         <p className="text-sm text-muted-foreground">Provide liquidity and earn from losing bets</p>
