@@ -246,6 +246,25 @@ function BetRow({ bet, index, walletAddress }) {
     },
   });
 
+  const adminWithdrawMutation = useMutation({
+    mutationFn: async () => {
+      const response = await base44.functions.invoke('adminWithdrawLiquidity', {
+        userBetId: bet.id,
+        walletAddress,
+      });
+      if (response.data.error) throw new Error(response.data.error);
+      return { amount: response.data.amount, walletAddress: response.data.walletAddress };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['myBets'] });
+      alert(`Database updated! Admin must manually transfer ◎${data.amount} to ${data.walletAddress}`);
+    },
+    onError: (error) => {
+      const backendError = error.response?.data?.error || error.message || 'Unknown error';
+      alert('Admin withdrawal failed: ' + backendError);
+    },
+  });
+
   const isWonAndClaimable = bet.status === 'won';
   
   // For LP bets: check the offer and bet to determine withdrawal type
@@ -269,6 +288,9 @@ function BetRow({ bet, index, walletAddress }) {
   
   // Show "Claim Refund" for regular bettors (non-LP) with refunded status
   const canClaimRefund = bet.role !== 'lp' && bet.status === 'refunded';
+  
+  // Admin withdrawal for settled markets with unmatched funds (workaround)
+  const canAdminWithdraw = bet.role === 'lp' && hasUnmatchedFunds && betForLpCheck?.status === 'settled' && bet.status === 'refunded';
 
   return (
     <motion.div
@@ -309,6 +331,27 @@ function BetRow({ bet, index, walletAddress }) {
                 )}
               </Button>
             </>
+          ) : canAdminWithdraw ? (
+            adminWithdrawMutation.isPending ? (
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            ) : (
+              <>
+                <span className="text-sm font-bold text-yellow-400">◎{bet.amount?.toFixed(4)}</span>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (confirm('ADMIN WITHDRAWAL: This will update the database. You must manually transfer ◎' + bet.amount?.toFixed(4) + ' to the LP wallet.')) {
+                      adminWithdrawMutation.mutate();
+                    }
+                  }}
+                  disabled={adminWithdrawMutation.isPending}
+                  className="h-8 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold rounded-lg border border-red-500/30"
+                >
+                  <Wallet className="w-3 h-3 mr-1" />
+                  Admin Withdraw
+                </Button>
+              </>
+            )
           ) : canWithdrawUnmatched ? (
             withdrawInstruction ? (
               <div className="flex-1">
