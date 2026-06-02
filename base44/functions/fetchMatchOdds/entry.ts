@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Default: fetch odds
-    const res = await fetch(`https://api.thestatsapi.com/api/football/matches/${stats_api_match_id}/odds`, {
+    // Default: fetch odds via /stats endpoint
+    const res = await fetch(`https://api.thestatsapi.com/api/football/matches/${stats_api_match_id}/stats`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
 
@@ -42,30 +42,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Stats API error: ${res.status}` }, { status: res.status });
     }
 
-    const data = await res.json();
-    // Real response: { data: { match_id, bookmakers: [{ bookmaker, markets: { match_odds: { home: { last_seen }, draw: { last_seen }, away: { last_seen } } } }] } }
-    const bookmakers = data?.data?.bookmakers || [];
+    const json = await res.json();
+    const odds = json?.data?.odds;
 
-    // Prefer Pinnacle → Bet365 → first available
-    const priority = ['Pinnacle', 'Bet365', 'Betfair Exchange', 'Kambi'];
-    let chosen = null;
-    for (const name of priority) {
-      chosen = bookmakers.find(b => b.bookmaker === name);
-      if (chosen?.markets?.match_odds) break;
-    }
-    if (!chosen) chosen = bookmakers.find(b => b.markets?.match_odds);
-    if (!chosen) return Response.json({ odds: null, message: 'No odds available yet' });
-
-    const mo = chosen.markets.match_odds;
-    const getOdd = (side) => parseFloat(mo[side]?.last_seen || mo[side]?.opening || 0);
+    if (!odds) return Response.json({ odds: null, message: 'No odds available yet' });
 
     return Response.json({
       odds: {
-        home: getOdd('home'),
-        draw: getOdd('draw'),
-        away: getOdd('away'),
+        home: parseFloat(odds.home || 0),
+        draw: parseFloat(odds.draw || 0),
+        away: parseFloat(odds.away || 0),
       },
-      bookmaker: chosen.bookmaker,
+      bookmaker: 'TheStatsAPI',
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
