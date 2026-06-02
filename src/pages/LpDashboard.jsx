@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 const SuccessDialog = ({ open, onClose, data }) => {
@@ -73,6 +74,7 @@ export default function LpDashboard() {
   const [amount, setAmount] = useState('');
   const [pendingTx, setPendingTx] = useState(null);
   const [successDialog, setSuccessDialog] = useState(null);
+  const [error, setError] = useState(null);
 
   const { data: openBets = [] } = useQuery({
     queryKey: ['openBets'],
@@ -131,6 +133,7 @@ export default function LpDashboard() {
     },
     onError: (err) => {
       console.error('[LpDashboard] LP mutation error:', err);
+      setError(err.message || 'Failed to provide liquidity');
     },
   });
 
@@ -149,6 +152,7 @@ export default function LpDashboard() {
     setPendingTx(null);
     setAmount('');
     setSelectedBet(null);
+    setError(null);
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
     queryClient.invalidateQueries({ queryKey: ['openBets'] });
   };
@@ -230,6 +234,22 @@ export default function LpDashboard() {
               <h2 className="font-heading font-bold text-sm">Provide Liquidity</h2>
             </div>
 
+            {error && (
+              <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+                <AlertDescription className="text-destructive text-sm">
+                  {error}
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto text-destructive underline ml-2"
+                    onClick={() => setError(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {pendingTx ? (
               <SolanaTransactionSigner
                 instruction={pendingTx.instruction}
@@ -246,6 +266,7 @@ export default function LpDashboard() {
                     const bet = openBets.find(b => b.id === val);
                     setSelectedBet(bet || null);
                     setSelectedOutcome('a');
+                    setError(null);
                   }}>
                     <SelectTrigger className="bg-secondary/50 border-border/50 h-11">
                       <SelectValue placeholder="Choose an open market..." />
