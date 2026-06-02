@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
     const matches = await base44.entities.Match.filter({ id: match_id });
     const match = matches[0];
 
-    // Derive outcome index (0=a, 1=draw, 2=b)
-    const outcomeIndex = outcome === 'a' ? 0 : outcome === 'draw' ? 1 : 2;
+    // Derive outcome index (0=a, 1=b, 2=draw) - matches Solana program
+    const outcomeIndex = outcome === 'a' ? 0 : outcome === 'b' ? 1 : 2;
     const outcomeLabel = outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw';
 
     // Derive PDAs
