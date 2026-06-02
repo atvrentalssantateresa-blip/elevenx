@@ -190,10 +190,23 @@ Deno.serve(async (req) => {
       programId
     );
     
+    // Platform config uses seed ["platform"] according to the program
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform_config')],
+      [Buffer.from('platform')],
       programId
     );
+
+    // Check if platform config exists
+    const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
+    if (!platformConfigInfo) {
+      return Response.json({
+        success: false,
+        error: 'Platform config not initialized',
+        needsPlatformInit: true,
+        platformConfigPda: platformConfigPda.toBase58(),
+        message: 'Platform config must be initialized first by admin',
+      });
+    }
 
     return Response.json({
       success: true,

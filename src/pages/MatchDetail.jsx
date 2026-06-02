@@ -106,6 +106,33 @@ export default function MatchDetail() {
     enabled: !!bet?.id,
   });
 
+  const initPlatformMutation = useMutation({
+    mutationFn: async () => {
+      const response = await base44.functions.invoke('initPlatformConfig', {});
+      if (response.data.error) throw new Error(response.data.error);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.alreadyExists) {
+        // Platform exists, proceed with market creation
+        createMarketMutation.mutate();
+        return;
+      }
+      if (data.solana_instruction) {
+        // Need to sign transaction to initialize platform
+        setPendingTransaction({
+          instruction: data.solana_instruction,
+          amount: 0,
+          isOffer: false,
+          isPlatformInit: true,
+        });
+      }
+    },
+    onError: (error) => {
+      alert('Failed to initialize platform: ' + (error.message || 'Unknown error'));
+    },
+  });
+
   const createMarketMutation = useMutation({
     mutationFn: async () => {
       console.log('[MatchDetail] createMarketMutation triggered');
@@ -132,6 +159,12 @@ export default function MatchDetail() {
       
       console.log('[MatchDetail] createMarketOnChain response:', response.data);
       
+      // Handle platform not initialized
+      if (response.data.needsPlatformInit) {
+        console.log('[MatchDetail] Platform config not initialized');
+        return { needsPlatformInit: true };
+      }
+      
       // Handle retry case (market PDA exists but needs initialization)
       if (response.data.needsRetry && response.data.solana_instruction) {
         console.log('[MatchDetail] Market needs retry initialization');
@@ -149,6 +182,14 @@ export default function MatchDetail() {
     },
     onSuccess: (result) => {
       console.log('[MatchDetail] createMarketMutation onSuccess:', result);
+      
+      // Handle platform initialization needed
+      if (result.needsPlatformInit) {
+        console.log('[MatchDetail] Initializing platform config first');
+        initPlatformMutation.mutate();
+        return;
+      }
+      
       const responseData = result.response.data;
       
       // Handle retry case (existing bet found, needs to retry transaction)
@@ -462,9 +503,19 @@ export default function MatchDetail() {
           <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
           <h3 className="font-heading font-bold mb-1">Open Betting Market</h3>
           <p className="text-xs text-muted-foreground mb-4">Create the market so users can start offering liquidity P2P</p>
-          <Button onClick={() => createMarketMutation.mutate()} disabled={createMarketMutation.isPending}
-            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
-            {createMarketMutation.isPending ? 'Opening...' : 'Open Market'}
+          <Button
+            onClick={() => createMarketMutation.mutate()}
+            disabled={createMarketMutation.isPending}
+            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8"
+          >
+            {createMarketMutation.isPending ? (
+              <>
+                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                Opening...
+              </>
+            ) : (
+              'Open Market'
+            )}
           </Button>
         </motion.div>
       )}

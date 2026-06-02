@@ -1,0 +1,89 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { Connection, PublicKey, SystemProgram, Transaction } from 'npm:@solana/web3.js@1.98.4';
+import { Buffer } from 'node:buffer';
+import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
+
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'ElevenXProgramID1111111111111111111111111';
+const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
+
+/**
+ * Initializes the platform config account on-chain.
+ * Must be called once by admin before any markets can be created.
+ */
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    
+    // Verify admin access
+    const user = await base44.auth.me();
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+
+    // Derive platform config PDA
+    const [platformConfigPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('platform')],
+      programId
+    );
+
+    // Check if already exists
+    const accountInfo = await connection.getAccountInfo(platformConfigPda);
+    if (accountInfo) {
+      return Response.json({
+        success: true,
+        alreadyExists: true,
+        platformConfigPda: platformConfigPda.toBase58(),
+        message: 'Platform config already initialized',
+      });
+    }
+
+    // Prepare initialize_platform instruction
+    // Discriminator: SHA256("global:initialize_platform")
+    const discriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
+    console.log('Initialize platform discriminator:', discriminator.toString('hex'));
+
+    // Initialize_platform params (based on program struct):
+    // - default_fee_percent: u16
+    // - max_fee_percent: u16
+    // - admin: Pubkey (will be set to signer in the instruction)
+    const paramsData = Buffer.alloc(64);
+    let offset = 0;
+    
+    // default_fee_percent (u16 = 2 bytes) - 2% default
+    paramsData.writeUInt16LE(200, offset);
+    offset += 2;
+    
+    // max_fee_percent (u16 = 2 bytes) - 5% max
+    paramsData.writeUInt16LE(500, offset);
+    offset += 2;
+    
+    // Padding to match struct size
+    // The rest will be zeros
+
+    const instructionData = Buffer.concat([discriminator, paramsData]);
+
+    return Response.json({
+      success: true,
+      alreadyExists: false,
+      platformConfigPda: platformConfigPda.toBase58(),
+      solana_instruction: {
+        instruction_type: 'initialize_platform',
+        programId: SOLANA_PROGRAM_ID,
+        instruction_data: instructionData.toString('base64'),
+        accounts: {
+          platformConfig: platformConfigPda.toBase58(),
+          admin: '', // Will be filled by frontend with signer's public key
+          systemProgram: '11111111111111111111111111111111',
+        }
+      },
+      message: 'Sign to initialize platform config',
+    });
+
+  } catch (error) {
+    console.error('initPlatformConfig error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
