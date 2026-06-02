@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
     Buffer.from(bet.outcome_draw || 'Draw').copy(outcomeNames[2], 0, 0, Math.min(bet.outcome_draw?.length || 4, 32));
 
     // Build instruction data: discriminator + CreateMarketParams
-    const paramsData = Buffer.alloc(155); // Smaller without oracle_odds
+    // CreateMarketParams size: 32 + 96 + 8 + 8 + 2 + 1 + 24 = 171 bytes
+    const paramsData = Buffer.alloc(171);
     let offset = 0;
     
     matchIdBytes.copy(paramsData, offset);
@@ -93,6 +94,18 @@ Deno.serve(async (req) => {
     
     paramsData.writeUInt8(3, offset); // outcome_count
     offset += 1;
+    
+    // oracle_odds: [u64; 3] - 24 bytes (3 x 8 bytes)
+    // Use odds from bet entity if available, otherwise 0
+    const oddsA = BigInt(bet.odds_a || bet.oracle_odds_a || 0);
+    const oddsB = BigInt(bet.odds_b || bet.oracle_odds_b || 0);
+    const oddsDraw = BigInt(bet.odds_draw || bet.oracle_odds_draw || 0);
+    paramsData.writeBigUInt64LE(oddsA, offset);
+    offset += 8;
+    paramsData.writeBigUInt64LE(oddsB, offset);
+    offset += 8;
+    paramsData.writeBigUInt64LE(oddsDraw, offset);
+    offset += 8;
 
     const instructionData = Buffer.concat([discriminator, paramsData]);
 
