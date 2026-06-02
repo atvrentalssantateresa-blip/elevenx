@@ -213,23 +213,37 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(provideIx);
         
       } else if (instruction.instruction_type === 'place_bet') {
-        // place_bet — transfer SOL from user to market PDA (escrow)
-        const fromPubkey = provider.publicKey;
-        const toPubkey = new PublicKey(instruction.marketPda || instruction.betPoolPda);
-
-        console.log('Transfer to market escrow:', {
-          from: fromPubkey.toString(),
-          to: toPubkey.toString(),
-          lamports: instruction.amountLamports,
-          type: instruction.instruction_type,
+        // place_bet — call the actual program instruction
+        console.log('Creating place_bet program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
+        
+        // Build keys in the EXACT order required by the Rust PlaceBet struct:
+        // market, lp_offer, position, bettor (signer), system_program
+        const keys = [
+          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.bettorPositionPda), isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // bettor signer
+          { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
+        ];
+        
+        // Anchor discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
+        const disc = await anchorDiscriminator('place_bet');
+        const data = Buffer.alloc(17);
+        disc.copy(data, 0);
+        data.writeUInt8(instruction.outcome, 8);
+        data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9);
+        console.log('[SolanaTransactionSigner] place_bet discriminator:', disc.toString('hex'));
+        console.log('[SolanaTransactionSigner] full data:', data.toString('hex'));
+        
+        const placeBetIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
         });
-
-        const transferIx = SystemProgram.transfer({
-          fromPubkey,
-          toPubkey,
-          lamports: instruction.amountLamports,
-        });
-        transaction.add(transferIx);
+        
+        transaction.add(placeBetIx);
         
       } else if (instruction.instruction_type === 'match_bet') {
         // match_bet — transfer SOL to match existing offer

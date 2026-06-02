@@ -53,12 +53,20 @@ Deno.serve(async (req) => {
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
 
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
     
     const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+      programId
+    );
+    
+    // Derive LP offer PDA - use a system/placeholder LP address for pari-mutuel mode
+    // This allows betting even without a real LP by using a "pool" as the LP
+    const systemLpPubkey = new PublicKey('11111111111111111111111111111111'); // System program as placeholder LP
+    const [lpOfferPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), systemLpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
@@ -93,6 +101,7 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'place_bet',
         marketPda: marketPda.toBase58(),
+        lpOfferPda: lpOfferPda.toBase58(),
         bettorPositionPda: positionPda.toBase58(),
         outcome: outcomeIndex,
         amountLamports: Math.round(amount * 1_000_000_000),
