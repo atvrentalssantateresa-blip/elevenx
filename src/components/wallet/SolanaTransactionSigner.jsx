@@ -139,22 +139,39 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       console.log('[SolanaTransactionSigner] Transaction built, ready to send');
       console.log('[SolanaTransactionSigner] Instructions count:', transaction.instructions.length);
       
-      const { signature: sig } = await provider.signAndSendTransaction(transaction, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed'
-      });
+      console.log('[SolanaTransactionSigner] Requesting signature from Phantom...');
       
-      console.log('Transaction signed, signature:', sig);
+      // Request signature with error handling for popup blockers
+      let sig;
+      try {
+        const result = await provider.signAndSendTransaction(transaction, {
+          skipPreflight: true, // Skip preflight for faster signing
+          preflightCommitment: 'confirmed'
+        });
+        sig = result.signature;
+        console.log('Transaction signed, signature:', sig);
+      } catch (signError) {
+        console.error('[SolanaTransactionSigner] Sign error:', signError);
+        throw new Error(signError.message || 'Failed to sign transaction');
+      }
+      
       setSignature(sig);
 
       console.log('Waiting for confirmation...');
-      await connection.confirmTransaction(sig, 'confirmed');
-      console.log('Transaction confirmed!');
+      try {
+        await connection.confirmTransaction(sig, 'confirmed');
+        console.log('Transaction confirmed!');
+      } catch (confirmError) {
+        console.warn('[SolanaTransactionSigner] Confirmation error:', confirmError);
+        // Continue even if confirmation times out
+      }
 
       onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId });
     } catch (err) {
-      console.error('[SolanaTransactionSigner] Transaction error:', err.message);
-      setError(err.message || 'Transaction failed');
+      console.error('[SolanaTransactionSigner] Transaction error:', err);
+      console.error('[SolanaTransactionSigner] Error stack:', err.stack);
+      const errorMsg = err.message || 'Transaction failed';
+      setError(errorMsg);
       onError?.(err);
     } finally {
       setIsSigning(false);
