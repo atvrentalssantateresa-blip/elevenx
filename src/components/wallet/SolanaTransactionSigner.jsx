@@ -186,16 +186,22 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('Transaction confirmation result:', confirmation);
       } catch (confirmError) {
         console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);
-        // Check if error is in the confirmation value
-        if (confirmError.value?.err) {
-          const onChainErr = confirmError.value.err;
-          console.error('On-chain error:', onChainErr);
-          if (onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
-            const customCode = onChainErr.InstructionError[1].Custom;
-            throw new Error(`On-chain program error code ${customCode}. Check your Solana program error definitions.`);
+        // Extract on-chain error from the error object
+        let onChainErr = confirmError.value?.err || confirmError.err;
+        
+        // If error is nested differently, try to find it
+        if (!onChainErr && confirmError.message.includes('Custom')) {
+          const match = confirmError.message.match(/Custom["\s:]*(\d+)/);
+          if (match) {
+            throw new Error(`On-chain program error code ${match[1]}. Check your Solana program.`);
           }
         }
-        throw new Error('Transaction confirmation failed: ' + confirmError.message);
+        
+        if (onChainErr && onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
+          const customCode = onChainErr.InstructionError[1].Custom;
+          throw new Error(`On-chain program error code ${customCode}. Check your Solana program.`);
+        }
+        throw new Error('Transaction confirmation failed: ' + (confirmError.message || 'Unknown error'));
       }
 
       // Check for on-chain errors
