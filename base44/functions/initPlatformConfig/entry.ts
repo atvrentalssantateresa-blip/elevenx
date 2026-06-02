@@ -52,8 +52,7 @@ Deno.serve(async (req) => {
     // Initialize_platform params based on PlatformConfig struct:
     // - default_fee_percent: u16
     // - max_fee_percent: u16  
-    // - admin: Pubkey (set via account, not param)
-    const paramsData = Buffer.alloc(64);
+    const paramsData = Buffer.alloc(4);
     let offset = 0;
     
     // default_fee_percent (u16 = 2 bytes) - 2% default (200 basis points)
