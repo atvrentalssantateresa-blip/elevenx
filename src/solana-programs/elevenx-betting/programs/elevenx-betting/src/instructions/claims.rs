@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
 use crate::state::{BetMarket, BetPosition, FeeVault, LpOffer};
 use crate::errors::BettingError;
 
