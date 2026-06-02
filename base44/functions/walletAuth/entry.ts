@@ -38,11 +38,11 @@ Deno.serve(async (req) => {
     let user = null;
     try {
       console.log('Looking up user by wallet:', walletAddress?.slice(0, 8));
-      // First try direct wallet_address field (new format)
+      // First try direct wallet_address field (current schema)
       let users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
       console.log('User lookup (direct) - found:', users?.length || 0, 'users');
       
-      // If not found, try data.wallet_address (legacy format)
+      // If not found, try data.wallet_address (legacy format from old users)
       if (!users || users.length === 0) {
         users = await serviceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
         console.log('User lookup (data.*) - found:', users?.length || 0, 'users');
@@ -62,9 +62,11 @@ Deno.serve(async (req) => {
       console.log('Registering user - wallet:', walletAddress);
       
       try {
-        // Create user with wallet address at root level (not in data)
+        // Create user with wallet_address at root level (matches User entity schema)
+        // full_name is a built-in required field for User entity
         user = await serviceRole.entities.User.create({
           email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
+          full_name: `User ${walletAddress.slice(0, 8)}`,
           wallet_address: walletAddress,
           username: walletAddress.slice(0, 8),
           role: 'user',
@@ -129,9 +131,9 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       userId: user.id,
-      walletAddress: user.wallet_address,
+      walletAddress: userWallet,
       role: user.role,
-      username: user.username,
+      username: user.username || user.full_name,
       email: user.email,
       authToken: token,
       isNewUser: !!(register && user.created_date === user.updated_date),
