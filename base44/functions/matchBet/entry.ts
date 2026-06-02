@@ -9,6 +9,7 @@ import { Buffer } from 'node:buffer';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const serviceRole = base44.asServiceRole;
 
     const body = await req.json();
     const { offer_id, amount, wallet_address } = body;
@@ -26,9 +27,9 @@ Deno.serve(async (req) => {
     console.log('[matchBet] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
     
     // Try both direct wallet_address and data.wallet_address
-    let users = await base44.asServiceRole.entities.User.filter({ wallet_address: trimmedWallet });
+    let users = await serviceRole.entities.User.filter({ wallet_address: trimmedWallet });
     if (!users || users.length === 0) {
-      users = await base44.asServiceRole.entities.User.filter({ 'data.wallet_address': trimmedWallet });
+      users = await serviceRole.entities.User.filter({ 'data.wallet_address': trimmedWallet });
     }
     console.log('[matchBet] User lookup result:', users?.length || 0, 'users found');
     if (!users || users.length === 0) {

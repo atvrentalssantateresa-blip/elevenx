@@ -37,10 +37,12 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
+    const serviceRole = base44.asServiceRole;
+    
     // Verify wallet is authenticated (exists in User entity)
-    let users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
+    let users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
     if (!users || users.length === 0) {
-      users = await base44.asServiceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
+      users = await serviceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
     }
     if (!users || users.length === 0) {
       return Response.json({ 
