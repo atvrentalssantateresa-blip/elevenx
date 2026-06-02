@@ -217,7 +217,7 @@ function BetRow({ bet, index, walletAddress }) {
   const isWonAndClaimable = bet.status === 'won';
   
   // Check if this is an unmatched LP bet that can be withdrawn
-  const canWithdraw = bet.role === 'lp' && bet.status === 'pending' && (!offer || offer.status === 'open');
+  const canWithdraw = bet.role === 'lp' && bet.status === 'pending';
 
   return (
     <motion.div
