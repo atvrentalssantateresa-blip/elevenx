@@ -295,19 +295,47 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       console.log('[SolanaTransactionSigner] Instructions count:', transaction.instructions.length);
       
       console.log('[SolanaTransactionSigner] Requesting signature from Phantom...');
+      console.log('[SolanaTransactionSigner] Transaction details:', {
+        feePayer: transaction.feePayer?.toBase58(),
+        recentBlockhash: transaction.recentBlockhash,
+        instructions: transaction.instructions.map((ix, i) => ({
+          index: i,
+          programId: ix.programId.toBase58(),
+          keys: ix.keys.map(k => `${k.pubkey.toBase58()} (${k.isSigner ? 'signer' : 'non-signer'}, ${k.isWritable ? 'writable' : 'readonly'})`),
+          dataLength: ix.data.length,
+        })),
+      });
       
       // Request signature with error handling for popup blockers
       let sig;
       try {
+        // Try with preflight first to catch errors
         const result = await provider.signAndSendTransaction(transaction, {
-          skipPreflight: false, // Don't skip preflight - we want to catch errors early
-          preflightCommitment: 'confirmed'
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
         });
         sig = result.signature;
         console.log('Transaction signed, signature:', sig);
       } catch (signError) {
-        console.error('[SolanaTransactionSigner] Sign error:', signError);
-        throw new Error(signError.message || 'Failed to sign transaction');
+        console.error('[SolanaTransactionSigner] Sign error details:', {
+          name: signError.name,
+          message: signError.message,
+          stack: signError.stack,
+          errorCode: signError.errorCode,
+        });
+        
+        // Try without preflight as fallback
+        try {
+          console.log('[SolanaTransactionSigner] Retrying without preflight...');
+          const result = await provider.signAndSendTransaction(transaction, {
+            skipPreflight: true,
+          });
+          sig = result.signature;
+          console.log('Transaction signed (skip preflight), signature:', sig);
+        } catch (retryError) {
+          console.error('[SolanaTransactionSigner] Retry failed:', retryError);
+          throw new Error(signError.message || 'Failed to sign transaction');
+        }
       }
 
       console.log('Waiting for confirmation...');
