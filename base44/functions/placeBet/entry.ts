@@ -11,12 +11,6 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    // Check authentication
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Authentication required. Please log in to place bets.' }, { status: 401 });
-    }
-    
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
       return Response.json({ error: 'Solana program ID not configured. Please contact support.' }, { status: 500 });
@@ -42,6 +36,16 @@ Deno.serve(async (req) => {
         hint: 'Address contains invalid characters or is corrupted'
       }, { status: 400 });
     }
+
+    // Verify wallet is authenticated (exists in User entity)
+    const users = await base44.asServiceRole.entities.User.filter({ wallet_address: walletAddress });
+    if (!users || users.length === 0) {
+      return Response.json({ 
+        error: 'Wallet not authenticated. Please sign in with your wallet first.', 
+        hint: 'Connect your wallet on the Profile page to authenticate'
+      }, { status: 401 });
+    }
+    const user = users[0];
 
     const bets = await base44.entities.Bet.filter({ id: bet_id });
     const bet = bets[0];
