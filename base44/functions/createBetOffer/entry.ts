@@ -103,11 +103,35 @@ Deno.serve(async (req) => {
 
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
+      console.error('[createBetOffer] SOLANA__PROGRAM_ID not set');
       return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
     }
 
+    console.log('[createBetOffer] Program ID:', SOLANA_PROGRAM_ID);
+    console.log('[createBetOffer] Program ID length:', SOLANA_PROGRAM_ID.length);
+    
+    // Validate program ID format (reuse existing regex)
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(SOLANA_PROGRAM_ID)) {
+      console.error('[createBetOffer] Invalid program ID format');
+      console.error('[createBetOffer] Invalid chars:', SOLANA_PROGRAM_ID.split('').filter(c => !/^[1-9A-HJ-NP-Za-km-z]$/.test(c)));
+      return Response.json({ 
+        error: 'Invalid Solana program ID configuration',
+        hint: 'Program ID contains non-base58 characters'
+      }, { status: 500 });
+    }
+
     // Derive PDAs for provide_liquidity instruction
-    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    let programId;
+    try {
+      programId = new PublicKey(SOLANA_PROGRAM_ID);
+      console.log('[createBetOffer] PublicKey created successfully:', programId.toBase58());
+    } catch (e) {
+      console.error('[createBetOffer] PublicKey constructor failed:', e.message);
+      return Response.json({ 
+        error: 'Invalid Solana program ID',
+        details: e.message
+      }, { status: 500 });
+    }
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
 
