@@ -96,10 +96,10 @@ Deno.serve(async (req) => {
     offset += 1;
     
     // oracle_odds: [u64; 3] - 24 bytes (3 x 8 bytes)
-    // Use odds from bet entity if available, otherwise 0
-    const oddsA = BigInt(bet.odds_a || bet.oracle_odds_a || 0);
-    const oddsB = BigInt(bet.odds_b || bet.oracle_odds_b || 0);
-    const oddsDraw = BigInt(bet.odds_draw || bet.oracle_odds_draw || 0);
+    // Convert decimal odds to basis points (multiply by 100) before converting to BigInt
+    const oddsA = BigInt(Math.round((bet.odds_a || bet.oracle_odds_a || 0) * 100));
+    const oddsB = BigInt(Math.round((bet.odds_b || bet.oracle_odds_b || 0) * 100));
+    const oddsDraw = BigInt(Math.round((bet.odds_draw || bet.oracle_odds_draw || 0) * 100));
     paramsData.writeBigUInt64LE(oddsA, offset);
     offset += 8;
     paramsData.writeBigUInt64LE(oddsB, offset);
