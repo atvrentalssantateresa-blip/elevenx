@@ -93,10 +93,12 @@ Deno.serve(async (req) => {
       console.log('[recreateMarketWithValidDates] Market voided/settled, will recreate with past timestamps');
     }
 
-    // Set timestamps in the past so settlement is allowed immediately
+    // open_until must be slightly in the future to pass the on-chain check (open_until > clock.unix_timestamp).
+    // settle_after must be > open_until. By the time the tx confirms (~5s), both will be in the past,
+    // so settlement can be triggered immediately.
     const now = Math.floor(Date.now() / 1000);
-    const openUntil = now - 7200;  // 2 hours ago (betting window closed)
-    const settleAfter = now - 3600; // 1 hour ago (settle window open)
+    const openUntil = now + 30;   // 30 seconds from now (passes on-chain validation)
+    const settleAfter = now + 60; // 60 seconds from now (> open_until, settles ~1 min after)
 
     console.log('[recreateMarketWithValidDates] openUntil:', new Date(openUntil * 1000).toISOString());
     console.log('[recreateMarketWithValidDates] settleAfter:', new Date(settleAfter * 1000).toISOString());
