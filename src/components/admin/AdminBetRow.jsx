@@ -120,6 +120,7 @@ export default function AdminBetRow({ bet, matches, index }) {
 
   const handleSettleError = (err) => {
     setPendingSettle(null);
+    console.error('[AdminBetRow] Settlement error:', err);
     alert('Settlement failed: ' + err.message);
   };
 
