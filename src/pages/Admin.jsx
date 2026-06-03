@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -81,6 +81,7 @@ export default function Admin() {
   });
 
   const [syncResult, setSyncResult] = useState(null);
+  const [fetchOddsResult, setFetchOddsResult] = useState(null);
   const [pendingPlatformInit, setPendingPlatformInit] = useState(null);
   const [platformInitialized, setPlatformInitialized] = useState(false);
 
@@ -109,6 +110,19 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
     },
     onError: (err) => setSyncResult('Error: ' + err.message),
+  });
+
+  const fetchOddsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('autoFetchOdds', {});
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setFetchOddsResult(data.message);
+      queryClient.invalidateQueries({ queryKey: ['bets'] });
+    },
+    onError: (err) => setFetchOddsResult('Error: ' + err.message),
   });
 
   const initPlatformMutation = useMutation({
@@ -195,6 +209,26 @@ export default function Admin() {
               </Button>
             </div>
             {syncResult && <p className="mt-3 text-xs text-accent bg-accent/10 rounded-lg px-3 py-2">{syncResult}</p>}
+          </div>
+
+          <div className="bg-card border border-primary/20 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Fetch Live Odds Now</p>
+                  <p className="text-xs text-muted-foreground">Updates odds for all open bets from TheStatsAPI.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => { setFetchOddsResult(null); fetchOddsMutation.mutate(); }}
+                disabled={fetchOddsMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
+              >
+                {fetchOddsMutation.isPending ? 'Fetching...' : 'Fetch Odds Now'}
+              </Button>
+            </div>
+            {fetchOddsResult && <p className="mt-3 text-xs text-primary bg-primary/10 rounded-lg px-3 py-2">{fetchOddsResult}</p>}
           </div>
 
           <div className="bg-card border border-primary/20 rounded-xl p-4">
