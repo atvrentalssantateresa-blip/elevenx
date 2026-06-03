@@ -115,9 +115,9 @@ Deno.serve(async (req) => {
     const data = Buffer.alloc(41);
     discriminator.copy(data, 0);
     
-    // For now, use placeholder admin (will be set by first signer)
-    const adminPlaceholder = new Array(32).fill(0);
-    Buffer.from(adminPlaceholder).copy(data, 8);
+    // Use actual admin wallet address (decode base58 to 32 bytes)
+    const adminPubkey = new PublicKey(walletAddress);
+    Buffer.from(adminPubkey.toBytes()).copy(data, 8);
     
     // fee_percent: 0 (u16 LE)
     data.writeUInt16LE(0, 40);
