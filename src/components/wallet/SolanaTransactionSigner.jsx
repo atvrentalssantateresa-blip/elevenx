@@ -462,6 +462,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
             15: 'Market already initialized',
             16: 'Arithmetic overflow',
             17: 'Unauthorized',
+            101: 'Invalid instruction data or discriminator',
             3007: 'Platform not initialized',
           };
           const errorMsg = errorMessages[customCode] || `Program error ${customCode}`;
@@ -481,6 +482,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
             0: 'Betting window closed',
             1: 'Market settled',
             15: 'Market already initialized',
+            101: 'Invalid instruction data or discriminator',
             3007: 'Platform not initialized',
           };
           const errorMsg = errorMessages[customCode] || `Error ${customCode}`;

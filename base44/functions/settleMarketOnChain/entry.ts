@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
     console.log(`[settleMarketOnChain] Settling bet ${bet_id} with outcome ${winning_outcome} (index: ${outcomeIndex})`);
 
     // Build instruction data: 8-byte Anchor discriminator + u8 outcome
-    // Discriminator: SHA256("global:announce_winner").slice(0, 8)
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:announce_winner'));
+    // Using emergency_settle_market for admin manual settlement
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:emergency_settle_market'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
     
     const data = Buffer.alloc(9);
@@ -68,6 +68,18 @@ Deno.serve(async (req) => {
 
     console.log('[settleMarketOnChain] Instruction data (hex):', data.toString('hex'));
     console.log('[settleMarketOnChain] Discriminator (hex):', discriminator.toString('hex'));
+    console.log('[settleMarketOnChain] Full instruction payload:', {
+      instruction_type: 'settle_market',
+      programId: SOLANA_PROGRAM_ID,
+      keys: [
+        { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: user.wallet_address, isSigner: true, isWritable: true },
+        { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+      ],
+      instruction_data_base64: data.toString('base64'),
+    });
 
     return Response.json({
       success: true,
