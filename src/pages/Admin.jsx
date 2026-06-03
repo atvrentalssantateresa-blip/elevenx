@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Settings, Gavel, RefreshCw, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List } from 'lucide-react';
+import { Plus, Trophy, Settings, Gavel, RefreshCw, Shield, Radio, CheckCircle2, CheckCircle, Zap, Download, BarChart3, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
@@ -720,11 +720,32 @@ function AdminBetRow({ bet, matches, index }) {
           </Button>
         </div>
       ) : bet.status === 'settled' ? (
-        <p className="text-xs text-muted-foreground mt-1">
-          Winner: <span className="text-primary font-bold">
-            {bet.winning_outcome === 'a' ? bet.outcome_a : bet.winning_outcome === 'b' ? bet.outcome_b : 'Draw'}
-          </span>
-        </p>
+        <div className="space-y-2 mt-2">
+          <p className="text-xs text-muted-foreground">
+            Winner: <span className="text-primary font-bold">
+              {bet.winning_outcome === 'a' ? bet.outcome_a : bet.winning_outcome === 'b' ? bet.outcome_b : 'Draw'}
+            </span>
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (!confirm('Mark all won bets as claimed? This updates the database only (no on-chain transaction).')) return;
+              try {
+                const res = await base44.functions.invoke('adminMarkAsClaimed', { bet_id: bet.id });
+                if (res.data.error) throw new Error(res.data.error);
+                alert(`✓ Marked ${res.data.claimed_bet_ids.length} bet(s) as claimed`);
+                queryClient.invalidateQueries({ queryKey: ['bets'] });
+                queryClient.invalidateQueries({ queryKey: ['myBets'] });
+              } catch (err) {
+                alert('Failed: ' + err.message);
+              }
+            }}
+            className="h-8 text-xs bg-accent/20 text-accent hover:bg-accent/30 rounded-lg w-full"
+          >
+            <CheckCircle className="w-3 h-3 mr-1" /> Mark as Claimed (DB Only)
+          </Button>
+        </div>
       ) : null}
     </motion.div>
   );
