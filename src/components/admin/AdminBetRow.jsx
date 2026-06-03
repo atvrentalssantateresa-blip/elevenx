@@ -113,10 +113,17 @@ export default function AdminBetRow({ bet, matches, index }) {
       console.log('[AdminBetRow] Wallet address being sent:', walletAddress);
       console.log('[AdminBetRow] Expected admin wallet: BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
       console.log('[AdminBetRow] Wallet addresses match:', walletAddress === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
-      const onChainRes = await base44.functions.invoke('settleMarketOnChain', payload);
-      console.log('[AdminBetRow] Backend response:', onChainRes.data);
-      if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
-      return { solana_instruction: onChainRes.data.solana_instruction, winning_outcome: winningOutcome };
+      
+      try {
+        const onChainRes = await base44.functions.invoke('settleMarketOnChain', payload);
+        console.log('[AdminBetRow] Backend response:', onChainRes.data);
+        if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
+        return { solana_instruction: onChainRes.data.solana_instruction, winning_outcome: winningOutcome };
+      } catch (backendErr) {
+        console.error('[AdminBetRow] Backend function error:', backendErr);
+        console.error('[AdminBetRow] Error details:', backendErr.response?.data || backendErr.message);
+        throw new Error(backendErr.response?.data?.error || backendErr.message || 'Backend function failed');
+      }
     },
     onSuccess: (data) => {
       if (data.solana_instruction) {
