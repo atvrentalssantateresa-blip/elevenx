@@ -85,10 +85,20 @@ export default function OfferBook({ betId, bet, onSelectOffer }) {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      <div>Offered: <span className="font-medium text-foreground">◎{offer.amount_offered?.toFixed(4)}</span></div>
-                      <div>Unmatched: <span className="font-medium text-foreground">◎{offer.amount_unmatched?.toFixed(4)}</span></div>
+                      <div className="flex items-center justify-between">
+                        <span>Offered:</span>
+                        <span className="font-medium text-foreground">◎{offer.amount_offered?.toFixed(4)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Total in Bets:</span>
+                        <span className="font-bold text-accent">◎{offer.amount_matched?.toFixed(4)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Unmatched:</span>
+                        <span className="font-medium text-foreground">◎{offer.amount_unmatched?.toFixed(4)}</span>
+                      </div>
                       {!isOwn && (
-                        <div className="text-accent font-medium mt-1">
+                        <div className="text-accent font-medium mt-1 pt-1 border-t border-accent/20">
                           → Bet up to ◎{maxMatcherStake.toFixed(4)} on {oppositeLabel}
                         </div>
                       )}
