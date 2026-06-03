@@ -151,12 +151,15 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('[SolanaTransactionSigner] settle_market data length:', data.length);
         console.log('[SolanaTransactionSigner] settle_market data (hex):', data.toString('hex'));
         
-        // Build keys from instruction
-        const keys = instruction.keys?.map(k => ({
-          pubkey: new PublicKey(k.pubkey),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        })) || [
+        // Build keys from instruction, replacing SIGNER_WALLET placeholder with actual wallet
+        const keys = instruction.keys?.map(k => {
+          const pubkey = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+          return {
+            pubkey: new PublicKey(pubkey),
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          };
+        }) || [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.platformConfigPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.feeVaultPda), isSigner: false, isWritable: true },
