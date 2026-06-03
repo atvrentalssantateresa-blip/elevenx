@@ -73,7 +73,8 @@ Deno.serve(async (req) => {
     //         total_matched(24) + total_pending(24) + total_lp_committed(8) + accrued_fees(8) + 
     //         settled(1) + voided(1) + paused(1) + settlement_finalized(1) + bump(1)
     const data = accountInfo.data;
-    const settledOffset = 8 + 32 + 96 + 8 + 8 + 2 + 1 + 1 + 24 + 24 + 24 + 8 + 8; // 206
+    const settledOffset = 244; // After accrued_fees
+    console.log('[checkMarketStatus] Data length:', data.length, 'Checking offset:', settledOffset);
     const isSettled = data[settledOffset] === 1;
     const isVoided = data[settledOffset + 1] === 1;
     const isPaused = data[settledOffset + 2] === 1;
