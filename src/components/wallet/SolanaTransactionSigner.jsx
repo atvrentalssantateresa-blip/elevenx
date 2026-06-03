@@ -361,6 +361,27 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(withdrawIx);
+        
+      } else if (instruction.instruction_type === 'update_market_timestamps') {
+        // update_market_timestamps — admin recovery tool to fix corrupted timestamps
+        console.log('Creating update_market_timestamps program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = [
+          { pubkey: new PublicKey(instruction.accounts.market), isSigner: false, isWritable: true },
+          { pubkey: new PublicKey(instruction.accounts.platformConfig), isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // admin signer
+        ];
+        
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        
+        const updateIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(updateIx);
       }
 
       // Get recent blockhash for transaction
@@ -543,6 +564,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       txMessage = '✓ LP winnings withdrawn!';
     } else if (instruction?.instruction_type === 'create_market') {
       txMessage = '✓ Market created on-chain!';
+    } else if (instruction?.instruction_type === 'update_market_timestamps') {
+      txMessage = '✓ Market timestamps updated!';
     }
     
     return (

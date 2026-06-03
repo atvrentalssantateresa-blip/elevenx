@@ -40,6 +40,15 @@ pub mod elevenx_betting {
         instructions::market::void_market(ctx)
     }
 
+    /// Update market timestamps (admin only, for testing/recovery).
+    pub fn update_market_timestamps(
+        ctx: Context<UpdateMarketTimestamps>,
+        open_until: i64,
+        settle_after: i64,
+    ) -> Result<()> {
+        instructions::market::update_market_timestamps(ctx, open_until, settle_after)
+    }
+
     // ── Liquidity (LP) ──────────────────────────────────────────────────────
 
     /// LP deposits SOL to cover bettors on a specific outcome at oracle odds.

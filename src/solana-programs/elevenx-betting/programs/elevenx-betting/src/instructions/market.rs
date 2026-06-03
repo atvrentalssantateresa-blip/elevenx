@@ -90,6 +90,36 @@ pub fn void_market(ctx: Context<VoidMarket>) -> Result<()> {
     Ok(())
 }
 
+// ── update_market_timestamps ─────────────────────────────────────────────────
+
+pub fn update_market_timestamps(
+    ctx: Context<UpdateMarketTimestamps>,
+    open_until: i64,
+    settle_after: i64,
+) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    require!(open_until < settle_after, BettingError::InvalidTimeline);
+    
+    market.open_until = open_until;
+    market.settle_after = settle_after;
+    
+    Ok(())
+}
+
+// ── update_market_timestamps ─────────────────────────────────────────────────
+
+/// Admin-only instruction to update market timestamps (for recovery from corrupted data).
+/// Skips normal timestamp validation.
+pub fn update_market_timestamps(ctx: Context<UpdateMarketTimestamps>, open_until: i64, settle_after: i64) -> Result<()> {
+    require!(open_until < settle_after, BettingError::InvalidTimeline);
+    
+    let market = &mut ctx.accounts.market;
+    market.open_until = open_until;
+    market.settle_after = settle_after;
+    
+    Ok(())
+}
+
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 #[derive(Accounts)]
@@ -136,6 +166,18 @@ pub struct SetMarketPaused<'info> {
 
 #[derive(Accounts)]
 pub struct VoidMarket<'info> {
+    #[account(mut, seeds = [b"market", market.match_id.as_ref()], bump = market.bump)]
+    pub market: Account<'info, BetMarket>,
+
+    #[account(seeds = [b"platform"], bump = platform_config.bump)]
+    pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
+    pub admin: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateMarketTimestamps<'info> {
     #[account(mut, seeds = [b"market", market.match_id.as_ref()], bump = market.bump)]
     pub market: Account<'info, BetMarket>,
 
