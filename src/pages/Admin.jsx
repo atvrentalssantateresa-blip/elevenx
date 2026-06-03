@@ -3,23 +3,22 @@ import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import RecreateMarketButton from '@/components/admin/RecreateMarketButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Settings, Gavel, RefreshCw, Shield, Radio, CheckCircle2, CheckCircle, Zap, Download, BarChart3, List } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import AdminMatchRow from '@/components/admin/AdminMatchRow';
+import AdminBetRow from '@/components/admin/AdminBetRow';
 
 export default function Admin() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // All hooks must be called unconditionally at the top
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: () => base44.entities.Match.list('-created_date', 100),
@@ -32,10 +31,7 @@ export default function Admin() {
 
   const { data: oracleStatus } = useQuery({
     queryKey: ['oracleStatus'],
-    queryFn: async () => {
-      // Just return mock status - no need to call backend
-      return { provider: 'manual', verified: false };
-    },
+    queryFn: async () => ({ provider: 'manual', verified: false }),
     refetchInterval: 30000,
   });
 
@@ -46,7 +42,6 @@ export default function Admin() {
         const res = await base44.functions.invoke('initPlatformConfig', {});
         return res.data;
       } catch (err) {
-        console.error('Failed to check platform status:', err);
         return null;
       }
     },
@@ -71,50 +66,33 @@ export default function Admin() {
     },
     onSuccess: (data) => {
       setSyncResult(data.message);
-      queryClient.invalidateQueries({ queryKey: ['matches'] });
-      queryClient.invalidateQueries({ queryKey: ['bets'] });
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
     },
     onError: (err) => setSyncResult('Error: ' + err.message),
   });
 
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
-      console.log('[Admin] Initializing platform config...');
       const response = await base44.functions.invoke('initPlatformConfig', {});
-      console.log('[Admin] initPlatformConfig response:', response.data);
       if (response.data.error) throw new Error(response.data.error);
       return response.data;
     },
     onSuccess: (data) => {
-      console.log('[Admin] Mutation onSuccess:', data);
       if (data.alreadyExists) {
         alert('Platform config already initialized on-chain');
       } else if (data.solana_instruction) {
-        console.log('[Admin] Setting pendingPlatformInit:', data.solana_instruction);
         setPendingPlatformInit(data.solana_instruction);
-      } else {
-        alert('Unexpected response: ' + JSON.stringify(data));
       }
     },
-    onError: (err) => {
-      console.error('[Admin] initPlatformMutation error:', err);
-      alert('Failed to initialize platform: ' + err.message);
-    },
+    onError: (err) => alert('Failed: ' + err.message),
   });
 
-  const handlePlatformInitSuccess = (txResult) => {
+  const handlePlatformInitSuccess = () => {
     setPendingPlatformInit(null);
     queryClient.invalidateQueries({ queryKey: ['bets'] });
-    alert('Platform initialized successfully! You can now create markets.');
+    alert('Platform initialized!');
   };
 
-  const handlePlatformInitError = (err) => {
-    console.error('Platform init failed:', err);
-    setPendingPlatformInit(null);
-    alert('Platform initialization failed: ' + err.message);
-  };
-
-  // Now conditional render after all hooks
   if (user?.role !== 'admin') {
     return (
       <div className="text-center py-20">
@@ -131,9 +109,7 @@ export default function Admin() {
           <h1 className="font-heading font-black text-2xl">Admin Panel</h1>
           <p className="text-sm text-muted-foreground">Manage matches, bets, and platform settings</p>
         </div>
-        <div className="flex gap-2">
-          <CreateMatchDialog />
-        </div>
+        <CreateMatchDialog />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
@@ -149,16 +125,14 @@ export default function Admin() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
-          {/* Sync World Cup Matches */}
           <div className="bg-card border border-accent/20 rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <Download className="w-5 h-5 text-accent" />
                 <div>
                   <p className="text-sm font-bold text-foreground">Sync World Cup 2026 from API</p>
-                  <p className="text-xs text-muted-foreground">Imports all matches & sets live odds automatically. Safe to run multiple times.</p>
+                  <p className="text-xs text-muted-foreground">Imports all matches & sets live odds automatically.</p>
                 </div>
               </div>
               <Button
@@ -166,19 +140,12 @@ export default function Admin() {
                 disabled={syncMutation.isPending}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground font-heading font-bold rounded-xl h-9"
               >
-                {syncMutation.isPending ? (
-                  <><RefreshCw className="w-4 h-4 animate-spin mr-2" />Syncing...</>
-                ) : (
-                  <><Download className="w-4 h-4 mr-2" />Sync Now</>
-                )}
+                {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
               </Button>
             </div>
-            {syncResult && (
-              <p className="mt-3 text-xs text-accent bg-accent/10 rounded-lg px-3 py-2">{syncResult}</p>
-            )}
+            {syncResult && <p className="mt-3 text-xs text-accent bg-accent/10 rounded-lg px-3 py-2">{syncResult}</p>}
           </div>
 
-          {/* Platform Initialization */}
           <div className="bg-card border border-primary/20 rounded-xl p-4">
             {pendingPlatformInit ? (
               <div className="space-y-3">
@@ -192,16 +159,9 @@ export default function Admin() {
                 <SolanaTransactionSigner
                   instruction={pendingPlatformInit}
                   amount={0}
-                  isPlatformInit={true}
                   onSuccess={handlePlatformInitSuccess}
-                  onError={handlePlatformInitError}
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPendingPlatformInit(null)}
-                  className="w-full h-8 text-xs rounded-lg"
-                >
+                <Button variant="outline" size="sm" onClick={() => setPendingPlatformInit(null)} className="w-full h-8 text-xs rounded-lg">
                   Cancel
                 </Button>
               </div>
@@ -211,9 +171,7 @@ export default function Admin() {
                   <Zap className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-sm font-bold text-foreground">Platform Config</p>
-                    <p className="text-xs text-muted-foreground">
-                      {platformInitialized ? 'Already initialized on Solana' : 'Initialize the platform on Solana (one-time setup)'}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{platformInitialized ? 'Already initialized' : 'Initialize on Solana (one-time)'}</p>
                   </div>
                 </div>
                 {platformInitialized ? (
@@ -226,35 +184,24 @@ export default function Admin() {
                     disabled={initPlatformMutation.isPending}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
                   >
-                    {initPlatformMutation.isPending ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                        Initializing...
-                      </>
-                    ) : (
-                      'Initialize Platform'
-                    )}
+                    {initPlatformMutation.isPending ? 'Initializing...' : 'Initialize Platform'}
                   </Button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Oracle Status Banner */}
           <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-2 h-2 rounded-full ${oracleStatus?.provider === 'manual' ? 'bg-yellow-400' : 'bg-green-500'} animate-pulse`} />
               <div>
-                <p className="text-sm font-bold text-foreground">Oracle Status: {oracleStatus?.provider === 'manual' ? 'Manual Verification' : 'Auto Settlement'}</p>
-                <p className="text-xs text-muted-foreground">
-                  {oracleStatus?.verified ? 'Oracle verified' : oracleStatus?.message || 'Admin verification required'}
-                </p>
+                <p className="text-sm font-bold text-foreground">Oracle: {oracleStatus?.provider === 'manual' ? 'Manual' : 'Auto'}</p>
+                <p className="text-xs text-muted-foreground">{oracleStatus?.verified ? 'Verified' : 'Admin verification required'}</p>
               </div>
             </div>
             <Radio className={`w-5 h-5 ${oracleStatus?.provider === 'manual' ? 'text-yellow-400' : 'text-green-500'}`} />
           </div>
 
-          {/* Quick Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card border border-border/50 rounded-xl p-4">
               <div className="flex items-center gap-3">
@@ -267,7 +214,9 @@ export default function Admin() {
             </div>
             <div className="bg-card border border-border/50 rounded-xl p-4">
               <div className="flex items-center gap-3">
-                <Gavel className="w-8 h-8 text-accent" />
+                <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                  <List className="w-5 h-5 text-accent" />
+                </div>
                 <div>
                   <p className="text-2xl font-heading font-bold text-foreground">{bets.length}</p>
                   <p className="text-xs text-muted-foreground">Active Markets</p>
@@ -277,7 +226,6 @@ export default function Admin() {
           </div>
         </TabsContent>
 
-        {/* Matches Tab */}
         <TabsContent value="matches" className="space-y-4">
           <h2 className="font-heading font-bold text-lg flex items-center gap-2">
             <Trophy className="w-5 h-5 text-primary" />
@@ -290,10 +238,9 @@ export default function Admin() {
           </div>
         </TabsContent>
 
-        {/* Bets Tab */}
         <TabsContent value="bets" className="space-y-4">
           <h2 className="font-heading font-bold text-lg flex items-center gap-2">
-            <Gavel className="w-5 h-5 text-primary" />
+            <List className="w-5 h-5 text-primary" />
             Bets ({bets.length})
           </h2>
           <div className="space-y-2">
@@ -366,7 +313,7 @@ function CreateMatchDialog() {
           </div>
           <div>
             <Label className="text-xs">Venue</Label>
-            <Input value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-secondary/50" placeholder="MetLife Stadium, New Jersey" />
+            <Input value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-secondary/50" placeholder="MetLife Stadium" />
           </div>
           <Button
             onClick={() => createMutation.mutate(form)}
@@ -378,438 +325,5 @@ function CreateMatchDialog() {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function AdminMatchRow({ match, bets, index }) {
-  const queryClient = useQueryClient();
-  const existingBet = bets.find(b => b.match_id === match.id);
-  const [pendingMarketInit, setPendingMarketInit] = useState(null);
-
-  // Check on-chain market status
-  const { data: marketStatus } = useQuery({
-    queryKey: ['marketStatus', match.id],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
-      return res.data;
-    },
-    enabled: !!existingBet,
-    refetchInterval: 10000,
-  });
-
-  const isMarketInitialized = existingBet?.solana_market_created || marketStatus?.status === 'initialized';
-
-  const createBetMutation = useMutation({
-    mutationFn: async () => {
-      // First create the Bet entity
-      const bet = await base44.entities.Bet.create({
-        match_id: match.id,
-        title: `${match.team_a} vs ${match.team_b}`,
-        outcome_a: match.team_a,
-        outcome_b: match.team_b,
-        outcome_draw: 'Draw',
-        open_until: match.match_time,
-        status: 'open',
-        fee_percent: 0,
-        odds_a: 2.1,
-        odds_b: 2.1,
-        odds_draw: 2.1,
-        oracle_odds_a: 210,
-        oracle_odds_draw: 210,
-        oracle_odds_b: 210,
-        lp_amount_a: 0, lp_amount_b: 0, lp_amount_draw: 0,
-        total_pool: 0, total_bettors: 0,
-      });
-      
-      // Then create the market on-chain
-      const marketRes = await base44.functions.invoke('createMarketOnChain', {
-        bet_id: bet.id,
-        match_id: match.id,
-      });
-      
-      if (marketRes.data.solana_instruction) {
-        setPendingMarketInit({
-          instruction: marketRes.data.solana_instruction,
-          betId: bet.id,
-        });
-      }
-      
-      return bet;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bets'] });
-      queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
-    },
-  });
-
-  const handleMarketInitSuccess = (txResult) => {
-    setPendingMarketInit(null);
-    queryClient.invalidateQueries({ queryKey: ['bets'] });
-    queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
-    alert('Market initialized on-chain!');
-  };
-
-  const handleMarketInitError = (err) => {
-    console.error('Market init failed:', err);
-    setPendingMarketInit(null);
-    alert('Market initialization failed: ' + err.message);
-  };
-
-  const recreateMarketMutation = useMutation({
-    mutationFn: ({ bet_id, match_id }) => base44.functions.invoke('createMarketOnChain', {
-      bet_id,
-      match_id,
-      force_recreate: true,
-    }),
-    onSuccess: (data) => {
-      if (data.solana_instruction) {
-        alert('Market recreation instruction generated. Please sign the transaction in your wallet to complete.');
-        // In a full implementation, we'd trigger the wallet signer here
-      } else {
-        alert(data.message || 'Market recreated');
-      }
-      queryClient.invalidateQueries({ queryKey: ['bets'] });
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: (status) => base44.entities.Match.update(match.id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['matches'] });
-    },
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className="flex items-center justify-between p-4 bg-card border border-border/50 rounded-xl"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-lg">{match.team_a_flag || '🏳️'}</span>
-        <div>
-          <p className="font-heading font-bold text-sm">{match.team_a} vs {match.team_b}</p>
-          <p className="text-[10px] text-muted-foreground">
-            {match.match_time ? format(new Date(match.match_time), 'MMM d, HH:mm') : 'TBD'} · {match.venue || 'TBD'}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge className="text-[10px] bg-secondary text-secondary-foreground">{match.status}</Badge>
-        <Select value={match.status} onValueChange={(v) => updateStatusMutation.mutate(v)}>
-          <SelectTrigger className="w-28 h-8 text-xs bg-secondary/50 border-border/50">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="upcoming">Upcoming</SelectItem>
-            <SelectItem value="live">Live</SelectItem>
-            <SelectItem value="finished">Finished</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-        {!existingBet && !pendingMarketInit && (
-          <Button
-            size="sm"
-            onClick={() => createBetMutation.mutate()}
-            disabled={createBetMutation.isPending}
-            className="h-8 text-xs bg-primary text-primary-foreground font-heading rounded-lg"
-          >
-            {createBetMutation.isPending ? (
-              <><div className="w-3 h-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-1" /> Creating...</>
-            ) : (
-              <><Plus className="w-3 h-3 mr-1" /> Initialize Market</>
-            )}
-          </Button>
-        )}
-        {pendingMarketInit && (
-          <div className="w-64">
-            <SolanaTransactionSigner
-              instruction={pendingMarketInit.instruction}
-              amount={0}
-              onSuccess={handleMarketInitSuccess}
-              onError={handleMarketInitError}
-            />
-          </div>
-        )}
-        {existingBet && isMarketInitialized && (
-          <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
-          </Badge>
-        )}
-        {existingBet && isMarketInitialized && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (confirm('Recreate market on-chain with updated odds? This will overwrite existing market data.')) {
-                recreateMarketMutation.mutate({ bet_id: existingBet.id, match_id: match.id });
-              }
-            }}
-            disabled={recreateMarketMutation.isPending}
-            className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
-          >
-            <RefreshCw className="w-3 h-3 mr-1" /> Recreate
-          </Button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function AdminBetRow({ bet, matches, index }) {
-  const queryClient = useQueryClient();
-  const match = matches.find(m => m.id === bet.match_id);
-
-  // Check on-chain market status
-  const { data: marketStatus } = useQuery({
-    queryKey: ['marketStatus', match?.id],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
-      return res.data;
-    },
-    enabled: !!match,
-    refetchInterval: 10000,
-  });
-
-  const isMarketInitialized = bet.solana_market_created || marketStatus?.status === 'initialized';
-
-  const [pendingRecreate, setPendingRecreate] = useState(null);
-
-  const recreateMarketMutation = useMutation({
-    mutationFn: ({ bet_id, match_id }) => base44.functions.invoke('createMarketOnChain', {
-      bet_id,
-      match_id,
-      force_recreate: true,
-    }),
-    onSuccess: (response) => {
-      const data = response.data;
-      console.log('[AdminBetRow] createMarketOnChain response:', data);
-      if (data.solana_instruction) {
-        console.log('[AdminBetRow] Setting pendingRecreate:', data.solana_instruction);
-        setPendingRecreate(data.solana_instruction);
-      } else {
-        alert(data.message || 'Market recreated');
-      }
-      queryClient.invalidateQueries({ queryKey: ['bets'] });
-      queryClient.invalidateQueries({ queryKey: ['marketStatus', match?.id] });
-    },
-    onError: (err) => {
-      console.error('[AdminBetRow] createMarketOnChain error:', err);
-      alert('Failed to recreate market: ' + err.message);
-    },
-  });
-
-  const handleRecreateSuccess = (txResult) => {
-    setPendingRecreate(null);
-    queryClient.invalidateQueries({ queryKey: ['bets'] });
-    queryClient.invalidateQueries({ queryKey: ['marketStatus', match?.id] });
-    alert('Market recreated on-chain!');
-  };
-
-  const handleRecreateError = (err) => {
-    console.error('Market recreate failed:', err);
-    setPendingRecreate(null);
-    alert('Market recreation failed: ' + err.message);
-  };
-
-  const [pendingSettle, setPendingSettle] = useState(null);
-
-  // Use announceWinner backend function for fixed-odds settlement
-  const settleMutation = useMutation({
-    mutationFn: async (winningOutcome) => {
-      const res = await base44.functions.invoke('announceWinner', {
-        bet_id: bet.id,
-        winning_outcome: winningOutcome,
-      });
-      if (!res.data.success) throw new Error(res.data.error || 'Settlement failed');
-      
-      // Then settle on-chain
-      const onChainRes = await base44.functions.invoke('settleMarketOnChain', {
-        bet_id: bet.id,
-        match_id: bet.match_id,
-        winning_outcome: winningOutcome,
-      });
-      if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
-      
-      return { ...res.data, solana_instruction: onChainRes.data.solana_instruction };
-    },
-    onSuccess: (data) => {
-      if (data.solana_instruction) {
-        setPendingSettle(data.solana_instruction);
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['bets'] });
-        queryClient.invalidateQueries({ queryKey: ['myBets'] });
-        alert(data.message);
-      }
-    },
-  });
-
-  const handleSettleSuccess = (txResult) => {
-    setPendingSettle(null);
-    queryClient.invalidateQueries({ queryKey: ['bets'] });
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    alert('✓ Market settled on-chain! Players can now claim winnings.');
-  };
-
-  const handleSettleError = (err) => {
-    console.error('Settlement failed:', err);
-    setPendingSettle(null);
-    alert('Settlement failed: ' + err.message);
-  };
-
-  const voidMutation = useMutation({
-    mutationFn: async () => {
-      const userBets = await base44.entities.UserBet.filter({ bet_id: bet.id });
-      for (const ub of userBets) {
-        await base44.entities.UserBet.update(ub.id, { status: 'refunded', actual_payout: ub.amount });
-      }
-      await base44.entities.Bet.update(bet.id, { status: 'void' });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bets'] });
-    },
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className="p-4 bg-card border border-border/50 rounded-xl"
-    >
-      <div className="flex items-center justify-between mb-2">
-      <div>
-        <p className="font-heading font-bold text-sm">{bet.outcome_a} vs {bet.outcome_b}</p>
-        <p className="text-[10px] text-muted-foreground">
-          Fixed odds: 2.1x each · Pool: ◎{(bet.total_pool || 0).toFixed(2)} · {bet.total_bettors || 0} bets
-        </p>
-        <div className="flex gap-3 mt-0.5 text-[10px] text-muted-foreground">
-          <span className="text-primary font-bold">{bet.outcome_a}: 2.10x</span>
-          <span className="text-yellow-400 font-bold">Draw: 2.10x</span>
-          <span className="text-accent font-bold">{bet.outcome_b}: 2.10x</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {isMarketInitialized && (
-          <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
-          </Badge>
-        )}
-        {pendingRecreate ? (
-          <div className="w-64">
-            {console.log('[AdminBetRow] Rendering SolanaTransactionSigner with instruction:', pendingRecreate)}
-            <SolanaTransactionSigner
-              instruction={pendingRecreate}
-              amount={0}
-              onSuccess={handleRecreateSuccess}
-              onError={handleRecreateError}
-            />
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (confirm('Recreate market on-chain with updated odds? This will overwrite existing market data.')) {
-                recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
-              }
-            }}
-            disabled={recreateMarketMutation.isPending}
-            className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
-          >
-            <RefreshCw className="w-3 h-3 mr-1" /> Recreate
-          </Button>
-        )}
-        <Badge className={`text-[10px] ${
-          bet.status === 'open' ? 'bg-accent/20 text-accent' :
-          bet.status === 'settled' ? 'bg-primary/20 text-primary' :
-          bet.status === 'void' ? 'bg-destructive/20 text-destructive' :
-          'bg-secondary text-secondary-foreground'
-        }`}>
-          {bet.status}
-        </Badge>
-      </div>
-      </div>
-
-      {bet.status === 'open' || bet.status === 'closed' ? (
-        <div className="space-y-2 mt-2">
-          {pendingSettle ? (
-            <div className="w-full">
-              <SolanaTransactionSigner
-                instruction={pendingSettle}
-                amount={0}
-                onSuccess={handleSettleSuccess}
-                onError={handleSettleError}
-              />
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => settleMutation.mutate('a')} disabled={settleMutation.isPending}
-                className="h-8 text-xs bg-primary/20 text-primary hover:bg-primary/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_a}
-              </Button>
-              <Button size="sm" onClick={() => settleMutation.mutate('draw')} disabled={settleMutation.isPending}
-                className="h-8 text-xs bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> Draw
-              </Button>
-              <Button size="sm" onClick={() => settleMutation.mutate('b')} disabled={settleMutation.isPending}
-                className="h-8 text-xs bg-accent/20 text-accent hover:bg-accent/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_b}
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : bet.status === 'settled' ? (
-        <div className="space-y-2 mt-2">
-          <p className="text-xs text-muted-foreground">
-            Winner: <span className="text-primary font-bold">
-              {bet.winning_outcome === 'a' ? bet.outcome_a : bet.winning_outcome === 'b' ? bet.outcome_b : 'Draw'}
-            </span>
-          </p>
-          {!isMarketInitialized || !marketStatus?.settled ? (
-            pendingSettle ? (
-              <div className="w-full">
-                <SolanaTransactionSigner
-                  instruction={pendingSettle}
-                  amount={0}
-                  onSuccess={handleSettleSuccess}
-                  onError={handleSettleError}
-                />
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => settleMutation.mutate(bet.winning_outcome)}
-                disabled={settleMutation.isPending}
-                className="h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg w-full font-bold"
-              >
-                <Gavel className="w-3 h-3 mr-1" /> Settle On-Chain (Enable Claims)
-              </Button>
-            )
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={async () => {
-                if (!confirm('Mark all won bets as claimed? This updates the database only (no on-chain transaction).')) return;
-                try {
-                  const res = await base44.functions.invoke('adminMarkAsClaimed', { bet_id: bet.id });
-                  if (res.data.error) throw new Error(res.data.error);
-                  alert(`✓ Marked ${res.data.claimed_bet_ids.length} bet(s) as claimed`);
-                  queryClient.invalidateQueries({ queryKey: ['bets'] });
-                  queryClient.invalidateQueries({ queryKey: ['myBets'] });
-                } catch (err) {
-                  alert('Failed: ' + err.message);
-                }
-              }}
-              className="h-8 text-xs bg-accent/20 text-accent hover:bg-accent/30 rounded-lg w-full"
-            >
-              <CheckCircle className="w-3 h-3 mr-1" /> Mark as Claimed (DB Only)
-            </Button>
-          )}
-        </div>
-      ) : null}
-    </motion.div>
   );
 }
