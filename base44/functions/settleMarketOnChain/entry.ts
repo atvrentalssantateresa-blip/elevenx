@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
           { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
           { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true },
           { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
-          { pubkey: user.id, isSigner: true, isWritable: true }, // admin signer
+          { pubkey: user.wallet_address, isSigner: true, isWritable: true }, // admin signer
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
         ],
         instruction_data: data.toString('base64'),
