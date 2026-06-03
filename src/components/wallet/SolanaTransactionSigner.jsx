@@ -476,10 +476,15 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
     // Only show internal success UI if NOT a refund/claim (those have custom parent dialogs)
     const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
     
-    // Determine transaction type message
+    // Determine transaction type message and payout info
     let txMessage = 'Transaction confirmed on Solana';
+    let payoutInfo = null;
     if (instruction?.instruction_type === 'place_bet') {
       txMessage = '✓ Bet placed successfully!';
+      if (instruction.amountLamports) {
+        const solAmount = (instruction.amountLamports / 1e9).toFixed(4);
+        payoutInfo = `◎${solAmount} SOL staked`;
+      }
     } else if (instruction?.instruction_type === 'provide_liquidity') {
       txMessage = '✓ Liquidity provided!';
     } else if (instruction?.instruction_type === 'claim_winnings') {
@@ -502,6 +507,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       >
         <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
         <p className="font-heading font-bold text-sm text-accent">{txMessage}</p>
+        {payoutInfo && (
+          <p className="font-heading font-bold text-lg text-accent mt-1">{payoutInfo}</p>
+        )}
         <p className="text-xs text-muted-foreground mt-2">
           View transaction:{' '}
           <a 
