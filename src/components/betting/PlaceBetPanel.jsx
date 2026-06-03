@@ -108,8 +108,43 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       });
       
       let res;
-      // Use SDK with auth token if available, otherwise fall back to default
-      const sdkToUse = window.base44WithAuth || base44;
+      // Check if auth token exists
+      const authToken = localStorage.getItem('elevenx_auth_token');
+      console.log('[PlaceBetPanel] Auth token present:', !!authToken);
+      console.log('[PlaceBetPanel] window.base44WithAuth present:', !!window.base44WithAuth);
+      
+      // Use SDK with auth token if available
+      let sdkToUse = window.base44WithAuth;
+      
+      // If not initialized yet, create it now
+      if (!sdkToUse && authToken) {
+        console.log('[PlaceBetPanel] Initializing SDK with auth token...');
+        try {
+          const { createAxiosClient } = await import('@base44/sdk/dist/utils/axios-client');
+          const { createClient } = await import('@base44/sdk');
+          const { appParams } = await import('@/lib/app-params');
+          
+          const axiosClient = createAxiosClient({
+            baseURL: '',
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              'X-App-Id': appParams.appId,
+            },
+          });
+          sdkToUse = createClient({ 
+            axiosClient,
+            appId: appParams.appId,
+            functionsVersion: appParams.functionsVersion,
+          });
+          window.base44WithAuth = sdkToUse;
+          console.log('[PlaceBetPanel] SDK initialized with auth token');
+        } catch (initErr) {
+          console.error('[PlaceBetPanel] Failed to initialize SDK:', initErr);
+        }
+      }
+      
+      // Fall back to base44 if no auth
+      sdkToUse = sdkToUse || base44;
       
       if (mode === 'offer') {
         console.log('[PlaceBetPanel] Calling provideLiquidity with wallet:', wallet);
