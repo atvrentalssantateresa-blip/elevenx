@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ArrowLeft, Clock, Trophy, Award, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, Trophy, Award, CheckCircle2, Zap, RefreshCw, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -24,14 +24,16 @@ export default function MatchDetail() {
   const { matchId } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { provider } = useWallet();
 
   const [selectedOutcome, setSelectedOutcome] = useState(null);
-  const [selectedOffer, setSelectedOffer] = useState(null); // offer to bet against
-  const [betMode, setBetMode] = useState('offer'); // 'offer' | 'match'
+  const [selectedOffer, setSelectedOffer] = useState(null);
+  const [betMode, setBetMode] = useState('offer');
   const [isRefreshingOdds, setIsRefreshingOdds] = useState(false);
   const [statsApiMatchId, setStatsApiMatchId] = useState('');
   const [marketCreationTx, setMarketCreationTx] = useState(null);
-  const { provider } = useWallet();
+  const [claimData, setClaimData] = useState(null);
+  const [isBatchClaim, setIsBatchClaim] = useState(false);
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -65,6 +67,10 @@ export default function MatchDetail() {
     (walletAddress && ub.wallet_address === walletAddress) || (user?.id && ub.created_by_id === user.id)
   );
 
+  // Calculate won bets and total payout for batch claim
+  const wonBets = myActiveBets.filter(ub => ub.status === 'won');
+  const totalBatchPayout = wonBets.reduce((sum, ub) => sum + (ub.actual_payout || ub.potential_payout || 0), 0);
+
   // Admin: create market with default odds
   const createMarketMutation = useMutation({
     mutationFn: async () => {
@@ -83,21 +89,18 @@ export default function MatchDetail() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] }),
   });
 
-  // Sync local statsApiMatchId when bet loads
   React.useEffect(() => {
     if (bet?.stats_api_match_id && !statsApiMatchId) {
       setStatsApiMatchId(bet.stats_api_match_id);
     }
   }, [bet?.stats_api_match_id]);
 
-  // Refresh odds from TheStatsAPI
   const refreshOdds = async () => {
     const matchIdToUse = statsApiMatchId.trim();
     if (!matchIdToUse) {
       alert('Enter a TheStatsAPI match ID first');
       return;
     }
-    // Save it if changed
     if (matchIdToUse !== bet?.stats_api_match_id) {
       await base44.entities.Bet.update(bet.id, { stats_api_match_id: matchIdToUse });
     }
@@ -125,7 +128,6 @@ export default function MatchDetail() {
     setIsRefreshingOdds(false);
   };
 
-  // Admin settle
   const settleMutation = useMutation({
     mutationFn: async (outcome) => {
       const res = await base44.functions.invoke('announceWinner', { bet_id: bet.id, winning_outcome: outcome });
@@ -139,7 +141,20 @@ export default function MatchDetail() {
     onError: (err) => alert('Settle failed: ' + err.message),
   });
 
-  // Claim winnings
+  // Batch claim for all won bets on this match
+  const batchClaimMutation = useMutation({
+    mutationFn: async () => {
+      const betIds = wonBets.map(ub => ub.id);
+      const res = await base44.functions.invoke('claimWinnings', { userBetId: betIds[0], batchBetIds: betIds });
+      if (res.data.error) throw new Error(res.data.error);
+      return { ...res.data, betIds, totalAmount: res.data.totalPayout || totalBatchPayout };
+    },
+    onSuccess: (data) => {
+      setClaimData({ ...data, isBatch: true });
+    },
+  });
+
+  // Individual claim (legacy - for single bets outside match context)
   const claimMutation = useMutation({
     mutationFn: async (ubId) => {
       const res = await base44.functions.invoke('claimWinnings', { userBetId: ubId });
@@ -148,6 +163,20 @@ export default function MatchDetail() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] }),
   });
+
+  const handleBatchClaimClick = () => {
+    batchClaimMutation.mutate();
+  };
+
+  const handleClaimSignSuccess = async (result) => {
+    // Update all claimed bets to 'claimed' status
+    const betIdsToUpdate = claimData?.betIds || wonBets.map(ub => ub.id);
+    for (const betId of betIdsToUpdate) {
+      await base44.entities.UserBet.update(betId, { status: 'claimed', actual_payout: claimData?.totalPayout || totalBatchPayout });
+    }
+    setClaimData(null);
+    queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+  };
 
   const handleSelectOffer = (offer) => {
     setSelectedOffer(offer);
@@ -268,7 +297,6 @@ export default function MatchDetail() {
               if (res.data.error) {
                 alert('Error: ' + res.data.error);
               } else if (res.data.alreadyExists) {
-                // Market already exists on-chain, just update the DB
                 await base44.entities.Bet.update(bet.id, {
                   solana_market_created: true,
                   solana_market_pda: res.data.marketPda,
@@ -289,7 +317,6 @@ export default function MatchDetail() {
               amount={0}
               isConnected={!!provider}
               onSuccess={async () => {
-                // Update DB after successful transaction
                 await base44.entities.Bet.update(bet.id, {
                   solana_market_created: true,
                   solana_market_pda: marketCreationTx.accounts.market,
@@ -307,7 +334,6 @@ export default function MatchDetail() {
                 <CheckCircle2 className="w-3 h-3 mr-1" /> Initialized
               </Badge>
               <Button size="sm" variant="outline" onClick={async () => {
-                // Check on-chain status and sync if needed
                 const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
                 if (res.data.status === 'initialized') {
                   await base44.entities.Bet.update(bet.id, {
@@ -333,7 +359,7 @@ export default function MatchDetail() {
         </div>
       )}
 
-      {/* ── Admin: Set Stats API ID + Fetch Odds ── */}
+      {/* ── Admin: Create Stats API ID + Fetch Odds ── */}
       {hasBet && isAdmin && isOpen && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-border/30 rounded-2xl p-4 space-y-2">
@@ -375,7 +401,7 @@ export default function MatchDetail() {
         </motion.div>
       )}
 
-      {/* ── Bet Panel: new offer or match against offer ── */}
+      {/* ── Bet Panel ── */}
       {hasBet && isOpen && (selectedOutcome || selectedOffer) && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
           <PlaceBetPanel
@@ -450,6 +476,49 @@ export default function MatchDetail() {
           <h3 className="font-heading font-bold text-sm flex items-center gap-2">
             <Award className="w-4 h-4 text-primary" /> My Positions
           </h3>
+          
+          {/* Batch Claim Button for Won Bets */}
+          {wonBets.length > 0 && (
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-accent">Claim All Winnings</p>
+                  <p className="text-xs text-muted-foreground">{wonBets.length} bet(s) on this match</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-accent">◎{totalBatchPayout.toFixed(4)}</p>
+                  <p className="text-[10px] text-muted-foreground">Total payout</p>
+                </div>
+              </div>
+              
+              {claimData?.isBatch ? (
+                <SolanaTransactionSigner
+                  instruction={claimData.solana_instruction}
+                  amount={claimData.totalAmount?.toFixed(4) || totalBatchPayout.toFixed(4)}
+                  userBetId={claimData.betIds[0]}
+                  batchBetIds={claimData.betIds}
+                  onSuccess={handleClaimSignSuccess}
+                  onError={() => setClaimData(null)}
+                />
+              ) : (
+                <Button
+                  onClick={handleBatchClaimClick}
+                  disabled={batchClaimMutation.isPending}
+                  className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl text-sm"
+                >
+                  {batchClaimMutation.isPending ? (
+                    <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Claim All ({wonBets.length} bets)
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+          
           {myActiveBets.map(ub => (
             <div key={ub.id} className="bg-secondary/30 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
@@ -476,12 +545,10 @@ export default function MatchDetail() {
                 <p className="text-[10px] text-yellow-400 mt-1">⏳ Waiting to be matched — can withdraw anytime</p>
               )}
               {ub.status === 'won' && (
-                <Button onClick={() => claimMutation.mutate(ub.id)}
-                  disabled={claimMutation.isPending}
-                  size="sm"
-                  className="w-full mt-2 h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-lg">
-                  {claimMutation.isPending ? 'Claiming...' : `Claim ◎${ub.actual_payout?.toFixed(4) || ub.potential_payout?.toFixed(4)}`}
-                </Button>
+                <p className="text-xs text-accent mt-2 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Included in batch claim above
+                </p>
               )}
             </div>
           ))}

@@ -14,14 +14,28 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { userBetId } = await req.json();
-    if (!userBetId) return Response.json({ error: 'Missing userBetId' }, { status: 400 });
+    const { userBetId, batchBetIds } = await req.json();
+    
+    // Support both single bet and batch claiming
+    const betIdsToProcess = batchBetIds || [userBetId];
+    
+    if (!betIdsToProcess || betIdsToProcess.length === 0) {
+      return Response.json({ error: 'Missing userBetId or batchBetIds' }, { status: 400 });
+    }
 
-    const userBets = await base44.entities.UserBet.filter({ id: userBetId });
-    const userBet = userBets[0];
-    if (!userBet) return Response.json({ error: 'Bet not found' }, { status: 404 });
-    if (userBet.created_by_id !== user.id) return Response.json({ error: 'Unauthorized' }, { status: 403 });
-    if (userBet.status !== 'won') return Response.json({ error: 'Bet is not won' }, { status: 400 });
+    // Get all user bets to claim
+    const allUserBets = await base44.entities.UserBet.list();
+    const betsToClaim = allUserBets.filter(ub => 
+      betIdsToProcess.includes(ub.id) && 
+      ub.created_by_id === user.id && 
+      ub.status === 'won'
+    );
+
+    if (betsToClaim.length === 0) {
+      return Response.json({ error: 'No valid won bets found' }, { status: 404 });
+    }
+
+    const userBet = betsToClaim[0]; // Use first bet for PDA derivation (same match)
 
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet  = bets[0];
@@ -53,11 +67,14 @@ Deno.serve(async (req) => {
       programId
     );
 
-    console.log(`✓ Claim: user=${user.id} | bet=${userBet.amount} SOL on ${userBet.outcome_label}`);
+    const totalPayout = betsToClaim.reduce((sum, bet) => sum + (bet.actual_payout || bet.potential_payout || 0), 0);
+    console.log(`✓ Claim: user=${user.id} | bets=${betsToClaim.length} | total=${totalPayout} SOL`);
 
     return Response.json({
       success: true,
-      message: `Sign to claim pari-mutuel winnings`,
+      message: `Sign to claim ${betsToClaim.length} winning bet(s)`,
+      betIds: betsToClaim.map(b => b.id),
+      totalPayout,
       solana_instruction: {
         instruction_type: 'claim_winnings',
         programId: SOLANA_PROGRAM_ID,

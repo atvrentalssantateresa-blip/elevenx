@@ -13,8 +13,8 @@ async function anchorDiscriminator(name) {
   return Buffer.from(new Uint8Array(hash).slice(0, 8));
 }
 
-export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, isOffer, isPlatformInit, onSuccess, onError }) {
-  // userBetId, offerId, isOffer, isPlatformInit are optional - used for tracking DB records or flow control after transaction
+export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, isOffer, isPlatformInit, batchBetIds, onSuccess, onError }) {
+  // userBetId, offerId, isOffer, isPlatformInit, batchBetIds are optional - used for tracking DB records or flow control after transaction
   const { isConnected, connect } = useWallet();
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState(null);
@@ -492,6 +492,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       goodLuckMessage = 'Good luck! 🍀';
     } else if (instruction?.instruction_type === 'claim_winnings') {
       txMessage = '✓ Winnings claimed!';
+      if (instruction.amountLamports) {
+        const solAmount = (instruction.amountLamports / 1e9).toFixed(4);
+        payoutInfo = `◎${solAmount} SOL claimed`;
+      }
     } else if (instruction?.instruction_type === 'withdraw_liquidity') {
       txMessage = '✓ Liquidity withdrawn!';
     } else if (instruction?.instruction_type === 'claim_refund') {
