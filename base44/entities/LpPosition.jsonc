@@ -1,0 +1,86 @@
+{
+  "name": "LpPosition",
+  "type": "object",
+  "properties": {
+    "bet_id": {
+      "type": "string",
+      "description": "Reference to Bet entity"
+    },
+    "match_id": {
+      "type": "string",
+      "description": "Reference to Match entity"
+    },
+    "offer_id": {
+      "type": "string",
+      "description": "Reference to BetOffer entity"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b",
+        "draw"
+      ],
+      "description": "Which outcome this LP position backs"
+    },
+    "outcome_label": {
+      "type": "string",
+      "description": "Display label e.g. 'Haiti', 'Scotland', 'Draw'"
+    },
+    "liquidity_deposited": {
+      "type": "number",
+      "description": "Total SOL the LP deposited"
+    },
+    "liquidity_matched": {
+      "type": "number",
+      "default": 0,
+      "description": "How much has been matched by bettors"
+    },
+    "liquidity_unmatched": {
+      "type": "number",
+      "default": 0,
+      "description": "Remaining unmatched liquidity available for withdrawal"
+    },
+    "potential_yield": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated yield from fees on matched portion"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "partially_matched",
+        "fully_matched",
+        "withdrawn",
+        "settled"
+      ],
+      "default": "open",
+      "description": "Position status"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Solana wallet address of the LP"
+    },
+    "match_title": {
+      "type": "string",
+      "description": "Display title for quick reference"
+    },
+    "solana_market_pda": {
+      "type": "string",
+      "description": "Solana PDA for the market"
+    },
+    "solana_position_pda": {
+      "type": "string",
+      "description": "Solana PDA for the LP position"
+    }
+  },
+  "required": [
+    "bet_id",
+    "match_id",
+    "offer_id",
+    "outcome",
+    "liquidity_deposited",
+    "wallet_address"
+  ]
+}

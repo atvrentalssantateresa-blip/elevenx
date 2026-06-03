@@ -14,6 +14,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import QuickStat from '@/components/dashboard/QuickStat';
 import EmptyState from '@/components/dashboard/EmptyState';
 import BetCard from '@/components/dashboard/BetCard';
+import LpPositionCard from '@/components/lp/LpPositionCard';
 
 const statusConfig = {
   active: { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock, label: 'Active' },
@@ -169,12 +170,16 @@ export default function MyBets() {
     return 'Draw';
   };
 
-  const totalStaked = myBets.reduce((s, b) => s + (b.amount || 0), 0);
-  const totalWon = myBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
-  const activeBets = myBets.filter((b) => b.status === 'active' || b.status === 'pending');
-  const completedBets = myBets.filter((b) => b.status !== 'active' && b.status !== 'pending');
-  const pendingClaims = myBets.filter((b) => b.status === 'won');
-  const availableRefunds = myBets.filter((b) => b.status === 'refunded');
+  // CRITICAL: Separate LP positions from matcher bets
+  const myLpPositions = myBets.filter((b) => b.role === 'lp');
+  const myMatcherBets = myBets.filter((b) => b.role !== 'lp');
+  
+  const totalStaked = myMatcherBets.reduce((s, b) => s + (b.amount || 0), 0);
+  const totalWon = myMatcherBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
+  const activeBets = myMatcherBets.filter((b) => b.status === 'active' || b.status === 'pending');
+  const completedBets = myMatcherBets.filter((b) => b.status !== 'active' && b.status !== 'pending');
+  const pendingClaims = myMatcherBets.filter((b) => b.status === 'won');
+  const availableRefunds = myMatcherBets.filter((b) => b.status === 'refunded');
 
   // Group won bets by match for batch claiming
   const groupedWonBets = pendingClaims.reduce((acc, bet) => {
@@ -308,7 +313,7 @@ export default function MyBets() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
-          label="Total Staked"
+          label="Total Bet"
           value={`◎${totalStaked.toFixed(4)}`}
           icon={DollarSign}
           color="text-foreground"
@@ -336,6 +341,29 @@ export default function MyBets() {
           delay={0.15} />
         
       </div>
+      
+      {/* LP Stats */}
+      {myLpPositions.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <QuickStat
+            label="Liquidity Provided"
+            value={`◎${myLpPositions.reduce((s, lp) => s + (lp.liquidity_deposited || lp.amount || 0), 0).toFixed(4)}`}
+            icon={TrendingUp}
+            color="bg-primary/10 text-primary" />
+          
+          <QuickStat
+            label="LP Positions"
+            value={myLpPositions.length}
+            icon={DollarSign}
+            color="bg-primary/10 text-primary" />
+          
+          <QuickStat
+            label="Unmatched Liquidity"
+            value={`◎${myLpPositions.reduce((s, lp) => s + (lp.liquidity_unmatched || 0), 0).toFixed(4)}`}
+            icon={Wallet}
+            color="bg-yellow-500/10 text-yellow-400" />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <QuickStat
@@ -358,26 +386,26 @@ export default function MyBets() {
         
       </div>
 
-      <Tabs defaultValue="active" className="space-y-4">
+      <Tabs defaultValue="bets" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 bg-card border border-border/50 rounded-xl">
-          <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
-            <Clock className="w-4 h-4 mr-2" />
-            Active ({activeBets.length})
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-lg">
+          <TabsTrigger value="bets" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-lg">
             <Trophy className="w-4 h-4 mr-2" />
-            Pending Claims ({pendingClaims.length})
+            My Bets ({myMatcherBets.length})
+          </TabsTrigger>
+          <TabsTrigger value="liquidity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Liquidity ({myLpPositions.length})
           </TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg">
             <BarChart3 className="w-4 h-4 mr-2" />
-            History ({completedBets.filter((b) => b.status !== 'won').length})
+            History ({completedBets.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="space-y-4">
-          {activeBets.length > 0 ?
+        <TabsContent value="bets" className="space-y-4">
+          {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {activeBets.map((bet, i) =>
+              {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
             <BetCard
               key={bet.id}
               bet={bet}
@@ -392,138 +420,36 @@ export default function MyBets() {
           }
         </TabsContent>
 
-        <TabsContent value="pending" className="space-y-4">
-          {pendingClaims.length > 0 ?
-          <div className="space-y-4">
-              {Object.entries(groupedWonBets).map(([matchId, bets]) => {
-              const totalPayout = bets.reduce((sum, b) => sum + (b.potential_payout || 0), 0);
-              const isClaiming = batchClaimMatchId === matchId;
-
-              return (
-                <div key={matchId} className="bg-card border border-border/50 rounded-2xl p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-heading font-bold text-sm">{bets[0].match_title || 'Match'}</h3>
-                        <p className="text-xs text-muted-foreground">{bets.length} bet(s) to claim</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-heading font-bold text-accent">◎{totalPayout.toFixed(4)}</p>
-                        <p className="text-[10px] text-muted-foreground">Total payout</p>
-                      </div>
-                    </div>
-                    
-                    {claimData?.matchId === matchId ?
-                  <SolanaTransactionSigner
-                    instruction={claimData.solana_instruction}
-                    amount={totalPayout.toFixed(4)}
-                    userBetId={claimData.betIds[0]}
-                    batchBetIds={claimData.betIds}
-                    onSuccess={handleClaimSignSuccess}
-                    onError={() => setClaimData(null)} /> :
-
-
-                  <Button
-                    onClick={() => handleBatchClaim(matchId, bets)}
-                    className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl text-sm">
-                    
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Claim All ({bets.length} bets)
-                      </Button>
-                  }
-                    
-                    <div className="mt-4 space-y-2">
-                      {bets.map((bet) =>
-                    <div key={bet.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2">
-                          <span className="text-muted-foreground">{bet.outcome_label}</span>
-                          <span className="font-bold">◎{bet.amount?.toFixed(4)}</span>
-                        </div>
-                    )}
-                    </div>
-                  </div>);
-
-            })}
+        <TabsContent value="liquidity" className="space-y-4">
+          {myLpPositions.length > 0 ?
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {myLpPositions.map((lp, i) => (
+                <LpPositionCard
+                  key={lp.id}
+                  position={lp}
+                  index={i}
+                  walletAddress={walletAddress}
+                  onWithdrawRequest={(data) => {
+                    // Handle LP withdraw dialog
+                    setPendingWithdrawTx({
+                      instruction: data.solanaInstruction,
+                      amount: data.withdrawAmount,
+                      userBetId: data.positionId,
+                      offerId: data.offerId
+                    });
+                  }}
+                />
+              ))}
             </div> :
 
-          <EmptyState message="No pending claims" />
-          }
-        </TabsContent>
-
-        <TabsContent value="lp" className="space-y-4">
-          {activeLpOffers.length > 0 ?
-          <div className="space-y-3">
-              <div className="bg-card border border-border/50 rounded-2xl p-6 text-center">
-                <TrendingUp className="w-12 h-12 text-primary mx-auto mb-3" />
-                <h3 className="font-heading font-bold text-lg mb-2">LP Positions Managed in LP Dashboard</h3>
-                <p className="text-sm text-muted-foreground mb-4">View and manage your liquidity provider positions, including withdrawals</p>
-                <Link to="/lp">
-                  <Button className="h-11 rounded-xl font-bold">
-                    Go to LP Dashboard <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {activeLpOffers.map((offer, i) => {
-                const matchPct = offer.amount_offered > 0 ?
-                Math.round(offer.amount_matched / offer.amount_offered * 100) :
-                0;
-
-                return (
-                  <motion.div key={offer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="bg-card border border-border/50 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-heading font-bold text-sm">{getOutcomeLabel(offer)}</p>
-                          <p className="text-[10px] text-muted-foreground">{getMatchTitle(offer.match_id)}</p>
-                        </div>
-                        <Badge className={`text-[10px] ${
-                      offer.status === 'fully_matched' ? 'bg-accent/20 text-accent' :
-                      offer.status === 'partially_matched' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-secondary text-secondary-foreground'}`
-                      }>{offer.status}</Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 text-xs mt-2">
-                        <div>
-                          <p className="text-muted-foreground">Committed</p>
-                          <p className="font-bold">◎{(offer.amount_offered || 0).toFixed(4)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Matched</p>
-                          <p className="font-bold text-accent">◎{(offer.amount_matched || 0).toFixed(4)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Unmatched</p>
-                          <p className="font-bold text-yellow-400">◎{(offer.amount_unmatched || 0).toFixed(4)}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                          <span>Match rate</span><span>{matchPct}%</span>
-                        </div>
-                        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${matchPct}%` }} />
-                        </div>
-                      </div>
-                      
-                      <Link to="/lp">
-                        <Button size="sm" variant="outline" className="w-full mt-3 h-8 text-xs border-border/50 rounded-lg">
-                          Manage in LP Dashboard <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                      </Link>
-                    </motion.div>);
-
-              })}
-              </div>
-            </div> :
-
-          <EmptyState message="No LP positions" actionText="Go to LP Dashboard" link="/lp" />
+          <EmptyState message="No liquidity positions" actionText="Provide Liquidity" link="/matches" />
           }
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          {completedBets.filter((b) => b.status !== 'won').length > 0 ?
+          {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {completedBets.filter((b) => b.status !== 'won').map((bet, i) =>
+              {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) =>
             <BetCard
               key={bet.id}
               bet={bet}
