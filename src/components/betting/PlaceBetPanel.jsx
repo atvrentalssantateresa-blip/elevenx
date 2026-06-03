@@ -107,44 +107,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         matchId,
       });
       
-      // ALWAYS initialize SDK with auth token for betting calls
-      const authToken = localStorage.getItem('elevenx_auth_token');
-      console.log('[PlaceBetPanel] Auth token present:', !!authToken);
-      
-      let sdkToUse = base44;
-      
-      // Initialize SDK with auth token (required for betting)
-      if (authToken) {
-        try {
-          const { createAxiosClient } = await import('@base44/sdk/dist/utils/axios-client');
-          const { createClient } = await import('@base44/sdk');
-          const { appParams } = await import('@/lib/app-params');
-          
-          const axiosClient = createAxiosClient({
-            baseURL: '',
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'X-App-Id': appParams.appId,
-            },
-          });
-          sdkToUse = createClient({ 
-            axiosClient,
-            appId: appParams.appId,
-            functionsVersion: appParams.functionsVersion,
-          });
-          console.log('[PlaceBetPanel] ✓ SDK initialized with auth token for betting');
-        } catch (initErr) {
-          console.error('[PlaceBetPanel] Failed to initialize SDK with auth:', initErr);
-          // Continue with base44 (will fail auth if token required)
-        }
-      } else {
-        console.warn('[PlaceBetPanel] No auth token found - betting may fail');
-      }
-      
       let res;
       if (mode === 'offer') {
         console.log('[PlaceBetPanel] Calling provideLiquidity with wallet:', wallet);
-        res = await sdkToUse.functions.invoke('provideLiquidity', {
+        res = await base44.functions.invoke('provideLiquidity', {
           walletAddress: wallet,
           bet_id: bet.id,
           match_id: matchId,
@@ -154,7 +120,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         console.log('[PlaceBetPanel] provideLiquidity response:', res.data);
       } else {
         console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet);
-        res = await sdkToUse.functions.invoke('matchBet', {
+        res = await base44.functions.invoke('matchBet', {
           offer_id: selectedOffer.id,
           amount: stakeNum,
           wallet_address: wallet,

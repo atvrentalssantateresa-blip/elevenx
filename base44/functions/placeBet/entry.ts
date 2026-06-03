@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClient } from 'npm:@base44/sdk@0.8.25';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
@@ -9,7 +9,18 @@ import { Buffer } from 'node:buffer';
  */
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
+    // Use service role directly (no platform auth required - wallet-only auth)
+    const appId = Deno.env.get('BASE44_APP_ID');
+    const serviceRoleKey = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
+    
+    if (!appId || !serviceRoleKey) {
+      return Response.json({ error: 'Server configuration error. Please contact support.' }, { status: 500 });
+    }
+    
+    const base44 = createClient({
+      appId,
+      serviceRoleKey,
+    });
     
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
