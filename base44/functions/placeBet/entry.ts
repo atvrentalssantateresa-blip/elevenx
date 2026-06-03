@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
@@ -9,18 +9,8 @@ import { Buffer } from 'node:buffer';
  */
 Deno.serve(async (req) => {
   try {
-    // Use service role directly (no platform auth required - wallet-only auth)
-    const appId = Deno.env.get('BASE44_APP_ID');
-    const serviceRoleKey = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
-    
-    if (!appId || !serviceRoleKey) {
-      return Response.json({ error: 'Server configuration error. Please contact support.' }, { status: 500 });
-    }
-    
-    const base44 = createClient({
-      appId,
-      serviceRoleKey,
-    });
+    const base44 = createClientFromRequest(req);
+    const serviceRole = base44.asServiceRole;
     
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
@@ -48,8 +38,6 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const serviceRole = base44.asServiceRole;
-    
     // Verify wallet is authenticated (exists in User entity)
     // List all users and find by wallet_address (filter by field doesn't work reliably)
     const allUsers = await serviceRole.entities.User.list();

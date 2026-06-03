@@ -20,7 +20,8 @@ Deno.serve(async (req) => {
       appId,
       serviceRoleKey,
     });
-    const serviceRole = base44;
+    
+    const serviceRole = base44.asServiceRole;
 
     const body = await req.json();
     const { offer_id, amount, wallet_address } = body;
