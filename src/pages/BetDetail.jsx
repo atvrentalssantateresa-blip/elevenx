@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import OddsBar from '@/components/betting/OddsBar';
 import BetSlip from '@/components/betting/BetSlip';
+import OfferBook from '@/components/betting/OfferBook';
 
 // Helper to convert country code to flag emoji
 function getFlagEmoji(countryCode) {
@@ -25,6 +26,7 @@ export default function BetDetail() {
   const { isConnected, connect, shortAddress } = useWallet();
   const queryClient = useQueryClient();
   const [selectedOutcome, setSelectedOutcome] = useState(null);
+  const [selectedOffer, setSelectedOffer] = useState(null);
 
   const { data: bet } = useQuery({
     queryKey: ['bet', betId],
@@ -156,6 +158,24 @@ export default function BetDetail() {
           selected={selectedOutcome}
           onSelect={setSelectedOutcome}
           canSelect={isOpen && !myBet && isConnected}
+        />
+      </motion.div>
+
+      {/* LP Offer Book */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <OfferBook
+          betId={betId}
+          bet={bet}
+          onSelectOffer={(offer) => {
+            setSelectedOffer(offer);
+            // Set the opposite outcome so bettor bets against the LP
+            const opposite = offer.outcome === 'a' ? 'b' : offer.outcome === 'b' ? 'a' : 'draw';
+            setSelectedOutcome(opposite);
+          }}
         />
       </motion.div>
 

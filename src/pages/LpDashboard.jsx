@@ -93,6 +93,8 @@ export default function LpDashboard() {
     queryFn: () => base44.entities.Match.list(),
   });
 
+  const [pendingCommitData, setPendingCommitData] = useState(null);
+
   const provideLiquidityMutation = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(amount);
@@ -130,6 +132,7 @@ export default function LpDashboard() {
         amount: parseFloat(amount),
         type: 'provide_liquidity',
       });
+      setPendingCommitData(data.commit_data);
     },
     onError: (err) => {
       console.error('[LpDashboard] LP mutation error:', err);
@@ -137,10 +140,28 @@ export default function LpDashboard() {
     },
   });
 
-  const handleTxSuccess = (txResult) => {
+  const handleTxSuccess = async (txResult) => {
     const signature = txResult.signature;
     const committedAmount = parseFloat(amount);
     const outcomeLabel = selectedOutcome === 'a' ? selectedBet.outcome_a : selectedOutcome === 'b' ? selectedBet.outcome_b : 'Draw';
+
+    // Commit liquidity to DB after on-chain success
+    if (pendingCommitData) {
+      try {
+        const commitRes = await base44.functions.invoke('commitLiquidity', {
+          signature,
+          commit_data: pendingCommitData,
+        });
+        if (commitRes.data.error) {
+          console.error('[LpDashboard] commitLiquidity error:', commitRes.data.error);
+          setError('On-chain succeeded but DB commit failed: ' + commitRes.data.error);
+        }
+      } catch (err) {
+        console.error('[LpDashboard] commitLiquidity threw:', err);
+        setError('DB commit failed: ' + err.message);
+      }
+      setPendingCommitData(null);
+    }
     
     setSuccessDialog({
       signature,
