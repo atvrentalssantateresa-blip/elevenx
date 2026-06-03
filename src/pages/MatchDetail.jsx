@@ -17,7 +17,7 @@ import { useWallet } from '@/lib/WalletContext';
 
 const getFlagEmoji = (countryCode) => {
   if (!countryCode) return '🏳️';
-  return countryCode.toUpperCase().split('').map(c => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('');
+  return countryCode.toUpperCase().split('').map((c) => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('');
 };
 
 export default function MatchDetail() {
@@ -37,8 +37,8 @@ export default function MatchDetail() {
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
-    queryFn: () => base44.entities.Match.list().then(ms => ms.find(m => m.id === matchId)),
-    enabled: !!matchId,
+    queryFn: () => base44.entities.Match.list().then((ms) => ms.find((m) => m.id === matchId)),
+    enabled: !!matchId
   });
 
   const { data: bets = [] } = useQuery({
@@ -47,28 +47,28 @@ export default function MatchDetail() {
     enabled: !!matchId,
     refetchInterval: 5000,
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    staleTime: 0
   });
   const bet = bets[0] || null;
 
   const getWalletAddress = () => {
     const s = localStorage.getItem('elevenx_wallet_session');
     if (!s) return null;
-    try { const p = JSON.parse(s); return p.address || p; } catch { return s; }
+    try {const p = JSON.parse(s);return p.address || p;} catch {return s;}
   };
 
   const { data: myUserBets = [] } = useQuery({
     queryKey: ['myUserBets', matchId, user?.id],
     queryFn: () => base44.entities.UserBet.filter({ match_id: matchId }),
-    enabled: !!matchId,
+    enabled: !!matchId
   });
   const walletAddress = getWalletAddress();
-  const myActiveBets = myUserBets.filter(ub =>
-    (walletAddress && ub.wallet_address === walletAddress) || (user?.id && ub.created_by_id === user.id)
+  const myActiveBets = myUserBets.filter((ub) =>
+  walletAddress && ub.wallet_address === walletAddress || user?.id && ub.created_by_id === user.id
   );
 
   // Calculate won bets and total payout for batch claim
-  const wonBets = myActiveBets.filter(ub => ub.status === 'won');
+  const wonBets = myActiveBets.filter((ub) => ub.status === 'won');
   const totalBatchPayout = wonBets.reduce((sum, ub) => sum + (ub.actual_payout || ub.potential_payout || 0), 0);
 
   // Admin: create market with default odds
@@ -83,10 +83,10 @@ export default function MatchDetail() {
         pool_a: 0, pool_b: 0, pool_draw: 0,
         total_pool: 0, total_bettors: 0, fee_percent: 0,
         oracle_odds_a: 200, oracle_odds_draw: 320, oracle_odds_b: 300,
-        odds_a: 2.0, odds_draw: 3.2, odds_b: 3.0,
+        odds_a: 2.0, odds_draw: 3.2, odds_b: 3.0
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] })
   });
 
   React.useEffect(() => {
@@ -108,7 +108,7 @@ export default function MatchDetail() {
     try {
       const res = await base44.functions.invoke('fetchMatchOdds', {
         stats_api_match_id: matchIdToUse,
-        action: 'odds',
+        action: 'odds'
       });
       if (res.data.odds) {
         await base44.entities.Bet.update(bet.id, {
@@ -116,7 +116,7 @@ export default function MatchDetail() {
           odds_b: res.data.odds.away,
           odds_draw: res.data.odds.draw,
           odds_bookmaker: res.data.bookmaker,
-          odds_updated_at: new Date().toISOString(),
+          odds_updated_at: new Date().toISOString()
         });
         queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
       } else {
@@ -138,20 +138,20 @@ export default function MatchDetail() {
       queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
       queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
     },
-    onError: (err) => alert('Settle failed: ' + err.message),
+    onError: (err) => alert('Settle failed: ' + err.message)
   });
 
   // Batch claim for all won bets on this match
   const batchClaimMutation = useMutation({
     mutationFn: async () => {
-      const betIds = wonBets.map(ub => ub.id);
+      const betIds = wonBets.map((ub) => ub.id);
       const res = await base44.functions.invoke('claimWinnings', { userBetId: betIds[0], batchBetIds: betIds });
       if (res.data.error) throw new Error(res.data.error);
       return { ...res.data, betIds, totalAmount: res.data.totalPayout || totalBatchPayout };
     },
     onSuccess: (data) => {
       setClaimData({ ...data, isBatch: true });
-    },
+    }
   });
 
   // Individual claim (legacy - for single bets outside match context)
@@ -161,7 +161,7 @@ export default function MatchDetail() {
       if (res.data.error) throw new Error(res.data.error);
       return res.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] })
   });
 
   const handleBatchClaimClick = () => {
@@ -170,7 +170,7 @@ export default function MatchDetail() {
 
   const handleClaimSignSuccess = async (result) => {
     // Update all claimed bets to 'claimed' status
-    const betIdsToUpdate = claimData?.betIds || wonBets.map(ub => ub.id);
+    const betIdsToUpdate = claimData?.betIds || wonBets.map((ub) => ub.id);
     for (const betId of betIdsToUpdate) {
       await base44.entities.UserBet.update(betId, { status: 'claimed', actual_payout: claimData?.totalPayout || totalBatchPayout });
     }
@@ -199,8 +199,8 @@ export default function MatchDetail() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+      </div>);
+
   }
 
   const isAdmin = user?.role === 'admin';
@@ -216,21 +216,21 @@ export default function MatchDetail() {
 
       {/* ── Match Header ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-card border border-border/50 rounded-2xl p-6">
+      className="bg-card border border-border/50 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-5">
           <span className="text-xs text-muted-foreground font-medium">{match.group_stage || 'World Cup 2026'}</span>
           <div className="flex items-center gap-2">
-            {match.match_time && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
+            {match.match_time &&
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {format(new Date(match.match_time), 'MMM d · h:mm a')}
               </span>
-            )}
+            }
             <Badge className={`text-[10px] uppercase tracking-wider ${
-              match.status === 'live' ? 'bg-destructive/20 text-destructive' :
-              match.status === 'finished' ? 'bg-muted text-muted-foreground' :
-              'bg-secondary text-secondary-foreground'
-            }`}>
+            match.status === 'live' ? 'bg-destructive/20 text-destructive' :
+            match.status === 'finished' ? 'bg-muted text-muted-foreground' :
+            'bg-secondary text-secondary-foreground'}`
+            }>
               {match.status === 'live' && <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse mr-1" />}
               {match.status}
             </Badge>
@@ -244,15 +244,15 @@ export default function MatchDetail() {
             <p className="font-heading font-black text-lg">{match.team_a}</p>
           </div>
           <div className="text-center">
-            {(match.status === 'finished' || match.status === 'live') ? (
-              <div className="flex items-center gap-3">
+            {match.status === 'finished' || match.status === 'live' ?
+            <div className="flex items-center gap-3">
                 <span className="text-4xl font-heading font-bold">{match.score_a ?? 0}</span>
                 <span className="text-muted-foreground text-xl">-</span>
                 <span className="text-4xl font-heading font-bold">{match.score_b ?? 0}</span>
-              </div>
-            ) : (
-              <span className="text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-full">VS</span>
-            )}
+              </div> :
+
+            <span className="text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-full">VS</span>
+            }
           </div>
           <div className="flex-1 text-center">
             <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-5xl shadow-lg">
@@ -264,222 +264,222 @@ export default function MatchDetail() {
       </motion.div>
 
       {/* ── No market (admin) ── */}
-      {!hasBet && isAdmin && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
+      {!hasBet && isAdmin &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
           <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
           <h3 className="font-heading font-bold mb-1">Open Betting Market</h3>
           <p className="text-xs text-muted-foreground mb-4">Create the P2P fixed-odds market for this match</p>
           <Button onClick={() => createMarketMutation.mutate()}
-            disabled={createMarketMutation.isPending}
-            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
+        disabled={createMarketMutation.isPending}
+        className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
             {createMarketMutation.isPending ? 'Opening...' : 'Open Market'}
           </Button>
         </motion.div>
-      )}
+      }
 
       {/* ── Admin: Create Market On-Chain ── */}
-      {hasBet && isAdmin && isOpen && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
+      {hasBet && isAdmin && isOpen &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-primary/20 rounded-2xl p-5 text-center">
           <Zap className="w-8 h-8 text-primary mx-auto mb-3" />
           <h3 className="font-heading font-bold mb-1">
             {bet.solana_market_created ? 'Market On-Chain ✓' : 'Create Market On-Chain'}
           </h3>
           <p className="text-xs text-muted-foreground mb-4">
-            {bet.solana_market_created 
-              ? `Market initialized at ${bet.solana_market_pda?.slice(0, 20)}...`
-              : 'Initialize the pari-mutuel market on Solana'}
+            {bet.solana_market_created ?
+          `Market initialized at ${bet.solana_market_pda?.slice(0, 20)}...` :
+          'Initialize the pari-mutuel market on Solana'}
           </p>
-          {!bet.solana_market_created && !marketCreationTx && (
-            <Button onClick={async () => {
-              const res = await base44.functions.invoke('createMarketOnChain', { bet_id: bet.id, match_id: match.id });
-              if (res.data.error) {
-                alert('Error: ' + res.data.error);
-              } else if (res.data.alreadyExists) {
-                await base44.entities.Bet.update(bet.id, {
-                  solana_market_created: true,
-                  solana_market_pda: res.data.marketPda,
-                });
-                alert('Market already exists on-chain!');
-                queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-              } else {
-                setMarketCreationTx(res.data.solana_instruction);
-              }
-            }}
-              className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
+          {!bet.solana_market_created && !marketCreationTx &&
+        <Button onClick={async () => {
+          const res = await base44.functions.invoke('createMarketOnChain', { bet_id: bet.id, match_id: match.id });
+          if (res.data.error) {
+            alert('Error: ' + res.data.error);
+          } else if (res.data.alreadyExists) {
+            await base44.entities.Bet.update(bet.id, {
+              solana_market_created: true,
+              solana_market_pda: res.data.marketPda
+            });
+            alert('Market already exists on-chain!');
+            queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+          } else {
+            setMarketCreationTx(res.data.solana_instruction);
+          }
+        }}
+        className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8">
               Prepare Transaction
             </Button>
-          )}
-          {!bet.solana_market_created && marketCreationTx && (
-            <SolanaTransactionSigner
-              instruction={marketCreationTx}
-              amount={0}
-              isConnected={!!provider}
-              onSuccess={async () => {
-                await base44.entities.Bet.update(bet.id, {
-                  solana_market_created: true,
-                  solana_market_pda: marketCreationTx.accounts.market,
-                });
-                alert('Market created on-chain!');
-                setMarketCreationTx(null);
-                queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-              }}
-              onError={(err) => alert('Failed: ' + err.message)}
-            />
-          )}
-          {bet.solana_market_created ? (
-            <div className="flex items-center justify-center gap-2">
+        }
+          {!bet.solana_market_created && marketCreationTx &&
+        <SolanaTransactionSigner
+          instruction={marketCreationTx}
+          amount={0}
+          isConnected={!!provider}
+          onSuccess={async () => {
+            await base44.entities.Bet.update(bet.id, {
+              solana_market_created: true,
+              solana_market_pda: marketCreationTx.accounts.market
+            });
+            alert('Market created on-chain!');
+            setMarketCreationTx(null);
+            queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+          }}
+          onError={(err) => alert('Failed: ' + err.message)} />
+
+        }
+          {bet.solana_market_created ?
+        <div className="flex items-center justify-center gap-2">
               <Badge className="bg-accent/20 text-accent text-xs py-2 px-4 rounded-xl">
                 <CheckCircle2 className="w-3 h-3 mr-1" /> Initialized
               </Badge>
               <Button size="sm" variant="outline" onClick={async () => {
-                const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
-                if (res.data.status === 'initialized') {
-                  await base44.entities.Bet.update(bet.id, {
-                    solana_market_created: true,
-                    solana_market_pda: res.data.marketPda || bet.solana_market_pda,
-                  });
-                  alert('Status synced with blockchain!');
-                  queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
-                } else {
-                  alert('Market not found on-chain. Please create it.');
-                }
-              }} className="h-8 text-xs rounded-lg">
+            const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
+            if (res.data.status === 'initialized') {
+              await base44.entities.Bet.update(bet.id, {
+                solana_market_created: true,
+                solana_market_pda: res.data.marketPda || bet.solana_market_pda
+              });
+              alert('Status synced with blockchain!');
+              queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
+            } else {
+              alert('Market not found on-chain. Please create it.');
+            }
+          }} className="h-8 text-xs rounded-lg">
                 Sync Status
               </Button>
-            </div>
-          ) : null}
+            </div> :
+        null}
         </motion.div>
-      )}
+      }
 
-      {!hasBet && !isAdmin && (
-        <div className="text-center py-10 bg-card border border-border/50 rounded-2xl">
+      {!hasBet && !isAdmin &&
+      <div className="text-center py-10 bg-card border border-border/50 rounded-2xl">
           <p className="text-muted-foreground text-sm">Betting market not open yet. Check back soon!</p>
         </div>
-      )}
+      }
 
       {/* ── Admin: Create Stats API ID + Fetch Odds ── */}
-      {hasBet && isAdmin && isOpen && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border/30 rounded-2xl p-4 space-y-2">
+      {hasBet && isAdmin && isOpen &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-border/30 rounded-2xl p-4 space-y-2 hidden">
           <div className="flex items-center gap-2">
             <RefreshCw className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-bold text-muted-foreground">Admin: Odds Management</span>
           </div>
           <div className="flex gap-2">
             <input
-              value={statsApiMatchId}
-              onChange={e => setStatsApiMatchId(e.target.value)}
-              placeholder="TheStatsAPI match ID (e.g. mt_14502)"
-              className="flex-1 text-xs bg-secondary/50 border border-border/50 rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground"
-            />
+            value={statsApiMatchId}
+            onChange={(e) => setStatsApiMatchId(e.target.value)}
+            placeholder="TheStatsAPI match ID (e.g. mt_14502)"
+            className="flex-1 text-xs bg-secondary/50 border border-border/50 rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground" />
+          
             <Button size="sm" onClick={refreshOdds} disabled={isRefreshingOdds}
-              className="h-9 text-xs font-bold rounded-xl">
+          className="h-9 text-xs font-bold rounded-xl">
               {isRefreshingOdds ? <><RefreshCw className="w-3 h-3 animate-spin mr-1" />Fetching...</> : 'Fetch Odds'}
             </Button>
           </div>
           <StatsApiMatchSearch
-            teamA={match.team_a}
-            teamB={match.team_b}
-            onSelect={(id) => setStatsApiMatchId(id)}
-          />
+          teamA={match.team_a}
+          teamB={match.team_b}
+          onSelect={(id) => setStatsApiMatchId(id)} />
+        
         </motion.div>
-      )}
+      }
 
       {/* ── Odds Panel ── */}
-      {hasBet && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      {hasBet &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <OddsPanel
-            bet={bet}
-            match={match}
-            selectedOutcome={betMode === 'offer' ? selectedOutcome : null}
-            onSelectOutcome={isOpen ? handleSelectOutcome : undefined}
-            onRefreshOdds={isAdmin && isOpen ? refreshOdds : undefined}
-            isRefreshing={isRefreshingOdds}
-          />
+          bet={bet}
+          match={match}
+          selectedOutcome={betMode === 'offer' ? selectedOutcome : null}
+          onSelectOutcome={isOpen ? handleSelectOutcome : undefined}
+          onRefreshOdds={isAdmin && isOpen ? refreshOdds : undefined}
+          isRefreshing={isRefreshingOdds} />
+        
         </motion.div>
-      )}
+      }
 
       {/* ── Bet Panel ── */}
-      {hasBet && isOpen && (selectedOutcome || selectedOffer) && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
+      {hasBet && isOpen && (selectedOutcome || selectedOffer) &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
           <PlaceBetPanel
-            bet={bet}
-            matchId={matchId}
-            mode={betMode}
-            selectedOutcome={selectedOutcome}
-            selectedOffer={selectedOffer}
-            onSuccess={handleBetSuccess}
-          />
+          bet={bet}
+          matchId={matchId}
+          mode={betMode}
+          selectedOutcome={selectedOutcome}
+          selectedOffer={selectedOffer}
+          onSuccess={handleBetSuccess} />
+        
         </motion.div>
-      )}
+      }
 
-      {hasBet && isOpen && !selectedOutcome && !selectedOffer && (
-        <p className="text-center text-xs text-muted-foreground py-2">
+      {hasBet && isOpen && !selectedOutcome && !selectedOffer &&
+      <p className="text-center text-xs text-muted-foreground py-2">
           Pick an outcome above to place your own offer, or click "Bet Against" on an open offer below
         </p>
-      )}
+      }
 
       {/* ── Open Offer Book ── */}
-      {hasBet && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      {hasBet &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <OfferBook betId={bet.id} bet={bet} onSelectOffer={isOpen ? handleSelectOffer : undefined} />
         </motion.div>
-      )}
+      }
 
       {/* ── Admin: Settle ── */}
-      {hasBet && isAdmin && !isSettled && (match.status === 'finished' || isOpen) && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-accent/20 rounded-2xl p-5">
+      {hasBet && isAdmin && !isSettled && (match.status === 'finished' || isOpen) &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-accent/20 rounded-2xl p-5">
           <div className="text-center mb-4">
             <Trophy className="w-8 h-8 text-accent mx-auto mb-2" />
             <h3 className="font-heading font-bold mb-1">Settle Market</h3>
             <p className="text-xs text-muted-foreground">Select the winner — all matched bets will be settled</p>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {['a', 'b', 'draw'].map(outcome => (
-              <Button key={outcome}
-                onClick={() => {
-                  const label = outcome === 'draw' ? 'Draw' : outcome === 'a' ? bet.outcome_a : bet.outcome_b;
-                  if (confirm(`Settle as ${label}?`)) settleMutation.mutate(outcome);
-                }}
-                disabled={settleMutation.isPending}
-                className={`h-10 font-heading font-bold text-xs rounded-xl ${
-                  outcome === 'a' ? 'bg-primary hover:bg-primary/90 text-primary-foreground' :
-                  outcome === 'b' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' :
-                  'bg-yellow-500 hover:bg-yellow-500/90 text-white'
-                }`}>
+            {['a', 'b', 'draw'].map((outcome) =>
+          <Button key={outcome}
+          onClick={() => {
+            const label = outcome === 'draw' ? 'Draw' : outcome === 'a' ? bet.outcome_a : bet.outcome_b;
+            if (confirm(`Settle as ${label}?`)) settleMutation.mutate(outcome);
+          }}
+          disabled={settleMutation.isPending}
+          className={`h-10 font-heading font-bold text-xs rounded-xl ${
+          outcome === 'a' ? 'bg-primary hover:bg-primary/90 text-primary-foreground' :
+          outcome === 'b' ? 'bg-accent hover:bg-accent/90 text-accent-foreground' :
+          'bg-yellow-500 hover:bg-yellow-500/90 text-white'}`
+          }>
                 {outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw'}
               </Button>
-            ))}
+          )}
           </div>
         </motion.div>
-      )}
+      }
 
       {/* ── Settled ── */}
-      {hasBet && isSettled && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-accent/20 rounded-2xl p-5 text-center">
+      {hasBet && isSettled &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-accent/20 rounded-2xl p-5 text-center">
           <CheckCircle2 className="w-8 h-8 text-accent mx-auto mb-2" />
           <h3 className="font-heading font-bold mb-1">Market Settled</h3>
           <p className="text-sm text-accent font-bold">
             Winner: {bet.winning_outcome === 'a' ? bet.outcome_a : bet.winning_outcome === 'b' ? bet.outcome_b : 'Draw'}
           </p>
         </motion.div>
-      )}
+      }
 
       {/* ── My Positions ── */}
-      {myActiveBets.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-primary/20 rounded-2xl p-5 space-y-3">
+      {myActiveBets.length > 0 &&
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-primary/20 rounded-2xl p-5 space-y-3">
           <h3 className="font-heading font-bold text-sm flex items-center gap-2">
             <Award className="w-4 h-4 text-primary" /> My Positions
           </h3>
           
           {/* Batch Claim Button for Won Bets */}
-          {wonBets.length > 0 && (
-            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 space-y-3">
+          {wonBets.length > 0 &&
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-accent">Claim All Winnings</p>
@@ -491,69 +491,69 @@ export default function MatchDetail() {
                 </div>
               </div>
               
-              {claimData?.isBatch ? (
-                <SolanaTransactionSigner
-                  instruction={claimData.solana_instruction}
-                  amount={claimData.totalAmount?.toFixed(4) || totalBatchPayout.toFixed(4)}
-                  userBetId={claimData.betIds[0]}
-                  batchBetIds={claimData.betIds}
-                  onSuccess={handleClaimSignSuccess}
-                  onError={() => setClaimData(null)}
-                />
-              ) : (
-                <Button
-                  onClick={handleBatchClaimClick}
-                  disabled={batchClaimMutation.isPending}
-                  className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl text-sm"
-                >
-                  {batchClaimMutation.isPending ? (
-                    <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                  ) : (
-                    <>
+              {claimData?.isBatch ?
+          <SolanaTransactionSigner
+            instruction={claimData.solana_instruction}
+            amount={claimData.totalAmount?.toFixed(4) || totalBatchPayout.toFixed(4)}
+            userBetId={claimData.betIds[0]}
+            batchBetIds={claimData.betIds}
+            onSuccess={handleClaimSignSuccess}
+            onError={() => setClaimData(null)} /> :
+
+
+          <Button
+            onClick={handleBatchClaimClick}
+            disabled={batchClaimMutation.isPending}
+            className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl text-sm">
+            
+                  {batchClaimMutation.isPending ?
+            <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" /> :
+
+            <>
                       <Wallet className="w-4 h-4 mr-2" />
                       Claim All ({wonBets.length} bets)
                     </>
-                  )}
+            }
                 </Button>
-              )}
+          }
             </div>
-          )}
+        }
           
-          {myActiveBets.map(ub => (
-            <div key={ub.id} className="bg-secondary/30 rounded-xl p-4">
+          {myActiveBets.map((ub) =>
+        <div key={ub.id} className="bg-secondary/30 rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-sm">{ub.outcome_label}</span>
                   <Badge className={`text-[9px] py-0 ${
-                    ub.status === 'active' ? 'bg-accent/20 text-accent' :
-                    ub.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                    ub.status === 'won' ? 'bg-accent/30 text-accent' :
-                    ub.status === 'lost' ? 'bg-destructive/20 text-destructive' :
-                    ub.status === 'refunded' ? 'bg-secondary text-secondary-foreground' :
-                    'bg-muted text-muted-foreground'
-                  }`}>{ub.status}</Badge>
+              ub.status === 'active' ? 'bg-accent/20 text-accent' :
+              ub.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+              ub.status === 'won' ? 'bg-accent/30 text-accent' :
+              ub.status === 'lost' ? 'bg-destructive/20 text-destructive' :
+              ub.status === 'refunded' ? 'bg-secondary text-secondary-foreground' :
+              'bg-muted text-muted-foreground'}`
+              }>{ub.status}</Badge>
                   {ub.role === 'lp' && <Badge className="text-[9px] py-0 bg-primary/10 text-primary">offer</Badge>}
                 </div>
                 <span className="font-bold">◎{ub.amount?.toFixed(4)}</span>
               </div>
-              {ub.potential_payout > 0 && (
-                <p className="text-xs text-muted-foreground">
+              {ub.potential_payout > 0 &&
+          <p className="text-xs text-muted-foreground">
                   Payout if win: <span className="text-accent font-bold">◎{ub.potential_payout?.toFixed(4)}</span>
                 </p>
-              )}
-              {ub.status === 'pending' && ub.role === 'lp' && (
-                <p className="text-[10px] text-yellow-400 mt-1">⏳ Waiting to be matched — can withdraw anytime</p>
-              )}
-              {ub.status === 'won' && (
-                <p className="text-xs text-accent mt-2 flex items-center gap-1">
+          }
+              {ub.status === 'pending' && ub.role === 'lp' &&
+          <p className="text-[10px] text-yellow-400 mt-1">⏳ Waiting to be matched — can withdraw anytime</p>
+          }
+              {ub.status === 'won' &&
+          <p className="text-xs text-accent mt-2 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
                   Included in batch claim above
                 </p>
-              )}
+          }
             </div>
-          ))}
+        )}
         </motion.div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
