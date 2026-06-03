@@ -90,8 +90,7 @@ Deno.serve(async (req) => {
     const bettorPubkey = new PublicKey(walletAddress);
     
     // Derive market PDA (uses futures market ID as seed)
-    const marketIdBytes = Buffer.alloc(32);
-    Buffer.from(marketId, 'utf-8').copy(marketIdBytes, 0, 0, Math.min(marketId.length, 32));
+    const marketIdBytes = Buffer.from(marketId.padEnd(32, '\0').slice(0, 32));
     
     const [marketPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('market'), marketIdBytes],
