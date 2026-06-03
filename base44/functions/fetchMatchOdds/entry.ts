@@ -112,11 +112,17 @@ Deno.serve(async (req) => {
       return Response.json({ odds: null, message: 'No 1X2 odds available yet' });
     }
 
+    // API returns odds as objects: { home: { opening: '2.750', last_seen: '2.550' }, ... }
+    // Extract the last_seen value (current odds)
+    const homeOdds = odds1x2.home?.last_seen || odds1x2.home?.opening || odds1x2.home || 0;
+    const drawOdds = odds1x2.draw?.last_seen || odds1x2.draw?.opening || odds1x2.draw || 0;
+    const awayOdds = odds1x2.away?.last_seen || odds1x2.away?.opening || odds1x2.away || 0;
+
     return Response.json({
       odds: {
-        home: parseFloat(odds1x2.home || odds1x2['home'] || 0),
-        draw: parseFloat(odds1x2.draw || odds1x2['draw'] || 0),
-        away: parseFloat(odds1x2.away || odds1x2['away'] || 0),
+        home: parseFloat(homeOdds),
+        draw: parseFloat(drawOdds),
+        away: parseFloat(awayOdds),
       },
       bookmaker: bookmakerName || 'TheStatsAPI',
     });
