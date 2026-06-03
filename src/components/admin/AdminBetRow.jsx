@@ -12,6 +12,8 @@ export default function AdminBetRow({ bet, matches, index }) {
   const queryClient = useQueryClient();
   const { walletAddress } = useWallet();
   const match = matches.find(m => m.id === bet.match_id);
+  const ADMIN_WALLET = 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi';
+  const isCorrectAdmin = walletAddress === ADMIN_WALLET;
   const [pendingRecreate, setPendingRecreate] = useState(null);
   const [pendingSettle, setPendingSettle] = useState(null);
   const [pendingSettleOutcome, setPendingSettleOutcome] = useState(null);
@@ -95,6 +97,8 @@ export default function AdminBetRow({ bet, matches, index }) {
       };
       console.log('[AdminBetRow] Settling market with payload:', payload);
       console.log('[AdminBetRow] Wallet address being sent:', walletAddress);
+      console.log('[AdminBetRow] Expected admin wallet: BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
+      console.log('[AdminBetRow] Wallet addresses match:', walletAddress === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
       const onChainRes = await base44.functions.invoke('settleMarketOnChain', payload);
       console.log('[AdminBetRow] Backend response:', onChainRes.data);
       if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
@@ -159,6 +163,18 @@ export default function AdminBetRow({ bet, matches, index }) {
       transition={{ delay: index * 0.03 }}
       className="p-4 bg-card border border-border/50 rounded-xl"
     >
+      {!isCorrectAdmin && (
+        <div className="mb-3 bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+          <p className="text-xs text-destructive font-bold">⚠️ Wrong Wallet Connected</p>
+          <p className="text-[10px] text-destructive/80 mt-1">
+            Connected: <span className="font-mono">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-8)}</span>
+          </p>
+          <p className="text-[10px] text-destructive/80">
+            Required: <span className="font-mono">{ADMIN_WALLET.slice(0, 8)}...{ADMIN_WALLET.slice(-8)}</span>
+          </p>
+          <p className="text-[10px] text-destructive/80 mt-2">Please disconnect and reconnect with the correct admin wallet.</p>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="font-heading font-bold text-sm">{bet.outcome_a} vs {bet.outcome_b}</p>
