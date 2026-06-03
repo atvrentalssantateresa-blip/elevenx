@@ -30,6 +30,7 @@ export default function MatchDetail() {
   const [marketCreationTx, setMarketCreationTx] = useState(null);
   const [claimData, setClaimData] = useState(null);
   const [isBatchClaim, setIsBatchClaim] = useState(false);
+  const [withdrawingId, setWithdrawingId] = useState(null);
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -190,6 +191,23 @@ export default function MatchDetail() {
     setSelectedOutcome(null);
     setSelectedOffer(null);
   };
+
+  const withdrawMutation = useMutation({
+    mutationFn: async (userBetId) => {
+      const res = await base44.functions.invoke('withdrawBet', { userBetId });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
+      setWithdrawingId(null);
+      alert('Bet withdrawn successfully!');
+    },
+    onError: (err) => {
+      alert('Withdraw failed: ' + err.message);
+      setWithdrawingId(null);
+    }
+  });
 
   if (!match) {
     return (
@@ -538,7 +556,30 @@ export default function MatchDetail() {
                 </p>
           }
               {ub.status === 'pending' && ub.role === 'lp' &&
-          <p className="text-[10px] text-yellow-400 mt-1">⏳ Waiting to be matched — can withdraw anytime</p>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                <p className="text-[10px] text-yellow-400">⏳ Waiting to be matched</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => withdrawMutation.mutate(ub.id)}
+                  disabled={withdrawMutation.isPending}
+                  className="h-7 text-xs rounded-lg">
+                  {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
+                </Button>
+              </div>
+          }
+              {ub.status === 'pending' && ub.role === 'matcher' &&
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                <p className="text-[10px] text-yellow-400">⏳ Waiting to be matched</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => withdrawMutation.mutate(ub.id)}
+                  disabled={withdrawMutation.isPending}
+                  className="h-7 text-xs rounded-lg">
+                  {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
+                </Button>
+              </div>
           }
               {ub.status === 'won' &&
           <p className="text-xs text-accent mt-2 flex items-center gap-1">
