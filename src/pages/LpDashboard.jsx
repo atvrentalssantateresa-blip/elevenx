@@ -86,11 +86,12 @@ export default function LpDashboard() {
     queryFn: () => base44.entities.Bet.filter({ status: 'open' }),
   });
 
-  const { data: myOffers = [] } = useQuery({
+  const { data: myOffers = [], refetch: refetchOffers } = useQuery({
     queryKey: ['myOffers', walletAddress],
     queryFn: () => base44.entities.BetOffer.list('-created_date', 100),
     enabled: !!walletAddress,
     select: (offers) => offers.filter(o => o.lp_wallet_address === walletAddress),
+    refetchOnWindowFocus: true,
   });
 
   const { data: matches = [] } = useQuery({
@@ -242,7 +243,11 @@ export default function LpDashboard() {
     
     setPendingTx(null);
     setError(null);
-    queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
+    // Force refetch to get updated unmatched amounts
+    setTimeout(() => {
+      refetchOffers();
+      refetchUserBets();
+    }, 300);
   };
 
   // Stats
@@ -252,7 +257,7 @@ export default function LpDashboard() {
   const activeOffers   = myOffers.filter(o => o.status === 'open' || o.status === 'partially_matched');
   
   // Get userBetId for each offer (for withdrawal)
-  const { data: allUserBets = [] } = useQuery({
+  const { data: allUserBets = [], refetch: refetchUserBets } = useQuery({
     queryKey: ['allUserBets', walletAddress],
     queryFn: async () => {
       const all = await base44.entities.UserBet.list('-created_date', 200);
