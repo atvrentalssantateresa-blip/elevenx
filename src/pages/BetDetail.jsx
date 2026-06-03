@@ -29,20 +29,20 @@ export default function BetDetail() {
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
 
-  // Calculate time remaining
+  // Calculate time remaining - updates every second
   useEffect(() => {
-    if (!bet?.open_until) {
-      setTimeRemaining(null);
-      return;
-    }
-
     const updateTime = () => {
+      if (!bet?.open_until) {
+        setTimeRemaining(null);
+        return;
+      }
+
       const now = new Date().getTime();
       const closeTime = new Date(bet.open_until).getTime();
       const diff = closeTime - now;
       
       if (diff <= 0) {
-        setTimeRemaining(0);
+        setTimeRemaining({ minutes: 0, seconds: 0, total: 0 });
       } else {
         const minutes = Math.floor(diff / 60000);
         const seconds = Math.floor((diff % 60000) / 1000);
@@ -53,7 +53,7 @@ export default function BetDetail() {
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [bet?.open_until]);
+  }, [bet?.open_until, bet?.id]);
 
   const { data: bet } = useQuery({
     queryKey: ['bet', betId],
@@ -114,8 +114,8 @@ export default function BetDetail() {
   }
 
   // Bet is open if status is 'open' and time hasn't expired
-  const isOpen = bet.status === 'open' && (!timeRemaining || timeRemaining.total > 0);
-  const isSettled = bet.status === 'settled';
+  const isOpen = bet?.status === 'open' && timeRemaining && timeRemaining.total > 0;
+  const isSettled = bet?.status === 'settled';
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -165,19 +165,19 @@ export default function BetDetail() {
 
         <div className="mt-4 pt-3 border-t border-border/30 flex flex-col items-center gap-3">
           {timeRemaining && timeRemaining.total > 0 ? (
-            <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-4 py-2 rounded-full text-sm font-bold animate-pulse">
-              <Clock className="w-4 h-4" />
+            <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-4 py-2.5 rounded-xl text-base font-black animate-pulse">
+              <Clock className="w-5 h-5" />
               BETTING CLOSES IN: {timeRemaining.minutes}:{String(timeRemaining.seconds).padStart(2, '0')}
             </div>
-          ) : bet.open_until ? (
-            <div className="flex items-center gap-1.5 text-destructive text-sm font-bold">
-              <Clock className="w-3 h-3" />
+          ) : timeRemaining && timeRemaining.total === 0 ? (
+            <div className="flex items-center gap-2 bg-destructive/20 text-destructive px-4 py-2.5 rounded-xl text-sm font-bold">
+              <Clock className="w-4 h-4" />
               BETS CLOSED
             </div>
           ) : (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
-              {`Closes ${format(new Date(bet.open_until), 'MMM d · HH:mm')}`}
+              {bet.open_until ? `Closes ${format(new Date(bet.open_until), 'MMM d · HH:mm')}` : 'No deadline'}
             </span>
           )}
         </div>
