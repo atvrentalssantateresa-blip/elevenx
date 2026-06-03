@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket } from 'lucide-react';
+import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket, RefreshCcw } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminFuturesPanel() {
@@ -12,6 +12,8 @@ export default function AdminFuturesPanel() {
   const [deployingMarketId, setDeployingMarketId] = useState(null);
   const [isBulkDeploying, setIsBulkDeploying] = useState(false);
   const [pendingBulkDeploy, setPendingBulkDeploy] = useState(null);
+  const [fixingTimestampsId, setFixingTimestampsId] = useState(null);
+  const [pendingTimestampFix, setPendingTimestampFix] = useState(null);
 
   // Fetch existing futures markets (country-by-country)
   const { data: futuresMarkets = [], refetch } = useQuery({
@@ -78,6 +80,30 @@ export default function AdminFuturesPanel() {
     setDeployingMarketId(null);
     queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
     alert('Country futures market deployed on-chain!');
+  };
+
+  const fixTimestampsMutation = useMutation({
+    mutationFn: async (marketId) => {
+      const res = await base44.functions.invoke('fixFuturesMarketTimestamps', {
+        futures_market_id: marketId,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data, marketId) => {
+      if (data.solana_instruction) {
+        setPendingTimestampFix({
+          ...data.solana_instruction,
+          futures_market_id: marketId,
+        });
+      }
+    },
+  });
+
+  const handleTimestampFixSuccess = async () => {
+    setPendingTimestampFix(null);
+    queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+    alert('✓ Futures market timestamps fixed! You can now place bets and LP.');
   };
 
   const deployMutation = useMutation({
@@ -148,9 +174,28 @@ export default function AdminFuturesPanel() {
                 </div>
               </div>
               {market.solana_market_created ? (
-                <Badge className="bg-accent/20 text-accent text-xs py-1 px-3 rounded-lg">
-                  <CheckCircle className="w-3 h-3 mr-1" /> On-Chain
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-accent/20 text-accent text-xs py-1 px-3 rounded-lg">
+                    <CheckCircle className="w-3 h-3 mr-1" /> On-Chain
+                  </Badge>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setFixingTimestampsId(market.id);
+                      fixTimestampsMutation.mutate(market.id);
+                    }}
+                    disabled={fixTimestampsMutation.isPending || fixingTimestampsId === market.id}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-bold h-7 px-2 rounded-lg"
+                  >
+                    {fixingTimestampsId === market.id && fixTimestampsMutation.isPending ? (
+                      <Loader className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <>
+                        <RefreshCcw className="w-3 h-3 mr-1" /> Fix Timestamps
+                      </>
+                    )}
+                  </Button>
+                </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Badge className="bg-secondary text-secondary-foreground text-xs py-1 px-3 rounded-lg">
@@ -218,6 +263,29 @@ export default function AdminFuturesPanel() {
                 onSuccess={handleDeploySuccess}
               />
               <Button variant="outline" size="sm" onClick={() => setPendingDeploy(null)} className="w-full">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fix Timestamps Modal */}
+      {pendingTimestampFix && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+            <div className="space-y-4">
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                <p className="text-sm font-bold text-accent mb-1">Fix Market Timestamps</p>
+                <p className="text-xs text-muted-foreground">Set open_until to 30 days from now (for testing)</p>
+              </div>
+              <SolanaTransactionSigner
+                instruction={pendingTimestampFix}
+                amount={0}
+                futures_market_id={pendingTimestampFix.futures_market_id}
+                onSuccess={handleTimestampFixSuccess}
+              />
+              <Button variant="outline" size="sm" onClick={() => setPendingTimestampFix(null)} className="w-full">
                 Cancel
               </Button>
             </div>
