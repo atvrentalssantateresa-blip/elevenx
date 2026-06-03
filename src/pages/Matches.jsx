@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Trophy, Search, Calendar, Filter } from 'lucide-react';
+import { Trophy, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -9,7 +9,7 @@ import MatchCard from '@/components/betting/MatchCard';
 import { motion } from 'framer-motion';
 
 export default function Matches() {
-  const [filter, setFilter] = useState('all');
+  const [activeGroup, setActiveGroup] = useState('all');
   const [search, setSearch] = useState('');
 
   const { data: rawMatches = [] } = useQuery({
@@ -17,7 +17,7 @@ export default function Matches() {
     queryFn: () => base44.entities.Match.list('match_time', 100),
   });
 
-  // Deduplicate matches by unique game properties (team_a, team_b, group_stage, match_time)
+  // Deduplicate matches by unique game properties
   const seenMatches = new Set();
   const matches = rawMatches.filter(m => {
     const matchKey = `${m.team_a}|${m.team_b}|${m.group_stage || ''}|${m.match_time || ''}`;
@@ -34,24 +34,34 @@ export default function Matches() {
   const betByMatch = {};
   bets.forEach(b => { betByMatch[b.match_id] = b; });
 
+  // Extract unique groups from matches
+  const groupSet = new Set(matches.map(m => m.group_stage).filter(Boolean));
+  const groups = ['all', ...Array.from(groupSet).sort()];
+
+  // Filter by active group and search
   const filtered = matches.filter(m => {
-    if (filter !== 'all' && m.status !== filter) return false;
+    if (activeGroup !== 'all' && m.group_stage !== activeGroup) return false;
     if (search) {
       const q = search.toLowerCase();
-      return m.team_a?.toLowerCase().includes(q) || m.team_b?.toLowerCase().includes(q) || m.group_stage?.toLowerCase().includes(q);
+      return m.team_a?.toLowerCase().includes(q) || m.team_b?.toLowerCase().includes(q);
     }
     return true;
   });
 
-  // Group by date then by group_stage
+  // Sort filtered matches by date
+  const sortedMatches = [...filtered].sort((a, b) => {
+    if (!a.match_time) return 1;
+    if (!b.match_time) return -1;
+    return new Date(a.match_time) - new Date(b.match_time);
+  });
+
+  // Group matches by date within the active group
   const groupedByDate = {};
-  filtered.forEach(m => {
+  sortedMatches.forEach(m => {
     const dateKey = m.match_time ? format(new Date(m.match_time), 'yyyy-MM-dd') : 'TBD';
     const dateLabel = m.match_time ? format(new Date(m.match_time), 'EEEE, MMM d · yyyy') : 'TBD';
-    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = { label: dateLabel, groups: {} };
-    const gs = m.group_stage || 'Other';
-    if (!groupedByDate[dateKey].groups[gs]) groupedByDate[dateKey].groups[gs] = [];
-    groupedByDate[dateKey].groups[gs].push(m);
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = { label: dateLabel, matches: [] };
+    groupedByDate[dateKey].matches.push(m);
   });
 
   const sortedDates = Object.keys(groupedByDate).sort();
@@ -80,48 +90,44 @@ export default function Matches() {
             Match Schedule
           </h1>
           <p className="text-white/60 text-sm max-w-md">
-            Browse all 104 matches from the group stage to the final. Search by team, filter by status, and bet P2P on every match.
+            Browse all 104 matches from the group stage to the final. Search by team, filter by group, and bet P2P on every match.
           </p>
         </div>
       </motion.div>
 
-      {/* Search & Filters */}
+      {/* Search & Group Filter */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+        className="space-y-3"
       >
-        <div className="relative flex-1 w-full">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search teams or groups..."
+            placeholder="Search teams..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10 bg-card border-border/50 h-11 rounded-xl"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-card border border-border/50 rounded-xl">
-              <TabsTrigger value="all" className="rounded-lg text-xs">All</TabsTrigger>
-              <TabsTrigger value="live" className="rounded-lg text-xs flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-                Live
+
+        {/* Group Filter Tabs */}
+        <Tabs value={activeGroup} onValueChange={setActiveGroup}>
+          <TabsList className="bg-card border border-border/50 rounded-xl w-full overflow-x-auto max-w-full">
+            {groups.map(g => (
+              <TabsTrigger key={g} value={g} className="rounded-lg text-xs whitespace-nowrap">
+                {g === 'all' ? 'All Groups' : g}
               </TabsTrigger>
-              <TabsTrigger value="upcoming" className="rounded-lg text-xs">Upcoming</TabsTrigger>
-              <TabsTrigger value="finished" className="rounded-lg text-xs">Finished</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+            ))}
+          </TabsList>
+        </Tabs>
       </motion.div>
 
-      {filtered.length > 0 ? (
+      {sortedMatches.length > 0 ? (
         <div className="space-y-8">
           {sortedDates.map((dateKey, dateIndex) => {
-            const { label, groups } = groupedByDate[dateKey];
-            const sortedGroups = Object.keys(groups).sort();
+            const { label, matches: dateMatches } = groupedByDate[dateKey];
             return (
               <motion.div
                 key={dateKey}
@@ -132,34 +138,14 @@ export default function Matches() {
                 {/* Date header */}
                 <div className="flex items-center gap-3 mb-5 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-3">
                   <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2 shadow-lg">
-                    <Calendar className="w-4 h-4 text-primary" />
                     <span className="font-heading font-bold text-base text-primary">{label}</span>
                   </div>
                   <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
                 </div>
 
-                {/* Groups within this date */}
-                <div className="space-y-6">
-                  {sortedGroups.map((gs, gsIndex) => (
-                    <motion.div
-                      key={gs}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: dateIndex * 0.05 + gsIndex * 0.03 }}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="flex items-center gap-2 bg-secondary/50 border border-border/30 rounded-xl px-3 py-1.5">
-                          <span className="text-xs font-bold text-primary">{gs}</span>
-                        </div>
-                        <div className="flex-1 h-px bg-border/30" />
-                        <span className="text-xs text-muted-foreground">{groups[gs].length} matches</span>
-                      </div>
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {groups[gs].map((m, i) => (
-                          <MatchCard key={m.id} match={m} bet={betByMatch[m.id]} index={i} />
-                        ))}
-                      </div>
-                    </motion.div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dateMatches.map((m, i) => (
+                    <MatchCard key={m.id} match={m} bet={betByMatch[m.id]} index={i} />
                   ))}
                 </div>
               </motion.div>
