@@ -17,19 +17,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing signature or commit_data' }, { status: 400 });
     }
     
-    // Verify transaction actually succeeded on-chain
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    const confirmation = await connection.getSignatureStatus(signature);
-    
-    if (!confirmation || !confirmation.value || confirmation.value.err) {
-      console.error('[commitSettlement] Transaction failed on-chain:', confirmation);
-      return Response.json({ 
-        error: 'Transaction not confirmed on-chain',
-        debug: confirmation,
-      }, { status: 400 });
+    // Skip on-chain verification for admin DB overrides
+    if (!signature.startsWith('db-override-')) {
+      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+      const confirmation = await connection.getSignatureStatus(signature);
+      
+      if (!confirmation || !confirmation.value || confirmation.value.err) {
+        console.error('[commitSettlement] Transaction failed on-chain:', confirmation);
+        return Response.json({ 
+          error: 'Transaction not confirmed on-chain',
+          debug: confirmation,
+        }, { status: 400 });
+      }
+      console.log('[commitSettlement] ✓ Transaction verified on-chain:', signature);
+    } else {
+      console.log('[commitSettlement] DB override — skipping on-chain verification');
     }
-    
-    console.log('[commitSettlement] ✓ Transaction verified on-chain:', signature);
     
     const { bet_id, match_id, winning_outcome, outcome_label, all_bet_ids } = commit_data;
     
