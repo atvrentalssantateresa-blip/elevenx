@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
+import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
@@ -7,17 +7,24 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || '4epUYJPwoPhG9RP
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    
+    // Check auth using isAuthenticated first
+    const isAuthenticated = await base44.auth.isAuthenticated();
+    if (!isAuthenticated) {
+      return Response.json({ error: 'Unauthorized - please login' }, { status: 401 });
+    }
+    
     const user = await base44.auth.me();
-
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'User not found' }, { status: 401 });
     }
 
     if (user.role !== 'admin') {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
-    const { walletAddress } = await req.json();
+    const payload = await req.json();
+    const walletAddress = payload.walletAddress;
 
     if (!walletAddress) {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
