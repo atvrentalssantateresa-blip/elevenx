@@ -149,11 +149,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
   };
 
   const handleTransactionSuccess = (result) => {
+    console.log('[PlaceBetPanel] Transaction success!', result);
     setAmount('');
     setLastSignature(result.signature);
     setLastInstruction(instruction);
-    setInstruction(null);
-    onSuccess && onSuccess(result);
+    // Don't clear instruction immediately - keep showing success message
+    // onSuccess will be called after we update state
+    setTimeout(() => {
+      setInstruction(null);
+      onSuccess && onSuccess(result);
+    }, 100);
   };
 
   const handleTransactionError = (error) => {
