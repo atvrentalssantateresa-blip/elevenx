@@ -108,34 +108,56 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         const data = Buffer.from(instruction.instruction_data, 'base64');
         console.log('[SolanaTransactionSigner] Decoded instruction data length:', data.length);
         console.log('[SolanaTransactionSigner] First 8 bytes (discriminator):', data.slice(0, 8).toString('hex'));
+        console.log('[SolanaTransactionSigner] Full instruction data (hex):', data.toString('hex'));
+        
+        // Validate instruction data size (should be 8 + 171 = 179 bytes)
+        if (data.length !== 179) {
+          console.error('[SolanaTransactionSigner] WARNING: Unexpected instruction data length:', data.length, '(expected 179)');
+        }
         
         // Build keys in the EXACT order required by the Rust CreateMarket struct:
-        // market, vote_tally, platform_config, admin, system_program
+        // market, vote_tally, platform_config, admin (payer/signer), system_program
         const keys = [];
         if (instruction.accounts) {
           const accounts = instruction.accounts;
+          
+          // Validate all required accounts are present
+          if (!accounts.market) {
+            throw new Error('Missing market account in instruction');
+          }
+          if (!accounts.voteTally) {
+            throw new Error('Missing voteTally account in instruction');
+          }
+          if (!accounts.platformConfig) {
+            throw new Error('Missing platformConfig account in instruction');
+          }
+          
           keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
-          if (accounts.voteTally) {
-            keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
-          }
-          if (accounts.platformConfig) {
-            keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
-          }
-          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // admin payer
-          keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
-        } else {
-          // Fallback for legacy format
-          keys.push({ pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true });
+          keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
+          keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
+          // Admin/payer must be the signer wallet
           keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true });
           keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
+        } else {
+          throw new Error('Missing accounts in create_market instruction');
         }
         
-        console.log('[SolanaTransactionSigner] create_market keys:', keys.map(k => k.pubkey.toBase58()));
+        console.log('[SolanaTransactionSigner] create_market keys:', keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })));
         
         const createMarketIx = new TransactionInstruction({
           keys,
           programId,
           data,
+        });
+        
+        console.log('[SolanaTransactionSigner] Created instruction:', {
+          programId: createMarketIx.programId.toBase58(),
+          dataLength: createMarketIx.data.length,
+          keysCount: createMarketIx.keys.length,
         });
         
         transaction.add(createMarketIx);
