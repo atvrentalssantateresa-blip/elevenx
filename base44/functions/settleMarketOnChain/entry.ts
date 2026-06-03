@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
+import bs58 from 'npm:bs58@5.0.0';
 
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
 
@@ -11,18 +12,70 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut11111111111
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    let authUser;
-    try {
-      authUser = await base44.auth.me();
-    } catch (authErr) {
-      console.error('[settleMarketOnChain] Auth error:', authErr.message);
-      return Response.json({ error: 'Authentication failed - please log in as admin', details: authErr.message }, { status: 401 });
+    
+    // Get wallet auth token from request headers (set by frontend's base44Client)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return Response.json({ error: 'Missing authentication token' }, { status: 401 });
     }
     
-    console.log('[settleMarketOnChain] Authenticated user:', { email: authUser?.email, role: authUser?.role, id: authUser?.id });
+    const authToken = authHeader.replace('Bearer ', '');
     
-    if (!authUser || authUser.role !== 'admin') {
-      return Response.json({ error: 'Admin access required', got_role: authUser?.role }, { status: 403 });
+    // Decode and verify the wallet auth token (simple JWT-like format)
+    const parts = authToken.split('.');
+    if (parts.length !== 3) {
+      console.error('[settleMarketOnChain] Invalid token format:', parts.length);
+      return Response.json({ error: 'Invalid token format' }, { status: 401 });
+    }
+    
+    const { subtle } = await import('node:crypto');
+    const encoder = new TextEncoder();
+    
+    try {
+      // Decode payload
+      const payloadBytes = bs58.decode(parts[1]);
+      const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
+      
+      console.log('[settleMarketOnChain] Decoded token payload:', payload);
+      
+      // Verify token hasn't expired
+      if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
+        throw new Error('Token expired');
+      }
+      
+      // Verify signature
+      const secretKey = Deno.env.get('BASE44_APP_ID') || 'elevenx-secret';
+      const keyData = encoder.encode(secretKey);
+      const key = await subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+      );
+      
+      const signatureData = bs58.decode(parts[2]);
+      const valid = await subtle.verify(
+        'HMAC',
+        key,
+        signatureData,
+        encoder.encode(`${parts[0]}.${parts[1]}`)
+      );
+      
+      if (!valid) {
+        throw new Error('Invalid token signature');
+      }
+      
+      // Token is valid - payload contains userId, walletAddress, role
+      console.log('[settleMarketOnChain] ✓ Authenticated wallet:', payload.walletAddress, 'role:', payload.role);
+      
+      if (payload.role !== 'admin') {
+        return Response.json({ error: 'Admin access required', got_role: payload.role }, { status: 403 });
+      }
+      
+    } catch (tokenErr) {
+      console.error('[settleMarketOnChain] Token verification failed:', tokenErr.message);
+      return Response.json({ error: 'Invalid authentication token', details: tokenErr.message }, { status: 401 });
     }
 
     // Get wallet address from request body (sent by frontend)

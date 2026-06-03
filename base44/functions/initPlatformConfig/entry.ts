@@ -1,7 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
+import bs58 from 'npm:bs58@5.0.0';
 
 const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
@@ -16,12 +17,61 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'SOLANA__PROGRAM_ID not configured' }, { status: 500 });
     }
     
-    const base44 = createClientFromRequest(req);
+    // Verify admin access via wallet auth token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return Response.json({ error: 'Missing authentication token' }, { status: 401 });
+    }
     
-    // Verify admin access
-    const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    const authToken = authHeader.replace('Bearer ', '');
+    const parts = authToken.split('.');
+    
+    if (parts.length !== 3) {
+      return Response.json({ error: 'Invalid token format' }, { status: 401 });
+    }
+    
+    const { subtle } = await import('node:crypto');
+    const encoder = new TextEncoder();
+    
+    try {
+      const payloadBytes = bs58.decode(parts[1]);
+      const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
+      
+      if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
+        throw new Error('Token expired');
+      }
+      
+      const secretKey = Deno.env.get('BASE44_APP_ID') || 'elevenx-secret';
+      const keyData = encoder.encode(secretKey);
+      const key = await subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+      );
+      
+      const signatureData = bs58.decode(parts[2]);
+      const valid = await subtle.verify(
+        'HMAC',
+        key,
+        signatureData,
+        encoder.encode(`${parts[0]}.${parts[1]}`)
+      );
+      
+      if (!valid) {
+        throw new Error('Invalid token signature');
+      }
+      
+      if (payload.role !== 'admin') {
+        return Response.json({ error: 'Admin access required', got_role: payload.role }, { status: 403 });
+      }
+      
+      console.log('[initPlatformConfig] ✓ Authenticated admin wallet:', payload.walletAddress);
+      
+    } catch (tokenErr) {
+      console.error('[initPlatformConfig] Token verification failed:', tokenErr.message);
+      return Response.json({ error: 'Invalid authentication token', details: tokenErr.message }, { status: 401 });
     }
 
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
@@ -65,7 +115,6 @@ Deno.serve(async (req) => {
     console.log('Total instruction data length:', instructionData.length);
     console.log('Params data (hex):', paramsData.toString('hex'));
 
-    const adminPubkey = user.id; // We'll need to get the actual Solana pubkey from frontend
     console.log('Platform config PDA:', platformConfigPda.toBase58());
     console.log('Fee vault PDA:', feeVaultPda.toBase58());
     
@@ -81,7 +130,7 @@ Deno.serve(async (req) => {
         accounts: {
           platformConfig: platformConfigPda.toBase58(),
           feeVault: feeVaultPda.toBase58(),
-          admin: adminPubkey, // Frontend will replace with actual Solana pubkey
+          admin: '', // Frontend will populate with actual Solana pubkey from connected wallet
           systemProgram: '11111111111111111111111111111111',
         }
       },
