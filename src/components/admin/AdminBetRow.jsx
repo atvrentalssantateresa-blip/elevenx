@@ -13,17 +13,26 @@ export default function AdminBetRow({ bet, matches, index }) {
   const [pendingRecreate, setPendingRecreate] = useState(null);
   const [pendingSettle, setPendingSettle] = useState(null);
 
-  const { data: marketStatus, error: marketError } = useQuery({
+  const { data: marketStatus, error: marketError, isLoading, isFetching } = useQuery({
     queryKey: ['marketStatus', match?.id],
     queryFn: async () => {
       console.log('[AdminBetRow] Fetching market status for:', match.id);
-      const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
-      console.log('[AdminBetRow] Market status response:', res.data);
-      return res.data;
+      try {
+        const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
+        console.log('[AdminBetRow] Market status response:', res.data);
+        console.log('[AdminBetRow] Response status:', res.status);
+        return res.data;
+      } catch (err) {
+        console.error('[AdminBetRow] Function call error:', err);
+        throw err;
+      }
     },
     enabled: !!match,
     refetchInterval: 5000,
+    retry: 2,
   });
+  
+  console.log('[AdminBetRow] Query state:', { isLoading, isFetching, hasData: !!marketStatus, hasError: !!marketError });
 
   console.log('[AdminBetRow] Render:', { match_id: match?.id, marketStatus, marketError });
 
