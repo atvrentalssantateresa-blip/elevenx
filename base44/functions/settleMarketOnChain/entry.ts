@@ -90,6 +90,32 @@ Deno.serve(async (req) => {
       platform: platformPda.toBase58(),
       fee_vault: feeVaultPda.toBase58(),
     });
+    
+    // Debug: Check platform config on-chain
+    const connection = new (await import('npm:@solana/web3.js@1.98.4')).Connection('https://api.devnet.solana.com', 'confirmed');
+    try {
+      const platformInfo = await connection.getAccountInfo(platformPda);
+      if (platformInfo) {
+        console.log('[settleMarketOnChain] Platform config exists, data length:', platformInfo.data.length);
+        // Parse admin from platform config (bytes 8-40 based on initialize_platform)
+        const adminBytes = platformInfo.data.slice(8, 40);
+        const adminPubkey = new PublicKey(adminBytes);
+        console.log('[settleMarketOnChain] Platform admin:', adminPubkey.toBase58());
+        console.log('[settleMarketOnChain] Signing wallet:', admin_wallet);
+        console.log('[settleMarketOnChain] Admin match:', adminPubkey.toBase58() === admin_wallet);
+      } else {
+        console.error('[settleMarketOnChain] Platform config NOT FOUND on-chain!');
+      }
+      
+      const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
+      if (!feeVaultInfo) {
+        console.error('[settleMarketOnChain] Fee vault NOT FOUND on-chain!');
+      } else {
+        console.log('[settleMarketOnChain] Fee vault exists');
+      }
+    } catch (debugErr) {
+      console.error('[settleMarketOnChain] Debug check failed:', debugErr.message);
+    }
 
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
 
