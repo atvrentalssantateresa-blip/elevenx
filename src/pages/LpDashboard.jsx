@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
-const SuccessDialog = ({ open, onClose, data }) => {
+const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
   const solscanUrl = `https://solscan.io/tx/${data?.signature}?cluster=devnet`;
   
   return (
@@ -23,15 +23,19 @@ const SuccessDialog = ({ open, onClose, data }) => {
         <DialogHeader>
           <DialogTitle className="font-heading flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-accent" />
-            Liquidity Provided!
+            {isWithdraw ? 'Liquidity Withdrawn!' : 'Liquidity Provided!'}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
-            <p className="text-sm text-muted-foreground">You committed</p>
-            <p className="font-heading font-bold text-2xl text-accent">◎{data?.amount.toFixed(4)} SOL</p>
-            <p className="text-xs text-muted-foreground mt-2">for <span className="text-foreground font-bold">{data?.team}</span></p>
-            <p className="text-[10px] text-muted-foreground">{data?.match}</p>
+          <div className={`${isWithdraw ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-accent/10 border-accent/30'} border rounded-xl p-4 text-center`}>
+            <p className="text-sm text-muted-foreground">{isWithdraw ? 'You withdrew' : 'You committed'}</p>
+            <p className={`font-heading font-bold text-2xl ${isWithdraw ? 'text-yellow-400' : 'text-accent'}`}>◎{data?.amount.toFixed(4)} SOL</p>
+            {!isWithdraw && (
+              <>
+                <p className="text-xs text-muted-foreground mt-2">for <span className="text-foreground font-bold">{data?.team}</span></p>
+                <p className="text-[10px] text-muted-foreground">{data?.match}</p>
+              </>
+            )}
           </div>
           
           <div className="bg-secondary/40 rounded-xl p-3 space-y-2">
@@ -74,6 +78,7 @@ export default function LpDashboard() {
   const [amount, setAmount] = useState('');
   const [pendingTx, setPendingTx] = useState(null);
   const [successDialog, setSuccessDialog] = useState(null);
+  const [withdrawSuccessDialog, setWithdrawSuccessDialog] = useState(null);
   const [error, setError] = useState(null);
 
   const { data: openBets = [] } = useQuery({
@@ -140,6 +145,31 @@ export default function LpDashboard() {
     },
   });
 
+  const withdrawLiquidityMutation = useMutation({
+    mutationFn: async (offer) => {
+      if (!walletAddress) throw new Error('Wallet not connected');
+      const res = await base44.functions.invoke('withdrawLiquidity', {
+        walletAddress,
+        userBetId: offer.userBetId,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setPendingTx({
+        instruction: data.solana_instruction,
+        amount: data.amount,
+        type: 'withdraw_liquidity',
+        userBetId: data.userBetId,
+        offerId: data.offerId,
+      });
+    },
+    onError: (err) => {
+      console.error('[LpDashboard] Withdraw error:', err);
+      setError(err.message || 'Failed to withdraw liquidity');
+    },
+  });
+
   const handleTxSuccess = async (txResult) => {
     const signature = txResult.signature;
     const committedAmount = parseFloat(amount);
@@ -183,11 +213,56 @@ export default function LpDashboard() {
     setPendingTx(null);
   };
 
+  const handleWithdrawSuccess = async (txResult) => {
+    const signature = txResult.signature;
+    
+    // Finalize withdrawal in DB
+    if (pendingTx?.userBetId && pendingTx?.offerId) {
+      try {
+        const commitRes = await base44.functions.invoke('finalizeWithdrawal', {
+          signature,
+          userBetId: pendingTx.userBetId,
+          offerId: pendingTx.offerId,
+        });
+        if (commitRes.data.error) {
+          console.error('[LpDashboard] finalizeWithdrawal error:', commitRes.data.error);
+        }
+      } catch (err) {
+        console.error('[LpDashboard] finalizeWithdrawal threw:', err);
+      }
+    }
+    
+    setWithdrawSuccessDialog({
+      signature,
+      amount: pendingTx?.amount || 0,
+    });
+    
+    setPendingTx(null);
+    setError(null);
+    queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
+  };
+
   // Stats
   const totalCommitted = myOffers.reduce((s, o) => s + (o.amount_offered || 0), 0);
   const totalMatched   = myOffers.reduce((s, o) => s + (o.amount_matched || 0), 0);
   const totalUnmatched = myOffers.reduce((s, o) => s + (o.amount_unmatched || 0), 0);
   const activeOffers   = myOffers.filter(o => o.status === 'open' || o.status === 'partially_matched');
+  
+  // Get userBetId for each offer (for withdrawal)
+  const { data: allUserBets = [] } = useQuery({
+    queryKey: ['allUserBets', walletAddress],
+    queryFn: async () => {
+      const all = await base44.entities.UserBet.list('-created_date', 200);
+      return all.filter(ub => ub.wallet_address === walletAddress && ub.role === 'lp');
+    },
+    enabled: !!walletAddress,
+  });
+  
+  // Enrich offers with userBetId
+  const offersWithUserBet = myOffers.map(offer => {
+    const userBet = allUserBets.find(ub => ub.offer_id === offer.id);
+    return { ...offer, userBetId: userBet?.id };
+  });
 
   const getMatchTitle = (matchId) => {
     const m = matches.find(m => m.id === matchId);
@@ -208,6 +283,12 @@ export default function LpDashboard() {
         open={!!successDialog}
         data={successDialog}
         onClose={() => setSuccessDialog(null)}
+      />
+      <SuccessDialog
+        open={!!withdrawSuccessDialog}
+        data={withdrawSuccessDialog}
+        onClose={() => setWithdrawSuccessDialog(null)}
+        isWithdraw={true}
       />
       
       <div>
@@ -395,9 +476,12 @@ export default function LpDashboard() {
               </h2>
               <div className="space-y-2">
                 {activeOffers.map((offer, i) => {
+                  const offerWithUserBet = offersWithUserBet.find(o => o.id === offer.id) || offer;
                   const matchPct = offer.amount_offered > 0
                     ? Math.round((offer.amount_matched / offer.amount_offered) * 100)
                     : 0;
+                  const hasUnmatched = (offer.amount_unmatched || 0) > 0;
+                  
                   return (
                     <motion.div key={offer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                       className="bg-card border border-border/50 rounded-xl p-4">
@@ -435,6 +519,34 @@ export default function LpDashboard() {
                           <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${matchPct}%` }} />
                         </div>
                       </div>
+                      
+                      {/* Withdraw button for unmatched liquidity */}
+                      {hasUnmatched && (
+                        <div className="mt-3">
+                          {pendingTx?.userBetId === offerWithUserBet.userBetId ? (
+                            <SolanaTransactionSigner
+                              instruction={pendingTx.instruction}
+                              amount={pendingTx.amount}
+                              onSuccess={handleWithdrawSuccess}
+                              onError={handleTxError}
+                            />
+                          ) : (
+                            <Button
+                              onClick={() => withdrawLiquidityMutation.mutate(offerWithUserBet)}
+                              disabled={withdrawLiquidityMutation.isPending}
+                              variant="outline"
+                              className="w-full h-8 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
+                            >
+                              {withdrawLiquidityMutation.isPending ? (
+                                <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                              ) : (
+                                <>Withdraw ◎{(offer.amount_unmatched || 0).toFixed(4)}</>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      
                       <Link to={`/match/${offer.match_id}`}>
                         <Button size="sm" variant="outline" className="w-full mt-3 h-8 text-xs border-border/50 rounded-lg">
                           View Market <ArrowRight className="w-3 h-3 ml-1" />
