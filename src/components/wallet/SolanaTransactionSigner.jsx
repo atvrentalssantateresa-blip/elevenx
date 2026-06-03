@@ -362,6 +362,17 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         transaction.add(withdrawIx);
         
+      } else if (instruction.instruction_type === 'void_market') {
+        console.log('Creating void_market program instruction:', instruction);
+        const programId = new PublicKey(instruction.programId);
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        transaction.add(new TransactionInstruction({ keys, programId, data }));
+
       } else if (instruction.instruction_type === 'update_market_timestamps') {
         // update_market_timestamps — admin recovery tool to fix corrupted timestamps
         console.log('Creating update_market_timestamps program instruction:', instruction);
@@ -571,6 +582,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       txMessage = '✓ LP winnings withdrawn!';
     } else if (instruction?.instruction_type === 'create_market') {
       txMessage = '✓ Market created on-chain!';
+    } else if (instruction?.instruction_type === 'void_market') {
+      txMessage = '✓ Market voided! Click ⚡ Test Mode again to recreate.';
     } else if (instruction?.instruction_type === 'update_market_timestamps') {
       txMessage = '✓ Market timestamps updated!';
     }

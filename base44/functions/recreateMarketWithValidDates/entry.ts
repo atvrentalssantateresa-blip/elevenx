@@ -53,44 +53,44 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // If market already exists on-chain, issue update_market_timestamps to push past timestamps on-chain
+    // If market already exists on-chain, issue void_market so we can recreate it fresh with past timestamps
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const accountInfo = await connection.getAccountInfo(marketPda);
     if (accountInfo && accountInfo.data.length >= 200) {
-      console.log('[recreateMarketWithValidDates] Market already exists, issuing update_market_timestamps');
-      const now = Math.floor(Date.now() / 1000);
-      const openUntilPast = now - 7200;
-      const settleAfterPast = now - 3600;
+      // Parse settled/voided flags from account data (offsets: settled=220, voided=221)
+      const isSettled = accountInfo.data[220] === 1;
+      const isVoided = accountInfo.data[221] === 1;
+      console.log('[recreateMarketWithValidDates] Market exists, settled:', isSettled, 'voided:', isVoided);
 
-      const updateDisc = Buffer.from(sha256('global:update_market_timestamps')).slice(0, 8);
-      const updateData = Buffer.alloc(24);
-      updateDisc.copy(updateData, 0);
-      updateData.writeBigInt64LE(BigInt(openUntilPast), 8);
-      updateData.writeBigInt64LE(BigInt(settleAfterPast), 16);
+      if (!isVoided && !isSettled) {
+        // Void it first so create_market can reinitialize (market PDA is reused after void)
+        const voidDisc = Buffer.from(sha256('global:void_market')).slice(0, 8);
 
-      // Also update DB
-      await base44.asServiceRole.entities.Bet.update(bet_id, {
-        open_until: new Date(openUntilPast * 1000).toISOString(),
-        status: 'closed',
-      });
+        await base44.asServiceRole.entities.Bet.update(bet_id, {
+          open_until: new Date(Date.now() - 7200000).toISOString(),
+          status: 'closed',
+        });
 
-      return Response.json({
-        success: true,
-        marketPda: marketPda.toBase58(),
-        alreadyExists: true,
-        message: 'Market exists — sign to push past timestamps on-chain so you can settle immediately.',
-        solana_instruction: {
-          instruction_type: 'update_market_timestamps',
-          programId: SOLANA_PROGRAM_ID,
-          keys: [
-            { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
-            { pubkey: platformConfigPda.toBase58(), isSigner: false, isWritable: false },
-            { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: false },
-            { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
-          ],
-          instruction_data: updateData.toString('base64'),
-        },
-      });
+        return Response.json({
+          success: true,
+          marketPda: marketPda.toBase58(),
+          step: 'void',
+          message: 'Step 1: Sign to void the existing market, then click Test Mode again to recreate with past timestamps.',
+          solana_instruction: {
+            instruction_type: 'void_market',
+            programId: SOLANA_PROGRAM_ID,
+            keys: [
+              { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+              { pubkey: platformConfigPda.toBase58(), isSigner: false, isWritable: false },
+              { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: false },
+            ],
+            instruction_data: voidDisc.toString('base64'),
+          },
+        });
+      }
+
+      // Market is voided/settled — fall through to recreate with past timestamps below
+      console.log('[recreateMarketWithValidDates] Market voided/settled, will recreate with past timestamps');
     }
 
     // Set timestamps in the past so settlement is allowed immediately
