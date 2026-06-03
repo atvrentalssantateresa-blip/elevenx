@@ -153,12 +153,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
     setAmount('');
     setLastSignature(result.signature);
     setLastInstruction(instruction);
-    // Don't clear instruction immediately - keep showing success message
-    // onSuccess will be called after we update state
+    // Keep showing success message for 3 seconds before calling parent callback
     setTimeout(() => {
       setInstruction(null);
       onSuccess && onSuccess(result);
-    }, 100);
+    }, 3000);
   };
 
   const handleTransactionError = (error) => {
