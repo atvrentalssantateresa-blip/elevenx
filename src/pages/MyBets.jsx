@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, DollarSign, Target, Flame, Shield, BarChart3, Activity, Award, TrendingUp, Clock } from 'lucide-react';
+import { Trophy, DollarSign, Target, Flame, Shield, BarChart3, Activity, Award, TrendingUp, Clock, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -115,6 +115,8 @@ export default function MyBets() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [refundDialog, setRefundDialog] = useState(null);
+  const [claimData, setClaimData] = useState(null);
+  const [batchClaimMatchId, setBatchClaimMatchId] = useState(null);
 
   const getWalletAddress = () => {
     const walletSession = localStorage.getItem('elevenx_wallet_session');
@@ -146,11 +148,43 @@ export default function MyBets() {
   const pendingClaims = myBets.filter(b => b.status === 'won');
   const availableRefunds = myBets.filter(b => b.status === 'refunded');
   
+  // Group won bets by match for batch claiming
+  const groupedWonBets = pendingClaims.reduce((acc, bet) => {
+    if (!acc[bet.match_id]) {
+      acc[bet.match_id] = [];
+    }
+    acc[bet.match_id].push(bet);
+    return acc;
+  }, {});
+  
   const potentialWinnings = activeBets.reduce((s, b) => s + (b.potential_payout || 0), 0);
   const winRate = myBets.length > 0 ? ((myBets.filter(b => b.status === 'won' || b.status === 'claimed').length / myBets.length) * 100).toFixed(1) : 0;
 
   const handleRefundSuccess = () => {
     setRefundDialog(null);
+    queryClient.invalidateQueries({ queryKey: ['myBets'] });
+  };
+
+  const handleBatchClaim = async (matchId, bets) => {
+    try {
+      const betIds = bets.map(b => b.id);
+      const res = await base44.functions.invoke('claimWinnings', { userBetId: betIds[0], batchBetIds: betIds });
+      if (res.data.error) throw new Error(res.data.error);
+      setClaimData({ ...res.data, matchId });
+      setBatchClaimMatchId(matchId);
+    } catch (err) {
+      alert('Claim failed: ' + err.message);
+    }
+  };
+
+  const handleClaimSignSuccess = async () => {
+    if (claimData?.betIds) {
+      for (const betId of claimData.betIds) {
+        await base44.entities.UserBet.update(betId, { status: 'claimed' });
+      }
+    }
+    setClaimData(null);
+    setBatchClaimMatchId(null);
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
   };
 
@@ -264,16 +298,54 @@ export default function MyBets() {
 
         <TabsContent value="pending" className="space-y-4">
           {pendingClaims.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {pendingClaims.map((bet, i) => (
-                <BetCard 
-                  key={bet.id} 
-                  bet={bet} 
-                  index={i} 
-                  walletAddress={walletAddress} 
-                  onRefundRequest={(data) => setRefundDialog(data)}
-                />
-              ))}
+            <div className="space-y-4">
+              {Object.entries(groupedWonBets).map(([matchId, bets]) => {
+                const totalPayout = bets.reduce((sum, b) => sum + (b.potential_payout || 0), 0);
+                const isClaiming = batchClaimMatchId === matchId;
+                
+                return (
+                  <div key={matchId} className="bg-card border border-border/50 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-heading font-bold text-sm">{bets[0].match_title || 'Match'}</h3>
+                        <p className="text-xs text-muted-foreground">{bets.length} bet(s) to claim</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-heading font-bold text-accent">◎{totalPayout.toFixed(4)}</p>
+                        <p className="text-[10px] text-muted-foreground">Total payout</p>
+                      </div>
+                    </div>
+                    
+                    {claimData?.matchId === matchId ? (
+                      <SolanaTransactionSigner
+                        instruction={claimData.solana_instruction}
+                        amount={totalPayout.toFixed(4)}
+                        userBetId={claimData.betIds[0]}
+                        batchBetIds={claimData.betIds}
+                        onSuccess={handleClaimSignSuccess}
+                        onError={() => setClaimData(null)}
+                      />
+                    ) : (
+                      <Button
+                        onClick={() => handleBatchClaim(matchId, bets)}
+                        className="w-full h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl text-sm"
+                      >
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Claim All ({bets.length} bets)
+                      </Button>
+                    )}
+                    
+                    <div className="mt-4 space-y-2">
+                      {bets.map(bet => (
+                        <div key={bet.id} className="flex items-center justify-between text-xs bg-secondary/30 rounded-lg p-2">
+                          <span className="text-muted-foreground">{bet.outcome_label}</span>
+                          <span className="font-bold">◎{bet.amount?.toFixed(4)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <EmptyState message="No pending claims" />
