@@ -49,6 +49,15 @@ export default function Profile() {
   const losses = myBets.filter(b => b.status === 'lost').length;
   const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(0) : 0;
 
+  const { data: platformDebug } = useQuery({
+    queryKey: ['platformDebug'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('debugPlatformAdmin', {});
+      return res.data;
+    },
+    enabled: currentUser?.role === 'admin',
+  });
+
   const reinitMutation = useMutation({
     mutationFn: async () => {
       console.log('[Profile] Calling reinitPlatformWithWallet with wallet:', walletAddress);
@@ -165,43 +174,71 @@ export default function Profile() {
       {currentUser?.role === 'admin' && (
         <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-3">
           <h2 className="font-heading font-bold text-sm">Admin Platform Config</h2>
-          <p className="text-xs text-muted-foreground">
-            Reinitialize platform config with your current wallet as admin.
-          </p>
-          {reinitMutation.isError && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-xs text-destructive">
-              ✗ Error: {reinitMutation.error?.message}
-            </div>
-          )}
-          {reinitMutation.isSuccess && reinitMutation.data?.solana_instruction ? (
+          {platformDebug?.success ? (
             <div className="space-y-3">
-              <SolanaTransactionSigner
-                instruction={reinitMutation.data.solana_instruction}
-                amount="0"
-                onSuccess={() => {
-                  alert('✓ Platform reinitialized! You are now the admin.');
-                  reinitMutation.reset();
-                  setTimeout(() => window.location.reload(), 2000);
-                }}
-                onError={(err) => alert('Transaction failed: ' + err.message)}
-              />
-              <Button
-                variant="outline"
-                onClick={() => reinitMutation.reset()}
-                className="w-full h-10 rounded-xl"
-              >
-                Cancel
-              </Button>
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-3">
+                <p className="text-xs text-accent font-bold mb-1">✓ Platform Initialized</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Admin: <span className="font-mono text-accent">{platformDebug.admin?.slice(0, 6)}...{platformDebug.admin?.slice(-6)}</span>
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  Fee: {(platformDebug.feePercent / 100).toFixed(2)}% | Consensus: {platformDebug.consensusThreshold}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Platform is already initialized. Reinitialize only if you need to change the admin wallet.
+              </p>
+              {reinitMutation.isError && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-xs text-destructive">
+                  ✗ Error: {reinitMutation.error?.message}
+                </div>
+              )}
+              {reinitMutation.isSuccess && reinitMutation.data?.solana_instruction ? (
+                <div className="space-y-3">
+                  <SolanaTransactionSigner
+                    instruction={reinitMutation.data.solana_instruction}
+                    amount="0"
+                    onSuccess={() => {
+                      alert('✓ Platform reinitialized! You are now the admin.');
+                      reinitMutation.reset();
+                      setTimeout(() => window.location.reload(), 2000);
+                    }}
+                    onError={(err) => alert('Transaction failed: ' + err.message)}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => reinitMutation.reset()}
+                    className="w-full h-10 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => reinitMutation.mutate()}
+                  disabled={reinitMutation.isPending || !isConnected || !walletAddress}
+                  variant="outline"
+                  className="w-full h-11 rounded-xl border-border/50"
+                >
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  {reinitMutation.isPending ? 'Preparing...' : 'Reinitialize Platform (Advanced)'}
+                </Button>
+              )}
             </div>
           ) : (
-            <Button
-              onClick={() => reinitMutation.mutate()}
-              disabled={reinitMutation.isPending || !isConnected || !walletAddress}
-              className="w-full h-11 rounded-xl"
-            >
-              <RefreshCcw className="w-4 h-4 mr-2" />
-              {reinitMutation.isPending ? 'Preparing...' : !walletAddress ? 'Connect Wallet First' : 'Reinitialize Platform'}
-            </Button>
+            <div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Platform not initialized. Click below to initialize with your wallet as admin.
+              </p>
+              <Button
+                onClick={() => reinitMutation.mutate()}
+                disabled={reinitMutation.isPending || !isConnected || !walletAddress}
+                className="w-full h-11 rounded-xl"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                {reinitMutation.isPending ? 'Preparing...' : !walletAddress ? 'Connect Wallet First' : 'Initialize Platform'}
+              </Button>
+            </div>
           )}
         </div>
       )}
