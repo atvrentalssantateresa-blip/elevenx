@@ -109,12 +109,22 @@ export default function CreateFuturesMarket() {
     },
   });
 
-  const handleInitSuccess = () => {
+  const handleInitSuccess = async (result) => {
+    console.log('Futures market init success:', result);
+    
+    // Update database with PDA
+    if (pendingInit?.accounts?.market) {
+      await base44.entities.FuturesMarket.update(pendingInit.futures_market_id, {
+        solana_market_created: true,
+        solana_market_pda: pendingInit.accounts.market,
+      });
+    }
+    
     setPendingInit(null);
     queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
     setOpen(false);
     resetForm();
-    alert('Futures market created and initialized on-chain!');
+    alert('Futures market created on-chain! Transaction confirmed.');
   };
 
   const resetForm = () => {
@@ -148,6 +158,7 @@ export default function CreateFuturesMarket() {
               <SolanaTransactionSigner
                 instruction={pendingInit}
                 amount={0}
+                futures_market_id={pendingInit.futures_market_id}
                 onSuccess={handleInitSuccess}
               />
               <Button variant="outline" size="sm" onClick={() => setPendingInit(null)} className="w-full">

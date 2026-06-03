@@ -211,7 +211,8 @@ Deno.serve(async (req) => {
           market: marketPda.toBase58(),
           voteTally: voteTallyPda.toBase58(),
           platformConfig: platformConfigPda.toBase58(),
-        }
+        },
+        futures_market_id: futures_market_id,
       },
       message: 'Sign to create futures market on-chain',
       futures_market_id: futures_market_id,
