@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
         outcome: outcomeIndex,
         amountLamports: Math.round(amount * 1_000_000_000),
       },
-      message: `Sign to commit ◎${amount} at ${oddsBps / 100}x for ${outcomeLabel}`,
+      message: `✓ Liquidity provided! ◎${amount} at ${oddsBps / 100}x for ${outcomeLabel} — transaction will be recorded on Solana`,
     });
 
   } catch (error) {

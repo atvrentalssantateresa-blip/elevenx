@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
         outcome: outcomeIndex,
         amountLamports: Math.round(amount * 1_000_000_000),
       },
-      message: `Sign to place ◎${amount} on ${outcomeLabel} — pari-mutuel odds update dynamically`,
+      message: `✓ Bet placed! ◎${amount} on ${outcomeLabel} — transaction will be recorded on Solana`,
     });
 
   } catch (error) {

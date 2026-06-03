@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
         outcome: outcomeIndex,
         amountLamports,
       },
-      message: `Sign to bet ◎${amount.toFixed(4)} on ${bettor_outcome_label} to win ◎${potential_payout.toFixed(4)}`,
+      message: `✓ Bet matched! ◎${amount.toFixed(4)} on ${bettor_outcome_label} to win ◎${potential_payout.toFixed(4)} — transaction will be recorded on Solana`,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -473,6 +473,26 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
   };
 
   if (signature) {
+    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
+    
+    // Determine transaction type message
+    let txMessage = 'Transaction confirmed on Solana';
+    if (instruction?.instruction_type === 'place_bet') {
+      txMessage = '✓ Bet placed successfully!';
+    } else if (instruction?.instruction_type === 'provide_liquidity') {
+      txMessage = '✓ Liquidity provided!';
+    } else if (instruction?.instruction_type === 'claim_winnings') {
+      txMessage = '✓ Winnings claimed!';
+    } else if (instruction?.instruction_type === 'withdraw_liquidity') {
+      txMessage = '✓ Liquidity withdrawn!';
+    } else if (instruction?.instruction_type === 'claim_refund') {
+      txMessage = '✓ Refund claimed!';
+    } else if (instruction?.instruction_type === 'withdraw_lp_winnings') {
+      txMessage = '✓ LP winnings withdrawn!';
+    } else if (instruction?.instruction_type === 'create_market') {
+      txMessage = '✓ Market created on-chain!';
+    }
+    
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -480,9 +500,17 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center"
       >
         <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
-        <p className="font-heading font-bold text-sm text-accent">Transaction Confirmed!</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Signature: {signature.slice(0, 8)}...{signature.slice(-8)}
+        <p className="font-heading font-bold text-sm text-accent">{txMessage}</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          View transaction:{' '}
+          <a 
+            href={solanaScanUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-primary hover:underline font-medium"
+          >
+            {signature.slice(0, 8)}...{signature.slice(-8)}
+          </a>
         </p>
       </motion.div>
     );
