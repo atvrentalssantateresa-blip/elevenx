@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
     const { userBetId, batchBetIds, walletAddress } = await req.json();
     
     if (!walletAddress) {
+      console.error('[claimWinnings] Missing wallet address in request');
       return Response.json({ error: 'Missing wallet address' }, { status: 400 });
     }
 
@@ -23,29 +24,21 @@ Deno.serve(async (req) => {
     const trimmedWallet = walletAddress.trim();
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     if (!base58Regex.test(trimmedWallet)) {
+      console.error('[claimWinnings] Invalid wallet format:', trimmedWallet);
       return Response.json({ error: 'Invalid wallet address format' }, { status: 400 });
-    }
-
-    // Verify wallet is authenticated (exists in WalletUser entity)
-    const allWalletUsers = await serviceRole.entities.WalletUser.list();
-    const walletUser = allWalletUsers.find(wu => wu.wallet_address === trimmedWallet);
-    
-    if (!walletUser) {
-      return Response.json({ 
-        error: 'Wallet not authenticated. Please connect your wallet first.',
-        hint: 'Connect your Phantom wallet on the Profile page'
-      }, { status: 401 });
     }
 
     // Support both single bet and batch claiming
     const betIdsToProcess = batchBetIds || [userBetId];
     
     if (!betIdsToProcess || betIdsToProcess.length === 0) {
+      console.error('[claimWinnings] Missing bet IDs');
       return Response.json({ error: 'Missing userBetId or batchBetIds' }, { status: 400 });
     }
 
     // Get all user bets to claim - filter by wallet_address
     const allUserBets = await serviceRole.entities.UserBet.list();
+    console.log('[claimWinnings] Total UserBets:', allUserBets.length);
     
     const betsToClaim = allUserBets.filter(ub => 
       betIdsToProcess.includes(ub.id) && 
@@ -53,8 +46,22 @@ Deno.serve(async (req) => {
       ub.status === 'won'
     );
 
+    console.log('[claimWinnings] Found bets to claim:', betsToClaim.length, 'bets');
+
     if (betsToClaim.length === 0) {
-      return Response.json({ error: 'No valid won bets found' }, { status: 404 });
+      // Debug: check what bets exist for this wallet
+      const userBets = allUserBets.filter(ub => ub.wallet_address === trimmedWallet);
+      console.log('[claimWinnings] All bets for this wallet:', userBets.length);
+      console.log('[claimWinnings] Bet statuses:', userBets.map(b => ({ id: b.id, status: b.status })));
+      
+      return Response.json({ 
+        error: 'No valid won bets found',
+        debug: {
+          walletBets: userBets.length,
+          requestedBetIds: betIdsToProcess,
+          statuses: userBets.map(b => ({ id: b.id, status: b.status }))
+        }
+      }, { status: 404 });
     }
 
     const userBet = betsToClaim[0]; // Use first bet for PDA derivation (same match)
