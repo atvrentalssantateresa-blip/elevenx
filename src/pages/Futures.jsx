@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, TrendingUp, Clock, ChevronRight, Lock, Trophy, Calendar, Loader, RefreshCcw, Sparkles, Globe, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +75,28 @@ export default function Futures() {
         m.title?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : futuresMarkets;
+
+  // Auto-scroll to first matching group when search query changes
+  React.useEffect(() => {
+    if (searchQuery && filteredMarkets.length > 0) {
+      const firstMatch = filteredMarkets[0];
+      if (firstMatch?.country) {
+        // Find which group this country belongs to
+        const matchingGroup = Object.entries(WORLD_CUP_GROUPS_2026).find(([_, teams]) =>
+          teams.some(t => t.name === firstMatch.country)
+        );
+        if (matchingGroup) {
+          const groupName = matchingGroup[0];
+          setTimeout(() => {
+            const element = document.getElementById(`group-${groupName}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
+        }
+      }
+    }
+  }, [searchQuery]);
 
   const openMarkets = filteredMarkets.filter((m) => m.status === 'open');
   const comingMarkets = filteredMarkets.filter((m) => m.status === 'coming_soon');
