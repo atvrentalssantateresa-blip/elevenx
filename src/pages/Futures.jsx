@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Flame, TrendingUp, Clock, ChevronRight, Lock, Trophy, Calendar, Loader, RefreshCcw, Sparkles } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Flame, TrendingUp, Clock, ChevronRight, Lock, Trophy, Calendar, Loader, RefreshCcw, Sparkles, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import CountryFuturesCard from '@/components/futures/CountryFuturesCard';
+import GroupCountryCard from '@/components/futures/GroupCountryCard';
+import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
+import FuturesBetSlip from '@/components/futures/FuturesBetSlip';
 
 export default function Futures() {
   const [selectedOutcome, setSelectedOutcome] = useState(null);
+  const [selectedMarket, setSelectedMarket] = useState(null);
+  const [showBetSlip, setShowBetSlip] = useState(false);
   const [activeTab, setActiveTab] = useState('futures');
+  const [activeGroup, setActiveGroup] = useState('A');
   const queryClient = useQueryClient();
+  const groupRefs = useRef({});
 
   // Fetch futures markets from database
   const { data: futuresMarkets = [], isLoading } = useQuery({
@@ -21,6 +27,33 @@ export default function Futures() {
       return markets;
     },
   });
+
+  // Scroll to group section
+  const scrollToGroup = (groupName) => {
+    setActiveGroup(groupName);
+    const element = document.getElementById(`group-${groupName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Handle country selection
+  const handleCountrySelect = (market, outcome) => {
+    setSelectedMarket(market);
+    setSelectedOutcome(outcome);
+    setShowBetSlip(true);
+    console.log('Selected:', market.country, outcome.position, outcome.odds);
+  };
+
+  // Handle bet confirmation
+  const handleBetConfirm = async ({ market, outcome, amount, potentialPayout }) => {
+    console.log('Bet confirmed:', { market: market.country, outcome: outcome.position, amount, potentialPayout });
+    // TODO: Integrate with placeBet function
+    setShowBetSlip(false);
+    setSelectedMarket(null);
+    setSelectedOutcome(null);
+    alert('Bet placed! (Integration pending)');
+  };
 
   // Mutation to fetch and calculate odds
   const fetchOddsMutation = useMutation({
@@ -73,13 +106,13 @@ export default function Futures() {
 
             <div className="relative">
               <div className="flex items-center gap-2 mb-3">
-                <Flame className="w-5 h-5 text-orange-400" />
-                <span className="text-xs font-bold text-orange-400 uppercase tracking-widest">Futures Markets</span>
-                <Badge className="ml-auto text-[10px] bg-primary/20 text-primary border border-primary/30">Beta</Badge>
+                <Globe className="w-5 h-5 text-orange-400" />
+                <span className="text-xs font-bold text-orange-400 uppercase tracking-widest">World Cup 2026</span>
+                <Badge className="ml-auto text-[10px] bg-primary/20 text-primary border border-primary/30">Official Groups</Badge>
               </div>
 
               <div className="flex items-center justify-between mb-2">
-                <h1 className="font-heading font-black text-3xl text-white">Country Futures</h1>
+                <h1 className="font-heading font-black text-3xl text-white">Tournament Futures</h1>
                 <Button
                   size="sm"
                   onClick={() => fetchOddsMutation.mutate()}
@@ -91,18 +124,18 @@ export default function Futures() {
                   ) : (
                     <RefreshCcw className="w-3.5 h-3.5 mr-1.5" />
                   )}
-                  Fetch Odds
+                  Update Odds
                 </Button>
               </div>
               <p className="text-white/50 text-sm max-w-md">
-                Bet on where each country will finish. 1st, 2nd, or 3rd place - each with live odds & LP pools.
+                All 48 teams across 12 groups. Bet on 1st, 2nd, or 3rd place finishes with live multipliers.
               </p>
 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 mt-5">
                 <div>
-                  <p className="text-white font-heading font-bold text-xl">{futuresMarkets.length}</p>
-                  <p className="text-white/40 text-[10px]">Countries</p>
+                  <p className="text-white font-heading font-bold text-xl">12</p>
+                  <p className="text-white/40 text-[10px]">Groups (A-L)</p>
                 </div>
                 <div>
                   <p className="text-white font-heading font-bold text-xl">◎{(totalPool / 1000).toFixed(2)}K</p>
@@ -116,60 +149,81 @@ export default function Futures() {
             </div>
           </motion.div>
 
-          {/* Open markets */}
-          <section>
-            <h2 className="font-heading font-bold text-base mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> Active Country Markets
-            </h2>
-            <div className="space-y-5">
-              {openMarkets.map((market, index) => (
-                <CountryFuturesCard
-                  key={market.id}
-                  market={market}
-                  index={index}
-                  selected={selectedOutcome}
-                  onSelect={setSelectedOutcome}
-                  onBet={(m, outcome) => console.log('Place bet:', m.country, outcome)}
-                />
-              ))}
-            </div>
-          </section>
+          {/* Quick-Jump Group Navigation */}
+          <GroupNavigation onGroupClick={scrollToGroup} activeGroup={activeGroup} />
 
-          {/* Coming soon */}
-          {comingMarkets.length > 0 && (
-            <section>
-              <h2 className="font-heading font-bold text-base mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" /> Opening Soon
-              </h2>
-              <div className="space-y-3">
-                {comingMarkets.map((market, index) => (
-                  <motion.div
-                    key={market.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-card border border-border/30 rounded-2xl p-5 opacity-60"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20 flex items-center justify-center text-2xl">
-                          {market.country_flag || market.icon}
+          {/* Group-by-Group Markets */}
+          {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+            const groupMarkets = futuresMarkets.filter(m => 
+              teams.some(t => t.name === m.country)
+            );
+            const hasMarkets = groupMarkets.length > 0;
+
+            return (
+              <section key={groupName} id={`group-${groupName}`} className="scroll-mt-24">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                    <span className="font-heading font-black text-lg text-primary">{groupName}</span>
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {hasMarkets ? `${groupMarkets.length} teams with active markets` : 'Markets coming soon'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {hasMarkets ? (
+                    groupMarkets.map((market, index) => (
+                      <GroupCountryCard
+                        key={market.id}
+                        market={market}
+                        onSelect={handleCountrySelect}
+                      />
+                    ))
+                  ) : (
+                    teams.map((team, index) => (
+                      <motion.div
+                        key={team.name}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="bg-card/40 border border-border/20 rounded-2xl p-4 opacity-50"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-12 h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-2xl grayscale">
+                            {team.flag}
+                          </div>
+                          <div>
+                            <h3 className="font-heading font-bold text-sm text-muted-foreground">{team.name}</h3>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <Lock className="w-2.5 h-2.5 text-muted-foreground" />
+                              <span className="text-[9px] text-muted-foreground">Coming Soon</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-heading font-bold text-sm">{market.country}</p>
-                          <p className="text-xs text-muted-foreground">{market.subtitle}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[1, 2, 3].map((pos) => (
+                            <div key={pos} className="rounded-xl p-2.5 border border-border/20 bg-secondary/10 opacity-40">
+                              <div className="text-center">
+                                <div className="text-[9px] mb-1 text-muted-foreground">
+                                  {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
+                                </div>
+                                <div className="font-heading font-black text-xs text-muted-foreground">--</div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Coming soon</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-          )}
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              </section>
+            );
+          })}
+
+
 
           {/* Empty state */}
           {futuresMarkets.length === 0 && (
@@ -207,6 +261,22 @@ export default function Futures() {
               Go to Match LP <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
           </motion.div>
+
+          {/* Bet Slip Modal */}
+          <AnimatePresence>
+            {showBetSlip && selectedMarket && selectedOutcome && (
+              <FuturesBetSlip
+                market={selectedMarket}
+                outcome={selectedOutcome}
+                onClose={() => {
+                  setShowBetSlip(false);
+                  setSelectedMarket(null);
+                  setSelectedOutcome(null);
+                }}
+                onConfirm={handleBetConfirm}
+              />
+            )}
+          </AnimatePresence>
         </TabsContent>
 
         <TabsContent value="matches" className="mt-6">
