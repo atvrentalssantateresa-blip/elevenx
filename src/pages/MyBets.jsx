@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight, Wallet, ArrowLeft } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Clock, ChevronRight, Wallet, ArrowLeft, CheckCircle, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,8 +21,62 @@ const statusConfig = {
 };
 
 const RefundDialog = ({ open, onClose, data, onSignSuccess }) => {
+  const [signature, setSignature] = useState(null);
+  
+  const handleSignSuccess = (result) => {
+    setSignature(result.signature);
+    onSignSuccess();
+  };
+  
   if (!data) return null;
   
+  // Show success state
+  if (signature) {
+    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="bg-card border-border/50 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-accent" />
+              Refund Claimed!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
+              <CheckCircle className="w-12 h-12 text-accent mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-1">Refund Claimed!</p>
+              <p className="font-heading font-bold text-3xl text-accent">◎{data?.refundAmount.toFixed(4)} SOL</p>
+              <p className="text-xs text-muted-foreground mt-2">Successfully transferred to your wallet</p>
+            </div>
+            
+            <div className="bg-secondary/50 rounded-xl p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Transaction Details</p>
+              <a 
+                href={solanaScanUrl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-2 text-primary text-xs font-bold hover:underline"
+              >
+                View on Solscan <ExternalLink className="w-3 h-3" />
+              </a>
+              <p className="text-[10px] text-muted-foreground mt-1 font-mono">{signature.slice(0, 20)}...{signature.slice(-16)}</p>
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="w-full h-10 text-sm rounded-xl border-border/50"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Show signing state
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-card border-border/50 max-w-md">
@@ -43,7 +97,7 @@ const RefundDialog = ({ open, onClose, data, onSignSuccess }) => {
             instruction={data.solanaInstruction}
             amount={data.refundAmount}
             userBetId={data.userBetId}
-            onSuccess={onSignSuccess}
+            onSuccess={handleSignSuccess}
             onError={() => onClose()}
           />
           
