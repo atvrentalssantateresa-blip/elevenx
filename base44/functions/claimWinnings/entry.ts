@@ -79,8 +79,8 @@ Deno.serve(async (req) => {
     const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
 
     const marketInfo = await connection.getAccountInfo(marketPda);
-    const isVoided = marketInfo && marketInfo.data.length >= 245 && marketInfo.data[245] === 1;
-    const isSettledOnChain = marketInfo && marketInfo.data.length >= 244 && marketInfo.data[244] === 1;
+    const isVoided = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[245] === 1;
+    const isSettledOnChain = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[244] === 1;
 
     const totalPayout = betsToClaim.reduce((sum, b) => sum + (b.actual_payout || b.potential_payout || 0), 0);
     console.log(`✓ Claim: wallet=${trimmedWallet.slice(0, 8)}... | bets=${betsToClaim.length} | total=${totalPayout} SOL | voided=${isVoided}`);

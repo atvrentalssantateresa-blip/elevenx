@@ -83,14 +83,14 @@ Deno.serve(async (req) => {
       const odds = [0,1,2].map(i => Number(d.readBigUInt64LE(156 + i*8)));
       // total_matched: 3 x u64 at offset 180
       const total_matched = [0,1,2].map(i => Number(d.readBigUInt64LE(180 + i*8)));
-      // total_lp_committed at 204, accrued_fees at 212
-      const total_lp_committed = Number(d.readBigUInt64LE(204));
-      const accrued_fees = Number(d.readBigUInt64LE(212));
-      const settled = d[220] === 1;
-      const voided = d[221] === 1;
-      const paused = d[222] === 1;
-      const settlement_finalized = d[223] === 1;
-      const bump = d[224];
+      // total_lp_committed at 228, accrued_fees at 236 (after total_pending 3×8=24 bytes)
+      const total_lp_committed = Number(d.readBigUInt64LE(228));
+      const accrued_fees = Number(d.readBigUInt64LE(236));
+      const settled = d[244] === 1;
+      const voided = d[245] === 1;
+      const paused = d[246] === 1;
+      const settlement_finalized = d[247] === 1;
+      const bump = d[248];
       const now = Math.floor(Date.now() / 1000);
       parsed = {
         open_until, open_until_date: new Date(open_until * 1000).toISOString(),

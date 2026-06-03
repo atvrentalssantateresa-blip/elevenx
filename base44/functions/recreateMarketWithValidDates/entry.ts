@@ -56,10 +56,10 @@ Deno.serve(async (req) => {
     // If market already exists on-chain, issue void_market so we can recreate it fresh with past timestamps
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const accountInfo = await connection.getAccountInfo(marketPda);
-    if (accountInfo && accountInfo.data.length >= 200) {
-      // Parse settled/voided flags from account data (offsets: settled=220, voided=221)
-      const isSettled = accountInfo.data[220] === 1;
-      const isVoided = accountInfo.data[221] === 1;
+    if (accountInfo && accountInfo.data.length >= 249) {
+      // Parse settled/voided flags from account data (correct offsets after total_pending[3×8])
+      const isSettled = accountInfo.data[244] === 1;
+      const isVoided = accountInfo.data[245] === 1;
       console.log('[recreateMarketWithValidDates] Market exists, settled:', isSettled, 'voided:', isVoided);
 
       if (!isVoided && !isSettled) {
