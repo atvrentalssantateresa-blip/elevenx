@@ -33,27 +33,44 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Default: fetch odds via /stats endpoint
-    const res = await fetch(`https://api.thestatsapi.com/api/football/matches/${stats_api_match_id}/stats`, {
+    // Default: fetch odds via /odds endpoint
+    const res = await fetch(`https://api.thestatsapi.com/api/football/matches/${stats_api_match_id}/odds`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
 
     if (!res.ok) {
+      console.error('TheStatsAPI odds fetch failed:', res.status, res.url);
       return Response.json({ error: `Stats API error: ${res.status}` }, { status: res.status });
     }
 
     const json = await res.json();
-    const odds = json?.data?.odds;
-
-    if (!odds) return Response.json({ odds: null, message: 'No odds available yet' });
+    console.log('TheStatsAPI response:', json);
+    
+    // Response structure: { data: { odds: { bet365: { '1x2': { home, draw, away } } } } }
+    const oddsData = json?.data?.odds;
+    
+    if (!oddsData) {
+      return Response.json({ odds: null, message: 'No odds available yet' });
+    }
+    
+    // Extract 1X2 odds from first available bookmaker (bet365 preferred)
+    const bookmaker = oddsData.bet365 || oddsData.pinnacle || oddsData.kambi || oddsData.betfair;
+    
+    if (!bookmaker?.['1x2']) {
+      return Response.json({ odds: null, message: 'No 1X2 odds available' });
+    }
+    
+    const odds1x2 = bookmaker['1x2'];
 
     return Response.json({
       odds: {
-        home: parseFloat(odds.home || 0),
-        draw: parseFloat(odds.draw || 0),
-        away: parseFloat(odds.away || 0),
+        home: parseFloat(odds1x2.home || 0),
+        draw: parseFloat(odds1x2.draw || 0),
+        away: parseFloat(odds1x2.away || 0),
       },
-      bookmaker: 'TheStatsAPI',
+      bookmaker: bookmaker === oddsData.bet365 ? 'Bet365' : 
+                 bookmaker === oddsData.pinnacle ? 'Pinnacle' :
+                 bookmaker === oddsData.kambi ? 'Kambi' : 'Betfair',
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
