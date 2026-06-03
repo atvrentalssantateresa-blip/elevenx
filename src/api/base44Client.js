@@ -10,7 +10,7 @@ const getWalletAuthToken = () => {
   return localStorage.getItem('elevenx_auth_token');
 };
 
-// Create axios client with wallet auth token if available
+// Create axios client with CURRENT wallet auth token (called on each request)
 const createBase44AxiosClient = () => {
   const walletToken = getWalletAuthToken();
   const authToken = walletToken || token;
@@ -24,20 +24,9 @@ const createBase44AxiosClient = () => {
   });
 };
 
-//Create a client with authentication
-export const base44 = createClient({
-  appId,
-  token,
-  functionsVersion,
-  serverUrl: '',
-  requiresAuth: false,
-  appBaseUrl,
-  axiosClient: createBase44AxiosClient(),
-});
-
-// Export a function to refresh the client with latest auth token
-export const refreshBase44Client = () => {
-  const newClient = createClient({
+// Create a client factory that gets a fresh client with current auth on each invoke
+const createBase44Client = () => {
+  return createClient({
     appId,
     token,
     functionsVersion,
@@ -46,5 +35,72 @@ export const refreshBase44Client = () => {
     appBaseUrl,
     axiosClient: createBase44AxiosClient(),
   });
-  return newClient;
 };
+
+// Export a proxy object that intercepts function invokes to use fresh auth
+export const base44 = {
+  entities: {},
+  functions: {
+    invoke: async (functionName, params) => {
+      const client = createBase44Client();
+      return client.functions.invoke(functionName, params);
+    },
+  },
+  auth: {
+    me: async () => {
+      const client = createBase44Client();
+      return client.auth.me();
+    },
+    isAuthenticated: async () => {
+      const client = createBase44Client();
+      return client.auth.isAuthenticated();
+    },
+    logout: (redirectUrl) => {
+      const client = createBase44Client();
+      return client.auth.logout(redirectUrl);
+    },
+    updateMe: (data) => {
+      const client = createBase44Client();
+      return client.auth.updateMe(data);
+    },
+  },
+  users: {
+    inviteUser: (email, role) => {
+      const client = createBase44Client();
+      return client.users.inviteUser(email, role);
+    },
+  },
+  integrations: {},
+};
+
+// Also export direct access to entities for queries (these also need fresh auth)
+const getEntityProxy = () => {
+  return new Proxy({}, {
+    get: (target, entityName) => {
+      return {
+        list: async (sort, limit) => {
+          const client = createBase44Client();
+          return client.entities[entityName].list(sort, limit);
+        },
+        filter: async (query, sort, limit) => {
+          const client = createBase44Client();
+          return client.entities[entityName].filter(query, sort, limit);
+        },
+        create: async (data) => {
+          const client = createBase44Client();
+          return client.entities[entityName].create(data);
+        },
+        update: async (id, data) => {
+          const client = createBase44Client();
+          return client.entities[entityName].update(id, data);
+        },
+        delete: async (id) => {
+          const client = createBase44Client();
+          return client.entities[entityName].delete(id);
+        },
+      };
+    },
+  });
+};
+
+base44.entities = getEntityProxy();
