@@ -51,21 +51,19 @@ Deno.serve(async (req) => {
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
 
-    // Use new pari-mutuel PDA seeds
+    // Correct on-chain program seeds (must match Solana program)
     const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_market'), matchIdBytes],
+      [Buffer.from('market'), matchIdBytes],
       programId
     );
     
-    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;
-    
     const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
       programId
     );
     
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('pm_fee_vault')],
+      [Buffer.from('fee_vault')],
       programId
     );
 
