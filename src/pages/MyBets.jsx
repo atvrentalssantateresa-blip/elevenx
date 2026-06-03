@@ -356,16 +356,10 @@ export default function MyBets() {
           icon={Shield}
           color="bg-yellow-500/10 text-yellow-400" />
         
-        <QuickStat
-          label="LP Positions"
-          value={activeLpOffers.length}
-          icon={TrendingUp}
-          color="bg-primary/10 text-primary" />
-        
       </div>
 
       <Tabs defaultValue="active" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-card border border-border/50 rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 bg-card border border-border/50 rounded-xl">
           <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
             <Clock className="w-4 h-4 mr-2" />
             Active ({activeBets.length})
@@ -374,10 +368,6 @@ export default function MyBets() {
             <Trophy className="w-4 h-4 mr-2" />
             Pending Claims ({pendingClaims.length})
           </TabsTrigger>
-          
-
-
-          
           <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg">
             <BarChart3 className="w-4 h-4 mr-2" />
             History ({completedBets.filter((b) => b.status !== 'won').length})
