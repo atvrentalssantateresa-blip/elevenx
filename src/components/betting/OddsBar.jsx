@@ -28,11 +28,16 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
         const matches = res.data.matches || [];
         console.log('API returned', matches.length, 'matches');
         
-        // Find matching teams in the response
-        const matchedOdds = matches.find(m => 
-          (m.home_team === match.team_a && m.away_team === match.team_b) ||
-          (m.home_team === match.team_b && m.away_team === match.team_a)
-        );
+        // Find matching teams in the response (handle name variations)
+        const matchedOdds = matches.find(m => {
+          const homeMatch = m.home_team.toLowerCase() === match.team_a.toLowerCase() || 
+                           m.home_team.toLowerCase().includes(match.team_a.toLowerCase());
+          const awayMatch = m.away_team.toLowerCase() === match.team_b.toLowerCase() || 
+                           m.away_team.toLowerCase().includes(match.team_b.toLowerCase());
+          const reverseHome = m.home_team.toLowerCase() === match.team_b.toLowerCase();
+          const reverseAway = m.away_team.toLowerCase() === match.team_a.toLowerCase();
+          return (homeMatch && awayMatch) || (reverseHome && reverseAway);
+        });
         
         if (matchedOdds) {
           console.log('Found live odds:', matchedOdds.odds);
@@ -90,6 +95,11 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
 
   return (
     <div className="space-y-3">
+      {loading && (
+        <div className="text-center py-2 text-xs text-muted-foreground">
+          Fetching live odds...
+        </div>
+      )}
       <div className="flex gap-3 flex-wrap">
         {outcomes.map((o) => {
           const c = colorMap[o.color];
@@ -114,9 +124,14 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
               </div>
 
               {/* Fixed odds — the headline number */}
-              <p className={`text-2xl font-heading font-black mt-1 ${isSelected ? c.text : 'text-foreground'}`}>
-                {odds}x
-              </p>
+              <div className="flex items-center gap-2">
+                <p className={`text-2xl font-heading font-black mt-1 ${isSelected ? c.text : 'text-foreground'}`}>
+                  {odds}x
+                </p>
+                {liveOdds && o.key === 'a' && (
+                  <span className="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded font-bold">LIVE</span>
+                )}
+              </div>
 
               {/* LP liquidity available */}
               <p className="text-[10px] text-muted-foreground mt-1">
