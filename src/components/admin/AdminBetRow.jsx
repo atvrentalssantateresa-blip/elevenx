@@ -82,6 +82,9 @@ export default function AdminBetRow({ bet, matches, index }) {
 
   const settleOnChainMutation = useMutation({
     mutationFn: async (winningOutcome) => {
+      if (!walletAddress) {
+        throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
+      }
       console.log('[AdminBetRow] Settling market:', { bet_id: bet.id, winning_outcome: winningOutcome, walletAddress });
       const onChainRes = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
@@ -101,6 +104,10 @@ export default function AdminBetRow({ bet, matches, index }) {
         queryClient.invalidateQueries({ queryKey: ['myBets'] });
         alert('Market settled on-chain!');
       }
+    },
+    onError: (err) => {
+      console.error('[AdminBetRow] Settlement error:', err);
+      handleSettleError(err);
     },
   });
 
