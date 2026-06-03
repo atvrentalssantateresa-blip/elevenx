@@ -127,7 +127,14 @@ const COUNTRY_FLAGS = {
   'haiti': '🇭🇹',
   'cuba': '🇨🇺',
   'curacao': '🇨🇼',
+  'curaçao': '🇨🇼',
   'barbados': '🇧🇧',
+  
+  // Special characters / alternate spellings
+  'türkiye': '🇹🇷',
+  'turkey': '🇹🇷',
+  'côte d\'ivoire': '🇨🇮',
+  'cote d\'ivoire': '🇨🇮',
 };
 
 // Convert country code to emoji flag
