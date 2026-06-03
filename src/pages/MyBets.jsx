@@ -374,10 +374,10 @@ export default function MyBets() {
             <Trophy className="w-4 h-4 mr-2" />
             Pending Claims ({pendingClaims.length})
           </TabsTrigger>
-          <TabsTrigger value="lp" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg hidden">
-            <TrendingUp className="w-4 h-4 mr-2 hidden" />
-            LP ({activeLpOffers.length})
-          </TabsTrigger>
+          
+
+
+          
           <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg">
             <BarChart3 className="w-4 h-4 mr-2" />
             History ({completedBets.filter((b) => b.status !== 'won').length})
