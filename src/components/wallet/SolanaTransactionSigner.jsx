@@ -465,6 +465,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
             101: 'Invalid instruction data or discriminator',
             3007: 'Platform not initialized',
             3012: 'Unauthorized - your wallet is not registered as admin in platform config',
+            6005: 'Constraint violation - account constraints not satisfied',
           };
           const errorMsg = errorMessages[customCode] || `Program error ${customCode}`;
           throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
