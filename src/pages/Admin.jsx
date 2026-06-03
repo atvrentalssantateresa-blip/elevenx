@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import AdminMatchRow from '@/components/admin/AdminMatchRow';
 import AdminBetRow from '@/components/admin/AdminBetRow';
+import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
 import CreateFuturesMarket from '@/components/admin/CreateFuturesMarket';
 
 export default function Admin() {
@@ -81,7 +82,6 @@ export default function Admin() {
 
   const [syncResult, setSyncResult] = useState(null);
   const [pendingPlatformInit, setPendingPlatformInit] = useState(null);
-  const [pendingFuturesInit, setPendingFuturesInit] = useState({});
   const [platformInitialized, setPlatformInitialized] = useState(false);
 
   useEffect(() => {
@@ -369,138 +369,13 @@ export default function Admin() {
             <div>
               <h2 className="font-heading font-bold text-lg flex items-center gap-2">
                 <Flame className="w-5 h-5 text-primary" />
-                Futures Markets ({futuresMarkets.length})
+                Futures Markets
               </h2>
-              <p className="text-xs text-muted-foreground mt-1">Create and manage long-term betting markets</p>
+              <p className="text-xs text-muted-foreground mt-1">Pre-set markets with all countries from API</p>
             </div>
-            <CreateFuturesMarket onSuccess={() => queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })} />
           </div>
 
-          <div className="bg-accent/10 border border-accent/20 rounded-xl p-4">
-            <p className="text-sm font-bold text-accent mb-1">📅 Futures Market Timeline</p>
-            <p className="text-xs text-muted-foreground">
-              • <strong>World Cup Final:</strong> July 19, 2026 at 1:00 PM (Costa Rica Time)<br/>
-              • <strong>Betting Closes:</strong> Final kickoff (1:00 PM)<br/>
-              • <strong>Settlement Available:</strong> 2 hours after final ends (3:00 PM + 2hrs = 5:00 PM)
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            {futuresMarkets.map((futures, i) => {
-                const isInitialized = futures.solana_market_created || futures.solana_market_pda;
-                const isSettled = futures.status === 'settled';
-                
-                return (
-                  <motion.div
-                    key={futures.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="p-4 bg-card border border-border/50 rounded-xl"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{futures.icon}</span>
-                          <p className="font-heading font-bold text-sm">{futures.title}</p>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">{futures.subtitle}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {futures.outcomes?.length || 0} outcomes · ◎{(futures.total_volume || 0).toFixed(2)} volume
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isSettled && (
-                          <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> Settled
-                          </Badge>
-                        )}
-                        {isInitialized && !isSettled && (
-                          <Badge className="bg-primary/20 text-primary text-[10px] py-1 px-3 rounded-lg">
-                            <CheckCircle2 className="w-3 h-3 mr-1" /> On-Chain
-                          </Badge>
-                        )}
-                        {!isInitialized && (
-                          <Badge className="bg-secondary text-secondary-foreground text-[10px] py-1 px-3 rounded-lg">
-                            Draft
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-3">
-                      {!isInitialized ? (
-                        pendingFuturesInit?.[futures.id] ? (
-                          <div className="w-full">
-                            <SolanaTransactionSigner
-                              instruction={pendingFuturesInit[futures.id]}
-                              amount={0}
-                              onSuccess={() => {
-                                setPendingFuturesInit(prev => {
-                                  const next = { ...prev };
-                                  delete next[futures.id];
-                                  return next;
-                                });
-                                queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
-                              }}
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setPendingFuturesInit(prev => {
-                                const next = { ...prev };
-                                delete next[futures.id];
-                                return next;
-                              })}
-                              className="w-full mt-2 h-8 text-xs"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const res = await base44.functions.invoke('createFuturesMarketOnChain', {
-                                  futures_market_id: futures.id,
-                                });
-                                if (res.data.error) throw new Error(res.data.error);
-                                if (res.data.solana_instruction) {
-                                  setPendingFuturesInit(prev => ({ ...prev, [futures.id]: res.data.solana_instruction }));
-                                } else if (res.data.alreadyExists) {
-                                  alert('Market already exists on-chain!');
-                                  queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
-                                }
-                              } catch (err) {
-                                alert('Failed to initialize: ' + err.message);
-                              }
-                            }}
-                            className="h-8 text-xs bg-primary hover:bg-primary/90 rounded-lg"
-                          >
-                            Initialize on Solana
-                          </Button>
-                        )
-                      ) : isSettled ? (
-                        <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-center flex-1">
-                          <p className="text-xs text-accent font-bold">✓ Market Settled</p>
-                          <p className="text-[10px] text-accent/80 mt-1">Winners can claim payouts</p>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => alert('Settlement will be available after the World Cup Final ends (July 19, 2026 at 3:00 PM Costa Rica Time)')}
-                          className="h-8 text-xs border-accent/30 text-accent hover:bg-accent/10 rounded-lg"
-                        >
-                          <Trophy className="w-3 h-3 mr-1" /> Settle Market
-                        </Button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+          <AdminFuturesPanel />
         </TabsContent>
       </Tabs>
     </div>
