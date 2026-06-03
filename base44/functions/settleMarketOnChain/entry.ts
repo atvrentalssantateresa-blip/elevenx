@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
     console.log(`[settleMarketOnChain] Settling bet ${bet_id} with outcome ${winning_outcome} (index: ${outcomeIndex})`);
 
     // Build instruction data: 8-byte Anchor discriminator + u8 outcome
-    // Using emergency_settle_market for admin manual settlement
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:emergency_settle_market'));
+    // Using emergency_settle for admin manual settlement
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:emergency_settle'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
     
     const data = Buffer.alloc(9);
