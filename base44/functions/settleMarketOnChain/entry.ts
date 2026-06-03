@@ -57,13 +57,23 @@ Deno.serve(async (req) => {
     if (!match) return Response.json({ error: 'Match not found' }, { status: 404 });
 
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
-    const matchIdBytes = Buffer.alloc(32);
-    Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
-
-    const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('market'), matchIdBytes],
-      programId
-    );
+    
+    // Use the bet's stored solana_market_pda if available (from createMarketOnChain)
+    let marketPda;
+    if (bet.solana_market_pda) {
+      marketPda = new PublicKey(bet.solana_market_pda);
+      console.log('[settleMarketOnChain] Using stored market PDA:', marketPda.toBase58());
+    } else {
+      // Fallback: derive from match_id
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
+      const [derivedPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('market'), matchIdBytes],
+        programId
+      );
+      marketPda = derivedPda;
+      console.log('[settleMarketOnChain] Derived market PDA:', marketPda.toBase58());
+    }
 
     const [platformPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('platform')],
@@ -74,6 +84,12 @@ Deno.serve(async (req) => {
       [Buffer.from('fee_vault')],
       programId
     );
+
+    console.log('[settleMarketOnChain] PDAs:', {
+      market: marketPda.toBase58(),
+      platform: platformPda.toBase58(),
+      fee_vault: feeVaultPda.toBase58(),
+    });
 
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
 
