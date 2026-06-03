@@ -14,11 +14,7 @@ import PlaceBetPanel from '@/components/betting/PlaceBetPanel';
 import StatsApiMatchSearch from '@/components/betting/StatsApiMatchSearch';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import { useWallet } from '@/lib/WalletContext';
-
-const getFlagEmoji = (countryCode) => {
-  if (!countryCode) return '🏳️';
-  return countryCode.toUpperCase().split('').map((c) => String.fromCodePoint(c.charCodeAt(0) + 127397)).join('');
-};
+import { getTeamFlag } from '@/utils/flags';
 
 export default function MatchDetail() {
   const { matchId } = useParams();
@@ -239,7 +235,7 @@ export default function MatchDetail() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 text-center">
             <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center text-5xl shadow-lg">
-              {getFlagEmoji(match.team_a_flag)}
+              {getTeamFlag(match.team_a, match.team_a_flag)}
             </div>
             <p className="font-heading font-black text-lg">{match.team_a}</p>
           </div>
@@ -256,7 +252,7 @@ export default function MatchDetail() {
           </div>
           <div className="flex-1 text-center">
             <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-5xl shadow-lg">
-              {getFlagEmoji(match.team_b_flag)}
+              {getTeamFlag(match.team_b, match.team_b_flag)}
             </div>
             <p className="font-heading font-black text-lg">{match.team_b}</p>
           </div>
