@@ -472,7 +472,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
     }
   };
 
-  if (signature) {
+  if (signature && !userBetId) {
+    // Only show internal success UI if NOT a refund/claim (those have custom parent dialogs)
     const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
     
     // Determine transaction type message
