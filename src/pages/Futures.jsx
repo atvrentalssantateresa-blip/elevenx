@@ -154,8 +154,9 @@ export default function Futures() {
 
           {/* Group-by-Group Markets */}
           {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+            // Filter for country-specific markets (not tournament-wide)
             const groupMarkets = futuresMarkets.filter(m => 
-              teams.some(t => t.name === m.country)
+              m.country && teams.some(t => t.name === m.country)
             );
             const hasMarkets = groupMarkets.length > 0;
 
@@ -225,22 +226,32 @@ export default function Futures() {
 
 
 
-          {/* Empty state */}
-          {futuresMarkets.length === 0 && (
-            <div className="text-center py-12">
-              <Trophy className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h3 className="font-heading font-bold text-lg mb-2">No Futures Markets Yet</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Create your first futures market from the admin panel
-              </p>
-              <Button
-                onClick={() => window.location.href = '/admin'}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Go to Admin
-              </Button>
+          {/* Info banner - country markets status */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-2xl p-5"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                <Globe className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-heading font-bold text-sm text-foreground mb-1">Country Markets Status</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {futuresMarkets.filter(m => m.country).length} country markets active. 
+                  Tournament markets shown above. Create individual country markets from Admin to unlock all 48 teams.
+                </p>
+                <Button
+                  onClick={() => window.location.href = '/admin'}
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90 text-xs font-bold h-9"
+                >
+                  Create Country Markets →
+                </Button>
+              </div>
             </div>
-          )}
+          </motion.div>
 
           {/* CTA banner */}
           <motion.div
