@@ -131,6 +131,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           if (!accounts.platformConfig) {
             throw new Error('Missing platformConfig account in instruction');
           }
+          if (!accounts.admin) {
+            throw new Error('Missing admin account in instruction');
+          }
           
           keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
           keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
