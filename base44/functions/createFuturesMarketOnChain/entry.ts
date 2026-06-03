@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     // Fetch futures market from database
     const futuresMarkets = await base44.entities.FuturesMarket.filter({ id: futures_market_id });
     const futuresMarket = futuresMarkets[0];
-    if (!futures) return Response.json({ error: 'Futures market not found' }, { status: 404 });
+    if (!futuresMarket) return Response.json({ error: 'Futures market not found' }, { status: 404 });
 
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
@@ -82,8 +82,8 @@ Deno.serve(async (req) => {
     // Prepare create_market instruction
     const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
 
-    // Build outcome names array (support up to 48 teams for World Cup)
-    const maxOutcomes = Math.min(futuresMarket.outcomes?.length || 0, 48);
+    // Build outcome names array (limit to 16 outcomes to stay within transaction size limits)
+    const maxOutcomes = Math.min(futuresMarket.outcomes?.length || 0, 16);
     const outcomeNames = Array.from({ length: maxOutcomes }, () => Buffer.alloc(32));
     
     futuresMarket.outcomes?.forEach((outcome, i) => {
