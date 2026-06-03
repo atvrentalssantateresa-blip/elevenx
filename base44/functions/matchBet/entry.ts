@@ -81,9 +81,33 @@ Deno.serve(async (req) => {
     // Load offer
     const offers = await base44.entities.BetOffer.filter({ id: offer_id });
     const offer = offers[0];
-    if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
+    if (!offer) {
+      console.error('[matchBet] Offer not found:', { offer_id });
+      return Response.json({ error: 'Offer not found', offer_id }, { status: 404 });
+    }
+    
+    console.log('[matchBet] Loaded offer:', {
+      id: offer.id,
+      status: offer.status,
+      outcome: offer.outcome,
+      amount_unmatched: offer.amount_unmatched,
+      lp_wallet_address: offer.lp_wallet_address?.slice(0, 8) + '...',
+      solana_bet_pool_pda: offer.solana_bet_pool_pda,
+      solana_position_pda: offer.solana_position_pda,
+    });
+    
     if (offer.status === 'cancelled' || offer.status === 'fully_matched') {
-      return Response.json({ error: 'Offer is no longer available' }, { status: 400 });
+      return Response.json({ error: 'Offer is no longer available', status: offer.status }, { status: 400 });
+    }
+    
+    // Check if offer has required LP wallet address
+    if (!offer.lp_wallet_address) {
+      console.error('[matchBet] Offer missing lp_wallet_address:', { offer_id: offer.id, offer });
+      return Response.json({ 
+        error: 'Invalid offer: LP wallet address missing',
+        hint: 'This offer was created before wallet tracking. LP should delete and recreate it.',
+        offer_id: offer.id,
+      }, { status: 400 });
     }
 
     // Load bet/market
@@ -99,6 +123,14 @@ Deno.serve(async (req) => {
     }
 
     // Validate LP wallet address exists
+    console.log('[matchBet] Offer data:', {
+      offer_id: offer.id,
+      lp_wallet_address: offer.lp_wallet_address,
+      outcome: offer.outcome,
+      amount_unmatched: offer.amount_unmatched,
+      status: offer.status,
+    });
+    
     if (!offer.lp_wallet_address) {
       console.error('[matchBet] Offer missing lp_wallet_address:', {
         offer_id: offer_id,
@@ -145,21 +177,66 @@ Deno.serve(async (req) => {
     const amountLamports = Math.round(amount * 1_000_000_000);
 
     // Derive the actual LP offer PDA using the LP's wallet from the offer
-    let lpPubkey;
+    let lpPubkey, lpOfferPda;
     try {
       lpPubkey = new PublicKey(offer.lp_wallet_address);
+      console.log('[matchBet] LP pubkey created:', lpPubkey.toBase58());
+      
+      [lpOfferPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+        programId
+      );
+      console.log('[matchBet] LP offer PDA derived:', lpOfferPda.toBase58());
     } catch (e) {
-      return Response.json({ 
-        error: 'Invalid LP wallet address in offer',
-        hint: e.message,
+      console.error('[matchBet] Failed to derive LP offer PDA:', {
+        marketPda: marketPda?.toBase58(),
         lp_wallet_address: offer.lp_wallet_address,
+        outcomeIndex,
+        error: e.message,
+      });
+      return Response.json({ 
+        error: 'Failed to process offer - invalid LP data',
+        hint: e.message,
       }, { status: 500 });
     }
+
+    // Create UserBet record for the matcher
+    const userBet = await serviceRole.entities.UserBet.create({
+      bet_id: offer.bet_id,
+      match_id: offer.match_id,
+      offer_id: offer.id,
+      role: 'matcher',
+      outcome: bettor_outcome,
+      outcome_label: bettor_outcome_label,
+      amount,
+      potential_payout,
+      status: 'active',
+      match_title: bet.title,
+      wallet_address: trimmedWallet,
+    });
+    console.log('[matchBet] Created UserBet:', userBet.id);
+
+    // Update BetOffer: increase amount_matched, decrease amount_unmatched
+    const newMatched = (offer.amount_matched || 0) + amount;
+    const newUnmatched = (offer.amount_unmatched || 0) - amount;
+    const newStatus = newUnmatched <= 0.0001 ? 'fully_matched' : 'partially_matched';
     
-    const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
-      programId
-    );
+    await serviceRole.entities.BetOffer.update(offer.id, {
+      amount_matched: newMatched,
+      amount_unmatched: newUnmatched,
+      status: newStatus,
+    });
+    console.log('[matchBet] Updated BetOffer:', { newMatched, newUnmatched, newStatus });
+
+    // Update Bet pool totals and bettor count
+    const poolKey = `pool_${offer.outcome}`;
+    const currentPool = bet[poolKey] || 0;
+    await serviceRole.entities.Bet.update(bet.id, {
+      [poolKey]: currentPool + amount,
+      total_pool: (bet.total_pool || 0) + amount,
+      total_bettors: (bet.total_bettors || 0) + 1,
+    });
+    console.log('[matchBet] Updated Bet pools');
 
     console.log('[matchBet] Preparing place_bet instruction:', {
       bettor_outcome,
@@ -189,6 +266,16 @@ Deno.serve(async (req) => {
       message: `✓ Bet matched! ◎${amount.toFixed(4)} on ${bettor_outcome_label} to win ◎${potential_payout.toFixed(4)} — transaction will be recorded on Solana`,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[matchBet] Unexpected error:', {
+      message: error.message,
+      stack: error.stack,
+      offer_id,
+      amount,
+      wallet_address: wallet_address?.slice(0, 8) + '...',
+    });
+    return Response.json({ 
+      error: error.message || 'Failed to match bet',
+      hint: 'Check console logs for details',
+    }, { status: 500 });
   }
 });
