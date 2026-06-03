@@ -76,7 +76,24 @@ export default function AdminMatchRow({ match, bets, index }) {
     },
   });
 
-  const handleMarketInitSuccess = (txResult) => {
+  const handleMarketInitSuccess = async (txResult) => {
+    const signature = txResult.signature;
+    console.log('[AdminMatchRow] Market creation transaction confirmed:', signature);
+    
+    // Commit the market data to database AFTER successful on-chain transaction
+    const betIdToCommit = txResult.betId || pendingMarketInit?.betId;
+    if (betIdToCommit) {
+      try {
+        await base44.entities.Bet.update(betIdToCommit, { 
+          solana_market_pda: pendingMarketInit?.instruction?.accounts?.market,
+          solana_market_created: true,
+        });
+        console.log('[AdminMatchRow] Updated bet with solana_market_pda after successful transaction');
+      } catch (err) {
+        console.error('[AdminMatchRow] Failed to update bet:', err);
+      }
+    }
+    
     setPendingMarketInit(null);
     queryClient.invalidateQueries({ queryKey: ['bets'] });
     queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
@@ -177,6 +194,7 @@ export default function AdminMatchRow({ match, bets, index }) {
             <SolanaTransactionSigner
               instruction={pendingMarketInit.instruction}
               amount={0}
+              betId={pendingMarketInit.betId}
               onSuccess={handleMarketInitSuccess}
               onError={handleMarketInitError}
             />

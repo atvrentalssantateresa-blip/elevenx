@@ -13,8 +13,8 @@ async function anchorDiscriminator(name) {
   return Buffer.from(new Uint8Array(hash).slice(0, 8));
 }
 
-export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, isOffer, isPlatformInit, batchBetIds, onSuccess, onError }) {
-  // userBetId, offerId, isOffer, isPlatformInit, batchBetIds are optional - used for tracking DB records or flow control after transaction
+export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds, onSuccess, onError }) {
+  // userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds are optional - used for tracking DB records or flow control after transaction
   const { isConnected, connect } = useWallet();
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState(null);
@@ -538,7 +538,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       // Only set signature after successful confirmation
       setSignature(sig);
       console.log('Transaction confirmed on-chain!');
-      onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId, isPlatformInit: isPlatformInit || false });
+      onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId, betId, isPlatformInit: isPlatformInit || false });
     } catch (err) {
       console.error('[SolanaTransactionSigner] Transaction error:', err);
       console.error('[SolanaTransactionSigner] Error stack:', err.stack);

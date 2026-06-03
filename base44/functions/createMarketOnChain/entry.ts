@@ -188,18 +188,12 @@ Deno.serve(async (req) => {
       message: payload.force_recreate === true 
         ? 'Sign to RECREATE market with updated odds (this will overwrite existing market data)' 
         : 'Sign to create pari-mutuel market on-chain',
+      // Return bet_id so frontend can commit after transaction succeeds
+      bet_id: bet.id,
     };
     
-    // Store the market PDA in the bet record for future reference
-    try {
-      await base44.entities.Bet.update(bet.id, { 
-        solana_market_pda: marketPda.toBase58(),
-        solana_market_created: true,
-      });
-      console.log('[createMarketOnChain] Updated bet with solana_market_pda:', marketPda.toBase58());
-    } catch (updateErr) {
-      console.error('[createMarketOnChain] Failed to update bet:', updateErr);
-    }
+    // DO NOT update database here - wait for transaction to succeed on-chain first
+    // Frontend should commit the solana_market_pda after successful transaction
     
     return Response.json(response);
 
