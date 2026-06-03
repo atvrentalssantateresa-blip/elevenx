@@ -44,6 +44,8 @@ export const base44 = {
   functions: {
     invoke: async (functionName, params) => {
       const client = createBase44Client();
+      const authToken = localStorage.getItem('elevenx_auth_token');
+      console.log('[base44Client] Invoking:', functionName, 'Auth token present:', !!authToken, 'Token preview:', authToken ? authToken.slice(0, 20) + '...' : 'none');
       return client.functions.invoke(functionName, params);
     },
   },
