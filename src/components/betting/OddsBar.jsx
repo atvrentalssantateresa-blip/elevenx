@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { base44 } from '@/api/base44Client';
 
 // Helper to convert country code to flag emoji
 function getFlagEmoji(countryCode) {
@@ -10,9 +11,40 @@ function getFlagEmoji(countryCode) {
 
 /**
  * Fixed-odds outcome selector.
- * Shows oracle-fixed odds (e.g. 2.10x) for each outcome and available LP liquidity.
+ * Shows live market odds from The Odds API for each outcome.
  */
 export default function OddsBar({ bet, match, selected, onSelect, canSelect = true }) {
+  const [liveOdds, setLiveOdds] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!match?.team_a || !match?.team_b) return;
+
+    const fetchLiveOdds = async () => {
+      try {
+        setLoading(true);
+        const res = await base44.functions.invoke('fetchTheOddsApi', {});
+        const matches = res.data.matches || [];
+        
+        // Find matching teams in the response
+        const matchedOdds = matches.find(m => 
+          (m.home_team === match.team_a && m.away_team === match.team_b) ||
+          (m.home_team === match.team_b && m.away_team === match.team_a)
+        );
+        
+        if (matchedOdds) {
+          setLiveOdds(matchedOdds.odds);
+        }
+      } catch (err) {
+        console.error('Failed to fetch live odds:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLiveOdds();
+  }, [match?.team_a, match?.team_b]);
+
   if (!bet) return null;
 
   const outcomes = [
@@ -20,27 +52,27 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
       key: 'a',
       label: bet.outcome_a,
       flag: getFlagEmoji(match?.team_a_flag),
-      oddsBps: bet.oracle_odds_a || 200,
-      liquidity: bet.lp_amount_a || 0,
-      matched: bet.backed_amount_a || 0,
+      odds: liveOdds?.home || (bet.odds_a / 100),
+      liquidity: bet.pool_a || 0,
+      matched: bet.pool_a || 0,
       color: 'primary',
     },
     ...(bet.outcome_draw ? [{
       key: 'draw',
       label: bet.outcome_draw || 'Draw',
       flag: '🤝',
-      oddsBps: bet.oracle_odds_draw || 300,
-      liquidity: bet.lp_amount_draw || 0,
-      matched: bet.backed_amount_draw || 0,
+      odds: liveOdds?.draw || (bet.odds_draw / 100),
+      liquidity: bet.pool_draw || 0,
+      matched: bet.pool_draw || 0,
       color: 'yellow',
     }] : []),
     {
       key: 'b',
       label: bet.outcome_b,
       flag: getFlagEmoji(match?.team_b_flag),
-      oddsBps: bet.oracle_odds_b || 300,
-      liquidity: bet.lp_amount_b || 0,
-      matched: bet.backed_amount_b || 0,
+      odds: liveOdds?.away || (bet.odds_b / 100),
+      liquidity: bet.pool_b || 0,
+      matched: bet.pool_b || 0,
       color: 'accent',
     },
   ];
@@ -56,7 +88,7 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
       <div className="flex gap-3 flex-wrap">
         {outcomes.map((o) => {
           const c = colorMap[o.color];
-          const odds = (o.oddsBps / 100).toFixed(2);
+          const odds = typeof o.odds === 'number' ? o.odds.toFixed(2) : '0.00';
           const available = (o.liquidity - o.matched).toFixed(2);
           const isSelected = selected === o.key;
 
