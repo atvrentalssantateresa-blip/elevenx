@@ -34,3 +34,17 @@ export const base44 = createClient({
   appBaseUrl,
   axiosClient: createBase44AxiosClient(),
 });
+
+// Export a function to refresh the client with latest auth token
+export const refreshBase44Client = () => {
+  const newClient = createClient({
+    appId,
+    token,
+    functionsVersion,
+    serverUrl: '',
+    requiresAuth: false,
+    appBaseUrl,
+    axiosClient: createBase44AxiosClient(),
+  });
+  return newClient;
+};

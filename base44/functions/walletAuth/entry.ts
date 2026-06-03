@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
           try {
             await serviceRole.entities.WalletUser.create({
               wallet_address: userWallet,
+              username: userWallet.slice(0, 8),
             });
             console.log('✓ Created WalletUser record for existing user:', user.id);
           } catch (wuErr) {
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
         // Also create WalletUser record for betting authorization
         await serviceRole.entities.WalletUser.create({
           wallet_address: walletAddress,
+          username: walletAddress.slice(0, 8),
         });
         
         console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);

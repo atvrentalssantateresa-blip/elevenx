@@ -103,6 +103,11 @@ export function WalletProvider({ children }) {
           // Store auth token in localStorage for backend auth
           localStorage.setItem('elevenx_auth_token', authRes.data.authToken);
           console.log('[WalletContext] Auth token stored');
+          
+          // Reload page to ensure base44 client uses new token
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
         }
         
         if (authRes.data.isNewUser) {

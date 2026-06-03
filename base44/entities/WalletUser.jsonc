@@ -28,7 +28,6 @@
     }
   },
   "required": [
-    "wallet_address",
-    "username"
+    "wallet_address"
   ]
 }
