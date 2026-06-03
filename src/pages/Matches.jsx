@@ -17,10 +17,10 @@ export default function Matches() {
     queryFn: () => base44.entities.Match.list('match_time', 100),
   });
 
-  // Deduplicate matches by unique game properties
+  // Deduplicate matches by unique game properties (team_a, team_b, match_time)
   const seenMatches = new Set();
   const matches = rawMatches.filter(m => {
-    const matchKey = `${m.team_a}|${m.team_b}|${m.group_stage || ''}|${m.match_time || ''}`;
+    const matchKey = `${m.team_a?.toLowerCase?.() || ''}|${m.team_b?.toLowerCase?.() || ''}|${m.match_time || ''}`;
     if (seenMatches.has(matchKey)) return false;
     seenMatches.add(matchKey);
     return true;
