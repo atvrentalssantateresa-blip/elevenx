@@ -34,7 +34,8 @@ Deno.serve(async (req) => {
     const encoder = new TextEncoder();
     
     try {
-      const payloadBytes = bs58.decode(parts[1]);
+      // Decode payload (base64, not base58 - standard JWT format)
+      const payloadBytes = Buffer.from(parts[1], 'base64');
       const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
       
       console.log('[initPlatformConfig] Decoded token payload:', payload);
