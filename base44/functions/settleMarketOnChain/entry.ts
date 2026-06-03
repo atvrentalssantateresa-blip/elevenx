@@ -119,8 +119,8 @@ Deno.serve(async (req) => {
 
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
 
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:emergency_settle'));
-    const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
+    const { sha256 } = await import('npm:@noble/hashes@1.4.0/sha256');
+    const discriminator = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
     
     const data = Buffer.alloc(9);
     discriminator.copy(data, 0);

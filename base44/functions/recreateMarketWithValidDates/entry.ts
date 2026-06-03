@@ -53,6 +53,24 @@ Deno.serve(async (req) => {
       programId
     );
 
+    // If market already exists on-chain, no need to recreate — just update DB timestamps
+    const connection = new (await import('npm:@solana/web3.js@1.98.4')).Connection('https://api.devnet.solana.com', 'confirmed');
+    const accountInfo = await connection.getAccountInfo(marketPda);
+    if (accountInfo && accountInfo.data.length >= 200) {
+      console.log('[recreateMarketWithValidDates] Market already exists, skipping recreate');
+      // Update DB timestamps so admin UI shows it as settleable
+      await base44.asServiceRole.entities.Bet.update(bet_id, {
+        open_until: new Date(Date.now() - 7200000).toISOString(),
+        status: 'closed',
+      });
+      return Response.json({
+        success: true,
+        marketPda: marketPda.toBase58(),
+        alreadyExists: true,
+        message: 'Market already exists on-chain. DB updated — you can now settle directly.',
+      });
+    }
+
     // Set timestamps in the past so settlement is allowed immediately
     const now = Math.floor(Date.now() / 1000);
     const openUntil = now - 7200;  // 2 hours ago (betting window closed)
