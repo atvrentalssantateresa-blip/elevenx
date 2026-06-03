@@ -4,10 +4,11 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, DollarSign, Target, Flame, Shield, BarChart3, Activity, Award, TrendingUp, Clock, Wallet } from 'lucide-react';
+import { Trophy, DollarSign, Target, Flame, Shield, BarChart3, Activity, Award, TrendingUp, Clock, Wallet, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import StatCard from '@/components/dashboard/StatCard';
 import QuickStat from '@/components/dashboard/QuickStat';
@@ -117,6 +118,7 @@ export default function MyBets() {
   const [refundDialog, setRefundDialog] = useState(null);
   const [claimData, setClaimData] = useState(null);
   const [batchClaimMatchId, setBatchClaimMatchId] = useState(null);
+  const [pendingWithdrawTx, setPendingWithdrawTx] = useState(null);
 
   const getWalletAddress = () => {
     const walletSession = localStorage.getItem('elevenx_wallet_session');
@@ -143,6 +145,30 @@ export default function MyBets() {
     refetchOnMount: true,
   });
 
+  // LP offers for the LP tab
+  const { data: allOffers = [] } = useQuery({
+    queryKey: ['allOffers'],
+    queryFn: () => base44.entities.BetOffer.list('-created_date', 100),
+  });
+  const { data: matches = [] } = useQuery({
+    queryKey: ['matches'],
+    queryFn: () => base44.entities.Match.list(),
+  });
+  const lpOffers = allOffers.filter(o => o.lp_wallet_address === walletAddress);
+  const activeLpOffers = lpOffers.filter(o => o.status === 'open' || o.status === 'partially_matched');
+  const settledLpOffers = lpOffers.filter(o => ['fully_matched', 'settled', 'cancelled'].includes(o.status));
+  
+  const getMatchTitle = (matchId) => {
+    const m = matches.find(m => m.id === matchId);
+    return m ? `${m.team_a} vs ${m.team_b}` : 'Unknown';
+  };
+  
+  const getOutcomeLabel = (offer) => {
+    if (offer.outcome === 'a') return offer.outcome_label || 'Team A';
+    if (offer.outcome === 'b') return offer.outcome_label || 'Team B';
+    return 'Draw';
+  };
+
   const totalStaked = myBets.reduce((s, b) => s + (b.amount || 0), 0);
   const totalWon = myBets.filter(b => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
   const activeBets = myBets.filter(b => b.status === 'active' || b.status === 'pending');
@@ -165,6 +191,53 @@ export default function MyBets() {
   const handleRefundSuccess = () => {
     setRefundDialog(null);
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
+  };
+
+  const withdrawLpMutation = useMutation({
+    mutationFn: async (offer) => {
+      const res = await base44.functions.invoke('withdrawLiquidity', {
+        walletAddress,
+        userBetId: offer.userBetId,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setPendingWithdrawTx({
+        instruction: data.solana_instruction,
+        amount: data.amount,
+        userBetId: data.userBetId,
+        offerId: data.offerId,
+      });
+    },
+    onError: (err) => {
+      console.error('[MyBets] Withdraw error:', err);
+    },
+  });
+
+  const handleWithdrawSuccess = async (txResult) => {
+    const signature = txResult.signature;
+    if (pendingWithdrawTx?.userBetId && pendingWithdrawTx?.offerId) {
+      try {
+        const commitRes = await base44.functions.invoke('finalizeWithdrawal', {
+          signature,
+          userBetId: pendingWithdrawTx.userBetId,
+          offerId: pendingWithdrawTx.offerId,
+        });
+        if (commitRes.data.error) {
+          console.error('[MyBets] finalizeWithdrawal error:', commitRes.data.error);
+        }
+      } catch (err) {
+        console.error('[MyBets] finalizeWithdrawal threw:', err);
+      }
+    }
+    setPendingWithdrawTx(null);
+    queryClient.invalidateQueries({ queryKey: ['lpOffers', walletAddress] });
+  };
+
+  const handleWithdrawError = (err) => {
+    console.error('[MyBets] Withdraw tx error:', err);
+    setPendingWithdrawTx(null);
   };
 
   const handleBatchClaim = async (matchId, bets) => {
@@ -280,10 +353,16 @@ export default function MyBets() {
           icon={Shield}
           color="bg-yellow-500/10 text-yellow-400"
         />
+        <QuickStat 
+          label="LP Positions" 
+          value={activeLpOffers.length}
+          icon={TrendingUp}
+          color="bg-primary/10 text-primary"
+        />
       </div>
 
       <Tabs defaultValue="active" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 bg-card border border-border/50 rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-card border border-border/50 rounded-xl">
           <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
             <Clock className="w-4 h-4 mr-2" />
             Active ({activeBets.length})
@@ -291,6 +370,10 @@ export default function MyBets() {
           <TabsTrigger value="pending" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-lg">
             <Trophy className="w-4 h-4 mr-2" />
             Pending Claims ({pendingClaims.length})
+          </TabsTrigger>
+          <TabsTrigger value="lp" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            LP ({activeLpOffers.length})
           </TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg">
             <BarChart3 className="w-4 h-4 mr-2" />
@@ -369,6 +452,94 @@ export default function MyBets() {
             </div>
           ) : (
             <EmptyState message="No pending claims" />
+          )}
+        </TabsContent>
+
+        <TabsContent value="lp" className="space-y-4">
+          {activeLpOffers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activeLpOffers.map((offer, i) => {
+                const userBet = allOffers.find(o => o.id === offer.id);
+                const matchPct = offer.amount_offered > 0
+                  ? Math.round((offer.amount_matched / offer.amount_offered) * 100)
+                  : 0;
+                const hasUnmatched = (offer.amount_unmatched || 0) > 0;
+                const userBetForOffer = lpOffers.find(ub => ub.offer_id === offer.id);
+                
+                return (
+                  <motion.div key={offer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                    className="bg-card border border-border/50 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-heading font-bold text-sm">{getOutcomeLabel(offer)}</p>
+                        <p className="text-[10px] text-muted-foreground">{getMatchTitle(offer.match_id)}</p>
+                      </div>
+                      <Badge className={`text-[10px] ${
+                        offer.status === 'fully_matched' ? 'bg-accent/20 text-accent' :
+                        offer.status === 'partially_matched' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-secondary text-secondary-foreground'
+                      }`}>{offer.status}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-xs mt-2">
+                      <div>
+                        <p className="text-muted-foreground">Committed</p>
+                        <p className="font-bold">◎{(offer.amount_offered || 0).toFixed(4)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Matched</p>
+                        <p className="font-bold text-accent">◎{(offer.amount_matched || 0).toFixed(4)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Unmatched</p>
+                        <p className="font-bold text-yellow-400">◎{(offer.amount_unmatched || 0).toFixed(4)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>Match rate</span><span>{matchPct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${matchPct}%` }} />
+                      </div>
+                    </div>
+                    
+                    {hasUnmatched && (
+                      <div className="mt-3">
+                        {pendingWithdrawTx?.userBetId === userBetForOffer?.id ? (
+                          <SolanaTransactionSigner
+                            instruction={pendingWithdrawTx.instruction}
+                            amount={pendingWithdrawTx.amount}
+                            onSuccess={handleWithdrawSuccess}
+                            onError={handleWithdrawError}
+                          />
+                        ) : (
+                          <Button
+                            onClick={() => withdrawLpMutation.mutate({ ...offer, userBetId: userBetForOffer?.id })}
+                            disabled={withdrawLpMutation.isPending}
+                            variant="outline"
+                            className="w-full h-8 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
+                          >
+                            {withdrawLpMutation.isPending ? (
+                              <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                            ) : (
+                              <>Withdraw ◎{(offer.amount_unmatched || 0).toFixed(4)}</>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    
+                    <Link to={`/match/${offer.match_id}`}>
+                      <Button size="sm" variant="outline" className="w-full mt-3 h-8 text-xs border-border/50 rounded-lg">
+                        View Market <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState message="No LP positions" actionText="Go to LP Dashboard" link="/lp" />
           )}
         </TabsContent>
 

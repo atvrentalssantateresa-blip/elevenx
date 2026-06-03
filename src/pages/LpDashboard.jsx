@@ -523,7 +523,7 @@ export default function LpDashboard() {
                       {/* Withdraw button for unmatched liquidity */}
                       {hasUnmatched && (
                         <div className="mt-3">
-                          {pendingTx?.userBetId === offerWithUserBet.userBetId ? (
+                          {pendingTx && pendingTx?.userBetId === offerWithUserBet.userBetId ? (
                             <SolanaTransactionSigner
                               instruction={pendingTx.instruction}
                               amount={pendingTx.amount}
