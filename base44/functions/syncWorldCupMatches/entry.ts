@@ -64,20 +64,7 @@ Deno.serve(async (req) => {
       stats_api_match_id: m.id,
       venue: m.venue?.name || '',
     }));
-    const createdMatches = await base44.asServiceRole.entities.Match.bulkCreate(matchPayloads);
-
-    // Bulk-create all Bet markets at once
-    const betPayloads = createdMatches.map(match => ({
-      match_id: match.id,
-      outcome_a: match.team_a,
-      outcome_b: match.team_b,
-      outcome_draw: 'Draw',
-      status: 'open',
-      pool_a: 0, pool_b: 0, pool_draw: 0,
-      total_pool: 0, total_bettors: 0, fee_percent: 0,
-      stats_api_match_id: match.stats_api_match_id,
-    }));
-    await base44.asServiceRole.entities.Bet.bulkCreate(betPayloads);
+    await base44.asServiceRole.entities.Match.bulkCreate(matchPayloads);
 
     return Response.json({
       success: true,
