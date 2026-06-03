@@ -38,13 +38,16 @@ export default function Matches() {
   const groupSet = new Set(matches.map(m => m.group_stage).filter(Boolean));
   const groups = ['all', ...Array.from(groupSet).sort()];
 
-  // Filter by active group and search
+  // Filter by active group, search, and date (up to June 27, 2026)
+  const cutoffDate = new Date('2026-06-27T23:59:59Z');
   const filtered = matches.filter(m => {
     if (activeGroup !== 'all' && m.group_stage !== activeGroup) return false;
     if (search) {
       const q = search.toLowerCase();
       return m.team_a?.toLowerCase().includes(q) || m.team_b?.toLowerCase().includes(q);
     }
+    // Only show matches up to June 27, 2026
+    if (m.match_time && new Date(m.match_time) > cutoffDate) return false;
     return true;
   });
 
