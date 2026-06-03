@@ -23,8 +23,10 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
     const fetchLiveOdds = async () => {
       try {
         setLoading(true);
+        console.log('Fetching live odds for:', match.team_a, 'vs', match.team_b);
         const res = await base44.functions.invoke('fetchTheOddsApi', {});
         const matches = res.data.matches || [];
+        console.log('API returned', matches.length, 'matches');
         
         // Find matching teams in the response
         const matchedOdds = matches.find(m => 
@@ -33,7 +35,10 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
         );
         
         if (matchedOdds) {
+          console.log('Found live odds:', matchedOdds.odds);
           setLiveOdds(matchedOdds.odds);
+        } else {
+          console.log('No matching odds found');
         }
       } catch (err) {
         console.error('Failed to fetch live odds:', err);
@@ -52,7 +57,7 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
       key: 'a',
       label: bet.outcome_a,
       flag: getFlagEmoji(match?.team_a_flag),
-      odds: liveOdds?.home || (bet.odds_a / 100),
+      odds: liveOdds?.home || bet.odds_a,
       liquidity: bet.pool_a || 0,
       matched: bet.pool_a || 0,
       color: 'primary',
@@ -61,7 +66,7 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
       key: 'draw',
       label: bet.outcome_draw || 'Draw',
       flag: '🤝',
-      odds: liveOdds?.draw || (bet.odds_draw / 100),
+      odds: liveOdds?.draw || bet.odds_draw,
       liquidity: bet.pool_draw || 0,
       matched: bet.pool_draw || 0,
       color: 'yellow',
@@ -70,7 +75,7 @@ export default function OddsBar({ bet, match, selected, onSelect, canSelect = tr
       key: 'b',
       label: bet.outcome_b,
       flag: getFlagEmoji(match?.team_b_flag),
-      odds: liveOdds?.away || (bet.odds_b / 100),
+      odds: liveOdds?.away || bet.odds_b,
       liquidity: bet.pool_b || 0,
       matched: bet.pool_b || 0,
       color: 'accent',
