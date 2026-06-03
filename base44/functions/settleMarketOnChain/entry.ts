@@ -18,10 +18,14 @@ Deno.serve(async (req) => {
     }
 
     // Get wallet address from request body (sent by frontend)
-    const { bet_id, winning_outcome, admin_wallet } = await req.json();
+    const requestBody = await req.json();
+    const { bet_id, winning_outcome, admin_wallet } = requestBody;
+    
+    console.log('[settleMarketOnChain] Request body:', requestBody);
     
     if (!admin_wallet) {
-      return Response.json({ error: 'Missing admin_wallet in request' }, { status: 400 });
+      console.error('[settleMarketOnChain] Missing admin_wallet in request:', { bet_id, winning_outcome, admin_wallet });
+      return Response.json({ error: 'Missing admin_wallet in request', received: { bet_id, winning_outcome, admin_wallet } }, { status: 400 });
     }
 
     const adminWallet = admin_wallet.trim();
