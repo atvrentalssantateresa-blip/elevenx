@@ -374,6 +374,31 @@ function CreateMatchDialog() {
     },
   });
 
+  const createQuickTestMatch = async () => {
+    const now = new Date();
+    const startTime = new Date(now.getTime() + 4 * 60 * 1000); // 4 minutes from now
+    const endTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    
+    try {
+      await base44.entities.Match.create({
+        team_a: 'FFO',
+        team_b: 'FFO1',
+        team_a_flag: '🔵',
+        team_b_flag: '🔴',
+        group_stage: 'Test Match',
+        match_time: startTime.toISOString(),
+        venue: 'Test Arena',
+        status: 'upcoming',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      setOpen(false);
+      alert('Test match created! Starts in 4 min, ends in 5 min.');
+    } catch (err) {
+      alert('Failed to create test match: ' + err.message);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -386,6 +411,21 @@ function CreateMatchDialog() {
           <DialogTitle className="font-heading">Create Match</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <Button
+            onClick={createQuickTestMatch}
+            disabled={createMutation.isPending}
+            className="w-full bg-accent text-accent-foreground font-heading font-bold rounded-xl h-10"
+          >
+            <Zap className="w-4 h-4 mr-2" /> Quick Test: FFO vs FFO1 (4min)
+          </Button>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/50"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or create custom</span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Team A</Label>
