@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw, TestTube } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -125,6 +125,19 @@ export default function Admin() {
     onError: (err) => setFetchOddsResult('Error: ' + err.message),
   });
 
+  const createTestBetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('createTestBetWithApiMatch', {});
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      alert(`Test bet created!\n${data.message}\nAPI Match ID: ${data.stats_api_match_id}`);
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
+    },
+    onError: (err) => alert('Error: ' + err.message),
+  });
+
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
       // Get wallet address from localStorage (set by WalletContext after Phantom connects)
@@ -229,6 +242,26 @@ export default function Admin() {
               </Button>
             </div>
             {fetchOddsResult && <p className="mt-3 text-xs text-primary bg-primary/10 rounded-lg px-3 py-2">{fetchOddsResult}</p>}
+          </div>
+
+          <div className="bg-card border border-border/50 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <TestTube className="w-5 h-5 text-accent" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Create Test Bet</p>
+                  <p className="text-xs text-muted-foreground">Creates a bet with real API match for testing.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => createTestBetMutation.mutate()}
+                disabled={createTestBetMutation.isPending}
+                variant="outline"
+                className="border-accent/50 text-accent hover:bg-accent/10 font-heading font-bold rounded-xl h-9"
+              >
+                {createTestBetMutation.isPending ? 'Creating...' : 'Create Test Bet'}
+              </Button>
+            </div>
           </div>
 
           <div className="bg-card border border-primary/20 rounded-xl p-4">
