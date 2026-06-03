@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -27,6 +27,33 @@ export default function BetDetail() {
   const queryClient = useQueryClient();
   const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [selectedOffer, setSelectedOffer] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+
+  // Calculate time remaining
+  useEffect(() => {
+    if (!bet?.open_until) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTime = () => {
+      const now = new Date().getTime();
+      const closeTime = new Date(bet.open_until).getTime();
+      const diff = closeTime - now;
+      
+      if (diff <= 0) {
+        setTimeRemaining(0);
+      } else {
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        setTimeRemaining({ minutes, seconds, total: diff });
+      }
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [bet?.open_until]);
 
   const { data: bet } = useQuery({
     queryKey: ['bet', betId],
@@ -86,8 +113,8 @@ export default function BetDetail() {
     );
   }
 
-  // Bet is open if status is 'open' (ignore open_until if not set — admin controls status)
-  const isOpen = bet.status === 'open' && (!bet.open_until || new Date(bet.open_until) > new Date());
+  // Bet is open if status is 'open' and time hasn't expired
+  const isOpen = bet.status === 'open' && (!timeRemaining || timeRemaining.total > 0);
   const isSettled = bet.status === 'settled';
 
   return (
@@ -136,11 +163,23 @@ export default function BetDetail() {
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-border/30 flex items-center justify-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {bet.open_until ? `Closes ${format(new Date(bet.open_until), 'MMM d · HH:mm')}` : 'No deadline'}
-          </span>
+        <div className="mt-4 pt-3 border-t border-border/30 flex flex-col items-center gap-3">
+          {timeRemaining && timeRemaining.total > 0 ? (
+            <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-4 py-2 rounded-full text-sm font-bold animate-pulse">
+              <Clock className="w-4 h-4" />
+              BETTING CLOSES IN: {timeRemaining.minutes}:{String(timeRemaining.seconds).padStart(2, '0')}
+            </div>
+          ) : bet.open_until ? (
+            <div className="flex items-center gap-1.5 text-destructive text-sm font-bold">
+              <Clock className="w-3 h-3" />
+              BETS CLOSED
+            </div>
+          ) : (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              {`Closes ${format(new Date(bet.open_until), 'MMM d · HH:mm')}`}
+            </span>
+          )}
         </div>
       </motion.div>
 

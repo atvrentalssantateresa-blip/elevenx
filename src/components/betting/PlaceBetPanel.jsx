@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Wallet, CheckCircle, X } from 'lucide-react';
+import { Wallet, CheckCircle, X, Clock } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import BetCountdown from '@/components/betting/BetCountdown';
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
@@ -14,7 +15,36 @@ const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(null);
   const { isConnected, connect, isConnecting, walletAddress } = useWallet();
+
+  // Calculate time remaining until betting closes
+  React.useEffect(() => {
+    if (!bet?.open_until) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTime = () => {
+      const now = new Date().getTime();
+      const closeTime = new Date(bet.open_until).getTime();
+      const diff = closeTime - now;
+      
+      if (diff <= 0) {
+        setTimeRemaining(0);
+      } else {
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        setTimeRemaining({ minutes, seconds, total: diff });
+      }
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [bet?.open_until]);
+
+  const isBettingClosed = bet.status !== 'open' || (timeRemaining && timeRemaining.total <= 0);
 
   const stakeNum = parseFloat(amount) || 0;
 
@@ -220,10 +250,23 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
 
   return (
     <div className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4">
+      <BetCountdown 
+        openUntil={bet?.open_until} 
+        onTimeExpired={() => setIsBettingClosed(true)}
+      />
+      
       <div>
-        <h3 className="font-heading font-bold text-base mb-0.5">
-          {mode === 'offer' ? `Bet on ${outcomeLabel}` : `Bet against ${selectedOffer?.outcome_label}`}
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <h3 className="font-heading font-bold text-base">
+            {mode === 'offer' ? `Bet on ${outcomeLabel}` : `Bet against ${selectedOffer?.outcome_label}`}
+          </h3>
+          {timeRemaining && timeRemaining.total > 0 && (
+            <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
+              <Clock className="w-3.5 h-3.5" />
+              {timeRemaining.minutes}:{String(timeRemaining.seconds).padStart(2, '0')}
+            </div>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
           {mode === 'offer'
             ? `Odds: ${odds.toFixed(2)}x — Max: ◎${maxLpAmount?.toFixed(4)} — your offer goes into the orderbook until matched`
@@ -314,6 +357,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       {stakeNum > 0 && mode === 'offer' && maxLpAmount && stakeNum > maxLpAmount && (
         <p className="text-xs text-destructive text-center font-semibold">Not enough liquidity to place bet</p>
       )}
+      {isBettingClosed && (
+        <p className="text-xs text-destructive text-center font-bold">⏰ Betting has closed for this match</p>
+      )}
       {prepareError && prepareError.includes('reconnect') && (
         <Button onClick={handleReconnect} className="w-full h-8 text-xs bg-secondary hover:bg-secondary/80 rounded-lg mb-2">
           Reconnect Wallet
@@ -365,10 +411,15 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       ) : (
         <Button
           onClick={handleGetInstruction}
-          disabled={stakeNum <= 0 || isPreparing || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake) || (mode === 'offer' && maxLpAmount && stakeNum > maxLpAmount)}
-          className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+          disabled={stakeNum <= 0 || isPreparing || isBettingClosed || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake) || (mode === 'offer' && maxLpAmount && stakeNum > maxLpAmount)}
+          className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPreparing ? 'Preparing...' : mode === 'offer' ? (
+          {isBettingClosed ? (
+            <>
+              <Clock className="w-4 h-4 mr-2" />
+              Betting Closed
+            </>
+          ) : isPreparing ? 'Preparing...' : mode === 'offer' ? (
             `Place Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
           ) : (
             `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
