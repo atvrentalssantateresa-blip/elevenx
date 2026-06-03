@@ -38,19 +38,14 @@ Deno.serve(async (req) => {
     let user = null;
     try {
       console.log('Looking up user by wallet:', walletAddress?.slice(0, 8));
-      // First try direct wallet_address field (current schema)
-      let users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
-      console.log('User lookup (direct) - found:', users?.length || 0, 'users');
+      // List all users and find by wallet_address (filter doesn't work reliably)
+      const allUsers = await serviceRole.entities.User.list();
+      user = allUsers.find(u => u.wallet_address === walletAddress || u.data?.wallet_address === walletAddress);
       
-      // If not found, try data.wallet_address (legacy format from old users)
-      if (!users || users.length === 0) {
-        users = await serviceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
-        console.log('User lookup (data.*) - found:', users?.length || 0, 'users');
-      }
-      
-      if (users && users.length > 0) {
-        user = users[0];
+      if (user) {
         console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address || user.data?.wallet_address);
+      } else {
+        console.log('User lookup - no matching user found');
       }
     } catch (err) {
       console.log('User lookup failed:', err.message);

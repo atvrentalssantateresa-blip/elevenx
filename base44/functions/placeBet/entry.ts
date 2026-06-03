@@ -40,17 +40,16 @@ Deno.serve(async (req) => {
     const serviceRole = base44.asServiceRole;
     
     // Verify wallet is authenticated (exists in User entity)
-    let users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
-    if (!users || users.length === 0) {
-      users = await serviceRole.entities.User.filter({ 'data.wallet_address': walletAddress });
-    }
-    if (!users || users.length === 0) {
+    // List all users and find by wallet_address (filter by field doesn't work reliably)
+    const allUsers = await serviceRole.entities.User.list();
+    const user = allUsers.find(u => u.wallet_address === walletAddress || u.data?.wallet_address === walletAddress);
+    
+    if (!user) {
       return Response.json({ 
         error: 'Wallet not authenticated. Please sign in with your wallet first.', 
         hint: 'Connect your wallet on the Profile page to authenticate'
       }, { status: 401 });
     }
-    const user = users[0];
 
     const bets = await base44.entities.Bet.filter({ id: bet_id });
     const bet = bets[0];
