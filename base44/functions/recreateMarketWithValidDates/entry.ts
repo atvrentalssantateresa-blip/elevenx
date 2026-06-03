@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Set valid timestamps: open_until = 24 hours from now, settle_after = 25 hours from now
-    const openUntil = Math.floor(Date.now() / 1000) + 86400;
-    const settleAfter = openUntil + 3600;
+    // Set timestamps in the past to allow immediate settlement (for testing)
+    const openUntil = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    const settleAfter = Math.floor(Date.now() / 1000) - 1800; // 30 minutes ago
 
     // Build instruction data: 8-byte discriminator + open_until (i64) + settle_after (i64)
     const discriminator = Buffer.from(sha256("global:update_market_timestamps")).slice(0, 8);
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
         },
         instruction_data: data.toString('base64'),
       },
-      message: 'Sign to update market timestamps (open_until=24h from now)',
+      message: 'Sign to update market timestamps (settlement enabled)',
     });
 
   } catch (error) {
