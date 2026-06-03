@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
       appId,
       serviceRoleKey,
     });
-    const serviceRole = base44;
     
     // Note: No auth check - wallet-only authentication
     // Check program ID is configured
@@ -62,6 +61,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
+    const serviceRole = base44.asServiceRole;
+    
     // Verify wallet is authenticated (exists in User entity)
     // List all users and find by wallet_address (filter by field doesn't work reliably)
     const allUsers = await serviceRole.entities.User.list();
