@@ -67,6 +67,19 @@ Deno.serve(async (req) => {
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Bet not open' }, { status: 400 });
 
+    // Check if betting window has closed
+    if (bet.open_until) {
+      const now = new Date().getTime();
+      const closeTime = new Date(bet.open_until).getTime();
+      if (now >= closeTime) {
+        return Response.json({ 
+          error: 'Betting window has closed',
+          hint: 'This market is no longer accepting bets',
+          closed_at: bet.open_until,
+        }, { status: 400 });
+      }
+    }
+
     // Check if market is properly initialized on-chain
     const marketCheck = await base44.functions.invoke('checkMarketStatus', { match_id });
     console.log('[provideLiquidity] Market status check:', marketCheck.data);

@@ -104,6 +104,19 @@ Deno.serve(async (req) => {
     const bet = bets[0];
     if (!bet || bet.status !== 'open') return Response.json({ error: 'Market not open' }, { status: 400 });
 
+    // Check if betting window has closed
+    if (bet.open_until) {
+      const now = new Date().getTime();
+      const closeTime = new Date(bet.open_until).getTime();
+      if (now >= closeTime) {
+        return Response.json({ 
+          error: 'Betting window has closed',
+          hint: 'This market is no longer accepting bets',
+          closed_at: bet.open_until,
+        }, { status: 400 });
+      }
+    }
+
     const lp_odds = offer.odds_at_creation;
     const max_stake = offer.amount_unmatched / (lp_odds - 1);
     
