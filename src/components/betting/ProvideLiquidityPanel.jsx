@@ -14,6 +14,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [instruction, setInstruction] = useState(null);
+  const [commitData, setCommitData] = useState(null);
   const [showSigner, setShowSigner] = useState(false);
   const [createMarketMutation, setCreateMarketMutation] = useState({ isPending: false });
   const [isInitializingPlatform, setIsInitializingPlatform] = useState(false);
@@ -117,6 +118,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         setInstruction(null);
       } else {
         setInstruction(response.data.solana_instruction);
+        setCommitData(response.data.commit_data);
       }
     } catch (err) {
       setError(err.message);
@@ -138,6 +140,25 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         console.log('Now creating market...');
         setError(null);
         await handleCreateMarket();
+        return;
+      }
+
+      // If this was a provide_liquidity transaction, commit to DB
+      if (commitData) {
+        console.log('[ProvideLiquidityPanel] Committing liquidity to DB...');
+        const commitRes = await base44.functions.invoke('commitLiquidity', {
+          signature,
+          commit_data: commitData,
+        });
+        if (commitRes.data.error) {
+          console.error('[ProvideLiquidityPanel] commitLiquidity error:', commitRes.data.error);
+          setError('On-chain succeeded but DB commit failed: ' + commitRes.data.error);
+        } else {
+          console.log('[ProvideLiquidityPanel] ✓ Liquidity committed to DB:', commitRes.data);
+          setCommitData(null);
+          setAmount('');
+        }
+        await checkMarketStatus();
         return;
       }
       
