@@ -34,6 +34,14 @@ Deno.serve(async (req) => {
             // Odds not available yet - this is normal for future matches
             continue;
           }
+          if (res.status === 403) {
+            console.log('API key issue - skipping odds fetch');
+            return Response.json({ 
+              success: false, 
+              message: 'THE_STATS_API_KEY has no active subscription',
+              error: 'API key revoked or no active plan'
+            }, { status: 503 });
+          }
           errors.push({ bet_id: bet.id, error: `API error ${res.status}` });
           continue;
         }

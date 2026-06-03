@@ -41,8 +41,39 @@ Deno.serve(async (req) => {
     const betByMatchStatId = {};
     existingBets.forEach(b => { if (b.stats_api_match_id) betByMatchStatId[b.stats_api_match_id] = b; });
 
-    // Split into new vs existing
+    // Split into new vs existing, and track matches that need API ID updates
     const toCreate = apiMatches.filter(m => !existingStatIds.has(m.id));
+    
+    // Also update existing matches that are missing stats_api_match_id
+    const matchesToUpdate = existingMatches.filter(m => !m.stats_api_match_id);
+    const updatePromises = matchesToUpdate.map(m => {
+      // Try to find matching API match by team names and date
+      const apiMatch = apiMatches.find(api => 
+        (api.home_team?.name === m.team_a || api.home_team?.name === m.team_b) &&
+        (api.away_team?.name === m.team_b || api.away_team?.name === m.team_a)
+      );
+      if (apiMatch) {
+        return base44.asServiceRole.entities.Match.update(m.id, { stats_api_match_id: apiMatch.id });
+      }
+      return null;
+    }).filter(Boolean);
+    
+    await Promise.all(updatePromises);
+    console.log(`Updated ${updatePromises.length} existing matches with stats_api_match_id`);
+    
+    // Update existing bets that are missing stats_api_match_id
+    const betsToUpdate = existingBets.filter(b => !b.stats_api_match_id && b.match_id);
+    const betUpdatePromises = betsToUpdate.map(bet => {
+      const match = existingMatches.find(m => m.id === bet.match_id);
+      if (match?.stats_api_match_id) {
+        return base44.asServiceRole.entities.Bet.update(bet.id, { stats_api_match_id: match.stats_api_match_id });
+      }
+      return null;
+    }).filter(Boolean);
+    
+    await Promise.all(betUpdatePromises);
+    console.log(`Updated ${betUpdatePromises.length} existing bets with stats_api_match_id`);
+    
     const skipped = apiMatches.length - toCreate.length;
 
     if (toCreate.length === 0) {
