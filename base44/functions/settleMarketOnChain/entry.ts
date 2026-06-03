@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     );
 
     const [platformPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform_config')],
+      [Buffer.from('platform')],
       programId
     );
 
