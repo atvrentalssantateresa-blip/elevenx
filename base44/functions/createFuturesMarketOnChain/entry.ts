@@ -26,22 +26,35 @@ Deno.serve(async (req) => {
     const futuresMarket = futuresMarkets[0];
     if (!futuresMarket) return Response.json({ error: 'Futures market not found' }, { status: 404 });
 
+    // Validate: Solana program only supports exactly 3 outcomes
+    if (!futuresMarket.outcomes || futuresMarket.outcomes.length < 3) {
+      return Response.json({ error: 'Futures market must have exactly 3 outcomes' }, { status: 400 });
+    }
+
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
     // Derive PDA for futures market using market ID as seed
     const marketIdBytes = Buffer.alloc(32);
     Buffer.from(futures_market_id, 'utf-8').copy(marketIdBytes, 0, 0, Math.min(futures_market_id.length, 32));
 
-    const [marketPda] = PublicKey.findProgramAddressSync(
+    const [marketPda, marketBump] = PublicKey.findProgramAddressSync(
       [Buffer.from('market'), marketIdBytes],
       programId
     );
 
     // Derive vote tally PDA - uses market's public key as seed (not match_id)
-    const [voteTallyPda] = PublicKey.findProgramAddressSync(
+    const [voteTallyPda, voteTallyBump] = PublicKey.findProgramAddressSync(
       [Buffer.from('vote_tally'), marketPda.toBuffer()],
       programId
     );
+
+    console.log('PDA derivation:', {
+      marketPda: marketPda.toBase58(),
+      marketBump,
+      voteTallyPda: voteTallyPda.toBase58(),
+      voteTallyBump,
+      programId: programId.toBase58(),
+    });
 
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const accountInfo = await connection.getAccountInfo(marketPda);
@@ -77,6 +90,15 @@ Deno.serve(async (req) => {
       // Default: 24 hours from now for testing
       openUntil = Math.floor(Date.now() / 1000) + 86400;
       settleAfter = openUntil + 7200;
+    }
+
+    // Validate timestamps
+    const now = Math.floor(Date.now() / 1000);
+    if (openUntil <= now) {
+      return Response.json({ error: 'Market open_until must be in the future' }, { status: 400 });
+    }
+    if (settleAfter <= openUntil) {
+      return Response.json({ error: 'settle_after must be after open_until' }, { status: 400 });
     }
 
     // Prepare create_market instruction
