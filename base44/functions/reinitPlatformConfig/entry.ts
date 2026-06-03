@@ -48,16 +48,10 @@ Deno.serve(async (req) => {
     const data = Buffer.alloc(41);
     discriminator.copy(data, 0);
     
-    // Admin wallet (32 bytes)
-    const adminBytes = Buffer.from(admin_wallet.replace('0x', ''), 'hex');
-    if (adminBytes.length === 32) {
-      adminBytes.copy(data, 8);
-    } else {
-      // Try base58 decode
-      const { decode: bs58Decode } = await import('npm:bs58@5.0.0');
-      const decoded = bs58Decode(admin_wallet);
-      Buffer.from(decoded).copy(data, 8);
-    }
+    // Admin wallet (32 bytes) - handle base58 format
+    const { decode: bs58Decode } = await import('npm:bs58@5.0.0');
+    const decoded = bs58Decode(admin_wallet);
+    Buffer.from(decoded).copy(data, 8);
     
     // fee_percent: 0 (u16 LE)
     data.writeUInt16LE(0, 40);

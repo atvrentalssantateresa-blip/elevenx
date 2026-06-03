@@ -257,6 +257,27 @@ export default function Admin() {
                       Debug Admin
                     </Button>
                   </div>
+                  {walletAddress && platformConfigDetails?.admin && walletAddress !== platformConfigDetails.admin && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={async () => {
+                        if (confirm('Re-initialize platform with your current wallet as admin? This will override the existing admin.')) {
+                          try {
+                            const res = await base44.functions.invoke('reinitPlatformConfig', { admin_wallet: walletAddress });
+                            if (res.data.solana_instruction) {
+                              setPendingPlatformInit(res.data.solana_instruction);
+                            }
+                          } catch (err) {
+                            alert('Error: ' + err.message);
+                          }
+                        }
+                      }}
+                      className="w-full h-8 text-xs rounded-lg mt-2"
+                    >
+                      ⚠️ Re-init with My Wallet
+                    </Button>
+                  )}
                   {platformConfigDetails?.admin && (
                     <div className="space-y-1 mt-2">
                       <p className="text-[9px] text-muted-foreground">
