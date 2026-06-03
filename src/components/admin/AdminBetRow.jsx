@@ -5,7 +5,7 @@ import { useWallet } from '@/lib/WalletContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Trophy, RefreshCw, CheckCircle, CheckCircle2, Gavel } from 'lucide-react';
+import { Trophy, CheckCircle2, Gavel } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminBetRow({ bet, matches, index }) {
@@ -225,45 +225,31 @@ export default function AdminBetRow({ bet, matches, index }) {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  if (confirm('This will recreate the market with timestamps set to 2 hours ago (open) and 1 hour ago (settle). This allows immediate settlement for testing. Continue?')) {
+                  if (confirm('Recreate market with timestamps in the past to allow immediate settlement. Continue?')) {
                     recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
                   }
-                }}
-                disabled={recreateMarketMutation.isPending}
-                className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" /> Recreate (Test Mode)
-              </Button>
-            )}
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  if (!confirm('Recreate market with timestamps set to the past so you can settle immediately. This will reset all bets — only use for testing!')) return;
-                  recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
                 }}
                 disabled={recreateMarketMutation.isPending}
                 className="h-8 text-xs border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 rounded-lg"
               >
                 ⚡ Test Mode
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const res = await base44.functions.invoke('debugMarketSettlement', { bet_id: bet.id, match_id: bet.match_id });
-                    alert('Market Debug:\n' + JSON.stringify(res.data, null, 2));
-                  } catch (err) {
-                    alert('Debug error: ' + err.message);
-                  }
-                }}
-                className="h-8 text-xs border-muted/30 text-muted-foreground hover:bg-muted/10 rounded-lg"
-              >
-                🔍 Debug
-              </Button>
-            </>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const res = await base44.functions.invoke('debugMarketSettlement', { bet_id: bet.id, match_id: bet.match_id });
+                  alert('Market Debug:\n' + JSON.stringify(res.data, null, 2));
+                } catch (err) {
+                  alert('Debug error: ' + err.message);
+                }
+              }}
+              className="h-8 text-xs border-muted/30 text-muted-foreground hover:bg-muted/10 rounded-lg"
+            >
+              🔍 Debug
+            </Button>
           </div>
           <Badge className={`text-[10px] ${
             bet.status === 'open' ? 'bg-accent/20 text-accent' :
