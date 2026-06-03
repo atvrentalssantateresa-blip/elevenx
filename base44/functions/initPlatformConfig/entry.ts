@@ -60,12 +60,14 @@ Deno.serve(async (req) => {
         encoder.encode(`${parts[0]}.${parts[1]}`)
       );
       
-      const actualSignature = bs58.decode(parts[2]);
-      
-      // Compare signatures
       const expectedArray = new Uint8Array(expectedSignature);
-      const valid = expectedArray.length === actualSignature.length &&
-        expectedArray.every((byte, i) => byte === actualSignature[i]);
+      const expectedB58 = bs58.encode(expectedArray);
+      
+      console.log('[initPlatformConfig] Expected signature (b58):', expectedB58.slice(0, 20) + '...');
+      console.log('[initPlatformConfig] Actual signature (b58):', parts[2].slice(0, 20) + '...');
+      
+      // Compare base58 encoded signatures (string comparison)
+      const valid = expectedB58 === parts[2];
       
       if (!valid) {
         console.error('[initPlatformConfig] Signature mismatch');
