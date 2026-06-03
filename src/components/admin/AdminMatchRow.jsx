@@ -28,6 +28,7 @@ export default function AdminMatchRow({ match, bets, index }) {
 
   const createBetMutation = useMutation({
     mutationFn: async () => {
+      console.log('[createBetMutation] Creating bet for match:', match.id);
       const bet = await base44.entities.Bet.create({
         match_id: match.id,
         title: `${match.team_a} vs ${match.team_b}`,
@@ -44,16 +45,23 @@ export default function AdminMatchRow({ match, bets, index }) {
         total_pool: 0, total_bettors: 0,
       });
       
+      console.log('[createBetMutation] Bet created:', bet.id);
+      console.log('[createBetMutation] Calling createMarketOnChain with bet_id:', bet.id, 'match_id:', match.id);
+      
       const marketRes = await base44.functions.invoke('createMarketOnChain', {
         bet_id: bet.id,
         match_id: match.id,
       });
+      
+      console.log('[createBetMutation] createMarketOnChain response:', marketRes.data);
       
       if (marketRes.data.solana_instruction) {
         setPendingMarketInit({
           instruction: marketRes.data.solana_instruction,
           betId: bet.id,
         });
+      } else if (marketRes.data.error) {
+        throw new Error('Failed to get market instruction: ' + marketRes.data.error);
       }
       
       return bet;
@@ -61,6 +69,10 @@ export default function AdminMatchRow({ match, bets, index }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bets'] });
       queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
+    },
+    onError: (error) => {
+      console.error('[createBetMutation] Error:', error);
+      alert('Failed to create market: ' + error.message);
     },
   });
 
@@ -115,7 +127,10 @@ export default function AdminMatchRow({ match, bets, index }) {
         {!existingBet && !pendingMarketInit && (
           <Button
             size="sm"
-            onClick={() => createBetMutation.mutate()}
+            onClick={() => {
+              console.log('Creating bet for match:', match.id, match.team_a, 'vs', match.team_b);
+              createBetMutation.mutate();
+            }}
             disabled={createBetMutation.isPending}
             className="h-8 text-xs bg-primary text-primary-foreground font-heading rounded-lg"
           >
@@ -130,19 +145,26 @@ export default function AdminMatchRow({ match, bets, index }) {
           <Button
             size="sm"
             onClick={async () => {
-              const marketRes = await base44.functions.invoke('createMarketOnChain', {
-                bet_id: existingBet.id,
-                match_id: match.id,
-              });
-              if (marketRes.data.solana_instruction) {
-                setPendingMarketInit({ instruction: marketRes.data.solana_instruction, betId: existingBet.id });
-              } else if (marketRes.data.alreadyExists) {
-                await base44.entities.Bet.update(existingBet.id, { solana_market_created: true });
-                queryClient.invalidateQueries({ queryKey: ['bets'] });
-                queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
-                alert('Market already exists on-chain!');
-              } else {
-                alert(marketRes.data.error || 'Failed to get instruction');
+              console.log('[Init On-Chain] Calling createMarketOnChain with bet_id:', existingBet.id, 'match_id:', match.id);
+              try {
+                const marketRes = await base44.functions.invoke('createMarketOnChain', {
+                  bet_id: existingBet.id,
+                  match_id: match.id,
+                });
+                console.log('[Init On-Chain] Response:', marketRes.data);
+                if (marketRes.data.solana_instruction) {
+                  setPendingMarketInit({ instruction: marketRes.data.solana_instruction, betId: existingBet.id });
+                } else if (marketRes.data.alreadyExists) {
+                  await base44.entities.Bet.update(existingBet.id, { solana_market_created: true });
+                  queryClient.invalidateQueries({ queryKey: ['bets'] });
+                  queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
+                  alert('Market already exists on-chain!');
+                } else {
+                  alert(marketRes.data.error || 'Failed to get instruction');
+                }
+              } catch (err) {
+                console.error('[Init On-Chain] Error:', err);
+                alert('Failed to initialize market: ' + err.message);
               }
             }}
             className="h-8 text-xs bg-primary text-primary-foreground font-heading rounded-lg"
