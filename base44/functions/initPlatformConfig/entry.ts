@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, SystemProgram, TransactionInstruction } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
-import bs58 from 'npm:bs58@5.0.0';
 
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
 
@@ -30,11 +29,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid token format' }, { status: 401 });
     }
     
-    // Decode payload (base58)
+    // Decode payload (base64url JWT)
     const decoder = new TextDecoder();
     let tokenPayload;
     try {
-      tokenPayload = JSON.parse(decoder.decode(bs58.decode(payloadPart)));
+      tokenPayload = JSON.parse(decoder.decode(Uint8Array.from(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
     } catch (e) {
       console.error('Token decode error:', e);
       return Response.json({ error: 'Failed to decode token' }, { status: 401 });
@@ -43,7 +42,7 @@ Deno.serve(async (req) => {
     console.log('[initPlatformConfig] Token payload:', tokenPayload);
     
     // Get user from database by wallet address
-    const walletAddress = tokenPayload.walletAddress;
+    const walletAddress = tokenPayload.sub || tokenPayload.walletAddress;
     if (!walletAddress) {
       return Response.json({ error: 'Invalid token - no wallet address' }, { status: 401 });
     }
@@ -55,16 +54,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Wallet user not found' }, { status: 404 });
     }
     
-    // Get full user record
-    const users = await serviceRole.entities.User.filter({ id: walletUser.id });
-    const user = users[0];
-    
-    if (!user) {
-      return Response.json({ error: 'User not found' }, { status: 404 });
-    }
-    
-    if (user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required', got_role: user.role }, { status: 403 });
+    // Check admin role directly from WalletUser
+    if (walletUser.role !== 'admin') {
+      return Response.json({ error: 'Admin access required', got_role: walletUser.role }, { status: 403 });
     }
 
     const connection = {
