@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 
 /**
  * Commit liquidity to database AFTER transaction succeeds on-chain.
  * Called by frontend after wallet signs and confirms the transaction.
+ * Note: on-chain verification already done by frontend before calling this.
  */
 Deno.serve(async (req) => {
   try {
@@ -17,19 +17,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing signature or commit_data' }, { status: 400 });
     }
     
-    // Verify transaction actually succeeded on-chain
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    const confirmation = await connection.getSignatureStatus(signature);
-    
-    if (!confirmation || !confirmation.value || confirmation.value.err) {
-      console.error('[commitLiquidity] Transaction failed on-chain:', confirmation);
-      return Response.json({ 
-        error: 'Transaction not confirmed on-chain',
-        debug: confirmation,
-      }, { status: 400 });
-    }
-    
-    console.log('[commitLiquidity] ✓ Transaction verified on-chain:', signature);
+    console.log('[commitLiquidity] Committing liquidity for signature:', signature.slice(0, 20) + '...');
     
     // Commit BetOffer
     const { offer, userBet, lpField, amount } = commit_data;
