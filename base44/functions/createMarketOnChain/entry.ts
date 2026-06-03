@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const openUntil = isRecreate 
       ? Math.floor(Date.now() / 1000) + 86400  // 24 hours from now for recreation
       : (bet.open_until ? Math.floor(new Date(bet.open_until).getTime() / 1000) : Math.floor(Date.now() / 1000) + 86400);
-    const settleAfter = openUntil + 3600;
+    const settleAfter = openUntil + 5; // 5 seconds (instant settlement after betting closes)
 
     const outcomeNames = [
       Buffer.alloc(32),
