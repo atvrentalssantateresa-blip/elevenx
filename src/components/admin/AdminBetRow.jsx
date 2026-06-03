@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useWallet } from '@/lib/WalletContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -9,6 +10,7 @@ import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner
 
 export default function AdminBetRow({ bet, matches, index }) {
   const queryClient = useQueryClient();
+  const { address: walletAddress } = useWallet();
   const match = matches.find(m => m.id === bet.match_id);
   const [pendingRecreate, setPendingRecreate] = useState(null);
   const [pendingSettle, setPendingSettle] = useState(null);
@@ -84,6 +86,7 @@ export default function AdminBetRow({ bet, matches, index }) {
         bet_id: bet.id,
         match_id: bet.match_id,
         winning_outcome: winningOutcome,
+        admin_wallet: walletAddress,
       });
       if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
       return { solana_instruction: onChainRes.data.solana_instruction };

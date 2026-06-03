@@ -11,13 +11,21 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut11111111111
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const authUser = await base44.auth.me();
     
-    if (!user || user.role !== 'admin') {
+    if (!authUser || authUser.role !== 'admin') {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { bet_id, winning_outcome } = await req.json();
+    // Get wallet address from request body (sent by frontend)
+    const { bet_id, winning_outcome, admin_wallet } = await req.json();
+    
+    if (!admin_wallet) {
+      return Response.json({ error: 'Missing admin_wallet in request' }, { status: 400 });
+    }
+
+    const adminWallet = admin_wallet.trim();
+    console.log('[settleMarketOnChain] Admin wallet from request:', adminWallet);
     
     if (!bet_id || !winning_outcome || !['a', 'b', 'draw'].includes(winning_outcome)) {
       return Response.json({ error: 'Invalid parameters' }, { status: 400 });
@@ -75,7 +83,7 @@ Deno.serve(async (req) => {
         { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
         { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true },
         { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
-        { pubkey: user.wallet_address, isSigner: true, isWritable: true },
+        { pubkey: adminWallet, isSigner: true, isWritable: true },
         { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
       ],
       instruction_data_base64: data.toString('base64'),
@@ -91,7 +99,7 @@ Deno.serve(async (req) => {
           { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
           { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true },
           { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
-          { pubkey: user.wallet_address, isSigner: true, isWritable: true }, // admin signer
+          { pubkey: adminWallet, isSigner: true, isWritable: true }, // admin signer
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
         ],
         instruction_data: data.toString('base64'),
