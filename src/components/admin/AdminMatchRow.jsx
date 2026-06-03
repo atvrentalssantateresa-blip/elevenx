@@ -126,6 +126,30 @@ export default function AdminMatchRow({ match, bets, index }) {
             )}
           </Button>
         )}
+        {existingBet && !isMarketInitialized && !pendingMarketInit && (
+          <Button
+            size="sm"
+            onClick={async () => {
+              const marketRes = await base44.functions.invoke('createMarketOnChain', {
+                bet_id: existingBet.id,
+                match_id: match.id,
+              });
+              if (marketRes.data.solana_instruction) {
+                setPendingMarketInit({ instruction: marketRes.data.solana_instruction, betId: existingBet.id });
+              } else if (marketRes.data.alreadyExists) {
+                await base44.entities.Bet.update(existingBet.id, { solana_market_created: true });
+                queryClient.invalidateQueries({ queryKey: ['bets'] });
+                queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
+                alert('Market already exists on-chain!');
+              } else {
+                alert(marketRes.data.error || 'Failed to get instruction');
+              }
+            }}
+            className="h-8 text-xs bg-primary text-primary-foreground font-heading rounded-lg"
+          >
+            <RefreshCw className="w-3 h-3 mr-1" /> Init On-Chain
+          </Button>
+        )}
         {pendingMarketInit && (
           <div className="w-64">
             <SolanaTransactionSigner
