@@ -209,13 +209,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
             );
           })}
           {maxMatcherStake && (
-            <button onClick={() => setAmount(maxMatcherStake.toFixed(6))}
+            <button onClick={() => setAmount(String(maxMatcherStake))}
               className="px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition-colors">
               Max ◎{maxMatcherStake.toFixed(4)}
             </button>
           )}
           {mode === 'offer' && maxLpAmount && (
-            <button onClick={() => setAmount(maxLpAmount.toFixed(6))}
+            <button onClick={() => setAmount(String(maxLpAmount))}
               className="px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition-colors font-bold">
               Max ◎{maxLpAmount.toFixed(4)}
             </button>
@@ -264,6 +264,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         )}
       </AnimatePresence>
 
+      {stakeNum > 0 && mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake && (
+        <p className="text-xs text-destructive text-center font-semibold">Not enough liquidity to place bet</p>
+      )}
+      {stakeNum > 0 && mode === 'offer' && maxLpAmount && stakeNum > maxLpAmount && (
+        <p className="text-xs text-destructive text-center font-semibold">Not enough liquidity to place bet</p>
+      )}
       {prepareError && prepareError.includes('reconnect') && (
         <Button onClick={handleReconnect} className="w-full h-8 text-xs bg-secondary hover:bg-secondary/80 rounded-lg mb-2">
           Reconnect Wallet
@@ -284,7 +290,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       ) : (
         <Button
           onClick={handleGetInstruction}
-          disabled={stakeNum <= 0 || isPreparing || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake)}
+          disabled={stakeNum <= 0 || isPreparing || (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake) || (mode === 'offer' && maxLpAmount && stakeNum > maxLpAmount)}
           className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
         >
           {isPreparing ? 'Preparing...' : mode === 'offer' ? (
