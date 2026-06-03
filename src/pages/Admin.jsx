@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import AdminMatchRow from '@/components/admin/AdminMatchRow';
 import AdminBetRow from '@/components/admin/AdminBetRow';
+import CreateFuturesMarket from '@/components/admin/CreateFuturesMarket';
 
 export default function Admin() {
   const { user } = useAuth();
@@ -80,6 +81,7 @@ export default function Admin() {
 
   const [syncResult, setSyncResult] = useState(null);
   const [pendingPlatformInit, setPendingPlatformInit] = useState(null);
+  const [pendingFuturesInit, setPendingFuturesInit] = useState({});
   const [platformInitialized, setPlatformInitialized] = useState(false);
 
   useEffect(() => {
@@ -363,6 +365,17 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="futures" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Flame className="w-5 h-5 text-primary" />
+                Futures Markets ({futuresMarkets.length})
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">Create and manage long-term betting markets</p>
+            </div>
+            <CreateFuturesMarket onSuccess={() => queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })} />
+          </div>
+
           <div className="bg-accent/10 border border-accent/20 rounded-xl p-4">
             <p className="text-sm font-bold text-accent mb-1">📅 Futures Market Timeline</p>
             <p className="text-xs text-muted-foreground">
@@ -372,17 +385,6 @@ export default function Admin() {
             </p>
           </div>
           
-          <h2 className="font-heading font-bold text-lg flex items-center gap-2">
-            <Flame className="w-5 h-5 text-primary" />
-            Futures Markets ({futuresMarkets.length})
-          </h2>
-          {futuresMarkets.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border/50 rounded-xl">
-              <Flame className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">No futures markets yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Create futures markets in the database first</p>
-            </div>
-          ) : (
             <div className="space-y-2">
               {futuresMarkets.map((futures, i) => {
                 const isInitialized = futures.solana_market_created || futures.solana_market_pda;
@@ -428,15 +430,57 @@ export default function Admin() {
                     
                     <div className="flex gap-2 mt-3">
                       {!isInitialized ? (
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            alert('To initialize this futures market on-chain, use the createFuturesMarketOnChain backend function. This will create the market PDA with proper World Cup 2026 timestamps.');
-                          }}
-                          className="h-8 text-xs bg-primary hover:bg-primary/90 rounded-lg"
-                        >
-                          Initialize on Solana
-                        </Button>
+                        pendingFuturesInit?.[futures.id] ? (
+                          <div className="w-full">
+                            <SolanaTransactionSigner
+                              instruction={pendingFuturesInit[futures.id]}
+                              amount={0}
+                              onSuccess={() => {
+                                setPendingFuturesInit(prev => {
+                                  const next = { ...prev };
+                                  delete next[futures.id];
+                                  return next;
+                                });
+                                queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPendingFuturesInit(prev => {
+                                const next = { ...prev };
+                                delete next[futures.id];
+                                return next;
+                              })}
+                              className="w-full mt-2 h-8 text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await base44.functions.invoke('createFuturesMarketOnChain', {
+                                  futures_market_id: futures.id,
+                                });
+                                if (res.data.error) throw new Error(res.data.error);
+                                if (res.data.solana_instruction) {
+                                  setPendingFuturesInit(prev => ({ ...prev, [futures.id]: res.data.solana_instruction }));
+                                } else if (res.data.alreadyExists) {
+                                  alert('Market already exists on-chain!');
+                                  queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+                                }
+                              } catch (err) {
+                                alert('Failed to initialize: ' + err.message);
+                              }
+                            }}
+                            className="h-8 text-xs bg-primary hover:bg-primary/90 rounded-lg"
+                          >
+                            Initialize on Solana
+                          </Button>
+                        )
                       ) : isSettled ? (
                         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-center flex-1">
                           <p className="text-xs text-accent font-bold">✓ Market Settled</p>
