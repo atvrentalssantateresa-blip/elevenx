@@ -39,7 +39,10 @@ export default function Admin() {
     queryKey: ['platformStatus'],
     queryFn: async () => {
       try {
-        const res = await base44.functions.invoke('initPlatformConfig', {});
+        // Get wallet address from localStorage (set by WalletContext after Phantom connects)
+        const walletSession = localStorage.getItem('walletSession');
+        const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
+        const res = await base44.functions.invoke('initPlatformConfig', { walletAddress });
         return res.data;
       } catch (err) {
         return null;
@@ -86,7 +89,10 @@ export default function Admin() {
 
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
-      const response = await base44.functions.invoke('initPlatformConfig', {});
+      // Get wallet address from localStorage (set by WalletContext after Phantom connects)
+      const walletSession = localStorage.getItem('walletSession');
+      const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
+      const response = await base44.functions.invoke('initPlatformConfig', { walletAddress });
       if (response.data.error) throw new Error(response.data.error);
       return response.data;
     },

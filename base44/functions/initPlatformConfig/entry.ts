@@ -12,39 +12,14 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
-    // Get wallet address from request header (set by frontend after wallet auth)
-    const authHeader = req.headers.get('Authorization') || '';
-    console.log('[initPlatformConfig] Authorization header present:', !!authHeader, 'Value:', authHeader ? authHeader.slice(0, 50) + '...' : 'NONE');
-    console.log('[initPlatformConfig] All request headers:', Object.fromEntries(req.headers.entries()));
-    const walletToken = authHeader.replace('Bearer ', '');
+    // Get wallet address from request payload (set by frontend after Phantom connects)
+    const requestBody = await req.json();
+    const walletAddress = requestBody.walletAddress;
+    console.log('[initPlatformConfig] Wallet address from payload:', walletAddress);
     
-    if (!walletToken || walletToken === authHeader) {
-      console.error('[initPlatformConfig] No Bearer token in Authorization header');
-      return Response.json({ error: 'Unauthorized - no Bearer token' }, { status: 401 });
-    }
-    
-    // Decode wallet token to get user info
-    const [headerPart, payloadPart, signaturePart] = walletToken.split('.');
-    if (!headerPart || !payloadPart || !signaturePart) {
-      return Response.json({ error: 'Invalid token format' }, { status: 401 });
-    }
-    
-    // Decode payload (base64url JWT)
-    const decoder = new TextDecoder();
-    let tokenPayload;
-    try {
-      tokenPayload = JSON.parse(decoder.decode(Uint8Array.from(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
-    } catch (e) {
-      console.error('Token decode error:', e);
-      return Response.json({ error: 'Failed to decode token' }, { status: 401 });
-    }
-    
-    console.log('[initPlatformConfig] Token payload:', tokenPayload);
-    
-    // Get user from database by wallet address
-    const walletAddress = tokenPayload.sub || tokenPayload.walletAddress;
     if (!walletAddress) {
-      return Response.json({ error: 'Invalid token - no wallet address' }, { status: 401 });
+      console.error('[initPlatformConfig] No wallet address in request');
+      return Response.json({ error: 'Unauthorized - wallet address required. Please connect Phantom wallet first.' }, { status: 401 });
     }
     
     const walletUsers = await serviceRole.entities.WalletUser.filter({ wallet_address: walletAddress });
