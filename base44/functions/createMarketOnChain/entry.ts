@@ -64,7 +64,11 @@ Deno.serve(async (req) => {
     // Prepare create_market instruction with new discriminator
     const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
 
-    const openUntil = bet.open_until ? Math.floor(new Date(bet.open_until).getTime() / 1000) : Math.floor(Date.now() / 1000) + 86400;
+    // For market recreation, set open_until to 24 hours from now (not the original past date)
+    const isRecreate = payload.force_recreate === true;
+    const openUntil = isRecreate 
+      ? Math.floor(Date.now() / 1000) + 86400  // 24 hours from now for recreation
+      : (bet.open_until ? Math.floor(new Date(bet.open_until).getTime() / 1000) : Math.floor(Date.now() / 1000) + 86400);
     const settleAfter = openUntil + 3600;
 
     const outcomeNames = [
