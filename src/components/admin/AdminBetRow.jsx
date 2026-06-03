@@ -82,16 +82,18 @@ export default function AdminBetRow({ bet, matches, index }) {
 
   const settleOnChainMutation = useMutation({
     mutationFn: async (winningOutcome) => {
+      console.log('[AdminBetRow] Wallet state before settlement:', { walletAddress, isConnected: !!walletAddress });
       if (!walletAddress) {
         throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
       }
-      console.log('[AdminBetRow] Settling market:', { bet_id: bet.id, winning_outcome: winningOutcome, walletAddress });
-      const onChainRes = await base44.functions.invoke('settleMarketOnChain', {
+      const payload = {
         bet_id: bet.id,
         match_id: bet.match_id,
         winning_outcome: winningOutcome,
         admin_wallet: walletAddress,
-      });
+      };
+      console.log('[AdminBetRow] Settling market with payload:', payload);
+      const onChainRes = await base44.functions.invoke('settleMarketOnChain', payload);
       console.log('[AdminBetRow] Backend response:', onChainRes.data);
       if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
       return { solana_instruction: onChainRes.data.solana_instruction };

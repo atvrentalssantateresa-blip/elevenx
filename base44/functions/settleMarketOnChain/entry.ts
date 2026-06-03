@@ -11,10 +11,18 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut11111111111
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const authUser = await base44.auth.me();
+    let authUser;
+    try {
+      authUser = await base44.auth.me();
+    } catch (authErr) {
+      console.error('[settleMarketOnChain] Auth error:', authErr.message);
+      return Response.json({ error: 'Authentication failed - please log in as admin', details: authErr.message }, { status: 401 });
+    }
+    
+    console.log('[settleMarketOnChain] Authenticated user:', { email: authUser?.email, role: authUser?.role, id: authUser?.id });
     
     if (!authUser || authUser.role !== 'admin') {
-      return Response.json({ error: 'Admin access required' }, { status: 403 });
+      return Response.json({ error: 'Admin access required', got_role: authUser?.role }, { status: 403 });
     }
 
     // Get wallet address from request body (sent by frontend)
