@@ -209,30 +209,52 @@ export default function AdminBetRow({ bet, matches, index }) {
               <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
             </Badge>
           )}
-          {pendingRecreate ? (
-            <div className="w-64">
-              <SolanaTransactionSigner
-                instruction={pendingRecreate}
-                amount={0}
-                onSuccess={handleRecreateSuccess}
-                onError={handleRecreateError}
-              />
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (confirm('Recreate market on-chain with updated odds?')) {
-                  recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
-                }
-              }}
-              disabled={recreateMarketMutation.isPending}
-              className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
-            >
-              <RefreshCw className="w-3 h-3 mr-1" /> Recreate
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {pendingRecreate ? (
+              <div className="w-64">
+                <SolanaTransactionSigner
+                  instruction={pendingRecreate}
+                  amount={0}
+                  onSuccess={handleRecreateSuccess}
+                  onError={handleRecreateError}
+                />
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (confirm('Recreate market on-chain with updated odds?')) {
+                    recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
+                  }
+                }}
+                disabled={recreateMarketMutation.isPending}
+                className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" /> Recreate
+              </Button>
+            )}
+            {bet.status === 'open' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  if (confirm('Set market times to 1 hour ago for testing? This will close betting and allow immediate settlement.')) {
+                    try {
+                      const res = await base44.functions.invoke('updateMarketSettleTime', { bet_id: bet.id });
+                      alert(res.data.message || 'Times updated!');
+                      queryClient.invalidateQueries({ queryKey: ['bets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }
+                }}
+                className="h-8 text-xs border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 rounded-lg"
+              >
+                ⚡ Test Mode
+              </Button>
+            )}
+          </div>
           <Badge className={`text-[10px] ${
             bet.status === 'open' ? 'bg-accent/20 text-accent' :
             bet.status === 'settled' ? 'bg-primary/20 text-primary' :
