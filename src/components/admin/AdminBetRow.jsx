@@ -80,7 +80,7 @@ export default function AdminBetRow({ bet, matches, index }) {
     setPendingRecreate(null);
     queryClient.invalidateQueries({ queryKey: ['bets'] });
     queryClient.invalidateQueries({ queryKey: ['marketStatus', match?.id] });
-    alert('Market recreated on-chain!');
+    alert('✓ Market recreated! Now you can settle immediately.');
   };
 
   const handleRecreateError = (err) => {
@@ -224,14 +224,14 @@ export default function AdminBetRow({ bet, matches, index }) {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  if (confirm('Recreate market on-chain with updated odds?')) {
+                  if (confirm('This will recreate the market with timestamps set to 2 hours ago (open) and 1 hour ago (settle). This allows immediate settlement for testing. Continue?')) {
                     recreateMarketMutation.mutate({ bet_id: bet.id, match_id: bet.match_id });
                   }
                 }}
                 disabled={recreateMarketMutation.isPending}
                 className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
               >
-                <RefreshCw className="w-3 h-3 mr-1" /> Recreate
+                <RefreshCw className="w-3 h-3 mr-1" /> Recreate (Test Mode)
               </Button>
             )}
             <>

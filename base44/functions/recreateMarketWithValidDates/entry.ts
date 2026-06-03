@@ -49,19 +49,27 @@ Deno.serve(async (req) => {
 
     // Set timestamps in the past to allow immediate settlement (for testing)
     // open_until must be < settle_after for the program to accept
-    const openUntil = Math.floor(Date.now() / 1000) - 7200; // 2 hours ago
-    const settleAfter = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    const now = Math.floor(Date.now() / 1000);
+    const openUntil = now - 7200; // 2 hours ago
+    const settleAfter = now - 3600; // 1 hour ago
+
+    console.log('[recreateMarketWithValidDates] Current time:', new Date(now * 1000).toISOString());
+    console.log('[recreateMarketWithValidDates] open_until:', new Date(openUntil * 1000).toISOString(), `(${openUntil})`);
+    console.log('[recreateMarketWithValidDates] settle_after:', new Date(settleAfter * 1000).toISOString(), `(${settleAfter})`);
+    console.log('[recreateMarketWithValidDates] Time diff:', settleAfter - openUntil, 'seconds');
 
     // Build instruction data: 8-byte discriminator + open_until (i64) + settle_after (i64)
-    const discriminator = Buffer.from(sha256("global:update_market_timestamps")).slice(0, 8);
+    // Anchor discriminator for "global:update_market_timestamps"
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:update_market_timestamps'));
+    const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
+    
     const data = Buffer.alloc(24);
     discriminator.copy(data, 0);
     data.writeBigInt64LE(BigInt(openUntil), 8);
     data.writeBigInt64LE(BigInt(settleAfter), 16);
 
-    console.log('[recreateMarketWithValidDates] Instruction data (hex):', data.toString('hex'));
-    console.log('[recreateMarketWithValidDates] open_until:', new Date(openUntil * 1000).toISOString());
-    console.log('[recreateMarketWithValidDates] settle_after:', new Date(settleAfter * 1000).toISOString());
+    console.log('[recreateMarketWithValidDates] Discriminator (hex):', discriminator.toString('hex'));
+    console.log('[recreateMarketWithValidDates] Full instruction data (hex):', data.toString('hex'));
 
     return Response.json({
       success: true,
