@@ -59,10 +59,9 @@ export default function AdminBetRow({ bet, matches, index }) {
   }, [marketStatus, marketError, bet.match_id]);
 
   const recreateMarketMutation = useMutation({
-    mutationFn: ({ bet_id, match_id }) => base44.functions.invoke('createMarketOnChain', {
+    mutationFn: ({ bet_id, match_id }) => base44.functions.invoke('recreateMarketWithValidDates', {
       bet_id,
       match_id,
-      force_recreate: true,
     }),
     onSuccess: (response) => {
       const data = response.data;
