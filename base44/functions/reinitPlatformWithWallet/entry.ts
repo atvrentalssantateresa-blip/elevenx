@@ -1,9 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
-import { Buffer } from 'npm:buffer@6.0.3';
+import { PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
+import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
-const RPC_URL = 'https://api.devnet.solana.com';
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
 
 Deno.serve(async (req) => {
   try {
@@ -26,19 +25,19 @@ Deno.serve(async (req) => {
 
     console.log('Reinitializing platform with admin wallet:', walletAddress);
 
-    const connection = new Connection(RPC_URL, 'confirmed');
+    const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const adminPubkey = new PublicKey(walletAddress);
 
     // Derive platform config PDA (must match original)
     const [platformPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('platform')],
-      new PublicKey(SOLANA_PROGRAM_ID)
+      programId
     );
 
     // Derive fee vault PDA
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('fee_vault')],
-      new PublicKey(SOLANA_PROGRAM_ID)
+      programId
     );
 
     console.log('PDAs:', {
@@ -47,19 +46,17 @@ Deno.serve(async (req) => {
       admin: adminPubkey.toBase58(),
     });
 
-    // Build initialize_platform instruction
-    const discriminator = await sha256Discriminator('initialize_platform');
-    const initData = Buffer.alloc(8 + 8 + 8); // discriminator + fee_percent (u64) + consensus_threshold (u64)
+    // Build initialize_platform instruction with admin pubkey embedded
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
+    const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
+    
+    // Layout: discriminator (8) + admin (32) + fee_percent (2) = 42 bytes
+    const initData = Buffer.alloc(42);
     discriminator.copy(initData, 0);
-    initData.writeBigUInt64LE(BigInt(200), 8); // fee_percent = 2% (200 bps)
-    initData.writeBigUInt64LE(BigInt(2), 16); // consensus_threshold = 2
+    Buffer.from(adminPubkey.toBytes()).copy(initData, 8);
+    initData.writeUInt16LE(200, 40); // fee_percent = 2% (200 bps)
 
-    const keys = [
-      { pubkey: platformPda, isSigner: false, isWritable: true },
-      { pubkey: feeVaultPda, isSigner: false, isWritable: true },
-      { pubkey: adminPubkey, isSigner: true, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ];
+    console.log('Init data (hex):', initData.toString('hex'));
 
     const instruction = {
       instruction_type: 'initialize_platform',
@@ -73,7 +70,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      message: 'Platform reinit instruction ready. Sign this transaction to update admin.',
+      message: 'Platform reinit instruction ready. Sign this transaction to set yourself as admin.',
       solana_instruction: instruction,
       platformPda: platformPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
@@ -85,9 +82,3 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
-
-async function sha256Discriminator(name: string): Promise<Buffer> {
-  const msg = new TextEncoder().encode(`global:${name}`);
-  const hash = await crypto.subtle.digest('SHA-256', msg);
-  return Buffer.from(new Uint8Array(hash).slice(0, 8));
-}
