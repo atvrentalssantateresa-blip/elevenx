@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMutation } from '@tanstack/react-query';
+import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function Profile() {
   const { user, refreshUser, logout } = useAuth();
@@ -50,9 +51,15 @@ export default function Profile() {
 
   const reinitMutation = useMutation({
     mutationFn: async () => {
+      console.log('[Profile] Calling reinitPlatformWithWallet with wallet:', walletAddress);
       const res = await base44.functions.invoke('reinitPlatformWithWallet', { walletAddress });
+      console.log('[Profile] Response:', res.data);
       if (res.data.error) throw new Error(res.data.error);
       return res.data;
+    },
+    onError: (error) => {
+      console.error('[Profile] Reinit error:', error);
+      alert('Error: ' + error.message);
     },
   });
 
@@ -161,28 +168,40 @@ export default function Profile() {
           <p className="text-xs text-muted-foreground">
             Reinitialize platform config with your current wallet as admin.
           </p>
-          {reinitMutation.isSuccess && (
-            <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 text-xs text-accent">
-              ✓ Platform instruction ready! Sign the transaction to update admin.
+          {reinitMutation.isError && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-xs text-destructive">
+              ✗ Error: {reinitMutation.error?.message}
             </div>
           )}
-          <Button
-            onClick={() => reinitMutation.mutate()}
-            disabled={reinitMutation.isPending || !isConnected}
-            className="w-full h-11 rounded-xl"
-          >
-            <RefreshCcw className="w-4 h-4 mr-2" />
-            {reinitMutation.isPending ? 'Preparing...' : 'Reinitialize Platform'}
-          </Button>
-          {reinitMutation.isSuccess && reinitMutation.data?.solana_instruction && (
-            <div className="pt-3 border-t border-border/30">
-              <p className="text-[10px] text-muted-foreground mb-2">Sign this transaction:</p>
-              <div className="bg-secondary/30 rounded-lg p-2 max-h-32 overflow-auto">
-                <code className="text-[9px] font-mono break-all">
-                  {JSON.stringify(reinitMutation.data.solana_instruction, null, 2)}
-                </code>
-              </div>
+          {reinitMutation.isSuccess && reinitMutation.data?.solana_instruction ? (
+            <div className="space-y-3">
+              <SolanaTransactionSigner
+                instruction={reinitMutation.data.solana_instruction}
+                amount="0"
+                onSuccess={() => {
+                  alert('✓ Platform reinitialized! You are now the admin.');
+                  reinitMutation.reset();
+                  setTimeout(() => window.location.reload(), 2000);
+                }}
+                onError={(err) => alert('Transaction failed: ' + err.message)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => reinitMutation.reset()}
+                className="w-full h-10 rounded-xl"
+              >
+                Cancel
+              </Button>
             </div>
+          ) : (
+            <Button
+              onClick={() => reinitMutation.mutate()}
+              disabled={reinitMutation.isPending || !isConnected || !walletAddress}
+              className="w-full h-11 rounded-xl"
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              {reinitMutation.isPending ? 'Preparing...' : !walletAddress ? 'Connect Wallet First' : 'Reinitialize Platform'}
+            </Button>
           )}
         </div>
       )}
