@@ -39,16 +39,9 @@ Deno.serve(async (req) => {
       }, { status: 404 });
     }
     
-    // Get full user record
-    const users = await serviceRole.entities.User.filter({ id: walletUser.id });
-    const user = users[0];
-    
-    if (!user) {
-      return Response.json({ error: 'User not found' }, { status: 404 });
-    }
-    
-    if (user.role !== 'admin') {
-      return Response.json({ error: 'Admin access required', got_role: user.role }, { status: 403 });
+    // Check admin role directly from WalletUser (no need to lookup system User table)
+    if (walletUser.role !== 'admin') {
+      return Response.json({ error: 'Admin access required', got_role: walletUser.role }, { status: 403 });
     }
 
     if (!bet_id || !winning_outcome || !['a', 'b', 'draw'].includes(winning_outcome)) {
