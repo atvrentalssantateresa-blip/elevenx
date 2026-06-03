@@ -44,6 +44,22 @@ Deno.serve(async (req) => {
       
       if (user) {
         console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address || user.data?.wallet_address);
+        
+        // Ensure WalletUser record exists (create if missing for existing users)
+        const userWallet = user.wallet_address || user.data?.wallet_address;
+        const allWalletUsers = await serviceRole.entities.WalletUser.list();
+        const walletUserExists = allWalletUsers.find(wu => wu.wallet_address === userWallet);
+        
+        if (!walletUserExists && userWallet) {
+          try {
+            await serviceRole.entities.WalletUser.create({
+              wallet_address: userWallet,
+            });
+            console.log('✓ Created WalletUser record for existing user:', user.id);
+          } catch (wuErr) {
+            console.error('Failed to create WalletUser record:', wuErr.message);
+          }
+        }
       } else {
         console.log('User lookup - no matching user found');
       }
@@ -65,6 +81,11 @@ Deno.serve(async (req) => {
           wallet_address: walletAddress,
           username: walletAddress.slice(0, 8),
           role: 'user',
+        });
+        
+        // Also create WalletUser record for betting authorization
+        await serviceRole.entities.WalletUser.create({
+          wallet_address: walletAddress,
         });
         
         console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);

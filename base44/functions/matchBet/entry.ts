@@ -34,13 +34,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
     }
 
-    // Verify wallet is authenticated (exists in User entity)
+    // Verify wallet is authenticated (exists in WalletUser entity)
     const trimmedWallet = wallet_address.trim();
     console.log('[matchBet] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
     
-    // List all users and find by wallet_address (filter by field doesn't work reliably)
-    const allUsers = await serviceRole.entities.User.list();
-    const user = allUsers.find(u => u.wallet_address === trimmedWallet || u.data?.wallet_address === trimmedWallet);
+    const allWalletUsers = await serviceRole.entities.WalletUser.list();
+    const user = allWalletUsers.find(u => u.wallet_address === trimmedWallet);
     
     if (!user) {
       return Response.json({ 
@@ -48,7 +47,7 @@ Deno.serve(async (req) => {
         hint: 'Connect your wallet on the Profile page to authenticate'
       }, { status: 401 });
     }
-    console.log('[matchBet] ✓ Authenticated user:', user.username || user.full_name);
+    console.log('[matchBet] ✓ Authenticated user');
 
     // Validate base58 format
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;

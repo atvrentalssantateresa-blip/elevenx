@@ -38,10 +38,9 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Verify wallet is authenticated (exists in User entity)
-    // List all users and find by wallet_address (filter by field doesn't work reliably)
-    const allUsers = await serviceRole.entities.User.list();
-    const user = allUsers.find(u => u.wallet_address === walletAddress || u.data?.wallet_address === walletAddress);
+    // Verify wallet is authenticated (exists in WalletUser entity)
+    const allWalletUsers = await serviceRole.entities.WalletUser.list();
+    const user = allWalletUsers.find(u => u.wallet_address === walletAddress);
     
     if (!user) {
       return Response.json({ 

@@ -1,0 +1,34 @@
+{
+  "name": "WalletUser",
+  "type": "object",
+  "properties": {
+    "wallet_address": {
+      "type": "string",
+      "description": "Solana wallet address"
+    },
+    "username": {
+      "type": "string",
+      "description": "Display username"
+    },
+    "total_bets": {
+      "type": "number",
+      "default": 0
+    },
+    "total_won": {
+      "type": "number",
+      "default": 0
+    },
+    "total_staked": {
+      "type": "number",
+      "default": 0
+    },
+    "role": {
+      "type": "string",
+      "default": "user"
+    }
+  },
+  "required": [
+    "wallet_address",
+    "username"
+  ]
+}
