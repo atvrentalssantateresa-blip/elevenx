@@ -138,6 +138,19 @@ export default function Admin() {
     onError: (err) => alert('Error: ' + err.message),
   });
 
+  const createLiveOddsBetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('createTestBetWithLiveOdds', {});
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      alert(`Bet created with LIVE ODDS!\n${data.message}\n\nOdds:\nHome: ${data.odds.home}\nDraw: ${data.odds.draw}\nAway: ${data.odds.away}\nBookmaker: ${data.odds.bookmaker}`);
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
+    },
+    onError: (err) => alert('Error: ' + err.message),
+  });
+
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
       // Get wallet address from localStorage (set by WalletContext after Phantom connects)
@@ -249,8 +262,8 @@ export default function Admin() {
               <div className="flex items-center gap-3">
                 <TestTube className="w-5 h-5 text-accent" />
                 <div>
-                  <p className="text-sm font-bold text-foreground">Create Test Bet</p>
-                  <p className="text-xs text-muted-foreground">Creates a bet with real API match for testing.</p>
+                  <p className="text-sm font-bold text-foreground">Create Test Bet (No Odds)</p>
+                  <p className="text-xs text-muted-foreground">Creates a bet with API match (odds not available yet).</p>
                 </div>
               </div>
               <Button
@@ -260,6 +273,25 @@ export default function Admin() {
                 className="border-accent/50 text-accent hover:bg-accent/10 font-heading font-bold rounded-xl h-9"
               >
                 {createTestBetMutation.isPending ? 'Creating...' : 'Create Test Bet'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-card border border-accent/30 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-accent" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Create Bet with LIVE ODDS</p>
+                  <p className="text-xs text-muted-foreground">Creates a bet with real-time odds from bookmakers.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => createLiveOddsBetMutation.mutate()}
+                disabled={createLiveOddsBetMutation.isPending}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-heading font-bold rounded-xl h-9"
+              >
+                {createLiveOddsBetMutation.isPending ? 'Creating...' : 'Create with Live Odds'}
               </Button>
             </div>
           </div>
