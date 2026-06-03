@@ -244,11 +244,9 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'place_bet',
         programId: SOLANA_PROGRAM_ID,
-        accounts: {
-          market: marketPda.toBase58(),
-          lpOffer: lpOfferPda.toBase58(),
-          betPosition: positionPda.toBase58(),
-        },
+        marketPda: marketPda.toBase58(),
+        lpOfferPda: lpOfferPda.toBase58(),
+        bettorPositionPda: positionPda.toBase58(),
         outcome: outcomeIndex,
         amountLamports,
       },
