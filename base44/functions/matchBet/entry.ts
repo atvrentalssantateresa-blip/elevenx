@@ -26,22 +26,17 @@ Deno.serve(async (req) => {
     const trimmedWallet = wallet_address.trim();
     console.log('[matchBet] Authenticating wallet:', trimmedWallet.slice(0, 8) + '...');
     
-    // Note: User lookup requires service role which may not be available in all environments
-    // For now, we trust the frontend authentication and just validate wallet format
-    try {
-      let users = await serviceRole.entities.User.filter({ wallet_address: trimmedWallet });
-      console.log('[matchBet] User lookup result:', users?.length || 0, 'users found');
-      
-      if (!users || users.length === 0) {
-        console.warn('[matchBet] No user found for wallet (may be OK if user just registered):', trimmedWallet);
-        // Don't fail - allow betting if wallet format is valid
-      } else {
-        console.log('[matchBet] ✓ Authenticated user:', users[0].username || users[0].full_name);
-      }
-    } catch (authErr) {
-      console.warn('[matchBet] Service role not available, skipping user lookup:', authErr.message);
-      // Continue without user lookup - wallet validation is sufficient
+    // List all users and find by wallet_address (filter by field doesn't work reliably)
+    const allUsers = await serviceRole.entities.User.list();
+    const user = allUsers.find(u => u.wallet_address === trimmedWallet || u.data?.wallet_address === trimmedWallet);
+    
+    if (!user) {
+      return Response.json({ 
+        error: 'Wallet not authenticated. Please sign in with your wallet first.', 
+        hint: 'Connect your wallet on the Profile page to authenticate'
+      }, { status: 401 });
     }
+    console.log('[matchBet] ✓ Authenticated user:', user.username || user.full_name);
 
     // Validate base58 format
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
