@@ -40,7 +40,7 @@ export default function Admin() {
     queryFn: async () => {
       try {
         // Get wallet address from localStorage (set by WalletContext after Phantom connects)
-        const walletSession = localStorage.getItem('walletSession');
+        const walletSession = localStorage.getItem('elevenx_wallet_session');
         const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
         if (!walletAddress) {
           console.log('[Admin] No wallet connected yet');
@@ -76,7 +76,7 @@ export default function Admin() {
 
   useEffect(() => {
     // Check if wallet is connected on mount
-    const walletSession = localStorage.getItem('walletSession');
+    const walletSession = localStorage.getItem('elevenx_wallet_session');
     if (walletSession) {
       refetchPlatformStatus();
     }
@@ -104,7 +104,7 @@ export default function Admin() {
   const initPlatformMutation = useMutation({
     mutationFn: async () => {
       // Get wallet address from localStorage (set by WalletContext after Phantom connects)
-      const walletSession = localStorage.getItem('walletSession');
+      const walletSession = localStorage.getItem('elevenx_wallet_session');
       const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
       if (!walletAddress) {
         throw new Error('Wallet not connected. Please connect Phantom first.');
