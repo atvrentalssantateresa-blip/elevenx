@@ -270,25 +270,12 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // place_bet — call the actual program instruction
         console.log('Creating place_bet program instruction:', instruction);
         
-        // Check if this is a futures bet with placeholder PDAs (not yet on-chain)
-        const isPlaceholderPda = instruction.marketPda === '11111111111111111111111111111111';
-        
-        if (isPlaceholderPda) {
-          // Futures markets not yet on-chain - just record the bet off-chain for now
-          console.log('[SolanaTransactionSigner] Futures bet - no on-chain transaction needed yet');
-          // Return success immediately since there's no on-chain market
-          setSignature('futures_offchain_bet');
-          onSuccess({ 
-            signature: 'futures_offchain_bet', 
-            status: 'confirmed', 
-            userBetId, 
-            offerId, 
-            betId, 
-            isPlatformInit: false,
-            futures_market_id 
-          });
-          setIsSigning(false);
-          return;
+        // Validate market PDA is a real Solana address
+        try {
+          new PublicKey(instruction.marketPda);
+        } catch (err) {
+          console.error('[SolanaTransactionSigner] Invalid market PDA:', instruction.marketPda);
+          throw new Error('Invalid market configuration. Admin must deploy this market on-chain first.');
         }
         
         const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
@@ -581,7 +568,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       // Only set signature after successful confirmation
       setSignature(sig);
       console.log('Transaction confirmed on-chain!');
-      onSuccess({ signature: sig, status: 'confirmed', userBetId, offerId, betId, isPlatformInit: isPlatformInit || false, futures_market_id });
+      
+      // Pass commit_data if available (for futures bets)
+      const commitPayload = { 
+        signature: sig, 
+        status: 'confirmed', 
+        userBetId, 
+        offerId, 
+        betId, 
+        isPlatformInit: isPlatformInit || false,
+        futures_market_id,
+      };
+      
+      // Add commit_data for futures bets if available
+      if (window.pendingFuturesCommit) {
+        commitPayload.commit_data = window.pendingFuturesCommit.commit_data;
+      }
+      
+      onSuccess(commitPayload);
     } catch (err) {
       console.error('[SolanaTransactionSigner] Transaction error:', err);
       console.error('[SolanaTransactionSigner] Error stack:', err.stack);

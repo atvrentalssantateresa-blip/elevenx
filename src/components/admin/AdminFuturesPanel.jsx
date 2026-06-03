@@ -3,17 +3,52 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, CheckCircle, Zap, Loader, Globe } from 'lucide-react';
+import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminFuturesPanel() {
   const queryClient = useQueryClient();
-  const [pendingInit, setPendingInit] = useState(null);
+  const [pendingDeploy, setPendingDeploy] = useState(null);
+  const [deployingMarketId, setDeployingMarketId] = useState(null);
 
   // Fetch existing futures markets (country-by-country)
   const { data: futuresMarkets = [], refetch } = useQuery({
     queryKey: ['futuresMarkets'],
     queryFn: () => base44.entities.FuturesMarket.list('-created_date', 100),
+  });
+
+  const handleDeploySuccess = async (result) => {
+    console.log('Futures market deploy success:', result);
+    
+    if (pendingDeploy?.futures_market_id) {
+      await base44.entities.FuturesMarket.update(pendingDeploy.futures_market_id, {
+        solana_market_created: true,
+        solana_market_pda: pendingDeploy.marketPda || result.marketPda,
+      });
+    }
+    
+    setPendingDeploy(null);
+    setDeployingMarketId(null);
+    queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+    alert('Country futures market deployed on-chain!');
+  };
+
+  const deployMutation = useMutation({
+    mutationFn: async (marketId) => {
+      const res = await base44.functions.invoke('createFuturesMarketOnChain', {
+        futures_market_id: marketId,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data, marketId) => {
+      if (data.solana_instruction) {
+        setPendingDeploy(data.solana_instruction);
+      } else if (data.alreadyExists) {
+        alert('Market already exists on-chain!');
+        queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+      }
+    },
   });
 
   return (
@@ -54,12 +89,31 @@ export default function AdminFuturesPanel() {
                   <CheckCircle className="w-3 h-3 mr-1" /> On-Chain
                 </Badge>
               ) : (
-                <Badge className="bg-secondary text-secondary-foreground text-xs py-1 px-3 rounded-lg">
-                  Not Deployed
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-secondary text-secondary-foreground text-xs py-1 px-3 rounded-lg">
+                    Not Deployed
+                  </Badge>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setDeployingMarketId(market.id);
+                      deployMutation.mutate(market.id);
+                    }}
+                    disabled={deployMutation.isPending || deployingMarketId === market.id}
+                    className="bg-primary hover:bg-primary/90 text-xs font-bold h-7 px-2 rounded-lg"
+                  >
+                    {deployingMarketId === market.id && deployMutation.isPending ? (
+                      <Loader className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Rocket className="w-3 h-3 mr-1" /> Deploy
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
-            
+
             {/* Outcomes */}
             <div className="bg-secondary/30 rounded-lg p-3 mt-3">
               <div className="grid grid-cols-3 gap-2">
@@ -82,6 +136,29 @@ export default function AdminFuturesPanel() {
           <p className="text-muted-foreground text-sm mb-4">
             Use "Fetch All Odds" to create markets automatically from API data
           </p>
+        </div>
+      )}
+
+      {/* Deploy Transaction Modal */}
+      {pendingDeploy && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+            <div className="space-y-4">
+              <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                <p className="text-sm font-bold text-primary mb-1">Deploy to Solana</p>
+                <p className="text-xs text-muted-foreground">Sign transaction to deploy this country market on-chain</p>
+              </div>
+              <SolanaTransactionSigner
+                instruction={pendingDeploy}
+                amount={0}
+                futures_market_id={pendingDeploy.futures_market_id}
+                onSuccess={handleDeploySuccess}
+              />
+              <Button variant="outline" size="sm" onClick={() => setPendingDeploy(null)} className="w-full">
+                Cancel
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

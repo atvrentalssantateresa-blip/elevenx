@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import GroupCountryCard from '@/components/futures/GroupCountryCard';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 import FuturesBetSlip from '@/components/futures/FuturesBetSlip';
+import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function Futures() {
   const [selectedOutcome, setSelectedOutcome] = useState(null);
@@ -46,41 +47,108 @@ export default function Futures() {
     console.log('Selected:', market.country, outcome.position, outcome.odds);
   };
 
-  // Handle bet confirmation - creates UserBet record
+  // Handle bet confirmation - initiates on-chain transaction
   const handleBetConfirm = async ({ market, outcome, amount, potentialPayout }) => {
     try {
-      // Create UserBet record in database
-      const userBet = await base44.entities.UserBet.create({
-        bet_id: market.id,
-        match_id: 'futures',
-        outcome: outcome.position === '1st' ? 'a' : outcome.position === '2nd' ? 'b' : 'draw',
+      // Get wallet address from localStorage
+      const walletSession = localStorage.getItem('elevenx_wallet_session');
+      const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
+      
+      if (!walletAddress) {
+        alert('Please connect your Phantom wallet first');
+        return;
+      }
+
+      // Call backend to get Solana transaction instructions
+      const res = await base44.functions.invoke('placeFuturesBet', {
+        walletAddress,
+        marketId: market.id,
+        outcome: { position: outcome.position },
         amount,
-        potential_payout: potentialPayout,
-        status: 'active', // Set as active immediately for off-chain futures
-        outcome_label: `${market.country} - ${outcome.position} Place`,
-        match_title: `${market.country} ${outcome.position} Place`,
-        role: 'matcher',
       });
 
-      console.log('UserBet created:', userBet);
+      if (res.data.error) {
+        throw new Error(res.data.error);
+      }
+
+      // Store commit data for after transaction succeeds
+      window.pendingFuturesCommit = {
+        commit_data: res.data.commit_data,
+        marketId: market.id,
+        betAmount: amount,
+      };
+
+      // Set instruction for SolanaTransactionSigner
+      setSelectedMarket({
+        ...market,
+        solana_instruction: res.data.solana_instruction,
+        commit_data: res.data.commit_data,
+        betAmount: amount,
+      });
       
-      // Close bet slip and show success
+    } catch (error) {
+      console.error('Failed to prepare bet:', error);
+      alert('Failed to prepare bet: ' + error.message);
+    }
+  };
+
+  // Handle Solana transaction success
+  const handleTransactionSuccess = async (result) => {
+    try {
+      console.log('Transaction confirmed:', result);
+      
+      const pendingCommit = window.pendingFuturesCommit;
+      if (pendingCommit && result.signature) {
+        // Call commit function to update database
+        const res = await base44.functions.invoke('commitFuturesBet', {
+          signature: result.signature,
+          commit_data: pendingCommit.commit_data,
+        });
+
+        if (res.data.error) {
+          throw new Error(res.data.error);
+        }
+
+        console.log('Bet committed to database:', res.data.userBetId);
+        
+        // Clean up
+        window.pendingFuturesCommit = null;
+        setShowBetSlip(false);
+        setSelectedMarket(null);
+        setSelectedOutcome(null);
+        
+        // Show success
+        alert(`✓ Bet placed successfully!\n\nTransaction: ${result.signature.slice(0, 8)}...${result.signature.slice(-8)}\n\nView on Solscan: https://solscan.io/tx/${result.signature}?cluster=devnet`);
+        
+        // Refresh data
+        queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
+        queryClient.invalidateQueries({ queryKey: ['user-bets'] });
+      }
+    } catch (error) {
+      console.error('Failed to commit bet:', error);
+      alert('Transaction succeeded but failed to update database: ' + error.message);
+    }
+  };
+
+  // Also handle commit from SolanaTransactionSigner directly
+  const commitFuturesBetMutation = useMutation({
+    mutationFn: async ({ signature, commitData }) => {
+      const res = await base44.functions.invoke('commitFuturesBet', {
+        signature,
+        commit_data: commitData,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: () => {
+      window.pendingFuturesCommit = null;
       setShowBetSlip(false);
       setSelectedMarket(null);
       setSelectedOutcome(null);
-      
-      // Show success message
-      alert(`Bet placed successfully!\n\n${market.country} - ${outcome.position} Place\nAmount: ◎${amount}\nPotential Payout: ◎${potentialPayout.toFixed(2)}`);
-      
-      // Refresh data
       queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
       queryClient.invalidateQueries({ queryKey: ['user-bets'] });
-      
-    } catch (error) {
-      console.error('Failed to create bet:', error);
-      alert('Failed to create bet: ' + error.message);
-    }
-  };
+    },
+  });
 
   // Mutation to fetch and calculate odds
   const fetchOddsMutation = useMutation({
@@ -363,6 +431,43 @@ export default function Futures() {
               />
             )}
           </AnimatePresence>
+
+          {/* Solana Transaction Signer Modal (when market has instruction) */}
+          {selectedMarket?.solana_instruction && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+                <div className="space-y-4">
+                  <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                    <p className="text-sm font-bold text-primary mb-1">Sign Solana Transaction</p>
+                    <p className="text-xs text-muted-foreground">
+                      Betting on {selectedMarket.country} - {selectedOutcome?.position} Place
+                    </p>
+                  </div>
+                  <SolanaTransactionSigner
+                    instruction={selectedMarket.solana_instruction}
+                    amount={selectedOutcome?.odds ? (selectedMarket.betAmount || 0) : 0}
+                    onSuccess={handleTransactionSuccess}
+                    onError={(err) => {
+                      console.error('Transaction failed:', err);
+                      alert('Transaction failed: ' + (err.message || 'Unknown error'));
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedMarket(null);
+                      setSelectedOutcome(null);
+                      setShowBetSlip(false);
+                    }}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="matches" className="mt-6">

@@ -1,32 +1,80 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Trophy, TrendingUp, Loader } from 'lucide-react';
+import { X, Trophy, TrendingUp, Loader, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import { useWallet } from '@/lib/WalletContext';
 
 export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) {
+  const { walletAddress, isConnected } = useWallet();
   const [amount, setAmount] = useState('');
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [instruction, setInstruction] = useState(null);
+  const [commitData, setCommitData] = useState(null);
 
   const numericAmount = parseFloat(amount) || 0;
   const potentialPayout = numericAmount * (outcome.odds || 0);
 
-  const handleConfirm = async () => {
+  const handlePrepareBet = async () => {
     if (!amount || numericAmount <= 0) return;
+    if (!isConnected || !walletAddress) {
+      alert('Please connect your Phantom wallet first');
+      return;
+    }
     
-    setIsConfirming(true);
+    setIsPreparing(true);
     try {
+      // Call backend to prepare bet and get Solana instruction
+      const res = await onConfirm({
+        market,
+        outcome,
+        amount: numericAmount,
+        potentialPayout,
+        walletAddress,
+        prepareOnly: true,
+      });
+      
+      if (res?.solana_instruction) {
+        setInstruction(res.solana_instruction);
+        setCommitData(res.commit_data);
+        // Store commit data globally for SolanaTransactionSigner callback
+        window.pendingFuturesCommit = {
+          market,
+          outcome,
+          amount: numericAmount,
+          potentialPayout,
+          commit_data: res.commit_data,
+        };
+      } else if (res?.error) {
+        alert('Error: ' + res.error);
+      }
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const handleTransactionSuccess = async (result) => {
+    console.log('Transaction success:', result);
+    
+    // Commit to database after on-chain success
+    const pendingCommit = window.pendingFuturesCommit;
+    if (pendingCommit && result.signature) {
       await onConfirm({
         market,
         outcome,
         amount: numericAmount,
         potentialPayout,
+        signature: result.signature,
+        commit_data: pendingCommit.commit_data,
+        commitOnly: true,
       });
-    } finally {
-      setIsConfirming(false);
     }
+    
+    alert('✓ Bet placed successfully! Good luck! 🍀');
+    onClose();
   };
 
   const positionBadge = outcome.position === '1st' ? '🥇' : outcome.position === '2nd' ? '🥈' : '🥉';
@@ -129,33 +177,62 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
           </motion.div>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 h-11 rounded-xl font-bold"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!amount || numericAmount <= 0 || isConfirming}
-            className="flex-1 h-11 rounded-xl font-bold bg-primary hover:bg-primary/90"
-          >
-            {isConfirming ? (
-              <>
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-                Confirming...
-              </>
-            ) : (
-              <>
-                <Trophy className="w-4 h-4 mr-2" />
-                Place Bet
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Transaction or Actions */}
+        {instruction ? (
+          <div className="space-y-3">
+            <SolanaTransactionSigner
+              instruction={instruction}
+              amount={numericAmount.toFixed(4)}
+              userBetId={commitData?.userBetId}
+              betId={market.id}
+              isOffer={false}
+              onSuccess={handleTransactionSuccess}
+              onError={(err) => alert('Transaction failed: ' + err.message)}
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInstruction(null);
+                setCommitData(null);
+              }}
+              className="w-full h-10 rounded-xl font-bold"
+            >
+              Back
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 h-11 rounded-xl font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePrepareBet}
+              disabled={!amount || numericAmount <= 0 || isPreparing || !isConnected}
+              className="flex-1 h-11 rounded-xl font-bold bg-primary hover:bg-primary/90"
+            >
+              {isPreparing ? (
+                <>
+                  <Loader className="w-4 h-4 mr-2 animate-spin" />
+                  Preparing...
+                </>
+              ) : !isConnected ? (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Connect Wallet
+                </>
+              ) : (
+                <>
+                  <Trophy className="w-4 h-4 mr-2" />
+                  Place Bet
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
