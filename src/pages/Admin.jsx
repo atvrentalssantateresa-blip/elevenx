@@ -48,6 +48,19 @@ export default function Admin() {
     refetchInterval: 30000,
   });
 
+  const { data: platformConfigDetails, refetch: refetchPlatformConfig } = useQuery({
+    queryKey: ['platformConfigDetails'],
+    queryFn: async () => {
+      try {
+        const res = await base44.functions.invoke('checkPlatformConfig', {});
+        return res.data;
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: false,
+  });
+
   const [syncResult, setSyncResult] = useState(null);
   const [pendingPlatformInit, setPendingPlatformInit] = useState(null);
   const [platformInitialized, setPlatformInitialized] = useState(false);
@@ -165,28 +178,62 @@ export default function Admin() {
                   Cancel
                 </Button>
               </div>
+            ) : platformInitialized ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Platform Config</p>
+                      <p className="text-xs text-muted-foreground">Already initialized on Solana</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-accent/20 text-accent text-xs py-1 px-3 rounded-lg">
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Initialized
+                  </Badge>
+                </div>
+                <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Admin Wallet:</span>
+                    <span className="text-xs font-mono text-primary font-bold">
+                      {platformConfigDetails?.admin ? `${platformConfigDetails.admin.slice(0, 6)}...${platformConfigDetails.admin.slice(-6)}` : 'Click Check to view'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Fee %:</span>
+                    <span className="text-xs font-bold">{platformConfigDetails?.feePercent ?? '-'}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchPlatformConfig()}
+                    className="w-full h-8 text-xs rounded-lg mt-2"
+                  >
+                    Check Platform Config
+                  </Button>
+                  {platformConfigDetails?.admin && (
+                    <p className="text-[9px] text-muted-foreground mt-2">
+                      ⚠️ Your current wallet must match this admin address to settle markets
+                    </p>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Zap className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-sm font-bold text-foreground">Platform Config</p>
-                    <p className="text-xs text-muted-foreground">{platformInitialized ? 'Already initialized' : 'Initialize on Solana (one-time)'}</p>
+                    <p className="text-xs text-muted-foreground">Initialize on Solana (one-time)</p>
                   </div>
                 </div>
-                {platformInitialized ? (
-                  <Badge className="bg-accent/20 text-accent text-xs py-1 px-3 rounded-lg">
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Initialized
-                  </Badge>
-                ) : (
-                  <Button
-                    onClick={() => initPlatformMutation.mutate()}
-                    disabled={initPlatformMutation.isPending}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
-                  >
-                    {initPlatformMutation.isPending ? 'Initializing...' : 'Initialize Platform'}
-                  </Button>
-                )}
+                <Button
+                  onClick={() => initPlatformMutation.mutate()}
+                  disabled={initPlatformMutation.isPending}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
+                >
+                  {initPlatformMutation.isPending ? 'Initializing...' : 'Initialize Platform'}
+                </Button>
               </div>
             )}
           </div>
