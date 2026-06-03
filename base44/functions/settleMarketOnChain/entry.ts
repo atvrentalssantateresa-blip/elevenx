@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
     const requestBody = await req.json();
     const { bet_id, winning_outcome, admin_wallet } = requestBody;
     
+    console.log('[settleMarketOnChain] Request body:', { bet_id, winning_outcome, admin_wallet });
+    
     // Validate admin wallet address
     if (!admin_wallet) {
       return Response.json({ error: 'Admin wallet address required' }, { status: 400 });
@@ -25,8 +27,16 @@ Deno.serve(async (req) => {
     const walletUsers = await serviceRole.entities.WalletUser.filter({ wallet_address: admin_wallet });
     const walletUser = walletUsers[0];
     
+    console.log('[settleMarketOnChain] Wallet user lookup result:', walletUser ? 'found' : 'not found');
+    
     if (!walletUser) {
-      return Response.json({ error: 'Wallet user not found' }, { status: 404 });
+      const allWalletUsers = await serviceRole.entities.WalletUser.list();
+      return Response.json({ 
+        error: 'Wallet user not found', 
+        received_wallet: admin_wallet,
+        registered_wallets: allWalletUsers.map(w => w.wallet_address),
+        hint: 'Please connect your Phantom wallet with the admin account'
+      }, { status: 404 });
     }
     
     // Get full user record

@@ -94,6 +94,7 @@ export default function AdminBetRow({ bet, matches, index }) {
         admin_wallet: walletAddress,
       };
       console.log('[AdminBetRow] Settling market with payload:', payload);
+      console.log('[AdminBetRow] Wallet address being sent:', walletAddress);
       const onChainRes = await base44.functions.invoke('settleMarketOnChain', payload);
       console.log('[AdminBetRow] Backend response:', onChainRes.data);
       if (!onChainRes.data.success) throw new Error(onChainRes.data.error || 'On-chain settlement failed');
