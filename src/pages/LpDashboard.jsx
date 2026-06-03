@@ -360,7 +360,7 @@ export default function LpDashboard() {
               </Alert>
             )}
 
-            {pendingTx ? (
+            {pendingTx && pendingTx.type === 'provide_liquidity' ? (
               <SolanaTransactionSigner
                 instruction={pendingTx.instruction}
                 amount={pendingTx.amount}
