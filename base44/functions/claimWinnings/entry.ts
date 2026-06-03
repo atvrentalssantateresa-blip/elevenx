@@ -102,10 +102,13 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'claim_winnings',
         programId: SOLANA_PROGRAM_ID,
-        marketPda:    marketPda.toBase58(),
-        positionPda:  positionPda.toBase58(),
-        feeVaultPda:  feeVaultPda.toBase58(),
-        bettorPubkey: trimmedWallet,
+        keys: [
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: positionPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: trimmedWallet, isSigner: false, isWritable: true },
+          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+        ],
       },
     });
 
