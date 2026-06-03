@@ -61,6 +61,8 @@ const COUNTRY_FLAGS = {
   'cameroon': '🇨🇲',
   'ghana': '🇬🇭',
   'ivory coast': '🇨🇮',
+  'côte d\'ivoire': '🇨🇮',
+  'cote d\'ivoire': '🇨🇮',
   'south africa': '🇿🇦',
   'algeria': '🇩🇿',
   'mali': '🇲🇱',
@@ -142,7 +144,7 @@ export const getFlagEmoji = (countryCode) => {
 export const getFlagFromName = (countryName) => {
   if (!countryName) return '🏳️';
   const normalizedName = countryName.toLowerCase().trim();
-  return COUNTRY_FLAGS[normalizedName] || getFlagEmoji(normalizedName) || '🏳️';
+  return COUNTRY_FLAGS[normalizedName] || '🏳️';
 };
 
 // Get flag for team (handles both name and country code)
