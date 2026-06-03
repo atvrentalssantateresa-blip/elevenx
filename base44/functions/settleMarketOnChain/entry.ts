@@ -10,10 +10,14 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut11111111111
  */
 Deno.serve(async (req) => {
   try {
-    // Create service role client directly (bypasses platform auth)
+    // Use service role authorization header from platform
+    const serviceAuthHeader = req.headers.get('base44-service-authorization') || '';
+    const serviceToken = serviceAuthHeader.replace('Bearer ', '');
+    
+    // Create service role client using the platform-provided token
     const base44 = createClient({
       appId: Deno.env.get('BASE44_APP_ID') || '',
-      token: Deno.env.get('BASE44_SERVICE_TOKEN') || '',
+      token: serviceToken,
       functionsVersion: 'v1',
       serverUrl: '',
       requiresAuth: false,
