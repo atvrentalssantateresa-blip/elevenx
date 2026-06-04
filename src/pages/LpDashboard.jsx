@@ -21,6 +21,7 @@ import LpPositionCard from '@/components/lp/LpPositionCard';
 
 const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
   const solscanUrl = `https://solscan.io/tx/${data?.signature}?cluster=devnet`;
+  const hasLpBonus = data?.lpFeeBonus && data.lpFeeBonus > 0;
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -28,13 +29,23 @@ const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
         <DialogHeader>
           <DialogTitle className="font-heading flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-accent" />
-            {isWithdraw ? 'Liquidity Withdrawn!' : 'Liquidity Provided!'}
+            {isWithdraw ? (hasLpBonus ? 'LP Winnings + Fee Bonus!' : 'Liquidity Withdrawn!') : 'Liquidity Provided!'}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className={`${isWithdraw ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-accent/10 border-accent/30'} border rounded-xl p-4 text-center`}>
-            <p className="text-sm text-muted-foreground">{isWithdraw ? 'You withdrew' : 'You committed'}</p>
-            <p className={`font-heading font-bold text-2xl ${isWithdraw ? 'text-yellow-400' : 'text-accent'}`}>◎{data?.amount.toFixed(4)} SOL</p>
+          <div className={`${isWithdraw ? (hasLpBonus ? 'bg-accent/10 border-accent/30' : 'bg-yellow-500/10 border-yellow-500/30') : 'bg-accent/10 border-accent/30'} border rounded-xl p-4 text-center`}>
+            <p className="text-sm text-muted-foreground">{isWithdraw ? 'Total Withdrawal' : 'You committed'}</p>
+            <p className={`font-heading font-bold text-2xl ${isWithdraw ? (hasLpBonus ? 'text-accent' : 'text-yellow-400') : 'text-accent'}`}>
+              ◎{hasLpBonus ? data?.totalWithdraw?.toFixed(4) : data?.amount?.toFixed(4)} SOL
+            </p>
+            {hasLpBonus && (
+              <div className="mt-3 pt-3 border-t border-accent/20">
+                <p className="text-[10px] text-muted-foreground">Base winnings</p>
+                <p className="font-heading font-bold text-yellow-400">◎{data?.amount?.toFixed(4)}</p>
+                <p className="text-[10px] text-muted-foreground mt-2">+ LP fee bonus (50% of platform fees)</p>
+                <p className="font-heading font-bold text-accent">◎{data?.lpFeeBonus?.toFixed(4)}</p>
+              </div>
+            )}
             {!isWithdraw && (
               <>
                 <p className="text-xs text-muted-foreground mt-2">for <span className="text-foreground font-bold">{data?.team}</span></p>
@@ -203,10 +214,10 @@ export default function LpDashboard() {
       if (userBet.role !== 'lp') throw new Error('Not an LP bet');
       // Allow withdrawal for any LP position - backend will check if unmatched funds exist
       
-      console.log('[withdrawLiquidityMutation] Calling withdrawLiquidity with:', { walletAddress, userBetId: offer.userBetId });
+      console.log('[withdrawLiquidityMutation] Calling withdrawLpWinnings for settled LP position');
       
-      const res = await base44.functions.invoke('withdrawLiquidity', {
-        walletAddress,
+      // Use withdrawLpWinnings for settled winning positions (includes fee bonus)
+      const res = await base44.functions.invoke('withdrawLpWinnings', {
         userBetId: offer.userBetId,
       });
       
@@ -219,7 +230,9 @@ export default function LpDashboard() {
       console.log('[withdrawLiquidityMutation] Success:', data);
       setPendingTx({
         instruction: data.solana_instruction,
-        amount: data.amount,
+        amount: data.withdrawAmount || 0,
+        lpFeeBonus: data.lpFeeBonus || 0,
+        totalWithdraw: data.totalWithdraw || 0,
         type: 'withdraw_liquidity',
         userBetId: data.userBetId,
         offerId: data.offerId,
@@ -300,6 +313,8 @@ export default function LpDashboard() {
     setWithdrawSuccessDialog({
       signature,
       amount: pendingTx?.amount || 0,
+      lpFeeBonus: pendingTx?.lpFeeBonus || 0,
+      totalWithdraw: (pendingTx?.amount || 0) + (pendingTx?.lpFeeBonus || 0),
     });
     
     setPendingTx(null);
