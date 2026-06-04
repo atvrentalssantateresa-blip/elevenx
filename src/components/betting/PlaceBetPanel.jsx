@@ -10,8 +10,8 @@ import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
-// Mode: 'offer' = place a new bet offer (LP), 'match' = bet against existing offer
-export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
+// Betting panel - bet against existing LP offers (mode='match') or provide liquidity (mode='offer' - LP Dashboard only)
+export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOutcome, selectedOffer, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -64,10 +64,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
 
   const stakeNum = parseFloat(amount) || 0;
 
-  // For new offer: payout = stake * odds
-  const odds = mode === 'offer' ?
-  (selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw) || 0 :
-  0;
+  // Get odds for the selected outcome
+  const odds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
 
   // For match mode: max stake is what the LP offer covers (amount_unmatched / (odds - 1))
   // This ensures the LP's liability covers the bettor's potential winnings
@@ -158,17 +156,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       });
 
       let res;
-      if (mode === 'offer') {
-        console.log('[PlaceBetPanel] Calling provideLiquidity with wallet:', wallet);
-        res = await base44.functions.invoke('provideLiquidity', {
-          walletAddress: wallet,
-          bet_id: bet.id,
-          match_id: matchId,
-          outcome: selectedOutcome,
-          amount: stakeNum
-        });
-        console.log('[PlaceBetPanel] provideLiquidity response:', res.data);
-      } else {
+      if (selectedOffer) {
         console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet);
         res = await base44.functions.invoke('matchBet', {
           offer_id: selectedOffer.id,
@@ -176,6 +164,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
           wallet_address: wallet
         });
         console.log('[PlaceBetPanel] matchBet response:', res.data);
+      } else {
+        console.log('[PlaceBetPanel] Betting on outcome (needs LP offer):', wallet);
+        // User clicked odds but no LP offer exists - this should have been blocked by MatchDetail
+        throw new Error('No LP offer available for this outcome. Go to LP Dashboard to provide liquidity first.');
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit
@@ -205,7 +197,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         commit_data: instruction.commit_data
       };
 
-      const commitFunction = mode === 'offer' ? 'commitLiquidity' : 'commitBet';
+      const commitFunction = 'commitMatchBet';
       console.log('[PlaceBetPanel] Calling commit function:', commitFunction, commitPayload);
 
       const commitRes = await base44.functions.invoke(commitFunction, commitPayload);
@@ -263,7 +255,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <h3 className="font-heading font-bold text-base">
-            {mode === 'offer' ? `Bet on ${outcomeLabel}` : `Bet against ${selectedOffer?.outcome_label}`}
+            {selectedOffer ? `Bet against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
           </h3>
           {timeRemaining && timeRemaining.total > 0 &&
           <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
@@ -279,25 +271,21 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
           }
         </div>
         <p className="text-xs text-muted-foreground">
-          {mode === 'offer' ?
-          hasLiquidityForOutcome ?
-          `Odds: ${odds.toFixed(2)}x — Your offer will be matched against existing liquidity` :
-          `Odds: ${odds.toFixed(2)}x — You're providing liquidity as an LP` :
-          selectedOffer ?
+          {selectedOffer ?
           `Max stake: ◎${maxMatcherStake?.toFixed(4)} @ ${selectedOffer.odds_at_creation.toFixed(2)}x — locked immediately` :
-          'No liquidity available for this outcome'
+          'Select an outcome or click "Bet Against" an offer'
           }
         </p>
 
         {/* Show message when no LP liquidity exists for selected outcome */}
-        {mode === 'offer' && !hasLiquidityForOutcome && selectedOutcome && (
+        {selectedOutcome && !hasLiquidityForOutcome && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-2">
             <p className="text-xs font-bold text-yellow-500">⚠️ No LP Liquidity for {selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              There are no active offers for this outcome. By proceeding, you're acting as a <strong>Liquidity Provider (LP)</strong>.
+              There are no active offers for this outcome.
             </p>
             <p className="text-[10px] text-muted-foreground">
-              To place a regular bet instead, wait for LPs to provide liquidity, then use "Bet Against" from the offers list.
+              Go to <strong>LP Dashboard → Match LP</strong> to provide liquidity, or wait for LPs and bet from here.
             </p>
           </div>
         )}
@@ -374,30 +362,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
               <span className="text-muted-foreground">Your stake</span>
               <span className="font-bold">◎{stakeNum.toFixed(4)}</span>
             </div>
-            {mode === 'offer' && odds > 0 &&
-          <>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Odds locked at</span>
-                  <span className="font-bold">{odds.toFixed(2)}x</span>
-                </div>
-                <div className="h-px bg-border/30 my-1" />
-                <div className="flex justify-between font-bold text-sm">
-                  <span>Payout if you win</span>
-                  <span className="text-accent text-base">◎{lpPayout.toFixed(4)}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">Offer sits in orderbook — can be withdrawn until matched</p>
-              </>
-          }
-            {mode === 'match' &&
-          <>
-                <div className="h-px bg-border/30 my-1" />
-                <div className="flex justify-between font-bold text-sm">
-                  <span>Payout if you win</span>
-                  <span className="text-accent text-base">◎{matcherPayout.toFixed(4)}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
-              </>
-          }
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Odds locked at</span>
+              <span className="font-bold">{selectedOffer ? selectedOffer.odds_at_creation.toFixed(2) : odds.toFixed(2)}x</span>
+            </div>
+            <div className="h-px bg-border/30 my-1" />
+            <div className="flex justify-between font-bold text-sm">
+              <span>Payout if you win</span>
+              <span className="text-accent text-base">◎{selectedOffer ? matcherPayout.toFixed(4) : lpPayout.toFixed(4)}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
           </motion.div>
         }
       </AnimatePresence>
@@ -485,10 +459,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
               <X className="w-4 h-4 mr-2" />
               No Liquidity Available
             </> :
-        isPreparing ? 'Preparing...' : mode === 'offer' ?
-        `Provide Liquidity ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}` :
-
-        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
+        isPreparing ? 'Preparing...' :
+        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
         }
         </Button>
       }

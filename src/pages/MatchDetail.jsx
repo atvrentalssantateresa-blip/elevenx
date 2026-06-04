@@ -174,9 +174,21 @@ export default function MatchDetail() {
   };
 
   const handleSelectOutcome = (outcome) => {
+    // Check if there's any LP liquidity for this outcome
+    const hasLiquidity = bets[0] && (
+      (outcome === 'a' && bets[0].pool_a > 0) ||
+      (outcome === 'b' && bets[0].pool_b > 0) ||
+      (outcome === 'draw' && bets[0].pool_draw > 0)
+    );
+    
+    if (!hasLiquidity) {
+      alert(`No liquidity available for this outcome. Go to LP Dashboard to provide liquidity first.`);
+      return;
+    }
+    
     setSelectedOutcome(outcome);
     setSelectedOffer(null);
-    setBetMode('offer');
+    setBetMode('match');
   };
 
   const handleBetSuccess = () => {
@@ -414,14 +426,6 @@ export default function MatchDetail() {
       {/* ── Bet Panel ── */}
       {hasBet && isOpen && (selectedOutcome || selectedOffer) &&
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
-          {betMode === 'match' && selectedOffer && (
-            <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-4">
-              <p className="text-xs text-primary font-bold mb-1">🎯 You're Placing a Bet</p>
-              <p className="text-xs text-muted-foreground">
-                You're betting against an existing offer. Your SOL is locked immediately. Win and get paid out automatically after the match ends.
-              </p>
-            </div>
-          )}
           <PlaceBetPanel
           bet={bet}
           matchId={matchId}
