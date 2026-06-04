@@ -214,7 +214,6 @@ export default function Home() {
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
              {FEATURED_MATCHES.map((fm, i) => {
              const bet = betByMatch[fm.matchId];
-             const betUrl = bet?.id ? `/bet/${bet.id}` : `/matches?match=${fm.matchId}`;
              return (
                <motion.div
                  key={i}
@@ -276,7 +275,7 @@ export default function Home() {
                   )}
 
                   <div className="mt-auto">
-                    <Link to={bet ? `/bet/${bet.id}` : `/matches?match=${fm.matchId}`} className="block">
+                    <Link to={`/match/${fm.matchId}`} className="block">
                      <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
                        style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
