@@ -253,9 +253,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           });
           console.log('[PlaceBetPanel] matchBet response:', res.data);
         } else {
-          // No LP available - user needs to add liquidity first
-          console.log('[PlaceBetPanel] No LP available for outcome:', selectedOutcome);
-          throw new Error(`No LP liquidity for ${selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}. Go to LP Dashboard to add liquidity first.`);
+          // No LP available - bet will go into pending pool (parimutuel style)
+          console.log('[PlaceBetPanel] No LP - betting into pending pool for outcome:', selectedOutcome);
+          res = await base44.functions.invoke('matchBet', {
+            bet_id: bet.id,
+            match_id: matchId,
+            outcome: selectedOutcome,
+            amount: stakeNum,
+            wallet_address: wallet
+          });
+          console.log('[PlaceBetPanel] matchBet pending pool response:', res.data);
         }
       }
       if (res.data?.error) throw new Error(res.data.error);
@@ -385,7 +392,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             ) : hasLiquidityForOutcome ? (
               `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} — limited by available LP liquidity`
             ) : (
-              '⚠️ No LP liquidity available'
+              <span className="text-accent font-bold">⏳ Pending pool — your bet waits for opposite side</span>
             )}
           </p>
           <button
@@ -397,15 +404,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           </button>
         </div>
 
-        {/* Simple no LP message */}
-        {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
-        <div className="bg-secondary/30 border border-border/30 rounded-xl p-3 text-center">
-          <p className="text-xs text-muted-foreground mb-2">No LP for <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong></p>
-          <a href={`/lp?matchId=${matchId}`} className="inline-block bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold text-xs py-1.5 px-4 rounded-lg transition-colors">
-            Go to LP Dashboard
-          </a>
-        </div>
-        }
+        {/* Pending pool mode indicator */}
+        {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome && (
+          <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 text-center">
+            <p className="text-xs text-accent font-bold mb-1">⏳ Pending Pool Mode</p>
+            <p className="text-[10px] text-muted-foreground">Your bet will wait in the pool until someone takes the opposite side</p>
+          </div>
+        )}
         
         {/* Block betting when mode='match' and selectedOffer but no unmatched liquidity */}
         {mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 &&

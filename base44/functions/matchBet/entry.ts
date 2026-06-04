@@ -13,14 +13,29 @@ Deno.serve(async (req) => {
     const serviceRole = base44.asServiceRole;
 
     const body = await req.json();
-    const { offer_id, amount, wallet_address } = body;
+    let { offer_id, amount, wallet_address, bet_id, match_id, outcome } = body;
 
-    if (!offer_id || !amount || amount <= 0) {
-      return Response.json({ error: 'Missing offer_id or amount' }, { status: 400 });
+    console.log('[matchBet] Request:', { offer_id, amount, wallet_address, bet_id, match_id, outcome });
+
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return Response.json({ error: 'Amount must be positive' }, { status: 400 });
     }
 
     if (!wallet_address) {
       return Response.json({ error: 'Wallet address required' }, { status: 400 });
+    }
+
+    // PARIMUTUEL MODE: No offer_id required - bet goes to pending pool
+    if (!offer_id) {
+      if (!bet_id || !match_id || !outcome) {
+        return Response.json({ 
+          error: 'Missing bet_id, match_id, or outcome for parimutuel bet',
+          hint: 'Provide offer_id for fixed-odds OR bet_id+match_id+outcome for parimutuel'
+        }, { status: 400 });
+      }
+      console.log('[matchBet] Parimutuel bet - no LP offer, bet will go to pending pool');
+      // Continue with parimutuel logic below
     }
 
     // Verify wallet is authenticated (exists in WalletUser entity)
@@ -67,7 +82,101 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Load offer
+    // PARIMUTUEL MODE: No LP offer required
+    if (!offer_id) {
+      // Load bet directly
+      const bets = await base44.entities.Bet.filter({ id: bet_id });
+      const bet = bets[0];
+      if (!bet || bet.status !== 'open') {
+        return Response.json({ error: 'Market not open or not found' }, { status: 400 });
+      }
+
+      // Check betting window
+      if (bet.open_until) {
+        const now = new Date().getTime();
+        const closeTime = new Date(bet.open_until).getTime();
+        if (now >= closeTime) {
+          return Response.json({ error: 'Betting window has closed' }, { status: 400 });
+        }
+      }
+
+      // Validate outcome
+      if (!['a', 'b', 'draw'].includes(outcome)) {
+        return Response.json({ error: 'Invalid outcome' }, { status: 400 });
+      }
+
+      // Derive PDAs for parimutuel bet (no LP offer PDA)
+      const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
+      const programId = new PublicKey(SOLANA_PROGRAM_ID);
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
+
+      const [marketPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('market'), matchIdBytes],
+        programId
+      );
+
+      const bettorPubkey = new PublicKey(trimmedWallet);
+      const outcomeIndex = outcome === 'a' ? 0 : outcome === 'b' ? 1 : 2;
+
+      const [positionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+        programId
+      );
+
+      const amountLamports = Math.round(amount * 1_000_000_000);
+      const outcomeLabel = outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw';
+
+      console.log('[matchBet] Parimutuel bet (pending pool):', {
+        outcome,
+        outcomeLabel,
+        amount,
+        marketPda: marketPda.toBase58(),
+        positionPda: positionPda.toBase58(),
+      });
+
+      // Prepare commit data - bet goes entirely to pending pool
+      const commit_data = {
+        userBet: {
+          bet_id,
+          match_id,
+          offer_id: null, // No LP offer
+          role: 'matcher',
+          outcome,
+          outcome_label: outcomeLabel,
+          amount,
+          potential_payout: 0, // Will be calculated when matched
+          status: 'pending', // Unmatched, waiting in pool
+          match_title: `${bet.outcome_a} vs ${bet.outcome_b}`,
+          wallet_address: trimmedWallet,
+        },
+        offerUpdate: null, // No LP offer to update
+        betUpdate: {
+          poolKey: `pool_${outcome}`,
+          currentPool: bet[outcome === 'a' ? 'pool_a' : outcome === 'b' ? 'pool_b' : 'pool_draw'] || 0,
+          amount,
+          is_pending: true, // This is a pending bet
+        },
+      };
+
+      return Response.json({
+        success: true,
+        mode: 'parimutuel_pending',
+        solana_instruction: {
+          instruction_type: 'place_bet',
+          programId: SOLANA_PROGRAM_ID,
+          marketPda: marketPda.toBase58(),
+          lpOfferPda: null, // No LP offer
+          bettorPositionPda: positionPda.toBase58(),
+          outcome: outcomeIndex,
+          amountLamports,
+        },
+        commit_data,
+        message: `✓ Bet ◎${amount} on ${outcomeLabel} added to pending pool — will match when opposite side bets`,
+      });
+    }
+
+    // FIXED-ODDS MODE: Load LP offer and match against it
     const offers = await base44.entities.BetOffer.filter({ id: offer_id });
     const offer = offers[0];
     if (!offer) {
