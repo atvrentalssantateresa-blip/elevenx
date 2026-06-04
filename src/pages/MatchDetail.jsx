@@ -414,6 +414,12 @@ export default function MatchDetail() {
       {/* ── Bet Panel ── */}
       {hasBet && isOpen && (selectedOutcome || selectedOffer) &&
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
+          {betMode === 'offer' && (
+            <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 mb-4">
+              <p className="text-xs text-accent font-bold">💡 New to providing offers?</p>
+              <p className="text-xs text-muted-foreground mt-1">Go to the <Link to="/lp" className="text-primary font-bold hover:underline">LP Dashboard</Link> to place your offer and earn fees when others match!</p>
+            </div>
+          )}
           <PlaceBetPanel
           bet={bet}
           matchId={matchId}
@@ -421,7 +427,7 @@ export default function MatchDetail() {
           selectedOutcome={selectedOutcome}
           selectedOffer={selectedOffer}
           onSuccess={handleBetSuccess} />
-        
+
         </motion.div>
       }
 
