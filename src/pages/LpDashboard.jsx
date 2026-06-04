@@ -814,6 +814,14 @@ export default function LpDashboard() {
                         currentStatus={currentStatus}
                         getOutcomeLabel={getOutcomeLabel}
                         onWithdraw={(o) => {
+                          console.log('[onWithdraw] Called with offer:', {
+                            userBetId: o.userBetId,
+                            userBetIds: o.userBetIds,
+                            amount_unmatched: o.amount_unmatched,
+                            status: o.status,
+                            match_id: o.match_id,
+                            outcome: o.outcome,
+                          });
                           withdrawLiquidityMutation.mutate(o);
                         }}
                       />
