@@ -83,6 +83,7 @@ export default function LpDashboard() {
   const [successDialog, setSuccessDialog] = useState(null);
   const [withdrawSuccessDialog, setWithdrawSuccessDialog] = useState(null);
   const [error, setError] = useState(null);
+  const [matchViewMode, setMatchViewMode] = useState('all'); // 'all' or 'dropdown'
 
   const { data: openBets = [] } = useQuery({
     queryKey: ['openBets'],
@@ -417,24 +418,58 @@ export default function LpDashboard() {
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">Select Market</label>
-                    <Select onValueChange={(val) => {
-                      const bet = openBets.find(b => b.id === val);
-                      setSelectedBet(bet || null);
-                      setSelectedOutcome('a');
-                      setError(null);
-                    }}>
-                      <SelectTrigger className="bg-secondary/50 border-border/50 h-11">
-                        <SelectValue placeholder="Choose an open market..." />
-                      </SelectTrigger>
-                      <SelectContent>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs text-muted-foreground">Select Market</label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setMatchViewMode(matchViewMode === 'all' ? 'dropdown' : 'all')}
+                        className="h-6 text-xs"
+                      >
+                        {matchViewMode === 'all' ? 'Show as List' : 'Show as Grid'}
+                      </Button>
+                    </div>
+                    
+                    {matchViewMode === 'dropdown' ? (
+                      <Select onValueChange={(val) => {
+                        const bet = openBets.find(b => b.id === val);
+                        setSelectedBet(bet || null);
+                        setSelectedOutcome('a');
+                        setError(null);
+                      }}>
+                        <SelectTrigger className="bg-secondary/50 border-border/50 h-11">
+                          <SelectValue placeholder="Choose an open market..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {openBets.map(bet => (
+                            <SelectItem key={bet.id} value={bet.id}>
+                              {bet.outcome_a} vs {bet.outcome_b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                         {openBets.map(bet => (
-                          <SelectItem key={bet.id} value={bet.id}>
-                            {bet.outcome_a} vs {bet.outcome_b}
-                          </SelectItem>
+                          <button
+                            key={bet.id}
+                            onClick={() => {
+                              setSelectedBet(bet);
+                              setSelectedOutcome('a');
+                              setError(null);
+                            }}
+                            className={`p-3 rounded-xl border text-left transition-all ${
+                              selectedBet?.id === bet.id
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border/50 bg-secondary/30 hover:border-border'
+                            }`}
+                          >
+                            <p className="font-heading font-bold text-xs">{bet.outcome_a} vs {bet.outcome_b}</p>
+                            <p className="text-[10px] text-muted-foreground">Open Market</p>
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    )}
                   </div>
 
                   {selectedBet && (
