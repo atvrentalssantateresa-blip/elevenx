@@ -587,7 +587,7 @@ export default function LpDashboard() {
                         >
                           All Groups
                         </button>
-                        {groups.filter(g => g !== 'all').map(group => (
+                        {groups.filter(g => g !== 'all' && g !== 'World Cup 2026').map(group => (
                           <button
                             key={group}
                             onClick={() => setActiveGroup(group)}
