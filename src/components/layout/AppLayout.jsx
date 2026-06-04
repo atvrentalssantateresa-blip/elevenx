@@ -31,10 +31,10 @@ export default function AppLayout() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       {/* Top Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between w-full">
           <Link to="/" className="flex items-center gap-2.5 ml-8">
             <img src="https://media.base44.com/images/public/6a1da108eb293de119e4e930/610671979_Untitled-June032026at0751431.png" alt="ElevenX" className="h-24 object-contain" />
           </Link>
@@ -93,13 +93,13 @@ export default function AppLayout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 pb-24 md:pb-6 overflow-x-hidden">
         <Outlet />
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/50">
-        <div className="flex items-center justify-around py-2 px-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/50 overflow-x-hidden">
+        <div className="flex items-center justify-around py-2 px-2 w-full">
           {navItems.map(item => {
             const active = location.pathname === item.path;
             return (
