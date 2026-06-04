@@ -264,6 +264,7 @@ export default function LpDashboard() {
     setError(null);
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
     queryClient.invalidateQueries({ queryKey: ['openBets'] });
+    queryClient.invalidateQueries({ queryKey: ['allOffers', pendingCommitData?.bet_id] });
   };
 
   const handleTxError = (err) => {
@@ -404,6 +405,7 @@ export default function LpDashboard() {
     
     setPendingFuturesTx(null);
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
+    queryClient.invalidateQueries({ queryKey: ['allOffers', pendingFuturesCommit?.bet_id] });
   };
 
   const handleDetailModalCommit = ({ bet, outcome, amount, potentialLiability }) => {

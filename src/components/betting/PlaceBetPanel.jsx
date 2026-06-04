@@ -19,24 +19,54 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const { isConnected, connect, isConnecting, walletAddress } = useWallet();
 
   // Fetch all LP offers for this bet
-  const { data: allOffers = [] } = useQuery({
+  const { data: allOffers = [], refetch: refetchOffers } = useQuery({
     queryKey: ['allOffers', bet?.id],
-    queryFn: () => base44.entities.BetOffer.filter({ bet_id: bet?.id }),
+    queryFn: async () => {
+      const offers = await base44.entities.BetOffer.filter({ bet_id: bet?.id });
+      console.log('[PlaceBetPanel] Fetched BetOffers:', {
+        bet_id: bet?.id,
+        count: offers.length,
+        offers: offers.map(o => ({
+          id: o.id,
+          outcome: o.outcome,
+          status: o.status,
+          amount_unmatched: o.amount_unmatched,
+          amount_offered: o.amount_offered,
+        })),
+      });
+      return offers;
+    },
     enabled: !!bet?.id,
-    staleTime: 5000
+    staleTime: 1000,
+    refetchInterval: 3000,
   });
 
   // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome
   const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
   allOffers.
-  filter((o) =>
-  (o.status === 'open' || o.status === 'partially_matched') &&
-  o.outcome === selectedOutcome
-  ).
+  filter((o) => {
+    const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
+    console.log('[PlaceBetPanel] Offer filter check:', {
+      offer_id: o.id,
+      outcome: o.outcome,
+      selectedOutcome,
+      status: o.status,
+      amount_unmatched: o.amount_unmatched,
+      isValid,
+    });
+    return isValid;
+  }).
   reduce((sum, o) => sum + (o.amount_unmatched || 0), 0) :
   0;
 
   const hasLiquidityForOutcome = totalLiquidityForOutcome > 0;
+
+  console.log('[PlaceBetPanel] Liquidity calculation:', {
+    selectedOutcome,
+    totalLiquidityForOutcome,
+    hasLiquidityForOutcome,
+    allOffersCount: allOffers.length,
+  });
 
   // Calculate time remaining until betting closes
   React.useEffect(() => {
