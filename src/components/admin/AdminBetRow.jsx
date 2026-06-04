@@ -50,9 +50,9 @@ export default function AdminBetRow({ bet, matches, index }) {
       }
     },
     enabled: !!match,
-    refetchInterval: 20000, // Reduced polling to avoid rate limiting
-    retry: 1,
-    staleTime: 30000, // Cache for 30s
+    refetchInterval: false, // Disable auto-polling to avoid rate limits
+    retry: 0, // No retries on rate limit
+    staleTime: Infinity, // Cache indefinitely until manual refresh
   });
   
   console.log('[AdminBetRow] Query state:', { isLoading, isFetching, hasData: !!marketStatus, hasError: !!marketError });
@@ -61,6 +61,12 @@ export default function AdminBetRow({ bet, matches, index }) {
 
   const isMarketInitialized = bet.solana_market_created || marketStatus?.status === 'initialized' || marketStatus?.status === 'settled';
   const isMarketSettled = marketStatus?.status === 'settled' || marketStatus?.settled === true;
+  
+  const handleManualRefresh = async () => {
+    console.log('[AdminBetRow] Manual refresh requested for', match.id);
+    await queryClient.invalidateQueries({ queryKey: ['marketStatus', match?.id] });
+    await queryClient.refetchQueries({ queryKey: ['marketStatus', match?.id] });
+  };
   
   React.useEffect(() => {
     if (marketStatus) {
@@ -309,6 +315,14 @@ export default function AdminBetRow({ bet, matches, index }) {
                 ⚡ Test Mode
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleManualRefresh}
+              className="h-8 text-xs border-primary/30 text-primary hover:bg-primary/10 rounded-lg"
+            >
+              🔄 Refresh
+            </Button>
             <Button
               size="sm"
               variant="outline"
