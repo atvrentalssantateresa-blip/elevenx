@@ -86,16 +86,19 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
         
         if (matchedOdds) {
           console.log('✅ Found live odds:', matchedOdds.odds);
+          console.log('📝 Updating bet odds from', { odds_a: bet.odds_a, odds_b: bet.odds_b, odds_draw: bet.odds_draw }, 'to', { odds_a: matchedOdds.odds.home, odds_b: matchedOdds.odds.away, odds_draw: matchedOdds.odds.draw });
           // Update bet entity with live odds
           await base44.entities.Bet.update(bet.id, {
             odds_a: matchedOdds.odds.home,
             odds_b: matchedOdds.odds.away,
             odds_draw: matchedOdds.odds.draw,
-            odds_bookmaker: 'Pinnacle',
+            odds_bookmaker: matchedOdds.bookmaker_key || 'Pinnacle',
             odds_updated_at: new Date().toISOString(),
           });
+          console.log('✅ Odds updated successfully');
         } else {
-          console.log('❌ No matching odds found');
+          console.log('❌ No matching odds found in API response. Available matches:', matches.map(m => `${m.home_team} vs ${m.away_team}`));
+          console.log('🔍 Looking for:', match.team_a, 'vs', match.team_b);
         }
       } catch (err) {
         console.error('Failed to fetch live odds:', err);
