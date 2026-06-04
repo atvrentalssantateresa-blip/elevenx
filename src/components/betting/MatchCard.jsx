@@ -36,10 +36,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
       transition={{ delay: index * 0.05, duration: 0.4 }}
     >
       <Link to={`/match/${match.id}`} className="group block">
-        <div className="relative rounded-2xl p-5 transition-all duration-300 border border-primary/20"
-             style={{
-               background: 'linear-gradient(145deg, rgba(15,10,30,0.95) 0%, rgba(26,16,64,0.9) 100%)',
-             }}>
+        <div className="relative rounded-2xl p-5 transition-all duration-300 border border-primary/20 bg-card">
           {/* Inner content */}
           <div className="rounded-2xl">
           {/* Header */}
