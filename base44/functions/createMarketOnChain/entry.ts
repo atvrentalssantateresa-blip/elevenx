@@ -120,22 +120,49 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Return both instructions - try platform init first if needed, then create market
+    // Prepare platform init instruction (only used if platform not initialized)
     const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
     const initParams = Buffer.alloc(3);
     initParams.writeUInt16LE(200, 0); // fee_percent: 2%
     initParams.writeUInt8(51, 2); // consensus_threshold: 51%
     const initInstructionData = Buffer.concat([initDiscriminator, initParams]);
+
+    // Check if platform is already initialized by checking if account exists
+    const connection = new Connection(SOLANA_RPC_URL);
+    let platformInitialized = false;
+    try {
+      const accountInfo = await connection.getAccountInfo(platformConfigPda);
+      platformInitialized = accountInfo !== null;
+      console.log('Platform initialized:', platformInitialized);
+    } catch (err) {
+      console.error('Failed to check platform status:', err.message);
+      platformInitialized = false;
+    }
     
+    // Build create market instruction
+    const createMarketInstruction = {
+      instruction_type: 'create_market',
+      programId: SOLANA_PROGRAM_ID,
+      marketPda: marketPda.toBase58(),
+      instruction_data: instructionData.toString('base64'),
+      accounts: {
+        market: marketPda.toBase58(),
+        voteTally: voteTallyPda.toBase58(),
+        platformConfig: platformConfigPda.toBase58(),
+        admin: 'SIGNER_WALLET',
+      }
+    };
+    
+    // Only return platform init if NOT already initialized
     const response = {
       success: true,
       marketPda: marketPda.toBase58(),
       alreadyExists: false,
       forceRecreated: payload.force_recreate === true,
-      needsPlatformInit: true, // Always return platform init instruction first
+      needsPlatformInit: !platformInitialized,
       platformConfigPda: platformConfigPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
-      solana_instruction: {
+      solana_instruction: platformInitialized ? null : {
         instruction_type: 'initialize_platform',
         programId: SOLANA_PROGRAM_ID,
         instruction_data: initInstructionData.toString('base64'),
@@ -145,19 +172,8 @@ Deno.serve(async (req) => {
           admin: '',
         }
       },
-      createMarketInstruction: {
-        instruction_type: 'create_market',
-        programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        instruction_data: instructionData.toString('base64'),
-        accounts: {
-          market: marketPda.toBase58(),
-          voteTally: voteTallyPda.toBase58(),
-          platformConfig: platformConfigPda.toBase58(),
-          admin: 'SIGNER_WALLET',
-        }
-      },
-      message: 'Initialize platform first, then create market',
+      createMarketInstruction: createMarketInstruction,
+      message: platformInitialized ? 'Platform already initialized, create market now' : 'Initialize platform first, then create market',
       bet_id: bet.id,
     };
     
