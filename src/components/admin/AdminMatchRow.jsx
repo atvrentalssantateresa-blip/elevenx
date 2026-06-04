@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Plus, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminMatchRow({ match, bets, index }) {
@@ -132,6 +132,25 @@ export default function AdminMatchRow({ match, bets, index }) {
     },
   });
 
+  const deleteMatchMutation = useMutation({
+    mutationFn: async () => {
+      if (!confirm(`Delete this match?\n\n${match.team_a} vs ${match.team_b}\n\nThis will also delete the associated bet if exists.`)) {
+        return;
+      }
+      
+      // Delete associated bet first if exists
+      if (existingBet) {
+        await base44.entities.Bet.delete(existingBet.id);
+      }
+      
+      // Delete the match
+      await base44.entities.Match.delete(match.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
+    },
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -161,6 +180,15 @@ export default function AdminMatchRow({ match, bets, index }) {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => deleteMatchMutation.mutate()}
+          disabled={deleteMatchMutation.isPending}
+          className="h-8 w-8 p-0 rounded-lg"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
         {!existingBet && !pendingMarketInit && (
           <Button
             size="sm"
