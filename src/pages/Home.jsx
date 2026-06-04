@@ -140,18 +140,20 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="relative z-10 flex flex-wrap gap-3 mt-6">
-            <Link to="/matches">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-6 h-11 rounded-xl text-sm" style={{ boxShadow: '0 0 24px rgba(166,156,242,0.35)' }}>
-                <Trophy className="w-4 h-4 mr-2" />
-                Start Betting
-              </Button>
-            </Link>
-            <Link to="/my-bets">
-              <Button variant="outline" className="font-heading font-medium h-11 rounded-xl border-white/15 text-white/80 bg-white/5 hover:bg-white/10">
-                My Bets <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </Link>
+          <div className="relative z-10 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Link to="/matches" className="flex-1">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-6 h-12 rounded-xl text-sm" style={{ boxShadow: '0 0 24px rgba(166,156,242,0.35)' }}>
+                  <Trophy className="w-4 h-4 mr-2" />
+                  Start Betting
+                </Button>
+              </Link>
+              <Link to="/my-bets" className="flex-1">
+                <Button variant="outline" className="w-full font-heading font-medium h-12 rounded-xl border-white/15 text-white/80 bg-white/5 hover:bg-white/10">
+                  My Bets <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Floating stat chips */}
