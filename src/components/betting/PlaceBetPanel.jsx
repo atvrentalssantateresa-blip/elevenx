@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const [instruction, setInstruction] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const { isConnected, connect, isConnecting, walletAddress } = useWallet();
+  const queryClient = useQueryClient();
 
   // Fetch all LP offers for this bet
   const { data: allOffers = [], refetch: refetchOffers } = useQuery({
@@ -260,13 +261,15 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       if (commitRes.data.error) {
         console.error('[PlaceBetPanel] Commit failed:', commitRes.data.error);
-        // Show error but don't block - transaction still succeeded on-chain
       } else {
         console.log('[PlaceBetPanel] Commit successful:', commitRes.data);
+        // Invalidate queries to refresh LP liquidity data
+        queryClient.invalidateQueries({ queryKey: ['allOffers', bet?.id] });
+        queryClient.invalidateQueries({ queryKey: ['offers', bet?.id] });
+        queryClient.invalidateQueries({ queryKey: ['betsForMatch', matchId] });
       }
     } catch (commitErr) {
       console.error('[PlaceBetPanel] Commit error:', commitErr);
-      // Transaction succeeded, commit failure is logged but doesn't block UX
     }
 
     // Keep showing success message for 5.5 seconds before calling parent callback
@@ -274,7 +277,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       setInstruction(null);
       onSuccess && onSuccess(result);
     }, 5500);
-    // Store timer reference for manual cleanup
     return () => clearTimeout(timer);
   };
 
@@ -326,14 +328,23 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             </div>
           }
         </div>
-        <p className="text-xs text-muted-foreground">
-          {selectedOffer ?
-          `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x — locked immediately` :
-          hasLiquidityForOutcome ?
-          `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} — limited by available LP liquidity` :
-          '⚠️ No LP liquidity available — visit LP Dashboard to add'
-          }
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {selectedOffer ?
+            `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x — locked immediately` :
+            hasLiquidityForOutcome ?
+            `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} — limited by available LP liquidity` :
+            '⚠️ No LP liquidity available'
+            }
+          </p>
+          <button
+            onClick={() => refetchOffers()}
+            className="text-[10px] text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+          >
+            <Clock className="w-3 h-3" />
+            Refresh
+          </button>
+        </div>
 
         {/* Block betting when mode='match' but no LP liquidity exists */}
         {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
