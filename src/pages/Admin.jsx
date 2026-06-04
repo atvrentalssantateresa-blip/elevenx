@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw, TestTube, RefreshCcw } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw, TestTube, RefreshCcw, Rocket, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -84,6 +84,8 @@ export default function Admin() {
   const [fetchOddsResult, setFetchOddsResult] = useState(null);
   const [pendingPlatformInit, setPendingPlatformInit] = useState(null);
   const [platformInitialized, setPlatformInitialized] = useState(false);
+  const [pendingBulkMatchDeploy, setPendingBulkMatchDeploy] = useState(null);
+  const [isBulkDeployingMatches, setIsBulkDeployingMatches] = useState(false);
 
   useEffect(() => {
     // Check if wallet is connected on mount
@@ -179,6 +181,50 @@ export default function Admin() {
     setPendingPlatformInit(null);
     queryClient.invalidateQueries({ queryKey: ['bets'] });
     alert('Platform initialized!');
+  };
+
+  const handleBulkDeployMatches = async () => {
+    setIsBulkDeployingMatches(true);
+    try {
+      const res = await base44.functions.invoke('bulkDeployMatches', {});
+      if (res.data.error) {
+        alert('Error: ' + res.data.error);
+        return;
+      }
+      
+      if (res.data.instructions && res.data.instructions.length > 0) {
+        setPendingBulkMatchDeploy({
+          instructions: res.data.instructions,
+          betUpdates: res.data.betUpdates,
+          marketCount: res.data.marketCount,
+          betsCreated: res.data.betsCreated || 0,
+        });
+      } else {
+        alert(res.data.message || 'No matches to deploy');
+      }
+    } catch (error) {
+      console.error('Bulk deploy matches failed:', error);
+      alert('Failed to prepare bulk deploy: ' + error.message);
+    } finally {
+      setIsBulkDeployingMatches(false);
+    }
+  };
+
+  const handleBulkMatchDeploySuccess = async (result) => {
+    console.log('Bulk match deploy success:', result);
+    
+    if (pendingBulkMatchDeploy?.betUpdates) {
+      for (const betUpdate of pendingBulkMatchDeploy.betUpdates) {
+        await base44.entities.Bet.update(betUpdate.id, {
+          solana_market_created: true,
+          solana_market_pda: betUpdate.solana_market_pda,
+        });
+      }
+    }
+    
+    setPendingBulkMatchDeploy(null);
+    queryClient.invalidateQueries({ queryKey: ['bets', 'matches'] });
+    alert(`✓ Successfully deployed ${pendingBulkMatchDeploy?.marketCount || 0} match markets to Solana!`);
   };
 
   if (user?.role !== 'admin') {
@@ -408,6 +454,29 @@ export default function Admin() {
             )}
           </div>
 
+          <div className="bg-card border border-accent/20 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <Rocket className="w-5 h-5 text-accent" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Initialize All Match Markets</p>
+                  <p className="text-xs text-muted-foreground">Deploy all matches to Solana in one click (creates bets if needed)</p>
+                </div>
+              </div>
+              <Button
+                onClick={handleBulkDeployMatches}
+                disabled={isBulkDeployingMatches}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground font-heading font-bold rounded-xl h-9 px-6"
+              >
+                {isBulkDeployingMatches ? (
+                  <><Loader className="w-4 h-4 mr-2 animate-spin" /> Preparing...</>
+                ) : (
+                  <><Rocket className="w-4 h-4 mr-2" /> Initialize All Matches</>
+                )}
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-card border border-primary/20 rounded-xl p-4">
             <div className="mb-3">
               <h3 className="font-heading font-bold text-sm text-primary flex items-center gap-2">
@@ -620,6 +689,47 @@ export default function Admin() {
           <AdminFuturesPanel />
         </TabsContent>
       </Tabs>
+
+      {/* Bulk Deploy Matches Transaction Modal */}
+      {pendingBulkMatchDeploy && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-lg w-full">
+            <div className="space-y-4">
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                <p className="text-sm font-bold text-accent mb-1">Initialize {pendingBulkMatchDeploy.marketCount} Match Markets</p>
+                <p className="text-xs text-muted-foreground">
+                  {pendingBulkMatchDeploy.betsCreated > 0 && `Created ${pendingBulkMatchDeploy.betsCreated} new bet entities. `}
+                  Deploying {pendingBulkMatchDeploy.marketCount} matches to Solana.
+                </p>
+              </div>
+              
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                <p className="text-xs font-bold text-foreground mb-2">Matches to deploy:</p>
+                {pendingBulkMatchDeploy.instructions.slice(0, 10).map((inst, idx) => (
+                  <div key={idx} className="bg-secondary/30 rounded-lg p-2 flex items-center justify-between">
+                    <span className="text-xs font-bold">{inst.matchId?.slice(0, 8)}...{inst.matchId?.slice(-4)}</span>
+                    <Badge className="text-[9px] bg-accent/20 text-accent">Match #{idx + 1}</Badge>
+                  </div>
+                ))}
+                {pendingBulkMatchDeploy.instructions.length > 10 && (
+                  <p className="text-xs text-muted-foreground text-center">+{pendingBulkMatchDeploy.instructions.length - 10} more</p>
+                )}
+              </div>
+
+              <SolanaTransactionSigner
+                instruction={pendingBulkMatchDeploy.instructions[0]}
+                amount={0}
+                betId={pendingBulkMatchDeploy.instructions[0]?.betId}
+                onSuccess={handleBulkMatchDeploySuccess}
+              />
+              
+              <Button variant="outline" size="sm" onClick={() => setPendingBulkMatchDeploy(null)} className="w-full">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
