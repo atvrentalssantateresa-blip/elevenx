@@ -196,9 +196,7 @@ export default function LpDashboard() {
       
       if (!userBet) throw new Error('UserBet not found');
       if (userBet.role !== 'lp') throw new Error('Not an LP bet');
-      if (userBet.status !== 'pending' && userBet.status !== 'refunded') {
-        throw new Error(`Bet status is '${userBet.status}', must be 'pending' or 'refunded' to withdraw`);
-      }
+      // Allow withdrawal for any LP position - backend will check if unmatched funds exist
       
       console.log('[withdrawLiquidityMutation] Calling withdrawLiquidity with:', { walletAddress, userBetId: offer.userBetId });
       
