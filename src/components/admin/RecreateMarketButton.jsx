@@ -17,10 +17,9 @@ export default function RecreateMarketButton({ bet, match_id, onSuccess }) {
     setError(null);
     
     try {
-      const response = await base44.functions.invoke('createMarketOnChain', {
+      const response = await base44.functions.invoke('recreateMarketWithValidDates', {
         bet_id: bet.id,
         match_id,
-        force_recreate: true,
       });
 
       if (response.data.error) {
@@ -28,7 +27,15 @@ export default function RecreateMarketButton({ bet, match_id, onSuccess }) {
         return;
       }
 
-      if (response.data.solana_instruction) {
+      if (response.data.step === 'void') {
+        // First step: void the existing market
+        setInstruction({
+          ...response.data.solana_instruction,
+          amount: 0,
+        });
+        setShowSigner(true);
+      } else if (response.data.solana_instruction) {
+        // Second step: recreate with valid timestamps
         setInstruction({
           ...response.data.solana_instruction,
           amount: 0,
