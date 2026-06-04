@@ -936,7 +936,7 @@ function CreateMatchDialog() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-xs">Match Start</Label>
+              <Label className="text-xs">Match Start Date</Label>
               <Popover open={calendarOpen.start} onOpenChange={(o) => setCalendarOpen({...calendarOpen, start: o})}>
                 <PopoverTrigger asChild>
                   <Button
@@ -947,7 +947,7 @@ function CreateMatchDialog() {
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.match_time ? format(new Date(form.match_time), 'PPP pp') : 'Pick start time'}
+                    {form.match_time ? format(new Date(form.match_time), 'PPP') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -956,34 +956,37 @@ function CreateMatchDialog() {
                     selected={form.match_time ? new Date(form.match_time) : undefined}
                     onSelect={(date) => {
                       if (date) {
-                        const timeString = form.match_time ? new Date(form.match_time).toTimeString().slice(0, 5) : '12:00';
+                        const hours = form.match_time ? new Date(form.match_time).getHours() : 12;
+                        const minutes = form.match_time ? new Date(form.match_time).getMinutes() : 0;
                         const newDate = new Date(date);
-                        newDate.setHours(parseInt(timeString.split(':')[0]), parseInt(timeString.split(':')[1]));
+                        newDate.setHours(hours, minutes);
                         setForm({...form, match_time: newDate.toISOString()});
                       }
                       setCalendarOpen({...calendarOpen, start: false});
                     }}
                     initialFocus
                   />
-                  <div className="border-t p-3">
-                    <Input
-                      type="time"
-                      value={form.match_time ? new Date(form.match_time).toTimeString().slice(0, 5) : ''}
-                      onChange={(e) => {
-                        const [hours, minutes] = e.target.value.split(':');
-                        const date = form.match_time ? new Date(form.match_time) : new Date();
-                        date.setHours(parseInt(hours), parseInt(minutes));
-                        setForm({...form, match_time: date.toISOString()});
-                      }}
-                      className="h-8 text-xs"
-                    />
-                  </div>
                 </PopoverContent>
               </Popover>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs">Match End</Label>
+              <Label className="text-xs">Match Start Time</Label>
+              <Input
+                type="time"
+                value={form.match_time ? new Date(form.match_time).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                onChange={(e) => {
+                  const [hours, minutes] = e.target.value.split(':');
+                  const date = form.match_time ? new Date(form.match_time) : new Date();
+                  date.setHours(parseInt(hours), parseInt(minutes));
+                  setForm({...form, match_time: date.toISOString()});
+                }}
+                className="h-10 bg-secondary/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Match End Date</Label>
               <Popover open={calendarOpen.end} onOpenChange={(o) => setCalendarOpen({...calendarOpen, end: o})}>
                 <PopoverTrigger asChild>
                   <Button
@@ -994,7 +997,7 @@ function CreateMatchDialog() {
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.match_end_time ? format(new Date(form.match_end_time), 'PPP pp') : 'Pick end time'}
+                    {form.match_end_time ? format(new Date(form.match_end_time), 'PPP') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -1003,30 +1006,33 @@ function CreateMatchDialog() {
                     selected={form.match_end_time ? new Date(form.match_end_time) : undefined}
                     onSelect={(date) => {
                       if (date) {
-                        const timeString = form.match_end_time ? new Date(form.match_end_time).toTimeString().slice(0, 5) : '12:00';
+                        const hours = form.match_end_time ? new Date(form.match_end_time).getHours() : 12;
+                        const minutes = form.match_end_time ? new Date(form.match_end_time).getMinutes() : 0;
                         const newDate = new Date(date);
-                        newDate.setHours(parseInt(timeString.split(':')[0]), parseInt(timeString.split(':')[1]));
+                        newDate.setHours(hours, minutes);
                         setForm({...form, match_end_time: newDate.toISOString()});
                       }
                       setCalendarOpen({...calendarOpen, end: false});
                     }}
                     initialFocus
                   />
-                  <div className="border-t p-3">
-                    <Input
-                      type="time"
-                      value={form.match_end_time ? new Date(form.match_end_time).toTimeString().slice(0, 5) : ''}
-                      onChange={(e) => {
-                        const [hours, minutes] = e.target.value.split(':');
-                        const date = form.match_end_time ? new Date(form.match_end_time) : new Date();
-                        date.setHours(parseInt(hours), parseInt(minutes));
-                        setForm({...form, match_end_time: date.toISOString()});
-                      }}
-                      className="h-8 text-xs"
-                    />
-                  </div>
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Match End Time</Label>
+              <Input
+                type="time"
+                value={form.match_end_time ? new Date(form.match_end_time).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                onChange={(e) => {
+                  const [hours, minutes] = e.target.value.split(':');
+                  const date = form.match_end_time ? new Date(form.match_end_time) : new Date();
+                  date.setHours(parseInt(hours), parseInt(minutes));
+                  setForm({...form, match_end_time: date.toISOString()});
+                }}
+                className="h-10 bg-secondary/50"
+              />
             </div>
           </div>
 
