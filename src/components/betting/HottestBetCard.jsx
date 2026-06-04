@@ -44,89 +44,89 @@ export default function HottestBetCard({ match, bet, index }) {
         </div>
       </div>
 
-      <Link to={`/bet/${bet.id}`} className="block p-6">
+      <Link to={`/bet/${bet.id}`} className="block p-4">
         {/* Match Header */}
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 bg-primary/10 backdrop-blur-sm border border-primary/20 px-3 py-1.5 rounded-full">
-              <TrendingUp className="w-3 h-3 text-primary" />
-              <span className="text-[10px] font-bold text-primary uppercase tracking-wide">
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 bg-primary/10 backdrop-blur-sm border border-primary/20 px-2.5 py-1 rounded-full">
+              <TrendingUp className="w-2.5 h-2.5 text-primary" />
+              <span className="text-[9px] font-bold text-primary uppercase tracking-wide">
                 {bet.status === 'open' ? 'Live Betting' : 'Open'}
               </span>
             </div>
             {bet.odds_bookmaker && (
-              <span className="text-[10px] text-muted-foreground font-medium">{bet.odds_bookmaker}</span>
+              <span className="text-[9px] text-muted-foreground font-medium">{bet.odds_bookmaker}</span>
             )}
           </div>
 
           {/* Teams */}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex-1 text-center">
-              <div className="text-5xl mb-2">{getTeamFlag(match.team_a)}</div>
-              <p className="font-heading font-black text-lg leading-tight text-foreground">{match.team_a}</p>
+              <div className="text-4xl mb-1.5">{getTeamFlag(match.team_a)}</div>
+              <p className="font-heading font-black text-base leading-tight text-foreground">{match.team_a}</p>
             </div>
             
-            <div className="flex flex-col items-center gap-1.5 px-3">
-              <span className="font-heading font-black text-2xl text-primary">VS</span>
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium bg-secondary/50 px-2 py-1 rounded-lg">
-                <DollarSign className="w-2.5 h-2.5" />
+            <div className="flex flex-col items-center gap-1 px-2">
+              <span className="font-heading font-black text-xl text-primary">VS</span>
+              <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground font-medium bg-secondary/50 px-1.5 py-0.5 rounded-lg">
+                <DollarSign className="w-2 h-2" />
                 {(totalPool || 0).toFixed(2)} SOL
               </div>
             </div>
 
             <div className="flex-1 text-center">
-              <div className="text-5xl mb-2">{getTeamFlag(match.team_b)}</div>
-              <p className="font-heading font-black text-lg leading-tight text-foreground">{match.team_b}</p>
+              <div className="text-4xl mb-1.5">{getTeamFlag(match.team_b)}</div>
+              <p className="font-heading font-black text-base leading-tight text-foreground">{match.team_b}</p>
             </div>
           </div>
         </div>
 
         {/* Top Pool Outcome Highlight */}
-        <div className="mb-5 bg-gradient-to-br from-primary/15 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Most Backed Outcome</span>
-            <Badge className="bg-primary/20 text-primary border border-primary/30 text-xs font-bold px-2.5 py-0.5">
+        <div className="mb-4 bg-gradient-to-br from-primary/15 to-accent/10 backdrop-blur-sm border border-primary/20 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide">Most Backed</span>
+            <Badge className="bg-primary/20 text-primary border border-primary/30 text-xs font-bold px-2 py-0.5">
               Top Pool
             </Badge>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-heading font-bold text-base text-foreground">{topPoolOutcome?.label}</p>
-              <p className="text-[10px] text-muted-foreground">◎{topPoolOutcome?.pool?.toFixed(2) || '0'} in pool</p>
+              <p className="font-heading font-bold text-sm text-foreground">{topPoolOutcome?.label}</p>
+              <p className="text-[9px] text-muted-foreground">◎{topPoolOutcome?.pool?.toFixed(2) || '0'}</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase">Pool Size</p>
-              <p className="font-heading font-black text-xl text-primary">◎{totalPool.toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground font-medium uppercase">Pool</p>
+              <p className="font-heading font-black text-lg text-primary">◎{totalPool.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <div className="bg-secondary/30 backdrop-blur-sm border border-border/30 rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[9px] text-muted-foreground font-medium uppercase">Total Pool</span>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="bg-secondary/30 backdrop-blur-sm border border-border/30 rounded-xl p-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <DollarSign className="w-2.5 h-2.5 text-muted-foreground" />
+              <span className="text-[8px] text-muted-foreground font-medium uppercase">Total Pool</span>
             </div>
-            <p className="font-heading font-black text-lg text-foreground">◎{totalPool.toFixed(2)}</p>
+            <p className="font-heading font-black text-base text-foreground">◎{totalPool.toFixed(2)}</p>
           </div>
-          <div className="bg-secondary/30 backdrop-blur-sm border border-border/30 rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[9px] text-muted-foreground font-medium uppercase">Bettors</span>
+          <div className="bg-secondary/30 backdrop-blur-sm border border-border/30 rounded-xl p-2.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <TrendingUp className="w-2.5 h-2.5 text-muted-foreground" />
+              <span className="text-[8px] text-muted-foreground font-medium uppercase">Bettors</span>
             </div>
-            <p className="font-heading font-black text-lg text-foreground">{totalBettors}</p>
+            <p className="font-heading font-black text-base text-foreground">{totalBettors}</p>
           </div>
         </div>
 
         {/* CTA Button */}
-        <div className="flex items-center justify-between pt-4 border-t border-border/30">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-bold text-green-500">Open for Betting</span>
+        <div className="flex items-center justify-between pt-3 border-t border-border/30">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-green-500">Open</span>
           </div>
-          <div className="flex items-center gap-1.5 text-primary font-bold text-sm group-hover:translate-x-1 transition-transform">
-            Place Bet <ArrowRight className="w-4 h-4" />
+          <div className="flex items-center gap-1 text-primary font-bold text-xs group-hover:translate-x-1 transition-transform">
+            Bet <ArrowRight className="w-3 h-3" />
           </div>
         </div>
       </Link>
