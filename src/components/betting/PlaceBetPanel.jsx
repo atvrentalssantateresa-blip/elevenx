@@ -171,7 +171,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       } else {
         console.log('[PlaceBetPanel] Betting on outcome (needs LP offer):', wallet);
         // Bettor clicked odds but no LP exists - block with clear message
-        throw new Error('No LP liquidity available for this outcome. Wait for an LP holder to underwrite this outcome, or go to LP Dashboard to add liquidity yourself.');
+        throw new Error('No LP liquidity available for this outcome. Wait for someone to add LP, or go to LP Dashboard to add liquidity yourself.');
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit
@@ -288,10 +288,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-2">
             <p className="text-xs font-bold text-destructive">🚫 No Liquidity Available</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              No LP holders have underwritten <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong> yet.
+              No one has added LP liquidity for <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong> yet.
             </p>
             <p className="text-[10px] text-muted-foreground">
-              Go to <strong>LP Dashboard → Match LP</strong> to add liquidity yourself, or wait for LP holders to underwrite this outcome.
+              Go to <strong>LP Dashboard → Match LP</strong> to add liquidity yourself, or wait for someone to add LP.
             </p>
           </div>
         }
