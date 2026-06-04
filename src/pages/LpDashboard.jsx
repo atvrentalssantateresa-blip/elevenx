@@ -586,7 +586,8 @@ export default function LpDashboard() {
                             let displayOdds = '—';
                             if (o.odds) {
                               const oddsNum = typeof o.odds === 'string' ? parseFloat(o.odds) : o.odds;
-                              displayOdds = oddsNum.toFixed(2) + 'x';
+                              const actualOdds = oddsNum < 10 ? oddsNum : oddsNum / 100;
+                              displayOdds = actualOdds.toFixed(2) + 'x';
                             }
                             return (
                               <button key={o.key}

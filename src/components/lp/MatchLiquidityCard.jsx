@@ -6,9 +6,15 @@ import { getTeamFlag } from '@/utils/flags';
 export default function MatchLiquidityCard({ bet, match, isSelected, onClick }) {
   if (!bet || !match) return null;
 
-  const oddsA = (bet.odds_a || bet.oracle_odds_a || 200) / 100;
-  const oddsB = (bet.odds_b || bet.oracle_odds_b || 300) / 100;
-  const oddsDraw = (bet.odds_draw || bet.oracle_odds_draw || 320) / 100;
+  // Handle both basis points (142) and decimal (1.42) formats
+  const formatOdds = (odds) => {
+    const oddsNum = typeof odds === 'string' ? parseFloat(odds) : odds || 0;
+    return oddsNum < 10 ? oddsNum : oddsNum / 100;
+  };
+  
+  const oddsA = formatOdds(bet.odds_a || bet.oracle_odds_a || 200);
+  const oddsB = formatOdds(bet.odds_b || bet.oracle_odds_b || 300);
+  const oddsDraw = formatOdds(bet.odds_draw || bet.oracle_odds_draw || 320);
 
   const totalPool = bet.total_pool || 0;
 
