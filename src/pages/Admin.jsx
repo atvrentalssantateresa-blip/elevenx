@@ -408,6 +408,35 @@ export default function Admin() {
             )}
           </div>
 
+          <div className="bg-card border border-destructive/30 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <RefreshCcw className="w-5 h-5 text-destructive" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">⚠️ Complete Reset & Fresh Sync</p>
+                  <p className="text-xs text-muted-foreground">Deletes ALL test data and re-syncs fresh World Cup matches with real odds from API</p>
+                </div>
+              </div>
+              <Button
+                onClick={async () => {
+                  if (!confirm('⚠️ WARNING: This will DELETE all matches, bets, futures, user bets, and LP positions!\n\nThen it will re-sync fresh data from the API with correct timestamps and live odds.\n\nContinue?')) {
+                    return;
+                  }
+                  const res = await base44.functions.invoke('resetAndSync', {});
+                  if (res.data.error) {
+                    alert('❌ Error: ' + res.data.error);
+                  } else {
+                    alert(res.data.message);
+                    queryClient.invalidateQueries({ queryKey: ['matches', 'bets', 'futuresMarkets'] });
+                  }
+                }}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-heading font-bold rounded-xl h-9"
+              >
+                Reset Everything
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-card border border-primary/20 rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
