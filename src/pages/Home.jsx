@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, ArrowRight, Flame, TrendingUp, Zap, Globe, Star, ChevronRight, Clock, Users, DollarSign, Earth } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import MatchCard from '@/components/betting/MatchCard';
 import { getTeamFlag } from '@/utils/flags';
 
@@ -193,31 +192,76 @@ export default function Home() {
         ))}
       </motion.div>
 
-      {/* ── OPEN BETS (TOP 4 BY LP) ── */}
-      {openBets.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <h2 className="font-heading font-bold text-lg">Open Bets</h2>
-              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">Top {Math.min(4, openBets.length)}</span>
-            </div>
-            <Link to="/matches" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-              View all <ChevronRight className="w-3 h-3" />
-            </Link>
+      {/* ── FEATURED MATCHES HORIZONTAL SCROLL ── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-primary" />
+            <h2 className="font-heading font-bold text-lg">Featured Matches</h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            {openBets
-              .sort((a, b) => (b.total_pool || 0) - (a.total_pool || 0))
-              .slice(0, 4)
-              .map((bet, i) => {
-                const match = matches.find(m => m.id === bet.match_id);
-                if (!match) return null;
-                return <MatchCard key={bet.id} match={match} bet={bet} index={i} />;
-              })}
-          </div>
-        </section>
-      )}
+          <Link to="/matches" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+            View all <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+          {FEATURED_MATCHES.map((fm, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + i * 0.08 }}
+              className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
+            >
+              {/* Match photo strip */}
+              <div className="relative h-40 overflow-hidden flex-shrink-0">
+                <img
+                  src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
+                  alt="match"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  style={i === 1 ? { objectPosition: 'center 20%' } : {}}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                <div className="absolute top-2 left-2">
+                  <span className="text-[10px] font-bold bg-black/50 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">{fm.group}</span>
+                </div>
+                <div className="absolute top-2 right-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white text-green-500 border-green-500/30 shadow-sm">OPEN</span>
+                </div>
+              </div>
+
+              <div className="p-4 flex flex-col flex-1 justify-center">
+                {/* Teams */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-center flex-1">
+                    <div className="text-2xl mb-1">{getTeamFlag(fm.team_a)}</div>
+                    <p className="font-heading font-bold text-xs leading-tight">{fm.team_a}</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5 px-2">
+                    <span className="font-heading font-black text-primary text-sm">VS</span>
+                    <span className="text-[9px] text-muted-foreground">{fm.date}</span>
+                  </div>
+                  <div className="text-center flex-1">
+                    <div className="text-2xl mb-1">{getTeamFlag(fm.team_b)}</div>
+                    <p className="font-heading font-bold text-xs leading-tight">{fm.team_b}</p>
+                  </div>
+                </div>
+
+                <div className="mt-auto">
+                  <Link to={`/match/${fm.matchId}`} className="block">
+                    <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
+                      style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(33,196,93,0.1)'}>
+                      Bet Now →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
       {/* ── HOW IT WORKS ── */}
       <motion.section
@@ -296,91 +340,43 @@ export default function Home() {
         </motion.section>
       )}
 
-
-
-      {/* ── FUTURES HYPE ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
-            <h2 className="font-heading font-bold text-lg">Tournament Futures</h2>
-            <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">Hot Markets</span>
+      {/* ── OPEN BETS ── */}
+      {openBets.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <h2 className="font-heading font-bold text-lg">Open Bets</h2>
+              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">{openBets.length}</span>
+            </div>
+            <Link to="/matches" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+              View all <ChevronRight className="w-3 h-3" />
+            </Link>
           </div>
-          <Link to="/futures" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-            View all futures <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {openBets
-            .sort((a, b) => (b.total_pool || 0) - (a.total_pool || 0))
-            .slice(0, 4)
-            .map((bet, i) => {
+          <div className="grid md:grid-cols-2 gap-4">
+            {openBets.slice(0, 4).map((bet, i) => {
               const match = matches.find(m => m.id === bet.match_id);
               if (!match) return null;
               return <MatchCard key={bet.id} match={match} bet={bet} index={i} />;
             })}
-        </div>
-      </section>
-
-      {/* ── FEATURED FUTURES CARDS ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-primary" />
-            <h2 className="font-heading font-bold text-lg">Featured Futures</h2>
           </div>
-          <Link to="/futures" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-            Browse all <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { country: 'Brazil', flag: '🇧🇷', odds: 5.5, position: '1st', title: 'Brazil - World Cup Winner' },
-            { country: 'France', flag: '🇫🇷', odds: 6.0, position: '1st', title: 'France - World Cup Winner' },
-            { country: 'Argentina', flag: '🇦🇷', odds: 7.5, position: '1st', title: 'Argentina - World Cup Winner' },
-            { country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', odds: 9.0, position: '1st', title: 'England - World Cup Winner' },
-            { country: 'Spain', flag: '🇪🇸', odds: 11.0, position: '1st', title: 'Spain - World Cup Winner' },
-            { country: 'Germany', flag: '🇩🇪', odds: 12.0, position: '1st', title: 'Germany - World Cup Winner' },
-          ].map((future, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group"
-            >
-              <div className="relative h-32 overflow-hidden">
-                <img
-                  src={WC_PHOTOS[i % WC_PHOTOS.length]}
-                  alt={future.country}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
-                <div className="absolute top-3 right-3">
-                  <Badge className="bg-primary/20 text-primary border border-primary/30 text-sm font-bold px-3 py-1">
-                    {future.odds}x
-                  </Badge>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="text-4xl">{future.flag}</div>
-                  <div>
-                    <h3 className="font-heading font-black text-lg text-foreground">{future.country}</h3>
-                    <p className="text-xs text-muted-foreground">{future.title}</p>
-                  </div>
-                </div>
-                <Link to="/futures">
-                  <Button className="w-full h-10 text-sm font-heading font-bold rounded-xl"
-                    style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}>
-                    Bet on {future.country} →
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* ── UPCOMING ── */}
+      {upcomingMatches.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <h2 className="font-heading font-bold text-lg">Upcoming Matches</h2>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upcomingMatches.slice(0, 6).map((m, i) => (
+              <MatchCard key={m.id} match={m} bet={betByMatch[m.id]} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── BOTTOM CTA BANNER ── */}
       <motion.div
