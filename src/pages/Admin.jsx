@@ -917,9 +917,17 @@ function CreateMatchDialog() {
 
   const createQuickTestMatch = async () => {
     const now = new Date();
-    const startTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
-    const bettingClosesAt = new Date(startTime.getTime() + 60 * 60 * 1000); // 60 min AFTER kickoff
-    const settleAfter = new Date(bettingClosesAt.getTime() + 5 * 60 * 1000); // 5 min after
+    // CRITICAL: Always create timestamps FAR in the future to avoid "betting window closed" errors
+    const startTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 HOURS from now
+    const bettingClosesAt = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours AFTER kickoff
+    const settleAfter = new Date(bettingClosesAt.getTime() + 1 * 60 * 60 * 1000); // 1 hour after betting closes
+    
+    console.log('[createQuickTestMatch] Timestamps:', {
+      now: now.toISOString(),
+      match_start: startTime.toISOString(),
+      betting_closes: bettingClosesAt.toISOString(),
+      match_ends: settleAfter.toISOString(),
+    });
     
     try {
       const match = await base44.entities.Match.create({
@@ -940,7 +948,7 @@ function CreateMatchDialog() {
         outcome_a: 'FFO',
         outcome_b: 'FFO1',
         outcome_draw: 'Draw',
-        open_until: bettingClosesAt.toISOString(), // 60 min AFTER kickoff
+        open_until: bettingClosesAt.toISOString(),
         status: 'open',
         odds_a: 2.0,
         odds_b: 2.0,
@@ -953,7 +961,7 @@ function CreateMatchDialog() {
       
       queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
       setOpen(false);
-      alert('✅ READY TO TEST!\n\nMatch starts: 10 min\nBetting closes: 70 min\n\nGo to Matches tab → Initialize Market');
+      alert('✅ READY TO TEST!\n\nMatch starts: 24 HOURS from now\nBetting closes: 26 hours from now\nMatch ends: 27 hours from now\n\nGo to Matches tab → Initialize Market (NO timestamp errors!)');
     } catch (err) {
       alert('Failed: ' + err.message);
     }
