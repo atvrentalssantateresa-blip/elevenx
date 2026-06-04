@@ -1,14 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Auto-fetch live odds from TheStatsAPI for all open bets
+// Auto-fetch live odds from The Odds API for all open bets
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (user?.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
 
-    const API_KEY = Deno.env.get('THE_STATS_API_KEY');
-    if (!API_KEY) return Response.json({ error: 'THE_STATS_API_KEY not set' }, { status: 500 });
+    const API_KEY = Deno.env.get('THE_ODDS_API_KEY');
+    if (!API_KEY) return Response.json({ error: 'THE_ODDS_API_KEY not set' }, { status: 500 });
+
+    // Fetch all odds from The Odds API
+    const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${API_KEY}&regions=eu,us&markets=h2h&oddsFormat=decimal`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      return Response.json({ 
+        error: 'API request failed', 
+        message: `Status: ${response.status}` 
+      }, { status: response.status });
+    }
+
+    const allMatches = await response.json();
+    
+    if (!Array.isArray(allMatches)) {
+      return Response.json({ 
+        error: 'Invalid API response', 
+        message: 'Expected array of matches' 
+      }, { status: 500 });
+    }
 
     // Fetch all open bets
     const bets = await base44.entities.Bet.filter({ status: 'open' });
@@ -18,80 +38,64 @@ Deno.serve(async (req) => {
 
     for (const bet of bets) {
       try {
-        if (!bet.stats_api_match_id) {
-          errors.push({ bet_id: bet.id, error: 'Missing stats_api_match_id' });
+        // Get the match to find team names
+        const match = await base44.entities.Match.get(bet.match_id);
+        if (!match) {
+          errors.push({ bet_id: bet.id, error: 'Match not found' });
           continue;
         }
 
-        // Fetch odds from TheStatsAPI
-        const url = `https://api.thestatsapi.com/api/football/matches/${bet.stats_api_match_id}/odds`;
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${API_KEY}` },
+        // Find matching game by team names (flexible matching)
+        const matchedGame = allMatches.find(game => {
+          const home = game.home_team.toLowerCase();
+          const away = game.away_team.toLowerCase();
+          const teamA = match.team_a.toLowerCase();
+          const teamB = match.team_b.toLowerCase();
+          
+          // Try exact match
+          if (home === teamA && away === teamB) return true;
+          
+          // Try reverse (API might have teams swapped)
+          if (home === teamB && away === teamA) return true;
+          
+          // Try partial match (e.g. "Czech Republic" vs "Czechia")
+          if ((home.includes(teamA) || teamA.includes(home)) &&
+              (away.includes(teamB) || teamB.includes(away))) return true;
+          
+          return false;
         });
 
-        if (!res.ok) {
-          if (res.status === 404) {
-            // Odds not available yet - this is normal for future matches
-            continue;
-          }
-          if (res.status === 403) {
-            console.log('API key issue - skipping odds fetch');
-            return Response.json({ 
-              success: false, 
-              message: 'THE_STATS_API_KEY has no active subscription',
-              error: 'API key revoked or no active plan'
-            }, { status: 503 });
-          }
-          errors.push({ bet_id: bet.id, error: `API error ${res.status}` });
+        if (!matchedGame) {
+          errors.push({ bet_id: bet.id, error: `Match not found in API: ${match.team_a} vs ${match.team_b}` });
           continue;
         }
 
-        const json = await res.json();
-        const data = json?.data;
+        // Extract odds from Pinnacle first, then fallback to any bookmaker
+        let bookmaker = matchedGame.bookmakers?.find(b => b.title === 'Pinnacle') || matchedGame.bookmakers?.[0];
         
-        if (!data) continue;
-
-        // Parse odds from API response
-        let odds1x2 = null;
-        let bookmakerName = null;
-        
-        if (data.bookmakers && Array.isArray(data.bookmakers)) {
-          const bm = data.bookmakers.find(b => b.bookmaker === 'Bet365' || b.bookmaker === 'Pinnacle');
-          if (bm?.markets?.match_odds) {
-            odds1x2 = bm.markets.match_odds;
-            bookmakerName = bm.bookmaker;
-          }
+        if (!bookmaker?.markets?.[0]?.outcomes) {
+          errors.push({ bet_id: bet.id, error: 'No odds data from bookmakers' });
+          continue;
         }
-        
-        if (!odds1x2 && data.odds) {
-          const oddsData = data.odds;
-          const bm = oddsData.bet365 || oddsData.pinnacle || oddsData.kambi || oddsData.betfair;
-          if (bm?.['1x2']) {
-            odds1x2 = bm['1x2'];
-            bookmakerName = bm === oddsData.bet365 ? 'Bet365' : bm === oddsData.pinnacle ? 'Pinnacle' : 'Other';
-          }
-        }
-        
-        if (!odds1x2) continue;
 
-        // Extract current odds (last_seen or opening)
-        const homeOdds = odds1x2.home?.last_seen || odds1x2.home?.opening || odds1x2.home || 0;
-        const drawOdds = odds1x2.draw?.last_seen || odds1x2.draw?.opening || odds1x2.draw || 0;
-        const awayOdds = odds1x2.away?.last_seen || odds1x2.away?.opening || odds1x2.away || 0;
+        const outcomes = bookmaker.markets[0].outcomes;
+        const homeOdds = outcomes.find(o => o.name === matchedGame.home_team)?.price || 0;
+        const awayOdds = outcomes.find(o => o.name === matchedGame.away_team)?.price || 0;
+        const drawOdds = outcomes.find(o => o.name === 'Draw')?.price || 0;
 
         // Update bet with new odds
         await base44.entities.Bet.update(bet.id, {
           odds_a: parseFloat(homeOdds),
           odds_b: parseFloat(awayOdds),
           odds_draw: parseFloat(drawOdds),
-          odds_bookmaker: bookmakerName || 'TheStatsAPI',
+          odds_bookmaker: bookmaker.title || 'The Odds API',
           odds_updated_at: new Date().toISOString(),
         });
 
         updated.push({
           bet_id: bet.id,
           odds: { home: parseFloat(homeOdds), draw: parseFloat(drawOdds), away: parseFloat(awayOdds) },
-          bookmaker: bookmakerName,
+          bookmaker: bookmaker.title,
         });
 
       } catch (error) {
@@ -101,12 +105,13 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      message: `Updated ${updated.length} bets with live odds`,
+      message: `Updated ${updated.length} bets with live odds from The Odds API`,
       updated,
       errors: errors.length > 0 ? errors : undefined,
     });
 
   } catch (error) {
+    console.error('autoFetchOdds error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
