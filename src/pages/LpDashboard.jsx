@@ -184,14 +184,22 @@ export default function LpDashboard() {
   const withdrawLiquidityMutation = useMutation({
     mutationFn: async (offer) => {
       if (!walletAddress) throw new Error('Wallet not connected');
+      if (!offer.userBetId) throw new Error('No user bet found for this offer');
+      
+      console.log('[withdrawLiquidityMutation] Calling with:', { walletAddress, userBetId: offer.userBetId });
+      
       const res = await base44.functions.invoke('withdrawLiquidity', {
         walletAddress,
         userBetId: offer.userBetId,
       });
+      
+      console.log('[withdrawLiquidityMutation] Response:', res.data);
+      
       if (res.data.error) throw new Error(res.data.error);
       return res.data;
     },
     onSuccess: (data) => {
+      console.log('[withdrawLiquidityMutation] Success:', data);
       setPendingTx({
         instruction: data.solana_instruction,
         amount: data.amount,
@@ -201,6 +209,7 @@ export default function LpDashboard() {
       });
     },
     onError: (err) => {
+      console.error('[withdrawLiquidityMutation] Error:', err);
       setError(err.message || 'Failed to withdraw liquidity');
     },
   });
