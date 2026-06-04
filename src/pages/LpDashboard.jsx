@@ -132,26 +132,27 @@ export default function LpDashboard() {
   const [pendingCommitData, setPendingCommitData] = useState(null);
 
   const provideLiquidityMutation = useMutation({
-    mutationFn: async () => {
-      const amt = parseFloat(amount);
-      if (!amt || amt <= 0) throw new Error('Invalid amount');
-      if (!selectedBet) throw new Error('No bet selected');
-      if (!walletAddress) throw new Error('Wallet not connected');
+    mutationFn: async (params) => {
+      const { walletAddress: wallet, bet_id, match_id, outcome, amount: amt } = params;
+      const amountNum = parseFloat(amt);
+      
+      if (!amountNum || amountNum <= 0) throw new Error('Invalid amount');
+      if (!wallet) throw new Error('Wallet not connected');
 
       console.log('[provideLiquidity] Calling with:', {
-        walletAddress,
-        bet_id: selectedBet.id,
-        match_id: selectedBet.match_id,
-        outcome: selectedOutcome,
-        amount: amt,
+        wallet,
+        bet_id,
+        match_id,
+        outcome,
+        amount: amountNum,
       });
 
       const res = await base44.functions.invoke('provideLiquidity', {
-        walletAddress,
-        bet_id: selectedBet.id,
-        match_id: selectedBet.match_id,
-        outcome: selectedOutcome,
-        amount: amt,
+        walletAddress: wallet,
+        bet_id,
+        match_id,
+        outcome,
+        amount: amountNum,
       });
 
       console.log('[provideLiquidity] Response:', res.data);
@@ -371,15 +372,15 @@ export default function LpDashboard() {
   };
 
   const handleDetailModalCommit = ({ bet, outcome, amount, potentialLiability }) => {
-    setSelectedBet(bet);
-    setSelectedOutcome(outcome);
-    setAmount(String(amount));
     setDetailModalOpen(false);
-    // Use setTimeout to allow state to update first
-    setTimeout(() => {
-      console.log('[handleDetailModalCommit] Triggering mutation with:', { bet, outcome, amount });
-      provideLiquidityMutation.mutate();
-    }, 50);
+    // Trigger mutation directly with params - no state dependency
+    provideLiquidityMutation.mutate({
+      walletAddress,
+      bet_id: bet.id,
+      match_id: bet.match_id,
+      outcome,
+      amount: String(amount),
+    });
   };
 
   return (
@@ -586,7 +587,13 @@ export default function LpDashboard() {
                           </div>
 
                           <Button
-                            onClick={() => provideLiquidityMutation.mutate()}
+                            onClick={() => provideLiquidityMutation.mutate({
+                              walletAddress,
+                              bet_id: selectedBet.id,
+                              match_id: selectedBet.match_id,
+                              outcome: selectedOutcome,
+                              amount,
+                            })}
                             disabled={!amount || parseFloat(amount) <= 0 || provideLiquidityMutation.isPending}
                             className="w-full h-12 font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
                             {provideLiquidityMutation.isPending ? (
