@@ -231,7 +231,7 @@ export default function Matches() {
                       <div className="flex-1 h-px bg-border/30" />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                       {dateMatches.map((m, i) => (
                         <div
                           key={m.id}
@@ -273,7 +273,7 @@ export default function Matches() {
                     <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                     {dateMatches.map((m, i) => (
                       <div
                         key={m.id}
