@@ -373,7 +373,16 @@ export default function LpDashboard() {
 
   const handleDetailModalCommit = ({ bet, outcome, amount, potentialLiability }) => {
     setDetailModalOpen(false);
-    // Trigger mutation directly with params - no state dependency
+    
+    // Check wallet is connected
+    if (!walletAddress) {
+      setError('Wallet not connected. Please connect Phantom first.');
+      return;
+    }
+    
+    console.log('[handleDetailModalCommit] Triggering with:', { walletAddress, bet_id: bet.id, outcome, amount });
+    
+    // Trigger mutation directly with params
     provideLiquidityMutation.mutate({
       walletAddress,
       bet_id: bet.id,

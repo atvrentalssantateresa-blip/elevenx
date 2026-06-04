@@ -49,7 +49,12 @@ export default function LiquidityDetailModal({
   const potentialLiability = (parseFloat(amount || 0) * selectedOdds).toFixed(2);
 
   const handleCommit = async () => {
-    if (!amount || parseFloat(amount) <= 0) return;
+    if (!amount || parseFloat(amount) <= 0) {
+      console.warn('[LiquidityDetailModal] Invalid amount:', amount);
+      return;
+    }
+    
+    console.log('[LiquidityDetailModal] handleCommit called with:', { bet_id: bet.id, outcome: selectedOutcome, amount });
     
     // Check market status first
     try {
@@ -64,12 +69,14 @@ export default function LiquidityDetailModal({
       console.error('[LiquidityDetailModal] Failed to check market status:', err);
     }
     
+    console.log('[LiquidityDetailModal] Calling onCommit...');
     onCommit({
       bet,
       outcome: selectedOutcome,
       amount: parseFloat(amount),
       potentialLiability: parseFloat(potentialLiability)
     });
+    console.log('[LiquidityDetailModal] onCommit completed');
   };
 
   return (
