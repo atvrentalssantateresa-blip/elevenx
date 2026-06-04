@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       betId: bet.id,
       openUntil: openUntil.toISOString(),
       settleAfter: settleAfter.toISOString(),
-      message: `Match created - betting closes in 30 minutes at ${openUntil.toLocaleString()}`
+      message: `✓ Test match created!\n\nBetting closes in: 5 minutes\nSettlement enabled: 6 minutes\n\nGo to Matches → Initialize Market → Provide LP → Test betting`
     });
 
   } catch (error) {
