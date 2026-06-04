@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, ArrowRight, Flame, TrendingUp, Zap, Globe, Star, ChevronRight, Clock, Users, DollarSign, Earth } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import MatchCard from '@/components/betting/MatchCard';
 import { getTeamFlag } from '@/utils/flags';
 
@@ -38,6 +39,11 @@ export default function Home() {
   const { data: userBets = [] } = useQuery({
     queryKey: ['allUserBets'],
     queryFn: () => base44.entities.UserBet.list('-created_date', 100),
+  });
+
+  const { data: futuresMarkets = [] } = useQuery({
+    queryKey: ['futures-markets'],
+    queryFn: () => base44.entities.FuturesMarket.list(),
   });
 
   const openBets = bets.filter(b => b.status === 'open');
@@ -340,43 +346,97 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* ── OPEN BETS ── */}
+      {/* ── OPEN BETS (TOP 4 BY LP) ── */}
       {openBets.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <h2 className="font-heading font-bold text-lg">Open Bets</h2>
-              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">{openBets.length}</span>
+              <Flame className="w-4 h-4 text-primary" />
+              <h2 className="font-heading font-bold text-lg">Hottest Bets</h2>
+              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">Top 4 by LP</span>
             </div>
             <Link to="/matches" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
               View all <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
-            {openBets.slice(0, 4).map((bet, i) => {
-              const match = matches.find(m => m.id === bet.match_id);
-              if (!match) return null;
-              return <MatchCard key={bet.id} match={match} bet={bet} index={i} />;
-            })}
+            {openBets
+              .sort((a, b) => (b.total_pool || 0) - (a.total_pool || 0))
+              .slice(0, 4)
+              .map((bet, i) => {
+                const match = matches.find(m => m.id === bet.match_id);
+                if (!match) return null;
+                return <MatchCard key={bet.id} match={match} bet={bet} index={i} />;
+              })}
           </div>
         </section>
       )}
 
-      {/* ── UPCOMING ── */}
-      {upcomingMatches.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <h2 className="font-heading font-bold text-lg">Upcoming Matches</h2>
+      {/* ── FEATURED FUTURES (6 CARDS) ── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" />
+            <h2 className="font-heading font-bold text-lg">Featured Futures</h2>
+            <span className="bg-accent/10 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full">Tournament Markets</span>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {upcomingMatches.slice(0, 6).map((m, i) => (
-              <MatchCard key={m.id} match={m} bet={betByMatch[m.id]} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
+          <Link to="/futures" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+            View all <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {futuresMarkets
+            .filter(m => m.status === 'open' && m.country)
+            .sort((a, b) => (b.total_volume || 0) - (a.total_volume || 0))
+            .slice(0, 6)
+            .map((market, i) => {
+              const topOutcome = market.outcomes?.reduce((max, o) => o.odds > (max?.odds || 0) ? o : max, null);
+              return (
+                <motion.div
+                  key={market.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group"
+                >
+                  <Link to="/futures" className="block">
+                    <div className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="text-4xl shrink-0">{market.country_flag || '🌍'}</div>
+                        <div className="flex-1">
+                          <h3 className="font-heading font-black text-lg text-foreground">{market.country}</h3>
+                          <p className="text-xs text-muted-foreground">{market.subtitle || 'Tournament Finish'}</p>
+                        </div>
+                      </div>
+                      {topOutcome && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase">Top Odds</p>
+                              <p className="font-heading font-bold text-sm text-primary">{topOutcome.label}</p>
+                            </div>
+                            <Badge className="bg-primary/20 text-primary border border-primary/30 text-base font-bold px-3 py-1">
+                              {topOutcome.odds.toFixed(1)}x
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pt-3 border-t border-border/30">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs font-bold text-foreground">◎{market.total_volume?.toFixed(2) || '0'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-primary font-bold group-hover:underline">
+                          Bet Now <ArrowRight className="w-3 h-3" />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
+        </div>
+      </section>
 
       {/* ── BOTTOM CTA BANNER ── */}
       <motion.div
