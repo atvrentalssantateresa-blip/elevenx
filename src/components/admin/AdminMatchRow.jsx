@@ -224,11 +224,11 @@ export default function AdminMatchRow({ match, bets, index }) {
         >
           <Trash2 className="w-4 h-4" />
         </Button>
-        {!existingBet && !pendingMarketInit && (
+        {existingBet && !pendingMarketInit && (
           <Button
             size="sm"
             onClick={() => {
-              console.log('Creating bet for match:', match.id, match.team_a, 'vs', match.team_b);
+              console.log('Initializing market for match:', match.id, match.team_a, 'vs', match.team_b);
               createBetMutation.mutate();
             }}
             disabled={createBetMutation.isPending}
@@ -239,38 +239,6 @@ export default function AdminMatchRow({ match, bets, index }) {
             ) : (
               <><Plus className="w-3 h-3 mr-1" /> Initialize Market</>
             )}
-          </Button>
-        )}
-        {existingBet && marketStatus?.status === 'not_created' && !pendingMarketInit && (
-          <Button
-            size="sm"
-            onClick={async () => {
-              try {
-                const marketRes = await base44.functions.invoke('createMarketOnChain', {
-                  bet_id: existingBet.id,
-                  match_id: match.id,
-                  force_recreate: true,
-                });
-                if (marketRes.data.createMarketInstruction) {
-                  setPendingMarketInit({
-                    instruction: marketRes.data.createMarketInstruction,
-                    betId: existingBet.id,
-                    step: 'create_market',
-                  });
-                } else if (marketRes.data.error) {
-                  alert('Failed to recreate market: ' + marketRes.data.error);
-                }
-              } catch (err) {
-                if (err.response?.status === 429) {
-                  alert('Rate limit exceeded. Please wait a moment and try again.');
-                } else {
-                  alert('Error: ' + err.message);
-                }
-              }
-            }}
-            className="h-8 text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 font-heading rounded-lg"
-          >
-            ⚡ Force Recreate
           </Button>
         )}
         
