@@ -223,31 +223,25 @@ export default function Home() {
                  className="group relative bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 h-full">
 
                 {/* Match Image Header */}
-                <div className="relative h-36 overflow-hidden">
+                <div className="relative h-40 overflow-hidden">
                   <img
                      src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                      alt="match"
-                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                     style={fm.team_a === 'South Korea' ? { objectPosition: 'center 30%', transform: 'scale(1.4)' } : {}} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
 
                   {/* Group Badge */}
                   <div className="absolute top-3 left-3">
-                    <span className="text-[10px] font-bold bg-black/60 backdrop-blur-md text-white px-2.5 py-1 rounded-full border border-white/10">
+                    <span className="text-[9px] font-bold bg-black/70 backdrop-blur-md text-white/90 px-2 py-0.5 rounded-md border border-white/10 uppercase tracking-wide">
                       {fm.group}
                     </span>
                   </div>
 
                   {/* Status Badge */}
                   <div className="absolute top-3 right-3">
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/90 text-white border border-emerald-400/30 shadow-lg shadow-emerald-500/20">
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-500 text-white border border-emerald-400/50 shadow-lg shadow-emerald-500/30 uppercase tracking-wide">
                       OPEN
-                    </span>
-                  </div>
-
-                  {/* Date Badge - Bottom Left */}
-                  <div className="absolute bottom-3 left-3">
-                    <span className="text-[10px] font-bold text-white/90 bg-primary/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-primary/30">
-                      {fm.date}
                     </span>
                   </div>
                 </div>
@@ -255,41 +249,40 @@ export default function Home() {
                 {/* Card Content */}
                 <div className="p-4">
                  {/* Teams Section */}
-                 <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/30">
+                 <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-border/40">
                    <div className="flex flex-col items-center flex-1 min-w-0">
-                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5 border border-primary/20">
-                       <span className="text-xl">{getTeamFlag(fm.team_a)}</span>
+                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center mb-2 border border-primary/25 shadow-inner">
+                       <span className="text-2xl leading-none">{getTeamFlag(fm.team_a)}</span>
                      </div>
-                     <p className="font-heading font-bold text-[11px] text-center truncate w-full">{fm.team_a}</p>
+                     <p className="font-heading font-bold text-[10px] text-center truncate w-full px-1 leading-tight">{fm.team_a}</p>
                    </div>
 
-                   <div className="flex flex-col items-center px-2">
-                     <span className="font-heading font-black text-primary text-xs bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">VS</span>
+                   <div className="flex flex-col items-center px-1.5">
+                     <span className="font-heading font-black text-primary text-[10px] bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">VS</span>
                    </div>
 
                    <div className="flex flex-col items-center flex-1 min-w-0">
-                     <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mb-1.5 border border-accent/20">
-                       <span className="text-xl">{getTeamFlag(fm.team_b)}</span>
+                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center mb-2 border border-accent/25 shadow-inner">
+                       <span className="text-2xl leading-none">{getTeamFlag(fm.team_b)}</span>
                      </div>
-                     <p className="font-heading font-bold text-[11px] text-center truncate w-full">{fm.team_b}</p>
+                     <p className="font-heading font-bold text-[10px] text-center truncate w-full px-1 leading-tight">{fm.team_b}</p>
                    </div>
                  </div>
 
                  {/* Odds Section */}
                  {bet && bet.odds_a && bet.odds_b && (
                    <div className="mb-4">
-                     <p className="text-[9px] text-muted-foreground font-medium text-center mb-2 uppercase tracking-wide">Live Odds</p>
                      <div className="grid grid-cols-3 gap-1.5">
-                       <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 text-center">
-                         <p className="text-[9px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_a}</p>
+                       <div className="bg-primary/5 border border-primary/20 rounded-md p-1.5 text-center">
+                         <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_a}</p>
                          <p className="font-heading font-bold text-xs text-primary">{bet.odds_a?.toFixed(2) || '0.00'}x</p>
                        </div>
-                       <div className="bg-secondary/50 border border-border/30 rounded-lg p-2 text-center">
-                         <p className="text-[9px] text-muted-foreground font-medium mb-0.5">Draw</p>
+                       <div className="bg-secondary/50 border border-border/30 rounded-md p-1.5 text-center">
+                         <p className="text-[8px] text-muted-foreground font-medium mb-0.5">Draw</p>
                          <p className="font-heading font-bold text-xs text-foreground">{bet.odds_draw?.toFixed(2) || '0.00'}x</p>
                        </div>
-                       <div className="bg-accent/5 border border-accent/20 rounded-lg p-2 text-center">
-                         <p className="text-[9px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_b}</p>
+                       <div className="bg-accent/5 border border-accent/20 rounded-md p-1.5 text-center">
+                         <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_b}</p>
                          <p className="font-heading font-bold text-xs text-accent">{bet.odds_b?.toFixed(2) || '0.00'}x</p>
                        </div>
                      </div>
@@ -299,12 +292,12 @@ export default function Home() {
                  {/* Action Buttons */}
                  <div className="grid grid-cols-2 gap-2">
                    <Link to={`/match/${fm.matchId}`} className="block">
-                     <Button className="w-full h-9 text-xs font-heading font-bold rounded-lg bg-gradient-to-r from-emerald-500/20 to-emerald-500/30 text-emerald-400 border border-emerald-500/30 hover:from-emerald-500/30 hover:to-emerald-500/40 transition-all duration-300">
+                     <Button className="w-full h-8 text-xs font-heading font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all">
                        Bet Now
                      </Button>
                    </Link>
                    <Link to={`/match/${fm.matchId}`} className="block">
-                     <Button className="w-full h-9 text-xs font-heading font-bold rounded-lg bg-gradient-to-r from-primary/20 to-primary/30 text-primary border border-primary/30 hover:from-primary/30 hover:to-primary/40 transition-all duration-300">
+                     <Button className="w-full h-8 text-xs font-heading font-bold rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-all">
                        + LP
                      </Button>
                    </Link>
