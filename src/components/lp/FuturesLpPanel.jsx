@@ -104,7 +104,7 @@ export default function FuturesLpPanel({
           </div>
 
           {displayedMarkets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayedMarkets.map((market, i) => (
                 <FuturesMarketLpCard
                   key={market.id}
@@ -139,7 +139,7 @@ export default function FuturesLpPanel({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 {groupMarkets.map((market, i) => (
                   <FuturesMarketLpCard
                     key={market.id}
