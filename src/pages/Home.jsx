@@ -273,27 +273,31 @@ export default function Home() {
                    </div>
                  </div>
 
-                 {/* Odds Section */}
-                 {(bet && bet.odds_a && bet.odds_b) || (fm.odds_a && fm.odds_b) ? (
-                   <div className="mb-4">
-                     <div className="grid grid-cols-3 gap-1.5">
-                       <div className="bg-primary/5 border border-primary/20 rounded-md p-1.5 text-center">
-                         <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_a}</p>
-                         <p className="font-heading font-bold text-xs text-primary">{(fm.odds_a || bet.odds_a)?.toFixed(2) || '0.00'}x</p>
-                       </div>
-                       <div className="bg-secondary/50 border border-border/30 rounded-md p-1.5 text-center">
-                         <p className="text-[8px] text-muted-foreground font-medium mb-0.5">Draw</p>
-                         <p className="font-heading font-bold text-xs text-foreground">{(fm.odds_draw || bet.odds_draw)?.toFixed(2) || '0.00'}x</p>
-                       </div>
-                       <div className="bg-accent/5 border border-accent/20 rounded-md p-1.5 text-center">
-                         <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_b}</p>
-                         <p className="font-heading font-bold text-xs text-accent">{(fm.odds_b || bet.odds_b)?.toFixed(2) || '0.00'}x</p>
-                       </div>
+                 {/* Odds Section - Always shown */}
+                 <div className="mb-4 min-h-[52px]">
+                   <div className="grid grid-cols-3 gap-1.5">
+                     <div className="bg-primary/5 border border-primary/20 rounded-md p-1.5 text-center">
+                       <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_a}</p>
+                       <p className="font-heading font-bold text-xs text-primary">
+                         {(fm.odds_a || bet?.odds_a) ? (fm.odds_a || bet.odds_a).toFixed(2) : '—'}x
+                       </p>
+                     </div>
+                     <div className="bg-secondary/50 border border-border/30 rounded-md p-1.5 text-center">
+                       <p className="text-[8px] text-muted-foreground font-medium mb-0.5">Draw</p>
+                       <p className="font-heading font-bold text-xs text-foreground">
+                         {(fm.odds_draw || bet?.odds_draw) ? (fm.odds_draw || bet.odds_draw).toFixed(2) : '—'}x
+                       </p>
+                     </div>
+                     <div className="bg-accent/5 border border-accent/20 rounded-md p-1.5 text-center">
+                       <p className="text-[8px] text-muted-foreground font-medium truncate mb-0.5">{fm.team_b}</p>
+                       <p className="font-heading font-bold text-xs text-accent">
+                         {(fm.odds_b || bet?.odds_b) ? (fm.odds_b || bet.odds_b).toFixed(2) : '—'}x
+                       </p>
                      </div>
                    </div>
-                 ) : null}
+                 </div>
 
-                 {/* Action Buttons */}
+                 {/* Action Buttons - Fixed height container */}
                  <div className="grid grid-cols-2 gap-2">
                    <Link to={`/match/${fm.matchId}`} className="block">
                      <Button className="w-full h-8 text-xs font-heading font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all">
