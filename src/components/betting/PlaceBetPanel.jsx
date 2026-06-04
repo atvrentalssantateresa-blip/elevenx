@@ -463,27 +463,20 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
         
         <div className="flex gap-2 mt-2 flex-wrap">
-          {mode === 'match' && maxMatcherStake !== null && maxMatcherStake <= 0 ? null :
-          mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 ? null :
-
-          <>
-              {QUICK_AMOUNTS.map((qa) => {
-              const capped = maxMatcherStake !== null ? Math.min(qa, maxMatcherStake) : qa;
-              return (
-                <button key={qa} onClick={() => setAmount(String(Number(capped).toFixed(4)))}
-                className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
-                    ◎{qa}
-                  </button>);
-
-            })}
-              {maxMatcherStake !== null && maxMatcherStake > 0 &&
+          {QUICK_AMOUNTS.map((qa) => {
+            const capped = maxMatcherStake !== null && maxMatcherStake > 0 ? Math.min(qa, maxMatcherStake) : qa;
+            return (
+              <button key={qa} onClick={() => setAmount(String(Number(capped).toFixed(4)))}
+              className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
+                  ◎{qa}
+                </button>);
+          })}
+          {maxMatcherStake !== null && maxMatcherStake > 0 && (
             <button onClick={() => setAmount(String(Number(maxMatcherStake).toFixed(4)))}
             className="px-3 py-1.5 text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition-colors">
-                  Max ◎{Number(maxMatcherStake).toFixed(4)}
-                </button>
-            }
-            </>
-          }
+                Max ◎{Number(maxMatcherStake).toFixed(4)}
+              </button>
+          )}
         </div>
       </div>
 
