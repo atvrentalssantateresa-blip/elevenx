@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const isVoided = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[245] === 1;
     const isSettledOnChain = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[244] === 1;
     
-    // Check if position exists on-chain
+    // Check if position exists on-chain and read its state
     const bettorPubkey = new PublicKey(trimmedWallet);
     const [positionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
@@ -91,12 +91,31 @@ Deno.serve(async (req) => {
     const positionInfo = await connection.getAccountInfo(positionPda);
     const positionExists = !!positionInfo;
     
+    let positionData = null;
+    if (positionInfo) {
+      // Parse position account data (8 byte discriminator + 87 bytes data = 95 bytes total)
+      const data = positionInfo.data;
+      positionData = {
+        outcome: data[73], // outcome is at offset 73 (after 8+32+32)
+        matched_stake: data.readBigUInt64LE(74),
+        potential_payout: data.readBigUInt64LE(82),
+        claimed: data[94] === 1, // claimed is at offset 94
+      };
+      console.log('[claimWinnings] Position account data:', {
+        outcome: positionData.outcome,
+        matched_stake: positionData.matched_stake.toString(),
+        potential_payout: positionData.potential_payout.toString(),
+        claimed: positionData.claimed,
+      });
+    }
+    
     console.log('[claimWinnings] Market state:', {
       marketExists: !!marketInfo,
       isVoided,
       isSettledOnChain,
       positionExists,
       positionPda: positionPda.toBase58(),
+      positionData,
     });
 
     const totalPayout = betsToClaim.reduce((sum, b) => sum + (b.actual_payout || b.potential_payout || 0), 0);
@@ -118,6 +137,44 @@ Deno.serve(async (req) => {
         betIds: betsToClaim.map(b => b.id),
         totalPayout,
         note: 'Market was settled via DB override. SOL payout is handled separately by admin.',
+      });
+    }
+    
+    // Check if position was already claimed on-chain
+    if (positionData?.claimed) {
+      console.log('[claimWinnings] Position already claimed on-chain — doing DB-only update');
+      for (const b of betsToClaim) {
+        await serviceRole.entities.UserBet.update(b.id, {
+          status: 'claimed',
+          actual_payout: b.actual_payout || b.potential_payout || 0,
+        });
+      }
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: `✓ ${betsToClaim.length} winning bet(s) already claimed on-chain. Updated DB status.`,
+        betIds: betsToClaim.map(b => b.id),
+        totalPayout,
+        note: 'Position was already claimed on-chain.',
+      });
+    }
+    
+    // Check if position has matched stake
+    if (!positionData || positionData.matched_stake === BigInt(0)) {
+      console.log('[claimWinnings] Position has no matched stake — doing DB-only claim');
+      for (const b of betsToClaim) {
+        await serviceRole.entities.UserBet.update(b.id, {
+          status: 'claimed',
+          actual_payout: b.actual_payout || b.potential_payout || 0,
+        });
+      }
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: `✓ ${betsToClaim.length} winning bet(s) marked as claimed (no matched stake on-chain).`,
+        betIds: betsToClaim.map(b => b.id),
+        totalPayout,
+        note: 'Position has no matched stake on-chain.',
       });
     }
 
