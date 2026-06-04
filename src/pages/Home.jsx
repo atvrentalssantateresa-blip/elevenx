@@ -157,14 +157,16 @@ export default function Home() {
           </div>
 
           {/* Floating stat chips */}
-          <div className="absolute bottom-7 right-6 flex flex-col gap-2 items-end">
-            <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#21c45d' }} />
-              <span className="text-[11px] text-white/80 font-medium">0% platform fee</span>
-            </div>
-            <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
-              <Flame className="w-3 h-3 text-primary" />
-              <span className="text-[11px] text-white/80 font-medium">Instant settlement</span>
+          <div className="relative z-10 mt-6">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#21c45d' }} />
+                <span className="text-[11px] text-white/80 font-medium">0% platform fee</span>
+              </div>
+              <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                <Flame className="w-3 h-3 text-primary" />
+                <span className="text-[11px] text-white/80 font-medium">Instant settlement</span>
+              </div>
             </div>
           </div>
         </motion.div>
