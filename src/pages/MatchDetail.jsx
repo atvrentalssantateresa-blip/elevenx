@@ -45,9 +45,9 @@ export default function MatchDetail() {
     queryKey: ['betsForMatch', matchId],
     queryFn: () => base44.entities.Bet.filter({ match_id: matchId }),
     enabled: !!matchId,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
-    staleTime: 0
+    refetchInterval: 15000,
+    refetchOnWindowFocus: false,
+    staleTime: 5000
   });
   const bet = bets[0] || null;
 

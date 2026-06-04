@@ -2,6 +2,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+// Simple in-memory cache to prevent Solana RPC rate limiting (30-second TTL)
+const cache = new Map();
+const CACHE_TTL_MS = 30000;
+
 /**
  * Checks if a pari-mutuel market is properly initialized on-chain and whether it's settled.
  * Returns status: 'not_created' | 'not_initialized' | 'initialized' | 'settled'
@@ -19,6 +23,15 @@ Deno.serve(async (req) => {
     
     const payload = await req.json();
     let { match_id, bet_id } = payload;
+    
+    // Check cache first
+    const cacheKey = `market:${match_id || bet_id}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      console.log('[checkMarketStatus] Cache HIT:', cacheKey);
+      return Response.json(cached.data);
+    }
+    console.log('[checkMarketStatus] Cache MISS:', cacheKey);
     
     // If bet_id is provided, use it to get the match_id
     if (bet_id && !match_id) {

@@ -14,14 +14,18 @@ export default function OfferBook({ betId, bet, onSelectOffer }) {
     queryKey: ['offers', betId],
     queryFn: () => base44.entities.BetOffer.filter({ bet_id: betId }),
     enabled: !!betId,
-    refetchInterval: 10000,
+    refetchInterval: 20000,
+    refetchOnWindowFocus: false,
+    staleTime: 5000
   });
 
   const { data: userBets = [] } = useQuery({
     queryKey: ['userBets', betId],
     queryFn: () => base44.entities.UserBet.filter({ bet_id: betId, role: 'matcher' }),
     enabled: !!betId && !!user?.id,
-    refetchInterval: 10000,
+    refetchInterval: 20000,
+    refetchOnWindowFocus: false,
+    staleTime: 5000
   });
 
   const withdrawMutation = useMutation({
