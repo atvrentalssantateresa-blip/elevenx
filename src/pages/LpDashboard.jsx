@@ -509,15 +509,24 @@ export default function LpDashboard() {
 
       {isConnected && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6 bg-secondary/50">
-            <TabsTrigger value="matches" className="font-heading font-bold">
-              <TrendingUp className="w-4 h-4 mr-2" /> Match LP
+          <TabsList className="grid grid-cols-3 mb-6 bg-secondary/30 p-1.5 rounded-xl gap-2 h-auto">
+            <TabsTrigger 
+              value="matches" 
+              className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
+            >
+              <TrendingUp className="w-4 h-4 mr-2 text-primary" /> Match LP
             </TabsTrigger>
-            <TabsTrigger value="futures" className="font-heading font-bold">
-              <Trophy className="w-4 h-4 mr-2" /> Futures LP
+            <TabsTrigger 
+              value="futures" 
+              className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400 data-[state=active]:border-b-2 data-[state=active]:border-yellow-400"
+            >
+              <Trophy className="w-4 h-4 mr-2 text-yellow-400" /> Futures LP
             </TabsTrigger>
-            <TabsTrigger value="positions" className="font-heading font-bold">
-              <DollarSign className="w-4 h-4 mr-2" /> My LP
+            <TabsTrigger 
+              value="positions" 
+              className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-accent/20 data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent"
+            >
+              <DollarSign className="w-4 h-4 mr-2 text-accent" /> My LP
             </TabsTrigger>
           </TabsList>
 
