@@ -267,7 +267,7 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
             }, parseFloat(amount));
           }}
           disabled={!amount || parseFloat(amount) <= 0}
-          className="w-full h-12 font-heading font-bold rounded-xl text-base transition-all hover:shadow-lg"
+          className="w-full h-12 font-heading font-bold rounded-xl text-base transition-all hover:shadow-lg mt-auto"
           style={{ 
             background: 'linear-gradient(135deg, #a69cf2, #8b84e8)',
             boxShadow: '0 0 20px rgba(166,156,242,0.4)'
