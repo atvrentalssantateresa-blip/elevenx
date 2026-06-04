@@ -184,9 +184,23 @@ export default function LpDashboard() {
   const withdrawLiquidityMutation = useMutation({
     mutationFn: async (offer) => {
       if (!walletAddress) throw new Error('Wallet not connected');
-      if (!offer.userBetId) throw new Error('No user bet found for this offer');
+      if (!offer.userBetId) {
+        console.error('[withdrawLiquidityMutation] Missing userBetId in offer:', offer);
+        throw new Error('No user bet found for this offer');
+      }
       
-      console.log('[withdrawLiquidityMutation] Calling with:', { walletAddress, userBetId: offer.userBetId });
+      // Fetch the UserBet to check its status before calling withdraw
+      const userBets = await base44.entities.UserBet.filter({ id: offer.userBetId });
+      const userBet = userBets[0];
+      console.log('[withdrawLiquidityMutation] UserBet found:', userBet);
+      
+      if (!userBet) throw new Error('UserBet not found');
+      if (userBet.role !== 'lp') throw new Error('Not an LP bet');
+      if (userBet.status !== 'pending' && userBet.status !== 'refunded') {
+        throw new Error(`Bet status is '${userBet.status}', must be 'pending' or 'refunded' to withdraw`);
+      }
+      
+      console.log('[withdrawLiquidityMutation] Calling withdrawLiquidity with:', { walletAddress, userBetId: offer.userBetId });
       
       const res = await base44.functions.invoke('withdrawLiquidity', {
         walletAddress,
