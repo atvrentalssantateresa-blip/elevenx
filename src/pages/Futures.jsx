@@ -484,6 +484,43 @@ export default function Futures() {
             })
           )}
 
+          {/* How Futures Work Banner */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-[#1a1040]/80 via-[#0f0a1e]/90 to-[#12102a]/80 border border-primary/20 rounded-2xl p-6 relative overflow-hidden mb-6"
+          >
+            {/* Decorative Glow Orbs */}
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-25 bg-[#a69cf2]" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full blur-2xl opacity-15 bg-[#14f195]" />
+
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full text-primary text-[10px] font-bold tracking-widest uppercase mb-3">
+                🏆 How Futures Work
+              </div>
+              <h2 className="font-heading font-black text-lg text-white mb-4">Bet on Tournament Outcomes or Be the House</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h3 className="font-heading font-bold text-xs text-accent flex items-center gap-2">
+                    <span className="text-lg">🎯</span> As a Bettor
+                  </h3>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    Back any team to finish 1st, 2nd, or 3rd in their group. Your odds are locked when you bet, and if your team finishes in that position, you get paid out based on the multiplier!
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-heading font-bold text-xs text-primary flex items-center gap-2">
+                    <span className="text-lg">👑</span> As an LP
+                  </h3>
+                  <p className="text-[11px] text-white/70 leading-relaxed">
+                    Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on all matched bets plus keep bettors' stakes when they lose. Withdraw unmatched funds anytime!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Info banner - country markets status */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
