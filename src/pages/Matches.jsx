@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Trophy, Search } from 'lucide-react';
@@ -11,7 +11,26 @@ import { motion } from 'framer-motion';
 export default function Matches() {
   const [activeGroup, setActiveGroup] = useState('all');
   const [search, setSearch] = useState('');
+  const [highlightedMatchId, setHighlightedMatchId] = useState(null);
   const queryClient = useQueryClient();
+
+  // Handle deep link from featured matches
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const matchId = urlParams.get('match');
+    if (matchId) {
+      setHighlightedMatchId(matchId);
+      // Remove the param from URL after reading
+      window.history.replaceState({}, '', window.location.pathname);
+      // Scroll to the match after a short delay
+      setTimeout(() => {
+        const element = document.getElementById(`match-${matchId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, []);
 
   const { data: rawMatches = [] } = useQuery({
     queryKey: ['matches'],
@@ -149,15 +168,20 @@ export default function Matches() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dateMatches.map((m, i) => (
-                    <MatchCard 
-                      key={m.id} 
-                      match={m} 
-                      bet={betByMatch[m.id]} 
-                      index={i}
-                      onOddsRefresh={() => {
-                        queryClient.invalidateQueries({ queryKey: ['bets'] });
-                      }}
-                    />
+                    <div
+                      key={m.id}
+                      id={`match-${m.id}`}
+                      className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                    >
+                      <MatchCard 
+                        match={m} 
+                        bet={betByMatch[m.id]} 
+                        index={i}
+                        onOddsRefresh={() => {
+                          queryClient.invalidateQueries({ queryKey: ['bets'] });
+                        }}
+                      />
+                    </div>
                   ))}
                 </div>
               </motion.div>

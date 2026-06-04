@@ -213,7 +213,7 @@ export default function Home() {
 
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
              {FEATURED_MATCHES.map((fm, i) => {
-             const matchUrl = `/match/${fm.matchId}`;
+             const matchUrl = `/matches?match=${fm.matchId}`;
              const bet = betByMatch[fm.matchId];
              return (
                <motion.div
