@@ -10,6 +10,7 @@ export default function LiquidityDetailModal({
   bet, 
   match,
   onCommit,
+  isLoading = false,
 }) {
   const [selectedOutcome, setSelectedOutcome] = useState('a');
   const [amount, setAmount] = useState('');
@@ -196,16 +197,21 @@ export default function LiquidityDetailModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 h-11 rounded-xl border border-border/50 text-sm font-medium hover:bg-secondary/50 transition-colors"
+              disabled={isLoading}
+              className="flex-1 h-11 rounded-xl border border-border/50 text-sm font-medium hover:bg-secondary/50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleCommit}
-              disabled={!amount || parseFloat(amount) <= 0}
+              disabled={!amount || parseFloat(amount) <= 0 || isLoading}
               className="flex-1 h-11 rounded-xl font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Commit ◎{amount || '0'}
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" />
+              ) : (
+                `Commit ◎${amount || '0'}`
+              )}
             </button>
           </div>
         </div>

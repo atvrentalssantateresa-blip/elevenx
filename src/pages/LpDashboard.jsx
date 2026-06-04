@@ -165,11 +165,12 @@ export default function LpDashboard() {
       }
       return res.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       console.log('[provideLiquidity] Success, setting pending tx');
+      const amountNum = parseFloat(variables.amount);
       setPendingTx({
         instruction: data.solana_instruction,
-        amount: parseFloat(amount),
+        amount: amountNum || 0,
         type: 'provide_liquidity',
       });
       setPendingCommitData(data.commit_data);
@@ -661,7 +662,6 @@ export default function LpDashboard() {
                       </div>
                     </div>
                   )}
-                </div>
               </div>
             </motion.div>
 
@@ -796,6 +796,7 @@ export default function LpDashboard() {
         }}
         bet={selectedBetForDetail?.bet}
         match={selectedBetForDetail?.match}
+        isLoading={provideLiquidityMutation.isPending}
         onCommit={(data) => {
           console.log('[LpDashboard] onCommit called with:', data);
           handleDetailModalCommit(data);
