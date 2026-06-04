@@ -211,16 +211,16 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
              {FEATURED_MATCHES.map((fm, i) => {
              const bet = betByMatch[fm.matchId];
              return (
                <motion.div
                  key={i}
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
                  transition={{ delay: 0.1 + i * 0.08 }}
-                 className="flex-shrink-0 w-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col">
+                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col">
 
                 {/* Match photo strip */}
                 <div className="relative h-40 overflow-hidden flex-shrink-0">
