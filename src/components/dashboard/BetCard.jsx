@@ -105,8 +105,8 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
 
   return (
     <>
-      {/* Claim Dialog */}
-      <Dialog open={claimDialogOpen} onOpenChange={handleCloseClaimDialog}>
+      {/* Claim Dialog - Only render if we have a solana instruction */}
+      <Dialog open={claimDialogOpen && claimInstruction && !claimInstruction.db_only} onOpenChange={handleCloseClaimDialog}>
         <DialogContent className="bg-card border-border/50 max-w-md">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
@@ -147,13 +147,15 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   <p className="font-heading font-bold text-2xl text-accent">◎{(bet.potential_payout || 0).toFixed(4)} SOL</p>
                   <p className="text-xs text-muted-foreground mt-2">Sign transaction to claim</p>
                 </div>
-                <SolanaTransactionSigner
-                  instruction={claimInstruction.solana_instruction}
-                  amount={(bet.potential_payout || 0).toFixed(4)}
-                  userBetId={bet.id}
-                  onSuccess={handleClaimTransactionSuccess}
-                  onError={() => setClaimDialogOpen(false)}
-                />
+                {claimInstruction?.solana_instruction && (
+                  <SolanaTransactionSigner
+                    instruction={claimInstruction.solana_instruction}
+                    amount={(bet.potential_payout || 0).toFixed(4)}
+                    userBetId={bet.id}
+                    onSuccess={handleClaimTransactionSuccess}
+                    onError={() => setClaimDialogOpen(false)}
+                  />
+                )}
                 <Button
                   variant="outline"
                   onClick={handleCloseClaimDialog}
