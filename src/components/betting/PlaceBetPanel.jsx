@@ -277,8 +277,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           }
         </p>
 
-        {/* Show message when no LP liquidity exists for selected outcome */}
-        {selectedOutcome && !hasLiquidityForOutcome && (
+        {/* Show message when mode='match' (betting) but no LP liquidity exists */}
+        {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-2">
             <p className="text-xs font-bold text-yellow-500">⚠️ No LP Liquidity for {selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">

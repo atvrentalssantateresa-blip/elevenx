@@ -174,21 +174,10 @@ export default function MatchDetail() {
   };
 
   const handleSelectOutcome = (outcome) => {
-    // Check if there's any LP liquidity for this outcome
-    const hasLiquidity = bets[0] && (
-      (outcome === 'a' && bets[0].pool_a > 0) ||
-      (outcome === 'b' && bets[0].pool_b > 0) ||
-      (outcome === 'draw' && bets[0].pool_draw > 0)
-    );
-    
-    if (!hasLiquidity) {
-      alert(`No liquidity available for this outcome. Go to LP Dashboard to provide liquidity first.`);
-      return;
-    }
-    
+    // Clicking odds = user wants to PROVIDE LIQUIDITY (act as LP)
     setSelectedOutcome(outcome);
     setSelectedOffer(null);
-    setBetMode('match');
+    setBetMode('offer');
   };
 
   const handleBetSuccess = () => {
