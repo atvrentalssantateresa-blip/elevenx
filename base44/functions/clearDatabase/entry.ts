@@ -41,12 +41,12 @@ Deno.serve(async (req) => {
       return count;
     };
 
-    await deleteAll('UserBets', 100);
-    await deleteAll('BetOffers', 100);
-    await deleteAll('LpPositions', 100);
-    await deleteAll('Bets', 150);
-    await deleteAll('FuturesMarkets', 100);
-    await deleteAll('Matches', 150);
+    await deleteAll('UserBet', 100);
+    await deleteAll('BetOffer', 100);
+    await deleteAll('LpPosition', 100);
+    await deleteAll('Bet', 150);
+    await deleteAll('FuturesMarket', 100);
+    await deleteAll('Match', 150);
 
     return Response.json({
       success: true,
