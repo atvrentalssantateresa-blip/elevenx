@@ -9,7 +9,7 @@ export default function LiquidityDetailModal({
   onClose, 
   bet, 
   match,
-  onCommit 
+  onCommit,
 }) {
   const [selectedOutcome, setSelectedOutcome] = useState('a');
   const [amount, setAmount] = useState('');

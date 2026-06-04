@@ -131,6 +131,7 @@ export default function LpDashboard() {
   });
 
   const [pendingCommitData, setPendingCommitData] = useState(null);
+  const [modalTransactionMode, setModalTransactionMode] = useState(false);
 
   const provideLiquidityMutation = useMutation({
     mutationFn: async (params) => {
@@ -235,6 +236,8 @@ export default function LpDashboard() {
     setPendingTx(null);
     setAmount('');
     setSelectedBet(null);
+    setModalTransactionMode(false);
+    setDetailModalOpen(false);
     setError(null);
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
     queryClient.invalidateQueries({ queryKey: ['openBets'] });
@@ -242,6 +245,7 @@ export default function LpDashboard() {
 
   const handleTxError = (err) => {
     setPendingTx(null);
+    setModalTransactionMode(false);
   };
 
   const handleWithdrawSuccess = async (txResult) => {
@@ -373,8 +377,6 @@ export default function LpDashboard() {
   };
 
   const handleDetailModalCommit = ({ bet, outcome, amount, potentialLiability }) => {
-    setDetailModalOpen(false);
-    
     // Check wallet is connected
     if (!walletAddress) {
       setError('Wallet not connected. Please connect Phantom first.');
@@ -382,6 +384,9 @@ export default function LpDashboard() {
     }
     
     console.log('[handleDetailModalCommit] Triggering with:', { walletAddress, bet_id: bet.id, outcome, amount });
+    
+    // Set modal to transaction mode (don't close yet)
+    setModalTransactionMode(true);
     
     // Trigger mutation directly with params
     provideLiquidityMutation.mutate({
@@ -514,15 +519,7 @@ export default function LpDashboard() {
                 </Alert>
               )}
 
-              {pendingTx && pendingTx.type === 'provide_liquidity' ? (
-                <SolanaTransactionSigner
-                  instruction={pendingTx.instruction}
-                  amount={pendingTx.amount}
-                  onSuccess={handleTxSuccess}
-                  onError={handleTxError}
-                />
-              ) : (
-                <div className="space-y-4">
+              <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="font-heading font-bold text-sm">Provide Liquidity</h2>
                     <Button
@@ -665,7 +662,7 @@ export default function LpDashboard() {
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </motion.div>
 
 
@@ -804,6 +801,29 @@ export default function LpDashboard() {
           handleDetailModalCommit(data);
         }}
       />
+
+      {/* Transaction Modal Overlay */}
+      {pendingTx && pendingTx.type === 'provide_liquidity' && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+            <div className="space-y-4">
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                <p className="text-sm font-bold text-accent mb-1">Provide Liquidity</p>
+                <p className="text-xs text-muted-foreground">Sign transaction to complete</p>
+              </div>
+              <SolanaTransactionSigner
+                instruction={pendingTx.instruction}
+                amount={pendingTx.amount}
+                onSuccess={handleTxSuccess}
+                onError={handleTxError}
+              />
+              <Button variant="outline" size="sm" onClick={() => setPendingTx(null)} className="w-full">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
