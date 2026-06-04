@@ -15,8 +15,8 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const matchStartTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
-    const openUntil = new Date(matchStartTime.getTime() + 60 * 60 * 1000); // 1 hour after match starts
+    const matchStartTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    const openUntil = new Date(matchStartTime.getTime() + 30 * 60 * 1000); // 30 minutes AFTER match starts
     const settleAfter = new Date(openUntil.getTime() + 5 * 60 * 1000); // 5 minutes after betting closes
 
     // Create test match
