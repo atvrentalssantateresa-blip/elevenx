@@ -15,6 +15,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import FuturesLpPanel from '@/components/lp/FuturesLpPanel';
+import MatchLiquidityCard from '@/components/lp/MatchLiquidityCard';
+import LiquidityDetailModal from '@/components/lp/LiquidityDetailModal';
 
 const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
   const solscanUrl = `https://solscan.io/tx/${data?.signature}?cluster=devnet`;
@@ -83,7 +85,9 @@ export default function LpDashboard() {
   const [successDialog, setSuccessDialog] = useState(null);
   const [withdrawSuccessDialog, setWithdrawSuccessDialog] = useState(null);
   const [error, setError] = useState(null);
-  const [matchViewMode, setMatchViewMode] = useState('all'); // 'all' or 'dropdown'
+  const [matchViewMode, setMatchViewMode] = useState('all');
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedBetForDetail, setSelectedBetForDetail] = useState(null);
 
   const { data: openBets = [] } = useQuery({
     queryKey: ['openBets'],
@@ -337,6 +341,13 @@ export default function LpDashboard() {
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
   };
 
+  const handleDetailModalCommit = ({ bet, outcome, amount, potentialLiability }) => {
+    setSelectedBet(bet);
+    setSelectedOutcome(outcome);
+    setAmount(String(amount));
+    setDetailModalOpen(false);
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <SuccessDialog open={!!successDialog} data={successDialog} onClose={() => setSuccessDialog(null)} />
@@ -450,24 +461,21 @@ export default function LpDashboard() {
                       </Select>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                        {openBets.map(bet => (
-                          <button
-                            key={bet.id}
-                            onClick={() => {
-                              setSelectedBet(bet);
-                              setSelectedOutcome('a');
-                              setError(null);
-                            }}
-                            className={`p-3 rounded-xl border text-left transition-all ${
-                              selectedBet?.id === bet.id
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border/50 bg-secondary/30 hover:border-border'
-                            }`}
-                          >
-                            <p className="font-heading font-bold text-xs">{bet.outcome_a} vs {bet.outcome_b}</p>
-                            <p className="text-[10px] text-muted-foreground">Open Market</p>
-                          </button>
-                        ))}
+                        {openBets.map(bet => {
+                          const match = matches.find(m => m.id === bet.match_id);
+                          return (
+                            <MatchLiquidityCard
+                              key={bet.id}
+                              bet={bet}
+                              match={match}
+                              isSelected={selectedBet?.id === bet.id}
+                              onClick={() => {
+                                setSelectedBetForDetail({ bet, match });
+                                setDetailModalOpen(true);
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -663,6 +671,24 @@ export default function LpDashboard() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Detail Modal */}
+      <LiquidityDetailModal
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedBetForDetail(null);
+        }}
+        bet={selectedBetForDetail?.bet}
+        match={selectedBetForDetail?.match}
+        onCommit={({ bet, outcome, amount }) => {
+          setSelectedBet(bet);
+          setSelectedOutcome(outcome);
+          setAmount(String(amount));
+          setDetailModalOpen(false);
+          setSelectedBetForDetail(null);
+        }}
+      />
     </div>
   );
 }
