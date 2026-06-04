@@ -296,10 +296,12 @@ export default function LpDashboard() {
     enabled: !!walletAddress,
   });
   
-  const offersWithUserBet = myOffers.map(offer => {
-    const userBet = allUserBets.find(ub => ub.offer_id === offer.id);
-    return { ...offer, userBetId: userBet?.id };
-  });
+  const offersWithUserBet = myOffers
+    .map(offer => {
+      const userBet = allUserBets.find(ub => ub.offer_id === offer.id);
+      return { ...offer, userBetId: userBet?.id };
+    })
+    .filter(offer => offer.userBetId); // Only include offers that have a linked UserBet
 
   const getMatchTitle = (matchId) => {
     const m = matches.find(m => m.id === matchId);
