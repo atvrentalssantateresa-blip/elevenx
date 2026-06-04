@@ -21,18 +21,21 @@ Deno.serve(async (req) => {
     console.log('[resetAndSync] Starting complete database reset...');
 
     // Step 1: Delete all user-facing data (in order of dependencies)
-    // Helper to safely delete entities with rate limit handling
-    const safeDelete = async (entityType, id) => {
-      let retries = 3;
+    // Helper to safely delete entities with rate limit handling and delays
+    const safeDelete = async (entityType, id, delayMs = 200) => {
+      let retries = 5;
       while (retries > 0) {
         try {
           await base44.asServiceRole.entities[entityType].delete(id);
+          // Add delay between deletions to avoid rate limits
+          if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
           return;
         } catch (err) {
           if (err.status === 429) {
             retries--;
             if (retries === 0) throw err;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Longer delay on rate limit
+            await new Promise(resolve => setTimeout(resolve, 2000));
           } else if (err.status !== 404) {
             throw err;
           }
@@ -42,27 +45,27 @@ Deno.serve(async (req) => {
 
     console.log('[resetAndSync] Fetching and deleting UserBets...');
     const userBets = await base44.asServiceRole.entities.UserBet.list();
-    for (const ub of userBets) await safeDelete('UserBet', ub.id);
+    for (const ub of userBets) await safeDelete('UserBet', ub.id, 100);
     
     console.log('[resetAndSync] Fetching and deleting BetOffers...');
     const betOffers = await base44.asServiceRole.entities.BetOffer.list();
-    for (const bo of betOffers) await safeDelete('BetOffer', bo.id);
+    for (const bo of betOffers) await safeDelete('BetOffer', bo.id, 100);
     
     console.log('[resetAndSync] Fetching and deleting LpPositions...');
     const lpPositions = await base44.asServiceRole.entities.LpPosition.list();
-    for (const lp of lpPositions) await safeDelete('LpPosition', lp.id);
+    for (const lp of lpPositions) await safeDelete('LpPosition', lp.id, 100);
     
     console.log('[resetAndSync] Fetching and deleting Bets...');
     const bets = await base44.asServiceRole.entities.Bet.list();
-    for (const bet of bets) await safeDelete('Bet', bet.id);
+    for (const bet of bets) await safeDelete('Bet', bet.id, 150);
     
     console.log('[resetAndSync] Fetching and deleting FuturesMarkets...');
     const futures = await base44.asServiceRole.entities.FuturesMarket.list();
-    for (const fm of futures) await safeDelete('FuturesMarket', fm.id);
+    for (const fm of futures) await safeDelete('FuturesMarket', fm.id, 100);
     
     console.log('[resetAndSync] Fetching and deleting Matches...');
     const matches = await base44.asServiceRole.entities.Match.list();
-    for (const m of matches) await safeDelete('Match', m.id);
+    for (const m of matches) await safeDelete('Match', m.id, 150);
 
     // Step 2: Fetch fresh World Cup matches from The Odds API ONLY
     console.log('[resetAndSync] Fetching fresh World Cup matches from The Odds API...');
