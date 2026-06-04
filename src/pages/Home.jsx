@@ -255,14 +255,20 @@ export default function Home() {
                 </div>
 
                 <div className="mt-auto">
-                  <Link to={`/matches?bet=${fm.matchId}`} className="block">
-                    <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
-                      style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(33,196,93,0.1)'}>
-                      Bet Now →
-                    </Button>
-                  </Link>
+                  {(() => {
+                    const match = matches.find(m => m.id === fm.matchId);
+                    const bet = match ? bets.find(b => b.match_id === match.id) : null;
+                    return bet ? (
+                      <Link to={`/bet/${bet.id}`} className="block">
+                        <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
+                          style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(33,196,93,0.1)'}>
+                          Bet Now →
+                        </Button>
+                      </Link>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </motion.div>
