@@ -20,6 +20,14 @@ Deno.serve(async (req) => {
     });
     const response = await fetch(`${url}?${params}`);
     
+    if (response.status === 429) {
+      return Response.json({ 
+        error: 'The Odds API rate limit exceeded', 
+        message: 'Too many requests. Please wait a few minutes before fetching odds again.',
+        hint: 'The free tier allows 500 calls/month. Consider upgrading or reducing fetch frequency.'
+      }, { status: 429 });
+    }
+    
     if (!response.ok) {
       return Response.json({ 
         error: 'API request failed', 

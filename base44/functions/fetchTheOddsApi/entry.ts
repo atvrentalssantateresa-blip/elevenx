@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
         const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${apiKey}&regions=eu,us&markets=h2h,totals,spreads&oddsFormat=decimal`;
         
         const response = await fetch(url);
+        
+        if (response.status === 429) {
+            return Response.json({ 
+                error: 'The Odds API rate limit exceeded',
+                message: 'Too many requests. Please wait a few minutes before fetching odds again.',
+                hint: 'The free tier allows 500 calls/month. Consider upgrading or reducing fetch frequency.'
+            }, { status: 429 });
+        }
+        
         const data = await response.json();
 
         if (data.error) {
