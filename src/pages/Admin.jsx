@@ -831,9 +831,10 @@ function CreateMatchDialog() {
   const [form, setForm] = useState({
     team_a: '', team_b: '', team_a_flag: '', team_b_flag: '',
     group_stage: '', match_time: '', match_end_time: '', venue: '', status: 'upcoming',
+    betting_closes_at: '',
   });
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [calendarOpen, setCalendarOpen] = useState({ start: false, end: false });
+  const [calendarOpen, setCalendarOpen] = useState({ start: false, end: false, bettingClose: false });
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -842,11 +843,38 @@ function CreateMatchDialog() {
   }, []);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Match.create(data),
+    mutationFn: async (data) => {
+      const { betting_closes_at, ...matchData } = data;
+      
+      // Create match first
+      const match = await base44.entities.Match.create(matchData);
+      
+      // Create associated bet with betting window
+      if (betting_closes_at) {
+        await base44.entities.Bet.create({
+          match_id: match.id,
+          title: `${data.team_a} vs ${data.team_b}`,
+          outcome_a: data.team_a,
+          outcome_b: data.team_b,
+          outcome_draw: 'Draw',
+          open_until: betting_closes_at,
+          status: 'open',
+          odds_a: 2.0,
+          odds_b: 2.0,
+          odds_draw: 3.0,
+          odds_bookmaker: 'manual',
+          odds_updated_at: new Date().toISOString(),
+          fee_percent: 0,
+          solana_market_created: false,
+        });
+      }
+      
+      return match;
+    },
     onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['matches'] });
-    setOpen(false);
-    setForm({ team_a: '', team_b: '', team_a_flag: '', team_b_flag: '', group_stage: '', match_time: '', match_end_time: '', venue: '', status: 'upcoming' });
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
+      setOpen(false);
+      setForm({ team_a: '', team_b: '', team_a_flag: '', team_b_flag: '', group_stage: '', match_time: '', match_end_time: '', venue: '', status: 'upcoming', betting_closes_at: '' });
     },
   });
 
@@ -854,22 +882,42 @@ function CreateMatchDialog() {
     const now = new Date();
     const startTime = new Date(now.getTime() + 4 * 60 * 1000); // 4 minutes from now
     const endTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    const bettingClosesAt = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour after start
     
     try {
-      await base44.entities.Match.create({
+      const match = await base44.entities.Match.create({
         team_a: 'FFO',
         team_b: 'FFO1',
         team_a_flag: '🔵',
         team_b_flag: '🔴',
         group_stage: 'Test Match',
         match_time: startTime.toISOString(),
+        match_end_time: endTime.toISOString(),
         venue: 'Test Arena',
         status: 'upcoming',
       });
       
-      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      // Create associated bet with proper betting window
+      await base44.entities.Bet.create({
+        match_id: match.id,
+        title: 'FFO vs FFO1',
+        outcome_a: 'FFO',
+        outcome_b: 'FFO1',
+        outcome_draw: 'Draw',
+        open_until: bettingClosesAt.toISOString(),
+        status: 'open',
+        odds_a: 2.0,
+        odds_b: 2.0,
+        odds_draw: 3.0,
+        odds_bookmaker: 'manual',
+        odds_updated_at: now.toISOString(),
+        fee_percent: 0,
+        solana_market_created: false,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
       setOpen(false);
-      alert('Test match created! Starts in 4 min, ends in 5 min.');
+      alert('Test match created! Starts in 4 min, betting closes in 64 min.');
     } catch (err) {
       alert('Failed to create test match: ' + err.message);
     }
@@ -1040,12 +1088,76 @@ function CreateMatchDialog() {
             <Label className="text-xs">Venue</Label>
             <Input value={form.venue} onChange={e => setForm({...form, venue: e.target.value})} className="bg-secondary/50" placeholder="MetLife Stadium" />
           </div>
+
+          <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3">
+            <p className="text-[10px] font-bold text-accent mb-2">⏰ Betting Window</p>
+            <p className="text-[9px] text-muted-foreground mb-2">When does betting close? (Match starts at {form.match_time ? format(new Date(form.match_time), 'HH:mm') : '--:--'})</p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[9px]">Betting Closes Date</Label>
+                <Popover open={calendarOpen.bettingClose} onOpenChange={(o) => setCalendarOpen({...calendarOpen, bettingClose: o})}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-8 bg-secondary/50 text-xs",
+                        !form.betting_closes_at && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {form.betting_closes_at ? format(new Date(form.betting_closes_at), 'MMM d') : 'Pick date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={form.betting_closes_at ? new Date(form.betting_closes_at) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const hours = form.betting_closes_at ? new Date(form.betting_closes_at).getHours() : 12;
+                          const minutes = form.betting_closes_at ? new Date(form.betting_closes_at).getMinutes() : 0;
+                          const newDate = new Date(date);
+                          newDate.setHours(hours, minutes);
+                          setForm({...form, betting_closes_at: newDate.toISOString()});
+                        }
+                        setCalendarOpen({...calendarOpen, bettingClose: false});
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[9px]">Betting Closes Time</Label>
+                <Input
+                  type="time"
+                  value={form.betting_closes_at ? new Date(form.betting_closes_at).toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value.split(':');
+                    const date = form.betting_closes_at ? new Date(form.betting_closes_at) : new Date();
+                    date.setHours(parseInt(hours), parseInt(minutes));
+                    setForm({...form, betting_closes_at: date.toISOString()});
+                  }}
+                  className="h-8 bg-secondary/50 text-xs"
+                />
+              </div>
+            </div>
+            
+            {form.betting_closes_at && form.match_time && (
+              <p className="text-[8px] text-muted-foreground mt-2">
+                ⏱️ Betting duration: ~{Math.round((new Date(form.betting_closes_at) - new Date(form.match_time)) / (60 * 1000))} minutes after kickoff
+              </p>
+            )}
+          </div>
+
           <Button
             onClick={() => createMutation.mutate(form)}
             disabled={!form.team_a || !form.team_b || !form.match_time || !form.match_end_time || createMutation.isPending}
             className="w-full bg-primary text-primary-foreground font-heading font-bold rounded-xl h-10"
           >
-            Create Match
+            Create Match + Bet
           </Button>
         </div>
       </DialogContent>
