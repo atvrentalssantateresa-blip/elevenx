@@ -44,7 +44,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     refetchOnMount: true,
   });
 
-  // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome
+  // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome OR selected offer
   const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
   allOffers.
   filter((o) => {
@@ -65,10 +65,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }, 0) :
   0;
 
-  const hasLiquidityForOutcome = totalLiquidityForOutcome > 0;
+  // Has liquidity if either selectedOutcome has LP or selectedOffer exists
+  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? true : false;
 
   console.log('[PlaceBetPanel] Liquidity calculation:', {
     selectedOutcome,
+    selectedOffer: selectedOffer?.id,
     totalLiquidityForOutcome,
     hasLiquidityForOutcome,
     allOffersCount: allOffers.length,
@@ -111,8 +113,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
   // For BETTORS (mode='match'): max stake is limited by total LP liquidity available
   // Bettors can only bet up to what LP holders have underwritten
-  const maxMatcherStake = mode === 'match' && selectedOutcome ?
-  totalLiquidityForOutcome :
+  const maxMatcherStake = mode === 'match' ?
+  (selectedOffer ? (selectedOffer.amount_unmatched || 0) : selectedOutcome ? totalLiquidityForOutcome : null) :
   null;
 
   // Bettor payout: stake * odds from the Bet entity
@@ -197,6 +199,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       let res;
       if (selectedOffer) {
+        // Validate offer has unmatched liquidity
+        if ((selectedOffer.amount_unmatched || 0) <= 0) {
+          throw new Error('This offer is fully matched. Select another offer.');
+        }
         console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet);
         res = await base44.functions.invoke('matchBet', {
           offer_id: selectedOffer.id,
@@ -332,6 +338,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           </div>
         }
         
+        {/* Block betting when mode='match' and selectedOffer but no unmatched liquidity */}
+        {mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 &&
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-destructive">🚫 Offer Fully Matched</p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              This LP offer has been fully matched. Select another offer or add your own LP liquidity.
+            </p>
+          </div>
+        }
+        
 
 
 
@@ -368,7 +384,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         
         <div className="flex gap-2 mt-2 flex-wrap">
           {mode === 'match' && maxMatcherStake !== null && maxMatcherStake <= 0 ? null :
-
+          mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 ? null :
 
           <>
               {QUICK_AMOUNTS.map((qa) => {
