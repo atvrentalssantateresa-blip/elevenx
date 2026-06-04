@@ -112,10 +112,10 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
   const fixedOddsB = bet?.odds_b || (bet?.oracle_odds_b ? bet.oracle_odds_b / 100 : 0);
   const fixedOddsDraw = bet?.odds_draw || (bet?.oracle_odds_draw ? bet.oracle_odds_draw / 100 : 0);
   
-  // Display odds: use dynamic if phase shifted, otherwise fixed
-  const displayOddsA = dynamicOddsA || fixedOddsA;
-  const displayOddsB = dynamicOddsB || fixedOddsB;
-  const displayOddsDraw = dynamicOddsDraw || fixedOddsDraw;
+  // Display odds: only use dynamic once unmatched LP liquidity is exhausted (phase-shifted)
+  const displayOddsA = isPhaseShiftedA ? (dynamicOddsA || fixedOddsA) : fixedOddsA;
+  const displayOddsB = isPhaseShiftedB ? (dynamicOddsB || fixedOddsB) : fixedOddsB;
+  const displayOddsDraw = isPhaseShiftedDraw ? (dynamicOddsDraw || fixedOddsDraw) : fixedOddsDraw;
   
   const hasOdds = displayOddsA > 0 || displayOddsB > 0 || displayOddsDraw > 0;
 
