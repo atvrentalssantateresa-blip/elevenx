@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     
     // If DB says created but market doesn't exist on-chain, force recreate
     const shouldForceRecreate = (bet.solana_market_created && !marketExistsOnChain) || payload.force_recreate;
-    
+
     // Only return platform init if NOT already initialized
     const response = {
       success: true,
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
         accounts: {
           platformConfig: platformConfigPda.toBase58(),
           feeVault: feeVaultPda.toBase58(),
-          admin: '',
+          admin: 'SIGNER_WALLET', // Use placeholder - frontend will replace with actual wallet
         }
       },
       createMarketInstruction: createMarketInstruction,
