@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock } from 'lucide-react';
 import { getTeamFlag } from '@/utils/flags';
+import BetCountdown from '@/components/betting/BetCountdown';
 
 export default function MatchLiquidityCard({ bet, match, isSelected, onClick }) {
   if (!bet || !match) return null;
@@ -77,9 +78,12 @@ export default function MatchLiquidityCard({ bet, match, isSelected, onClick }) 
         </div>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-3 border-t border-white/10">
-          <span className="text-[9px] text-white/40 uppercase tracking-wider font-semibold">{match.group_stage || 'World Cup'}</span>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${
+        <div className="mt-auto space-y-2 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-white/40 uppercase tracking-wider font-semibold">{match.group_stage || 'World Cup'}</span>
+            <BetCountdown openUntil={bet.open_until} />
+          </div>
+          <div className={`flex items-center justify-between px-3 py-1.5 rounded-xl transition-all ${
             isSelected ? 'bg-emerald-500/20' : 'bg-white/5'
           }`}>
             <span className={`text-[10px] font-bold ${isSelected ? 'text-emerald-400' : 'text-white/50'}`}>

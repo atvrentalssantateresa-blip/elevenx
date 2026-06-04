@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function BetCountdown({ openUntil, onTimeExpired }) {
+export default function BetCountdown({ openUntil, className = '' }) {
   const [timeLeft, setTimeLeft] = useState(null);
-  const [isExpired, setIsExpired] = useState(false);
+  const [isUrgent, setIsUrgent] = useState(false);
 
   useEffect(() => {
-    if (!openUntil) {
-      setTimeLeft(null);
-      return;
-    }
+    if (!openUntil) return;
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -19,68 +15,60 @@ export default function BetCountdown({ openUntil, onTimeExpired }) {
       const difference = endTime - now;
 
       if (difference <= 0) {
-        setTimeLeft(null);
-        setIsExpired(true);
-        onTimeExpired?.();
+        setTimeLeft({ expired: true });
         return;
       }
 
-      const minutes = Math.floor(difference / 60000);
-      const seconds = Math.floor((difference % 60000) / 1000);
-      setTimeLeft({ minutes, seconds });
-      setIsExpired(false);
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      // Mark as urgent if less than 1 hour
+      setIsUrgent(difference < 1000 * 60 * 60);
+
+      setTimeLeft({ days, hours, minutes, seconds, expired: false });
     };
 
     calculateTimeLeft();
-    const interval = setInterval(calculateTimeLeft, 1000);
-    return () => clearInterval(interval);
-  }, [openUntil, onTimeExpired]);
+    const timer = setInterval(calculateTimeLeft, 1000);
 
-  if (isExpired) {
+    return () => clearInterval(timer);
+  }, [openUntil]);
+
+  if (!timeLeft) return null;
+  if (timeLeft.expired) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-center"
-      >
-        <div className="flex items-center justify-center gap-2 text-destructive">
-          <AlertCircle className="w-4 h-4" />
-          <span className="font-heading font-bold text-sm">BETS CLOSED</span>
-        </div>
-        <p className="text-xs text-destructive/80 mt-1">Betting window has closed</p>
-      </motion.div>
+      <div className={`flex items-center gap-1.5 text-destructive ${className}`}>
+        <Clock className="w-3 h-3" />
+        <span className="text-[9px] sm:text-[10px] font-bold">Closed</span>
+      </div>
     );
   }
 
-  if (!timeLeft) {
-    return null;
-  }
-
-  const isUrgent = timeLeft.minutes < 5 || (timeLeft.minutes === 5 && timeLeft.seconds < 30);
+  // Smart display based on time remaining
+  const formatTime = () => {
+    if (timeLeft.days > 0) {
+      return `${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m`;
+    } else if (timeLeft.hours > 0) {
+      return `${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`;
+    } else if (timeLeft.minutes > 0) {
+      return `${timeLeft.minutes}m ${timeLeft.seconds}s`;
+    } else {
+      return `${timeLeft.seconds}s`;
+    }
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl p-3 text-center ${
-        isUrgent 
-          ? 'bg-destructive/10 border border-destructive/30' 
-          : 'bg-accent/10 border border-accent/30'
-      }`}
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={`flex items-center gap-1.5 ${isUrgent ? 'text-destructive' : 'text-muted-foreground'} ${className}`}
     >
-      <div className={`flex items-center justify-center gap-2 ${
-        isUrgent ? 'text-destructive' : 'text-accent'
-      }`}>
-        <Clock className="w-4 h-4" />
-        <span className="font-heading font-bold text-lg">
-          {String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-        </span>
-      </div>
-      <p className={`text-xs mt-1 ${
-        isUrgent ? 'text-destructive/80' : 'text-accent/80'
-      }`}>
-        {isUrgent ? 'Hurry! Betting closes soon' : 'Time remaining'}
-      </p>
+      <Clock className={`w-3 h-3 ${isUrgent ? 'animate-pulse' : ''}`} />
+      <span className="text-[9px] sm:text-[10px] font-bold font-mono">
+        {formatTime()}
+      </span>
     </motion.div>
   );
 }
