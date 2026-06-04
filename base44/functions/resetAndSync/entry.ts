@@ -22,30 +22,39 @@ Deno.serve(async (req) => {
     console.log('[resetAndSync] Starting complete database reset...');
 
     // Step 1: Delete all user-facing data (in order of dependencies)
-    // First fetch all records, then delete them one by one (bulk delete with empty filter doesn't work)
+    // Helper to safely delete entities (skip if already deleted)
+    const safeDelete = async (entityType, id) => {
+      try {
+        await base44.asServiceRole.entities[entityType].delete(id);
+      } catch (err) {
+        // Ignore 404 errors (already deleted)
+        if (err.status !== 404) throw err;
+      }
+    };
+
     console.log('[resetAndSync] Fetching and deleting UserBets...');
     const userBets = await base44.asServiceRole.entities.UserBet.list();
-    for (const ub of userBets) await base44.asServiceRole.entities.UserBet.delete(ub.id);
+    for (const ub of userBets) await safeDelete('UserBet', ub.id);
     
     console.log('[resetAndSync] Fetching and deleting BetOffers...');
     const betOffers = await base44.asServiceRole.entities.BetOffer.list();
-    for (const bo of betOffers) await base44.asServiceRole.entities.BetOffer.delete(bo.id);
+    for (const bo of betOffers) await safeDelete('BetOffer', bo.id);
     
     console.log('[resetAndSync] Fetching and deleting LpPositions...');
     const lpPositions = await base44.asServiceRole.entities.LpPosition.list();
-    for (const lp of lpPositions) await base44.asServiceRole.entities.LpPosition.delete(lp.id);
+    for (const lp of lpPositions) await safeDelete('LpPosition', lp.id);
     
     console.log('[resetAndSync] Fetching and deleting Bets...');
     const bets = await base44.asServiceRole.entities.Bet.list();
-    for (const bet of bets) await base44.asServiceRole.entities.Bet.delete(bet.id);
+    for (const bet of bets) await safeDelete('Bet', bet.id);
     
     console.log('[resetAndSync] Fetching and deleting FuturesMarkets...');
     const futures = await base44.asServiceRole.entities.FuturesMarket.list();
-    for (const fm of futures) await base44.asServiceRole.entities.FuturesMarket.delete(fm.id);
+    for (const fm of futures) await safeDelete('FuturesMarket', fm.id);
     
     console.log('[resetAndSync] Fetching and deleting Matches...');
     const matches = await base44.asServiceRole.entities.Match.list();
-    for (const m of matches) await base44.asServiceRole.entities.Match.delete(m.id);
+    for (const m of matches) await safeDelete('Match', m.id);
 
     // Step 2: Fetch fresh World Cup 2026 matches from API
     console.log('[resetAndSync] Fetching fresh matches from TheStatsAPI...');
