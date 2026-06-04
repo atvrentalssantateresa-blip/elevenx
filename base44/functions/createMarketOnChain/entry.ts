@@ -179,10 +179,9 @@ Deno.serve(async (req) => {
         instruction_data: instructionData.toString('base64'),
         accounts: {
           market: marketPda.toBase58(),
-          payer: '',
-          systemProgram: '11111111111111111111111111111111',
           voteTally: voteTallyPda.toBase58(),
           platformConfig: platformConfigPda.toBase58(),
+          admin: 'SIGNER_WALLET',
         }
       },
       message: payload.force_recreate === true 
