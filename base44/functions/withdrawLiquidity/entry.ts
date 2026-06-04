@@ -100,8 +100,24 @@ Deno.serve(async (req) => {
     // Check on-chain balance before allowing withdrawal
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     const lpOfferPubkey = new PublicKey(offer.solana_position_pda || lpOfferPda);
+    
+    console.log('Checking on-chain balance:', {
+      lpOfferPubkey: lpOfferPubkey.toBase58(),
+      stored_pda: offer.solana_position_pda,
+      derived_pda: lpOfferPda.toBase58(),
+      withdrawAmount,
+    });
+    
     const accountInfo = await connection.getAccountInfo(lpOfferPubkey);
     const onChainBalance = (accountInfo?.lamports || 0) / 1e9;
+    
+    console.log('On-chain account info:', {
+      exists: !!accountInfo,
+      lamports: accountInfo?.lamports,
+      balanceSol: onChainBalance,
+      withdrawAmount,
+      minimumNeeded: withdrawAmount + 0.001,
+    });
     
     // Account exists but only has rent-exempt minimum (funds already withdrawn)
     if (onChainBalance < withdrawAmount + 0.001) {
