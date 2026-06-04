@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Wallet, CheckCircle, X, Clock } from 'lucide-react';
+import { Wallet, CheckCircle, X, Clock, AlertTriangle } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
@@ -12,6 +12,20 @@ const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
 // Mode: 'offer' = place a new bet offer (LP), 'match' = bet against existing offer
 export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
+  // Fetch all LP offers for this bet to check if liquidity exists
+  const { data: allOffers = [] } = useQuery({
+    queryKey: ['allOffers', bet?.id],
+    queryFn: () => base44.entities.BetOffer.filter({ bet_id: bet?.id }),
+    enabled: !!bet?.id && mode === 'offer',
+    staleTime: 5000,
+  });
+  
+  // Check if there's any LP liquidity for the selected outcome
+  const hasLiquidityForOutcome = allOffers.some(o => 
+    (o.status === 'open' || o.status === 'partially_matched') && 
+    o.outcome === selectedOutcome &&
+    (o.amount_unmatched || 0) > 0
+  );
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -265,7 +279,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === 'offer' ?
+          hasLiquidityForOutcome ?
           `Odds: ${odds.toFixed(2)}x — Add any amount — your offer goes into the orderbook until matched` :
+          `Odds: ${odds.toFixed(2)}x — No LP liquidity yet — provide liquidity to earn fees` :
           selectedOffer ?
           `Max stake: ◎${maxMatcherStake?.toFixed(4)} @ ${selectedOffer.odds_at_creation.toFixed(2)}x — locked immediately` :
           'No liquidity available for this outcome'
@@ -273,6 +289,22 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         </p>
         
         {/* Help text explaining the mode */}
+        {mode === 'offer' && !hasLiquidityForOutcome && selectedOutcome && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-500" />
+              <p className="text-xs font-bold text-yellow-500">No Liquidity Available</p>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              There are no active LP offers for <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong> yet. 
+              You can either:
+            </p>
+            <ul className="text-[10px] text-muted-foreground list-disc list-inside space-y-0.5 ml-1">
+              <li><strong>Provide liquidity yourself</strong> (this panel) to earn 2% fees when bettors match against you</li>
+              <li><strong>Wait for LPs</strong> to provide liquidity, then use "Bet Against" to place your bet</li>
+            </ul>
+          </div>
+        )}
         
 
 
@@ -381,7 +413,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
       }
       
       {stakeNum > 0 && mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake &&
-      <p className="text-xs text-destructive text-center font-semibold">Not enough liquidity to place bet</p>
+      <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-1.5">
+        <p className="text-xs text-destructive font-bold text-center">⚠️ Stake Exceeds Available Liquidity</p>
+        <p className="text-[10px] text-destructive/80 text-center leading-relaxed">
+          Maximum bet for this outcome is <strong>◎{maxMatcherStake.toFixed(4)}</strong> based on current LP coverage. 
+          Reduce your stake or provide more LP liquidity to increase the limit.
+        </p>
+      </div>
       }
 
       {timeRemaining && timeRemaining.total <= 0 &&
@@ -452,7 +490,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
               No Liquidity Available
             </> :
         isPreparing ? 'Preparing...' : mode === 'offer' ?
-        `Place Offer ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}` :
+        `Provide Liquidity ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}` :
 
         `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} against this offer`
         }
