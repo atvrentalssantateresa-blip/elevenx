@@ -34,20 +34,22 @@ export default function MatchCard({ match, bet, index = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
-      whileHover={{ scale: 1.02, y: -4 }}
-      className="relative"
     >
       <Link to={`/match/${match.id}`} className="group block">
-        {/* Purple gradient border frame - thicker and more noticeable */}
-        <div className="absolute inset-0 rounded-2xl p-[3px] pointer-events-none">
-          <div className="absolute inset-0 rounded-2xl" 
-               style={{
-                 background: 'linear-gradient(135deg, #a69cf2, #8b84e8, #6d5dd3)',
-               }} />
-        </div>
-        
-        {/* Inner content container */}
-        <div className="relative z-10 bg-[#0f0a1e]/95 backdrop-blur-sm rounded-2xl m-[3px] p-5 hover:shadow-[0_0_40px_-10px_hsl(252,82%,78%,0.3)] transition-all duration-300">
+        <div className="relative rounded-2xl p-5 transition-all duration-300"
+             style={{
+               background: 'linear-gradient(145deg, rgba(15,10,30,0.95) 0%, rgba(26,16,64,0.9) 100%)',
+             }}>
+          {/* Purple gradient border frame */}
+          <div className="absolute inset-0 rounded-2xl p-[2px] pointer-events-none">
+            <div className="absolute inset-0 rounded-2xl" 
+                 style={{
+                   background: 'linear-gradient(135deg, #a69cf2, #8b84e8, #6d5dd3)',
+                 }} />
+          </div>
+          
+          {/* Inner content */}
+          <div className="relative z-10 rounded-2xl bg-[#0f0a1e]/95 backdrop-blur-sm m-[2px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs text-muted-foreground font-semibold">
@@ -122,6 +124,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
               <ChevronRight className="w-4 h-4 group-hover:text-primary transition-colors" />
             </div>
           )}
+          </div>
         </div>
       </Link>
     </motion.div>
