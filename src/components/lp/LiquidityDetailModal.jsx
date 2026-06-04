@@ -15,9 +15,10 @@ export default function LiquidityDetailModal({
 
   if (!open || !bet || !match) return null;
 
-  const oddsA = (bet.odds_a || bet.oracle_odds_a || 200) / 100;
-  const oddsB = (bet.odds_b || bet.oracle_odds_b || 300) / 100;
-  const oddsDraw = (bet.odds_draw || bet.oracle_odds_draw || 320) / 100;
+  // Odds are already in decimal format (e.g., 1.42, 4.61), don't divide by 100
+  const oddsA = bet.odds_a || bet.oracle_odds_a || 2;
+  const oddsB = bet.odds_b || bet.oracle_odds_b || 3;
+  const oddsDraw = bet.odds_draw || bet.oracle_odds_draw || 3.2;
 
   const outcomes = [
     { 
