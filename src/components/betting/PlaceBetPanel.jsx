@@ -221,10 +221,28 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           wallet_address: wallet
         });
         console.log('[PlaceBetPanel] matchBet response:', res.data);
+      } else if (selectedOutcome && hasLiquidityForOutcome) {
+        // User clicked odds and there's liquidity - auto-select first available offer
+        const firstAvailableOffer = allOffers.find(o => 
+          (o.status === 'open' || o.status === 'partially_matched') && 
+          o.outcome === selectedOutcome && 
+          (o.amount_unmatched || 0) > 0
+        );
+        if (firstAvailableOffer) {
+          console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
+          // Call matchBet with the auto-selected offer
+          res = await base44.functions.invoke('matchBet', {
+            offer_id: firstAvailableOffer.id,
+            amount: stakeNum,
+            wallet_address: wallet
+          });
+          console.log('[PlaceBetPanel] matchBet response:', res.data);
+        } else {
+          throw new Error('No available offers found. Please refresh and try again.');
+        }
       } else {
-        console.log('[PlaceBetPanel] Betting on outcome (needs LP offer):', wallet);
-        // Bettor clicked odds but no specific offer selected - need to select an offer from the book first
-        throw new Error('Please select a specific offer from the Liquidity Pool below to bet against.');
+        console.log('[PlaceBetPanel] Betting on outcome (no liquidity):', wallet);
+        throw new Error('No LP liquidity available for this outcome. Go to LP Dashboard to add liquidity.');
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit
