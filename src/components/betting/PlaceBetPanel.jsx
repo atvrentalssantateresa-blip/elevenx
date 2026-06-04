@@ -276,6 +276,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
           value={amount}
           min={0}
           max={maxMatcherStake || undefined}
+          step="any"
           onChange={e => setAmount(e.target.value)}
           className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12"
         />
