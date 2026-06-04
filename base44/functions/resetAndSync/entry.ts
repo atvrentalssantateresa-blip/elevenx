@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Admin-only function to completely reset all betting data and re-sync from API
+// Admin-only function to completely reset all betting data and re-sync from The Odds API ONLY
 // Deletes: UserBets, BetOffers, LpPositions, Bets, FuturesMarkets, Matches
-// Then re-syncs fresh World Cup matches from TheStatsAPI with correct timestamps
+// Then re-syncs fresh World Cup matches with live odds from The Odds API
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -12,10 +12,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const STATS_API_KEY = Deno.env.get('THE_ODDS_API_KEY'); // Using THE_ODDS_API_KEY for TheStatsAPI
-    const ODDS_API_KEY = Deno.env.get('THE_ODDS_API_KEY');
+    const API_KEY = Deno.env.get('THE_ODDS_API_KEY');
     
-    if (!STATS_API_KEY) {
+    if (!API_KEY) {
       return Response.json({ error: 'THE_ODDS_API_KEY not set' }, { status: 500 });
     }
 
@@ -56,25 +55,22 @@ Deno.serve(async (req) => {
     const matches = await base44.asServiceRole.entities.Match.list();
     for (const m of matches) await safeDelete('Match', m.id);
 
-    // Step 2: Fetch fresh World Cup 2026 matches from API
-    console.log('[resetAndSync] Fetching fresh matches from TheStatsAPI...');
-    const WC_COMPETITION_ID = 'comp_6107';
-    const WC_SEASON_ID = 'sn_118868';
+    // Step 2: Fetch fresh World Cup matches from The Odds API ONLY
+    console.log('[resetAndSync] Fetching fresh World Cup matches from The Odds API...');
     
     // Retry logic for rate limits
     let res;
     let retries = 3;
     while (retries > 0) {
       res = await fetch(
-        `https://api.thestatsapi.com/api/football/matches?competition_id=${WC_COMPETITION_ID}&per_page=100&page=1`,
-        { headers: { Authorization: `Bearer ${STATS_API_KEY}` } }
+        `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?apiKey=${API_KEY}&regions=eu&markets=h2h`
       );
       
       if (res.status === 429) {
         retries--;
         if (retries === 0) {
           return Response.json({ 
-            error: 'TheStatsAPI rate limit exceeded. Please wait a few minutes and try again.',
+            error: 'The Odds API rate limit exceeded. Please wait a few minutes and try again.',
             status_code: 429
           }, { status: 429 });
         }
@@ -86,9 +82,15 @@ Deno.serve(async (req) => {
     }
     
     if (!res.ok) {
+      if (res.status === 401) {
+        return Response.json({ 
+          error: 'Invalid THE_ODDS_API_KEY. Check your API key in Dashboard → Settings → Secrets.',
+          status_code: 401
+        }, { status: 401 });
+      }
       if (res.status === 403) {
         return Response.json({ 
-          error: 'THE_ODDS_API_KEY has no active subscription plan. Please activate your API key.',
+          error: 'THE_ODDS_API_KEY has no active subscription. Please activate your API key at the-odds-api.com.',
           status_code: 403
         }, { status: 503 });
       }
@@ -96,48 +98,66 @@ Deno.serve(async (req) => {
       return Response.json({ error: `API error ${res.status}: ${text}` }, { status: 500 });
     }
     
-    const data = await res.json();
-    const apiMatches = (data?.data || []).filter(m => m.season_id === WC_SEASON_ID);
+    const oddsData = await res.json();
     
-    if (apiMatches.length === 0) {
-      return Response.json({ error: 'No World Cup 2026 matches found in API response' }, { status: 404 });
+    if (!oddsData || oddsData.length === 0) {
+      return Response.json({ error: 'No World Cup matches found in The Odds API response' }, { status: 404 });
     }
 
-    // Step 3: Create fresh Match records
-    console.log(`[resetAndSync] Creating ${apiMatches.length} fresh matches...`);
-    const matchPayloads = apiMatches.map(m => ({
-      team_a: m.home_team?.name || 'Home',
-      team_b: m.away_team?.name || 'Away',
-      team_a_flag: m.home_team?.code || '',
-      team_b_flag: m.away_team?.code || '',
-      match_time: m.utc_date,
-      status: 'upcoming',
-      group_stage: m.group_label ? `Group ${m.group_label}` : 'World Cup 2026',
-      stats_api_match_id: m.id,
-      venue: m.venue?.name || '',
-    }));
+    // Step 3: Create fresh Match and Bet records from The Odds API data
+    console.log(`[resetAndSync] Creating ${oddsData.length} fresh matches with live odds...`);
     
-    const createdMatches = await base44.asServiceRole.entities.Match.bulkCreate(matchPayloads);
-    console.log(`[resetAndSync] Created ${createdMatches.length} matches`);
-
-    // Step 4: Create Bet records for each match with proper betting windows (kickoff + 1 hour)
-    console.log('[resetAndSync] Creating Bet markets with proper betting windows...');
-    const betPayloads = createdMatches.map(match => {
-      const matchTime = new Date(match.match_time);
-      const openUntil = new Date(matchTime.getTime() + 60 * 60 * 1000); // +1 hour
+    const matchPayloads = [];
+    const betPayloads = [];
+    
+    oddsData.forEach(game => {
+      // Create match record
+      const matchTime = new Date(game.commence_time);
+      const openUntil = new Date(matchTime.getTime() + 60 * 60 * 1000); // kickoff + 1 hour
       
-      return {
-        match_id: match.id,
-        title: `${match.team_a} vs ${match.team_b}`,
-        outcome_a: match.team_a,
-        outcome_b: match.team_b,
+      matchPayloads.push({
+        team_a: game.home_team,
+        team_b: game.away_team,
+        team_a_flag: '',
+        team_b_flag: '',
+        match_time: game.commence_time,
+        status: 'upcoming',
+        group_stage: 'World Cup 2026',
+        venue: '',
+      });
+      
+      // Extract odds from Pinnacle or first available bookmaker
+      let odds_a = 0, odds_b = 0, odds_draw = 0;
+      let bookmaker = 'unknown';
+      
+      const pinnacle = game.bookmakers?.find(b => b.key === 'pinnacle');
+      const bm = pinnacle || (game.bookmakers && game.bookmakers[0]);
+      
+      if (bm && bm.markets && bm.markets[0]?.outcomes) {
+        const outcomes = bm.markets[0].outcomes;
+        const homeOutcome = outcomes.find(o => o.name === game.home_team);
+        const awayOutcome = outcomes.find(o => o.name === game.away_team);
+        const drawOutcome = outcomes.find(o => o.name === 'Draw');
+        
+        odds_a = homeOutcome?.price || 0;
+        odds_b = awayOutcome?.price || 0;
+        odds_draw = drawOutcome?.price || 0;
+        bookmaker = bm.key;
+      }
+      
+      // Create bet record
+      betPayloads.push({
+        title: `${game.home_team} vs ${game.away_team}`,
+        outcome_a: game.home_team,
+        outcome_b: game.away_team,
         outcome_draw: 'Draw',
         open_until: openUntil.toISOString(),
         status: 'open',
-        stats_api_match_id: match.stats_api_match_id,
-        odds_a: 0,
-        odds_b: 0,
-        odds_draw: 0,
+        odds_a,
+        odds_b,
+        odds_draw,
+        odds_bookmaker: bookmaker,
+        odds_updated_at: new Date().toISOString(),
         pool_a: 0,
         pool_b: 0,
         pool_draw: 0,
@@ -145,64 +165,27 @@ Deno.serve(async (req) => {
         total_bettors: 0,
         fee_percent: 0,
         solana_market_created: false,
-      };
+      });
     });
     
-    const createdBets = await base44.asServiceRole.entities.Bet.bulkCreate(betPayloads);
-    console.log(`[resetAndSync] Created ${createdBets.length} bet markets`);
-
-    // Step 5: Fetch live odds for all bets
-    console.log('[resetAndSync] Fetching live odds from The Odds API...');
-    const oddsRes = await fetch(
-      `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds?apiKey=${ODDS_API_KEY}&regions=eu&markets=h2h`
-    );
+    // Bulk create matches first
+    const createdMatches = await base44.asServiceRole.entities.Match.bulkCreate(matchPayloads);
+    console.log(`[resetAndSync] Created ${createdMatches.length} matches`);
     
-    let oddsUpdated = 0;
-    if (oddsRes.ok) {
-      const oddsData = await oddsRes.json();
-      
-      for (const bet of createdBets) {
-        const match = createdMatches.find(m => m.id === bet.match_id);
-        if (!match) continue;
-        
-        // Find matching game from odds API
-        const game = oddsData.find(g => 
-          (g.home_team === match.team_a || g.home_team === match.team_b) &&
-          (g.away_team === match.team_b || g.away_team === match.team_a)
-        );
-        
-        if (game && game.bookmakers && game.bookmakers.length > 0) {
-          const pinnacle = game.bookmakers.find(b => b.key === 'pinnacle');
-          const bookmaker = pinnacle || game.bookmakers[0];
-          
-          if (bookmaker && bookmaker.markets && bookmaker.markets[0]?.outcomes) {
-            const outcomes = bookmaker.markets[0].outcomes;
-            const homeOutcome = outcomes.find(o => o.name === match.team_a);
-            const awayOutcome = outcomes.find(o => o.name === match.team_b);
-            const drawOutcome = outcomes.find(o => o.name === 'Draw');
-            
-            await base44.asServiceRole.entities.Bet.update(bet.id, {
-              odds_a: homeOutcome?.price || 0,
-              odds_b: awayOutcome?.price || 0,
-              odds_draw: drawOutcome?.price || 0,
-              odds_bookmaker: bookmaker.key,
-              odds_updated_at: new Date().toISOString(),
-            });
-            
-            oddsUpdated++;
-          }
-        }
-      }
-    }
+    // Link bets to matches
+    const betsWithMatchId = betPayloads.map((bet, i) => ({
+      ...bet,
+      match_id: createdMatches[i].id,
+    }));
     
-    console.log(`[resetAndSync] Updated odds for ${oddsUpdated} bets`);
+    const createdBets = await base44.asServiceRole.entities.Bet.bulkCreate(betsWithMatchId);
+    console.log(`[resetAndSync] Created ${createdBets.length} bet markets with live odds`);
 
     return Response.json({
       success: true,
-      message: `✅ Complete reset successful!\n\n• Deleted all old data\n• Created ${createdMatches.length} fresh matches from API\n• Created ${createdBets.length} bet markets\n• Updated odds for ${oddsUpdated} bets\n\nAll data is now 100% clean and synced with real World Cup 2026 data!`,
+      message: `✅ Complete reset successful!\n\n• Deleted all old data\n• Created ${createdMatches.length} fresh matches from The Odds API\n• Created ${createdBets.length} bet markets with LIVE odds\n\nAll data is now 100% clean and synced!`,
       matchesCreated: createdMatches.length,
       betsCreated: createdBets.length,
-      oddsUpdated,
     });
     
   } catch (error) {
