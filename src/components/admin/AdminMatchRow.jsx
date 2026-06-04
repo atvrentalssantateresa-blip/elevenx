@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminMatchRow({ match, bets, index }) {
@@ -23,7 +23,8 @@ export default function AdminMatchRow({ match, bets, index }) {
     enabled: false, // Disabled to avoid RPC rate limits
   });
 
-  const isMarketInitialized = existingBet?.solana_market_created || marketStatus?.status === 'initialized';
+  // Check on-chain status first, fall back to DB only if on-chain confirms
+  const isMarketInitialized = marketStatus?.status === 'initialized' || (existingBet?.solana_market_created && marketStatus?.status !== 'not_created');
 
   const createBetMutation = useMutation({
     mutationFn: async () => {
@@ -177,65 +178,40 @@ export default function AdminMatchRow({ match, bets, index }) {
             )}
           </Button>
         )}
-        {existingBet && !isMarketInitialized && !pendingMarketInit && (
+        {existingBet && marketStatus?.status === 'not_created' && !pendingMarketInit && (
           <Button
             size="sm"
             onClick={async () => {
-              console.log('[Init On-Chain] Calling createMarketOnChain with bet_id:', existingBet.id, 'match_id:', match.id);
+              console.log('[Force Recreate] Market missing on-chain, recreating...');
               try {
-                // If DB says created but market not initialized, force recreate
-                const shouldForceRecreate = existingBet.solana_market_created && !isMarketInitialized;
-                
                 const marketRes = await base44.functions.invoke('createMarketOnChain', {
                   bet_id: existingBet.id,
                   match_id: match.id,
-                  force_recreate: shouldForceRecreate,
+                  force_recreate: true,
                 });
-                console.log('[Init On-Chain] Full response:', marketRes);
-                console.log('[Init On-Chain] Response data:', marketRes.data);
-
-                if (!marketRes.data) {
-                  alert('Error: No response data from server');
-                  return;
-                }
+                console.log('[Force Recreate] Response:', marketRes.data);
 
                 if (marketRes.data.error) {
                   alert('Error: ' + marketRes.data.error);
                   return;
                 }
 
-                if (marketRes.data.needsPlatformInit && marketRes.data.solana_instruction) {
-                  console.log('[Init On-Chain] Platform init needed');
-                  setPendingMarketInit({
-                    instruction: marketRes.data.solana_instruction,
-                    createMarketInstruction: marketRes.data.createMarketInstruction,
-                    betId: existingBet.id,
-                    step: 'platform_init',
-                  });
-                } else if (marketRes.data.createMarketInstruction) {
-                  console.log('[Init On-Chain] Creating market:', marketRes.data.message);
+                if (marketRes.data.createMarketInstruction) {
                   setPendingMarketInit({
                     instruction: marketRes.data.createMarketInstruction,
                     betId: existingBet.id,
                     step: 'create_market',
                   });
-                } else if (marketRes.data.alreadyExists) {
-                  await base44.entities.Bet.update(existingBet.id, { solana_market_created: true });
-                  queryClient.invalidateQueries({ queryKey: ['bets'] });
-                  queryClient.invalidateQueries({ queryKey: ['marketStatus', match.id] });
-                  alert('Market already exists on-chain!');
                 } else {
-                  console.error('[Init On-Chain] Unexpected response:', marketRes.data);
-                  alert('Failed to get instruction - check console for details');
+                  alert('Unexpected response');
                 }
               } catch (err) {
-                console.error('[Init On-Chain] Error:', err);
-                alert('Failed to initialize market: ' + err.message);
+                alert('Failed: ' + err.message);
               }
             }}
-            className="h-8 text-xs bg-primary text-primary-foreground font-heading rounded-lg"
+            className="h-8 text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 font-heading rounded-lg"
           >
-            <RefreshCw className="w-3 h-3 mr-1" /> Init On-Chain
+            ⚡ Force Recreate
           </Button>
         )}
         {pendingMarketInit && (
@@ -249,9 +225,15 @@ export default function AdminMatchRow({ match, bets, index }) {
             />
           </div>
         )}
-        {existingBet && isMarketInitialized && (
+        {existingBet && marketStatus?.status === 'initialized' && !pendingMarketInit && (
           <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
             <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
+          </Badge>
+        )}
+        
+        {existingBet && marketStatus?.status === 'not_created' && !pendingMarketInit && (
+          <Badge className="bg-destructive/20 text-destructive text-[10px] py-1 px-3 rounded-lg">
+            <AlertCircle className="w-3 h-3 mr-1" /> DB Sync Error
           </Badge>
         )}
       </div>
