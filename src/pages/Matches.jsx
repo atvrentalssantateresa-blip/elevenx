@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Trophy, Search } from 'lucide-react';
+import { Trophy, Search, Globe } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import MatchCard from '@/components/betting/MatchCard';
 import { motion } from 'framer-motion';
+import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 
 export default function Matches() {
-  const [activeGroup, setActiveGroup] = useState('all');
+  const [activeGroup, setActiveGroup] = useState('ALL');
   const [search, setSearch] = useState('');
   const [highlightedMatchId, setHighlightedMatchId] = useState(null);
   const queryClient = useQueryClient();
@@ -54,25 +55,35 @@ export default function Matches() {
   const betByMatch = {};
   bets.forEach(b => { betByMatch[b.match_id] = b; });
 
-  // Extract unique groups from matches
-  const groupSet = new Set(matches.map(m => m.group_stage).filter(Boolean));
-  const groups = ['all', ...Array.from(groupSet).sort()];
-
-  // Filter by active group, search, and date (up to June 27, 2026)
-  const cutoffDate = new Date('2026-06-27T23:59:59Z');
-  const filtered = matches.filter(m => {
-    if (activeGroup !== 'all' && m.group_stage !== activeGroup) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return m.team_a?.toLowerCase().includes(q) || m.team_b?.toLowerCase().includes(q);
+  // Filter by active group using WORLD_CUP_GROUPS_2026
+  const filtered = React.useMemo(() => {
+    if (activeGroup === 'ALL') {
+      return matches;
     }
-    // Only show matches up to June 27, 2026
+    
+    const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
+    return matches.filter(m => 
+      groupTeams.includes(m.team_a) || groupTeams.includes(m.team_b)
+    );
+  }, [matches, activeGroup]);
+
+  // Filter by search query
+  const searchFiltered = search
+    ? filtered.filter(m => {
+        const q = search.toLowerCase();
+        return m.team_a?.toLowerCase().includes(q) || m.team_b?.toLowerCase().includes(q);
+      })
+    : filtered;
+
+  // Filter by date (up to June 27, 2026)
+  const cutoffDate = new Date('2026-06-27T23:59:59Z');
+  const finalFiltered = searchFiltered.filter(m => {
     if (m.match_time && new Date(m.match_time) > cutoffDate) return false;
     return true;
   });
 
   // Sort filtered matches by date
-  const sortedMatches = [...filtered].sort((a, b) => {
+  const sortedMatches = [...finalFiltered].sort((a, b) => {
     if (!a.match_time) return 1;
     if (!b.match_time) return -1;
     return new Date(a.match_time) - new Date(b.match_time);
@@ -135,59 +146,126 @@ export default function Matches() {
           />
         </div>
 
-        {/* Group Filter Tabs */}
-        <Tabs value={activeGroup} onValueChange={setActiveGroup}>
-          <TabsList className="bg-card border border-border/50 rounded-xl w-full overflow-x-auto max-w-full">
-            {groups.map(g => (
-              <TabsTrigger key={g} value={g} className="rounded-lg text-xs whitespace-nowrap">
-                {g === 'all' ? 'All Groups' : g}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        {/* Quick-Jump Group Navigation */}
+        <GroupNavigation 
+          onGroupClick={(groupName) => {
+            setActiveGroup(groupName);
+            if (groupName !== 'ALL') {
+              const firstMatch = sortedMatches.find(m => 
+                WORLD_CUP_GROUPS_2026[groupName]?.some(t => t.name === m.team_a || t.name === m.team_b)
+              );
+              if (firstMatch) {
+                setTimeout(() => {
+                  const element = document.getElementById(`group-${groupName}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
+              }
+            }
+          }} 
+          activeGroup={activeGroup} 
+        />
       </motion.div>
 
       {sortedMatches.length > 0 ? (
-        <div className="space-y-8">
-          {sortedDates.map((dateKey, dateIndex) => {
-            const { label, matches: dateMatches } = groupedByDate[dateKey];
-            return (
-              <motion.div
-                key={dateKey}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
-              >
-                {/* Date header */}
-                <div className="flex items-center gap-3 mb-5 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-3">
-                  <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2 shadow-lg">
-                    <span className="font-heading font-bold text-base text-primary">{label}</span>
-                  </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
-                </div>
+        activeGroup !== 'ALL' ? (
+          /* Single Group View */
+          <section id={`group-${activeGroup}`} className="scroll-mt-24">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
+              </div>
+              <div>
+                <h2 className="font-heading font-bold text-base text-foreground">Group {activeGroup}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {sortedMatches.length} matches in this group
+                </p>
+              </div>
+            </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {dateMatches.map((m, i) => (
-                    <div
-                      key={m.id}
-                      id={`match-${m.id}`}
-                      className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
-                    >
-                      <MatchCard 
-                        match={m} 
-                        bet={betByMatch[m.id]} 
-                        index={i}
-                        onOddsRefresh={() => {
-                          queryClient.invalidateQueries({ queryKey: ['bets'] });
-                        }}
-                      />
+            <div className="space-y-8">
+              {sortedDates.map((dateKey, dateIndex) => {
+                const { label, matches: dateMatches } = groupedByDate[dateKey];
+                return (
+                  <motion.div
+                    key={dateKey}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
+                  >
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2">
+                        <span className="font-heading font-bold text-sm text-primary">{label}</span>
+                      </div>
+                      <div className="flex-1 h-px bg-border/30" />
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {dateMatches.map((m, i) => (
+                        <div
+                          key={m.id}
+                          id={`match-${m.id}`}
+                          className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                        >
+                          <MatchCard 
+                            match={m} 
+                            bet={betByMatch[m.id]} 
+                            index={i}
+                            onOddsRefresh={() => {
+                              queryClient.invalidateQueries({ queryKey: ['bets'] });
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          /* All Groups View */
+          <div className="space-y-8">
+            {sortedDates.map((dateKey, dateIndex) => {
+              const { label, matches: dateMatches } = groupedByDate[dateKey];
+              return (
+                <motion.div
+                  key={dateKey}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
+                >
+                  <div className="flex items-center gap-3 mb-5 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-3">
+                    <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2 shadow-lg">
+                      <span className="font-heading font-bold text-base text-primary">{label}</span>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dateMatches.map((m, i) => (
+                      <div
+                        key={m.id}
+                        id={`match-${m.id}`}
+                        className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                      >
+                        <MatchCard 
+                          match={m} 
+                          bet={betByMatch[m.id]} 
+                          index={i}
+                          onOddsRefresh={() => {
+                            queryClient.invalidateQueries({ queryKey: ['bets'] });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )
       ) : (
         <motion.div
           initial={{ opacity: 0 }}
