@@ -25,10 +25,16 @@ Deno.serve(async (req) => {
     
     for (const sportKey of sportKeys) {
       try {
+        console.log(`Trying ${sportKey}...`);
         const winnerResponse = await fetch(
           `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?apiKey=${THE_ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=decimal`,
           { headers: { 'Accept': 'application/json' } }
         );
+        
+        if (!winnerResponse.ok) {
+          console.log(`${sportKey} returned ${winnerResponse.status}, skipping...`);
+          continue;
+        }
         
         const winnerData = await winnerResponse.json();
         console.log(`Trying ${sportKey}:`, winnerData);
@@ -62,6 +68,8 @@ Deno.serve(async (req) => {
         continue;
       }
     }
+    
+    console.log(`API fetched ${winnerOutcomes.length} outcomes, will use fallback for rest`);
     
     // Fallback data for all 48 World Cup teams
     const fallbackOdds = [
