@@ -14,17 +14,17 @@ export default function AdminMatchRow({ match, bets, index }) {
   const existingBet = bets.find(b => b.match_id === match.id);
   const [pendingMarketInit, setPendingMarketInit] = useState(null);
 
-  const { data: marketStatus } = useQuery({
+  const { data: marketStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['marketStatus', match.id],
     queryFn: async () => {
       const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
       return res.data;
     },
-    enabled: false, // Disabled to avoid RPC rate limits
+    staleTime: 30000, // Cache for 30 seconds
   });
 
-  // Check on-chain status first, fall back to DB only if on-chain confirms
-  const isMarketInitialized = marketStatus?.status === 'initialized' || (existingBet?.solana_market_created && marketStatus?.status !== 'not_created');
+  // Use on-chain status if available, otherwise fall back to DB
+  const isMarketInitialized = marketStatus?.status === 'initialized' || (!marketStatus && existingBet?.solana_market_created);
 
   const createBetMutation = useMutation({
     mutationFn: async () => {
@@ -183,30 +183,24 @@ export default function AdminMatchRow({ match, bets, index }) {
             size="sm"
             onClick={async () => {
               console.log('[Force Recreate] Market missing on-chain, recreating...');
-              try {
-                const marketRes = await base44.functions.invoke('createMarketOnChain', {
-                  bet_id: existingBet.id,
-                  match_id: match.id,
-                  force_recreate: true,
+              const marketRes = await base44.functions.invoke('createMarketOnChain', {
+                bet_id: existingBet.id,
+                match_id: match.id,
+                force_recreate: true,
+              });
+              console.log('[Force Recreate] Response:', marketRes.data);
+
+              if (marketRes.data.error) {
+                alert('Error: ' + marketRes.data.error);
+                return;
+              }
+
+              if (marketRes.data.createMarketInstruction) {
+                setPendingMarketInit({
+                  instruction: marketRes.data.createMarketInstruction,
+                  betId: existingBet.id,
+                  step: 'create_market',
                 });
-                console.log('[Force Recreate] Response:', marketRes.data);
-
-                if (marketRes.data.error) {
-                  alert('Error: ' + marketRes.data.error);
-                  return;
-                }
-
-                if (marketRes.data.createMarketInstruction) {
-                  setPendingMarketInit({
-                    instruction: marketRes.data.createMarketInstruction,
-                    betId: existingBet.id,
-                    step: 'create_market',
-                  });
-                } else {
-                  alert('Unexpected response');
-                }
-              } catch (err) {
-                alert('Failed: ' + err.message);
               }
             }}
             className="h-8 text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 font-heading rounded-lg"
@@ -225,6 +219,12 @@ export default function AdminMatchRow({ match, bets, index }) {
             />
           </div>
         )}
+        {isLoadingStatus && existingBet && (
+          <Badge className="bg-secondary text-secondary-foreground text-[10px]">
+            <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Checking...
+          </Badge>
+        )}
+        
         {existingBet && marketStatus?.status === 'initialized' && !pendingMarketInit && (
           <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
             <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
@@ -234,6 +234,12 @@ export default function AdminMatchRow({ match, bets, index }) {
         {existingBet && marketStatus?.status === 'not_created' && !pendingMarketInit && (
           <Badge className="bg-destructive/20 text-destructive text-[10px] py-1 px-3 rounded-lg">
             <AlertCircle className="w-3 h-3 mr-1" /> DB Sync Error
+          </Badge>
+        )}
+        
+        {existingBet && !marketStatus && existingBet.solana_market_created && !pendingMarketInit && (
+          <Badge className="bg-accent/20 text-accent text-[10px] py-1 px-3 rounded-lg">
+            <CheckCircle2 className="w-3 h-3 mr-1" /> Market Initialized
           </Badge>
         )}
       </div>
