@@ -35,15 +35,15 @@ export default function BetDetail() {
     enabled: !!betId,
   });
 
-  // Scroll to Fixed Odds section on page load
+  // Scroll to betting section on page load
   useEffect(() => {
     if (bet) {
       setTimeout(() => {
-        const element = document.getElementById('fixed-odds-section');
+        const element = document.getElementById('betting-section');
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 300);
+      }, 100);
     }
   }, [bet?.id]);
 
@@ -197,7 +197,7 @@ export default function BetDetail() {
 
       {/* Odds */}
       <motion.div
-        id="fixed-odds-section"
+        id="betting-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
