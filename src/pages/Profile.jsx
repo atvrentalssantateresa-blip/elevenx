@@ -121,17 +121,17 @@ export default function Profile() {
   // Show connect prompt if wallet not connected
   if (!walletAddress) {
     return (
-      <div className="space-y-6 max-w-lg mx-auto">
+      <div className="space-y-4 sm:space-y-6 px-3 sm:px-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border/50 rounded-2xl p-8 text-center"
+          className="bg-card border border-border/50 rounded-2xl p-6 sm:p-8 text-center"
         >
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Wallet className="w-8 h-8 text-primary" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
           </div>
-          <h1 className="font-heading font-bold text-xl mb-2">Connect Wallet First</h1>
-          <p className="text-sm text-muted-foreground mb-6">
+          <h1 className="font-heading font-bold text-lg sm:text-xl mb-2">Connect Wallet First</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mb-6 px-2">
             Your profile is linked to your Solana wallet. Connect your Phantom wallet to view your betting stats and history.
           </p>
           <Button
@@ -140,7 +140,7 @@ export default function Profile() {
               setTimeout(() => refreshUser(), 1000);
             }}
             disabled={isConnecting}
-            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8"
+            className="bg-primary hover:bg-primary/90 font-heading font-bold h-11 rounded-xl px-8 w-full sm:w-auto"
           >
             <Wallet className="w-4 h-4 mr-2" />
             {isConnecting ? 'Connecting...' : 'Connect Phantom Wallet'}
@@ -153,13 +153,13 @@ export default function Profile() {
 
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
+    <div className="space-y-4 sm:space-y-6 px-3 sm:px-0 max-w-lg mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-card border border-border/50 rounded-2xl p-6 text-center"
+        className="bg-card border border-border/50 rounded-2xl p-5 sm:p-6 text-center"
       >
-        <div className="relative w-20 h-20 mx-auto mb-4">
+        <div className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4">
           {profilePicture ? (
             <img
               src={profilePicture}
@@ -176,10 +176,10 @@ export default function Profile() {
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
               <button
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-card hover:bg-primary/90 transition-colors"
+                className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-card hover:bg-primary/90 transition-colors"
                 onClick={() => setIsUploadDialogOpen(true)}
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
@@ -189,10 +189,10 @@ export default function Profile() {
               <div className="space-y-4 py-4">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  className="border-2 border-dashed border-border rounded-xl p-6 sm:p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 >
-                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-medium mb-1">Click to upload or drag and drop</p>
+                  <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-medium mb-1">Click to upload</p>
                   <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
                 </div>
                 <input
@@ -212,7 +212,7 @@ export default function Profile() {
             </DialogContent>
           </Dialog>
         </div>
-        <h1 className="font-heading font-bold text-xl">
+        <h1 className="font-heading font-bold text-lg sm:text-xl break-all px-2">
           {walletAddress?.slice(0, 8) || 'User'}
         </h1>
         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg border border-border/30">
@@ -229,7 +229,7 @@ export default function Profile() {
         )}
       </motion.div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {[
           { label: 'Total Bets', value: myBets.length, icon: DollarSign, color: 'text-foreground' },
           { label: 'Win Rate', value: `${winRate}%`, icon: TrendingUp, color: 'text-accent' },
@@ -241,11 +241,11 @@ export default function Profile() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-card border border-border/50 rounded-2xl p-4"
+            className="bg-card border border-border/50 rounded-2xl p-3 sm:p-4"
           >
-            <stat.icon className={`w-4 h-4 ${stat.color} mb-2`} />
-            <p className={`font-heading font-bold text-lg ${stat.color}`}>{stat.value}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+            <stat.icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${stat.color} mb-2`} />
+            <p className={`font-heading font-bold text-base sm:text-lg ${stat.color}`}>{stat.value}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -253,28 +253,26 @@ export default function Profile() {
       <Button
         variant="outline"
         onClick={async () => {
-          // Disconnect wallet and logout
           await disconnect();
           await logout();
-          // Clear wallet session from localStorage
           localStorage.removeItem('elevenx_wallet_session');
-          // Hard redirect to reload app state
           window.location.href = '/';
         }}
-        className="w-full border-border/50 text-muted-foreground hover:text-destructive hover:border-destructive/30 h-11 rounded-xl"
+        className="w-full border-border/50 text-muted-foreground hover:text-destructive hover:border-destructive/30 h-11 rounded-xl text-sm"
       >
         <LogOut className="w-4 h-4 mr-2" />
-        Sign Out & Disconnect Wallet
+        <span className="hidden sm:inline">Sign Out & Disconnect Wallet</span>
+        <span className="sm:hidden">Sign Out</span>
       </Button>
 
       {currentUser?.role === 'admin' && (
-        <div className="bg-card border border-border/50 rounded-2xl p-6 space-y-3">
+        <div className="bg-card border border-border/50 rounded-2xl p-4 sm:p-6 space-y-3">
           <h2 className="font-heading font-bold text-sm">Admin Platform Config</h2>
           {platformDebug?.success ? (
             <div className="space-y-3">
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-3">
                 <p className="text-xs text-accent font-bold mb-1">✓ Platform Already Initialized</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[10px] text-muted-foreground break-all">
                   Admin: <span className="font-mono text-accent">{platformDebug.admin?.slice(0, 6)}...{platformDebug.admin?.slice(-6)}</span>
                 </p>
                 <p className="text-[10px] text-muted-foreground">
@@ -299,7 +297,7 @@ export default function Profile() {
               <Button
                 onClick={() => reinitMutation.mutate()}
                 disabled={reinitMutation.isPending || !isConnected || !walletAddress}
-                className="w-full h-11 rounded-xl"
+                className="w-full h-11 rounded-xl text-sm"
               >
                 <RefreshCcw className="w-4 h-4 mr-2" />
                 {reinitMutation.isPending ? 'Preparing...' : !walletAddress ? 'Connect Wallet First' : 'Initialize Platform'}
