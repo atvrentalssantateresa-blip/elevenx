@@ -270,9 +270,70 @@ export default function LpDashboard() {
     return 'Draw';
   };
 
+  const [pendingFuturesTx, setPendingFuturesTx] = useState(null);
+  const [pendingFuturesCommit, setPendingFuturesCommit] = useState(null);
+
   const handleFuturesLiquidity = async (outcome, amount) => {
-    // TODO: Implement futures LP backend function
-    console.log('Futures LP:', outcome, amount);
+    if (!walletAddress) {
+      alert('Please connect your wallet first');
+      return;
+    }
+    
+    try {
+      const res = await base44.functions.invoke('provideFuturesLiquidity', {
+        walletAddress,
+        market_id: outcome.market_id,
+        outcome_label: outcome.label,
+        outcome_flag: outcome.flag,
+        odds: outcome.odds,
+        amount,
+      });
+      
+      if (res.data.error) {
+        alert('Error: ' + res.data.error);
+        return;
+      }
+      
+      if (res.data.solana_instruction) {
+        setPendingFuturesTx({
+          instruction: res.data.solana_instruction,
+          amount,
+          type: 'provide_futures_liquidity',
+        });
+        setPendingFuturesCommit(res.data.commit_data);
+      }
+    } catch (error) {
+      alert('Failed to provide liquidity: ' + error.message);
+    }
+  };
+
+  const handleFuturesTxSuccess = async (txResult) => {
+    const signature = txResult.signature;
+    
+    if (pendingFuturesCommit) {
+      try {
+        const commitRes = await base44.functions.invoke('commitFuturesLiquidity', {
+          signature,
+          commit_data: pendingFuturesCommit,
+        });
+        if (commitRes.data.error) {
+          console.error('[LpDashboard] commitFuturesLiquidity error:', commitRes.data.error);
+        }
+      } catch (err) {
+        console.error('[LpDashboard] commitFuturesLiquidity threw:', err);
+      }
+      setPendingFuturesCommit(null);
+    }
+    
+    setSuccessDialog({
+      signature,
+      amount: pendingFuturesTx?.amount || 0,
+      team: pendingFuturesCommit?.outcome_label || 'Futures',
+      match: 'Tournament Market',
+    });
+    
+    setPendingFuturesTx(null);
+    queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
   };
 
   return (
@@ -534,6 +595,30 @@ export default function LpDashboard() {
           </TabsContent>
 
           <TabsContent value="futures" className="space-y-6">
+            {pendingFuturesTx && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+                  <div className="space-y-4">
+                    <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                      <p className="text-sm font-bold text-accent mb-1">Provide Futures Liquidity</p>
+                      <p className="text-xs text-muted-foreground">Sign transaction to provide LP liquidity</p>
+                    </div>
+                    <SolanaTransactionSigner
+                      instruction={pendingFuturesTx.instruction}
+                      amount={pendingFuturesTx.amount}
+                      onSuccess={handleFuturesTxSuccess}
+                      onError={(err) => {
+                        alert('Transaction failed: ' + err.message);
+                        setPendingFuturesTx(null);
+                      }}
+                    />
+                    <Button variant="outline" size="sm" onClick={() => setPendingFuturesTx(null)} className="w-full">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <FuturesLpPanel
               futuresMarkets={futuresMarkets}
               onProvideLiquidity={handleFuturesLiquidity}

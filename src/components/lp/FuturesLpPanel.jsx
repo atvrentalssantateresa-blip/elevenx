@@ -11,7 +11,6 @@ export default function FuturesLpPanel({
   connect 
 }) {
   const [selectedOutcome, setSelectedOutcome] = React.useState(null);
-  const [amount, setAmount] = React.useState('');
 
   // Flatten all outcomes from all markets
   const allOutcomes = React.useMemo(() => {
@@ -69,8 +68,6 @@ export default function FuturesLpPanel({
               outcome={outcome}
               selectedOutcome={selectedOutcome}
               setSelectedOutcome={setSelectedOutcome}
-              amount={amount}
-              setAmount={setAmount}
               onProvideLiquidity={onProvideLiquidity}
             />
           ))}
@@ -92,8 +89,6 @@ export default function FuturesLpPanel({
               outcome={outcome}
               selectedOutcome={selectedOutcome}
               setSelectedOutcome={setSelectedOutcome}
-              amount={amount}
-              setAmount={setAmount}
               onProvideLiquidity={onProvideLiquidity}
             />
           ))}
@@ -103,7 +98,8 @@ export default function FuturesLpPanel({
   );
 }
 
-function FuturesOutcomeCard({ outcome, selectedOutcome, setSelectedOutcome, amount, setAmount, onProvideLiquidity }) {
+function FuturesOutcomeCard({ outcome, selectedOutcome, setSelectedOutcome, onProvideLiquidity }) {
+  const [amount, setAmount] = React.useState('');
   const isSelected = selectedOutcome?.label === outcome.label && selectedOutcome?.market_id === outcome.market_id;
   const isExpanded = isSelected || amount > 0;
 
@@ -174,6 +170,16 @@ function FuturesOutcomeCard({ outcome, selectedOutcome, setSelectedOutcome, amou
           <DollarSign className="w-4 h-4 mr-2" />
           Provide ◎{amount || '0'} LP
         </Button>
+
+        {/* Reset amount after clicking */}
+        {amount > 0 && (
+          <button
+            onClick={() => setAmount('')}
+            className="text-xs text-muted-foreground hover:text-foreground mt-2"
+          >
+            Clear
+          </button>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border/30">
