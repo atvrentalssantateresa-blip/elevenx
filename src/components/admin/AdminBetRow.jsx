@@ -34,16 +34,25 @@ export default function AdminBetRow({ bet, matches, index }) {
       try {
         const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
         console.log('[AdminBetRow] Market status response:', res.data);
-        console.log('[AdminBetRow] Response status:', res.status);
         return res.data;
       } catch (err) {
         console.error('[AdminBetRow] Function call error:', err);
+        // If rate limited, return a fallback status based on database state
+        if (err.message?.includes('429') || err.message?.includes('rate limit')) {
+          console.log('[AdminBetRow] Rate limited, using database state as fallback');
+          return {
+            status: bet.solana_market_created ? 'initialized' : 'not_created',
+            marketPda: bet.solana_market_pda || 'unknown',
+            fallback: true,
+          };
+        }
         throw err;
       }
     },
     enabled: !!match,
-    refetchInterval: 5000,
-    retry: 2,
+    refetchInterval: 10000, // Reduced from 5s to 10s to avoid rate limiting
+    retry: 1, // Reduced retries to avoid spam
+    staleTime: 15000, // Cache for 15s
   });
   
   console.log('[AdminBetRow] Query state:', { isLoading, isFetching, hasData: !!marketStatus, hasError: !!marketError });

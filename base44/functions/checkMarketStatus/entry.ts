@@ -54,9 +54,42 @@ Deno.serve(async (req) => {
       programId
     );
     
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, {
+      commitment: 'confirmed',
+      confirmTransactionInitialTimeout: 30000,
+    });
+    
     console.log('[checkMarketStatus] Checking account at PDA:', marketPda.toBase58());
-    const accountInfo = await connection.getAccountInfo(marketPda);
+    
+    // Retry logic with exponential backoff for rate limiting
+    let accountInfo = null;
+    let lastError = null;
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        accountInfo = await connection.getAccountInfo(marketPda);
+        break; // Success, exit retry loop
+      } catch (rpcError) {
+        lastError = rpcError;
+        console.log(`[checkMarketStatus] RPC attempt ${attempt} failed:`, rpcError.message);
+        
+        if (rpcError.message?.includes('429') || rpcError.message?.includes('rate limit')) {
+          if (attempt < maxRetries) {
+            const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+            console.log(`[checkMarketStatus] Rate limited, waiting ${delayMs}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          } else {
+            console.log('[checkMarketStatus] Max retries reached, returning cached/last known state');
+          }
+        } else {
+          throw rpcError; // Non-rate-limit error, rethrow immediately
+        }
+      }
+    }
+    
+    if (!accountInfo && lastError) {
+      throw lastError;
+    }
     
     if (!accountInfo) {
       console.log('[checkMarketStatus] Account NOT FOUND - status: not_created');
