@@ -191,25 +191,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // TEMPORARY: Force DB-only claim for all won bets to avoid on-chain errors
-    // On-chain withdrawals will be handled separately via admin function
-    console.log('[claimWinnings] TEMP OVERRIDE: Doing DB-only claim to avoid on-chain error 6009');
-    for (const b of betsToClaim) {
-      await serviceRole.entities.UserBet.update(b.id, {
-        status: 'claimed',
-        actual_payout: b.actual_payout || b.potential_payout || 0,
-      });
-    }
-    return Response.json({
-      success: true,
-      db_only: true,
-      message: `✓ ${betsToClaim.length} winning bet(s) marked as claimed.`,
-      betIds: betsToClaim.map(b => b.id),
-      totalPayout,
-      note: 'DB claim successful. SOL payout will be processed separately by admin.',
-    });
-
-    // DISABLED: Normal on-chain claim path (causes error 6009)
+    // Normal on-chain claim path
     const [feeVaultPda] = PublicKey.findProgramAddressSync([Buffer.from('fee_vault')], programId);
 
     const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:claim_winnings'));
