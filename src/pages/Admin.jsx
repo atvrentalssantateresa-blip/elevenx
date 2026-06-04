@@ -408,6 +408,32 @@ export default function Admin() {
             )}
           </div>
 
+          <div className="bg-card border border-primary/20 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">Update All Betting Windows</p>
+                  <p className="text-xs text-muted-foreground">Sets open_until = match kickoff + 1 hour for all bets (traditional bookie style)</p>
+                </div>
+              </div>
+              <Button
+                onClick={async () => {
+                  const res = await base44.functions.invoke('bulkUpdateBettingWindows', {});
+                  if (res.data.error) {
+                    alert('Error: ' + res.data.error);
+                  } else {
+                    alert(`✅ Success! Updated ${res.data.updated} bets with proper betting windows.\nErrors: ${res.data.errors || 0}`);
+                    queryClient.invalidateQueries({ queryKey: ['bets'] });
+                  }
+                }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold rounded-xl h-9"
+              >
+                Update All Bets
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-2 h-2 rounded-full ${oracleStatus?.provider === 'manual' ? 'bg-yellow-400' : 'bg-green-500'} animate-pulse`} />
