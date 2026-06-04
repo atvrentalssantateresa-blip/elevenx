@@ -350,32 +350,6 @@ export default function Home() {
         </motion.section>
       }
 
-      {/* ── OPEN BETS (TOP 4 BY LP) ── */}
-      {openBets.length > 0 &&
-      <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Flame className="w-4 h-4 text-primary" />
-              <h2 className="font-heading font-bold text-lg">Hottest Bets</h2>
-              <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">Top 4 by LP</span>
-            </div>
-            <Link to="/matches" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-              View all <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            {openBets.
-          sort((a, b) => (b.total_pool || 0) - (a.total_pool || 0)).
-          slice(0, 4).
-          map((bet, i) => {
-            const match = matches.find((m) => m.id === bet.match_id);
-            if (!match) return null;
-            return <HottestBetCard key={bet.id} match={match} bet={bet} index={i} />;
-          })}
-          </div>
-        </section>
-      }
-
       {/* ── FEATURED FUTURES (6 CARDS) ── */}
       <section className="hidden">
        <div className="flex items-center justify-between mb-4">
