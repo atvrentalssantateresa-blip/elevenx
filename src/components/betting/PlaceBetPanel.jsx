@@ -253,10 +253,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           });
           console.log('[PlaceBetPanel] matchBet response:', res.data);
         } else {
-          // No LP available - bet will go into pending pool (no matched portion)
-          console.log('[PlaceBetPanel] No LP offer available, betting into pending pool');
-          // Still call matchBet but it will handle the case where there's no matching LP
-          throw new Error('No LP liquidity for this outcome. Please add liquidity first or select another outcome.');
+          // No LP available - user must provide liquidity first
+          console.log('[PlaceBetPanel] No LP offer available for outcome:', selectedOutcome);
+          throw new Error(`No LP liquidity for ${selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}. Add liquidity or select another outcome.`);
         }
       }
       if (res.data?.error) throw new Error(res.data.error);
