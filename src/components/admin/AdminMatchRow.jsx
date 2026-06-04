@@ -20,8 +20,7 @@ export default function AdminMatchRow({ match, bets, index }) {
       const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
       return res.data;
     },
-    enabled: !!existingBet,
-    refetchInterval: 10000,
+    enabled: false, // Disabled to avoid RPC rate limits
   });
 
   const isMarketInitialized = existingBet?.solana_market_created || marketStatus?.status === 'initialized';
