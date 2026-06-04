@@ -81,6 +81,22 @@ export default function GroupNavigation({ onGroupClick, activeGroup }) {
     <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30 py-3 -mx-6 px-6 mb-6">
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
         <span className="text-xs font-bold text-muted-foreground mr-2 shrink-0">Groups:</span>
+        
+        {/* All Groups Button */}
+        <motion.button
+          key="ALL"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => onGroupClick('ALL')}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+            activeGroup === 'ALL'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-secondary/30 text-muted-foreground border-border/30 hover:border-primary/30 hover:text-foreground'
+          }`}
+        >
+          All Groups
+        </motion.button>
+        
         {Object.keys(WORLD_CUP_GROUPS_2026).map((groupName, index) => (
           <motion.button
             key={groupName}
@@ -94,7 +110,7 @@ export default function GroupNavigation({ onGroupClick, activeGroup }) {
                 : 'bg-secondary/30 text-muted-foreground border-border/30 hover:border-primary/30 hover:text-foreground'
             }`}
           >
-            Group {groupName}
+            {groupName}
           </motion.button>
         ))}
       </div>

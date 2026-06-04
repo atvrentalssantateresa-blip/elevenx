@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, TrendingUp, Clock, ChevronRight, Lock, Trophy, Calendar, Loader, RefreshCcw, Sparkles, Globe, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ export default function Futures() {
   const [selectedMarket, setSelectedMarket] = useState(null);
   const [showBetSlip, setShowBetSlip] = useState(false);
   const [activeTab, setActiveTab] = useState('futures');
-  const [activeGroup, setActiveGroup] = useState('A');
+  const [activeGroup, setActiveGroup] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
   const groupRefs = useRef({});
@@ -29,6 +29,16 @@ export default function Futures() {
       return markets;
     },
   });
+
+  // Filter markets by selected group
+  const filteredMarketsByGroup = React.useMemo(() => {
+    if (activeGroup === 'ALL') {
+      return futuresMarkets;
+    }
+    
+    const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
+    return futuresMarkets.filter(m => m.country && groupTeams.includes(m.country));
+  }, [futuresMarkets, activeGroup]);
 
   // Scroll to group section
   const scrollToGroup = (groupName) => {
@@ -184,13 +194,21 @@ export default function Futures() {
     },
   });
 
-  // Filter markets by search query
-  const filteredMarkets = searchQuery
+  // Filter markets by search query first, then by group
+  const searchFilteredMarkets = searchQuery
     ? futuresMarkets.filter(m => 
         m.country?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.title?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : futuresMarkets;
+  
+  // Then filter by group
+  const filteredMarkets = activeGroup === 'ALL' 
+    ? searchFilteredMarkets 
+    : searchFilteredMarkets.filter(m => {
+        const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
+        return m.country && groupTeams.includes(m.country);
+      });
 
   // Auto-scroll to first matching group when search query changes
   React.useEffect(() => {
@@ -317,79 +335,154 @@ export default function Futures() {
           </div>
 
           {/* Quick-Jump Group Navigation */}
-          <GroupNavigation onGroupClick={scrollToGroup} activeGroup={activeGroup} />
+          <GroupNavigation 
+            onGroupClick={(groupName) => {
+              setActiveGroup(groupName);
+              if (groupName !== 'ALL') {
+                const element = document.getElementById(`group-${groupName}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }
+            }} 
+            activeGroup={activeGroup} 
+          />
 
-          {/* Group-by-Group Markets */}
-          {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
-            // Filter for country-specific markets (not tournament-wide) that match search
-            const groupMarkets = filteredMarkets.filter(m => 
-              m.country && teams.some(t => t.name === m.country)
-            );
-            const hasMarkets = groupMarkets.length > 0;
-
-            return (
-              <section key={groupName} id={`group-${groupName}`} className="scroll-mt-24">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                    <span className="font-heading font-black text-lg text-primary">{groupName}</span>
-                  </div>
-                  <div>
-                    <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {hasMarkets ? `${groupMarkets.length} teams with active markets` : 'Markets coming soon'}
-                    </p>
-                  </div>
+          {/* Single Group View or All Groups View */}
+          {activeGroup !== 'ALL' ? (
+            /* Single Group View */
+            <section id={`group-${activeGroup}`} className="scroll-mt-24">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                  <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
                 </div>
+                <div>
+                  <h2 className="font-heading font-bold text-base text-foreground">Group {activeGroup}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {filteredMarkets.length > 0 ? `${filteredMarkets.length} teams with active markets` : 'Markets coming soon'}
+                  </p>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {hasMarkets ? (
-                    groupMarkets.map((market, index) => (
-                      <GroupCountryCard
-                        key={market.id}
-                        market={market}
-                        onSelect={handleCountrySelect}
-                      />
-                    ))
-                  ) : (
-                    teams.map((team, index) => (
-                      <motion.div
-                        key={team.name}
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.03 }}
-                        className="bg-card/40 border border-border/20 rounded-2xl p-4 opacity-50"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-2xl grayscale">
-                            {team.flag}
-                          </div>
-                          <div>
-                            <h3 className="font-heading font-bold text-sm text-muted-foreground">{team.name}</h3>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <Lock className="w-2.5 h-2.5 text-muted-foreground" />
-                              <span className="text-[9px] text-muted-foreground">Coming Soon</span>
-                            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {filteredMarkets.length > 0 ? (
+                  filteredMarkets.map((market, index) => (
+                    <GroupCountryCard
+                      key={market.id}
+                      market={market}
+                      onSelect={handleCountrySelect}
+                    />
+                  ))
+                ) : (
+                  WORLD_CUP_GROUPS_2026[activeGroup].map((team, index) => (
+                    <motion.div
+                      key={team.name}
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="bg-card/40 border border-border/20 rounded-2xl p-4 opacity-50"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-2xl grayscale">
+                          {team.flag}
+                        </div>
+                        <div>
+                          <h3 className="font-heading font-bold text-sm text-muted-foreground">{team.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Lock className="w-2.5 h-2.5 text-muted-foreground" />
+                            <span className="text-[9px] text-muted-foreground">Coming Soon</span>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[1, 2, 3].map((pos) => (
-                            <div key={pos} className="rounded-xl p-2.5 border border-border/20 bg-secondary/10 opacity-40">
-                              <div className="text-center">
-                                <div className="text-[9px] mb-1 text-muted-foreground">
-                                  {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
-                                </div>
-                                <div className="font-heading font-black text-xs text-muted-foreground">--</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[1, 2, 3].map((pos) => (
+                          <div key={pos} className="rounded-xl p-2.5 border border-border/20 bg-secondary/10 opacity-40">
+                            <div className="text-center">
+                              <div className="text-[9px] mb-1 text-muted-foreground">
+                                {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
+                              </div>
+                              <div className="font-heading font-black text-xs text-muted-foreground">--</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </section>
+          ) : (
+            /* All Groups View */
+            Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+              const groupMarkets = filteredMarkets.filter(m => 
+                m.country && teams.some(t => t.name === m.country)
+              );
+              const hasMarkets = groupMarkets.length > 0;
+
+              return (
+                <section key={groupName} id={`group-${groupName}`} className="scroll-mt-24">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                      <span className="font-heading font-black text-lg text-primary">{groupName}</span>
+                    </div>
+                    <div>
+                      <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
+                      <p className="text-xs text-muted-foreground">
+                        {hasMarkets ? `${groupMarkets.length} teams with active markets` : 'Markets coming soon'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {hasMarkets ? (
+                      groupMarkets.map((market, index) => (
+                        <GroupCountryCard
+                          key={market.id}
+                          market={market}
+                          onSelect={handleCountrySelect}
+                        />
+                      ))
+                    ) : (
+                      teams.map((team, index) => (
+                        <motion.div
+                          key={team.name}
+                          initial={{ opacity: 0, scale: 0.98 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.03 }}
+                          className="bg-card/40 border border-border/20 rounded-2xl p-4 opacity-50"
+                        >
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-12 h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-2xl grayscale">
+                              {team.flag}
+                            </div>
+                            <div>
+                              <h3 className="font-heading font-bold text-sm text-muted-foreground">{team.name}</h3>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <Lock className="w-2.5 h-2.5 text-muted-foreground" />
+                                <span className="text-[9px] text-muted-foreground">Coming Soon</span>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-              </section>
-            );
-          })}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[1, 2, 3].map((pos) => (
+                              <div key={pos} className="rounded-xl p-2.5 border border-border/20 bg-secondary/10 opacity-40">
+                                <div className="text-center">
+                                  <div className="text-[9px] mb-1 text-muted-foreground">
+                                    {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
+                                  </div>
+                                  <div className="font-heading font-black text-xs text-muted-foreground">--</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </section>
+              );
+            })
+          )}
 
           {/* Info banner - country markets status */}
           <motion.div
