@@ -265,6 +265,8 @@ export default function LpDashboard() {
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
     queryClient.invalidateQueries({ queryKey: ['openBets'] });
     queryClient.invalidateQueries({ queryKey: ['allOffers', pendingCommitData?.bet_id] });
+    queryClient.invalidateQueries({ queryKey: ['allOffers'] });
+    console.log('[LpDashboard] Invalidated queries for bet_id:', pendingCommitData?.bet_id);
   };
 
   const handleTxError = (err) => {

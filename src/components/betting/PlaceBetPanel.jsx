@@ -27,20 +27,21 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         bet_id: bet?.id,
         count: offers.length,
         offers: offers.map(o => ({
-          id: o.id,
+          id: o.id.slice(0, 8) + '...',
           outcome: o.outcome,
           status: o.status,
           amount_unmatched: o.amount_unmatched,
           amount_offered: o.amount_offered,
-          lp_wallet_address: o.lp_wallet_address,
+          lp_wallet_address: o.lp_wallet_address?.slice(0, 20) + '...',
         })),
       });
       return offers;
     },
     enabled: !!bet?.id,
-    staleTime: 500,
-    refetchInterval: 2000,
+    staleTime: 0,
+    refetchInterval: 1000,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome
