@@ -1093,6 +1093,40 @@ function CreateMatchDialog() {
             <p className="text-[10px] font-bold text-accent mb-2">⏰ Betting Window</p>
             <p className="text-[9px] text-muted-foreground mb-2">When does betting close? (Match starts at {form.match_time ? format(new Date(form.match_time), 'HH:mm') : '--:--'})</p>
             
+            {/* Quick duration buttons */}
+            <div className="flex gap-1 mb-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => {
+                if (!form.match_time) { alert('Set match start time first'); return; }
+                const d = new Date(form.match_time);
+                d.setMinutes(d.getMinutes() + 5);
+                setForm({...form, betting_closes_at: d.toISOString()});
+              }} className="h-6 text-[9px] px-2">5min</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                if (!form.match_time) { alert('Set match start time first'); return; }
+                const d = new Date(form.match_time);
+                d.setMinutes(d.getMinutes() + 15);
+                setForm({...form, betting_closes_at: d.toISOString()});
+              }} className="h-6 text-[9px] px-2">15min</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                if (!form.match_time) { alert('Set match start time first'); return; }
+                const d = new Date(form.match_time);
+                d.setMinutes(d.getMinutes() + 30);
+                setForm({...form, betting_closes_at: d.toISOString()});
+              }} className="h-6 text-[9px] px-2">30min</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                if (!form.match_time) { alert('Set match start time first'); return; }
+                const d = new Date(form.match_time);
+                d.setHours(d.getHours() + 1);
+                setForm({...form, betting_closes_at: d.toISOString()});
+              }} className="h-6 text-[9px] px-2">1hr</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                if (!form.match_time) { alert('Set match start time first'); return; }
+                const d = new Date(form.match_time);
+                d.setHours(d.getHours() + 2);
+                setForm({...form, betting_closes_at: d.toISOString()});
+              }} className="h-6 text-[9px] px-2">2hr</Button>
+            </div>
+            
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-[9px]">Betting Closes Date</Label>
