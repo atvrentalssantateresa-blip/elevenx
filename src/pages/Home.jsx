@@ -20,7 +20,7 @@ const WC_PHOTOS = [
 const FEATURED_MATCHES = [
 { team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a20ec5003fec97668e1177c', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/a1d1835b2_image.png' },
 { team_a: 'South Korea', team_b: 'Czech Republic', group: 'Group A', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177d', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/cf05870f3_image.png' },
-{ team_a: 'Canada', team_b: 'Bosnia & Herzegovina', group: 'Group B', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177e', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png' },
+{ team_a: 'Brazil', team_b: 'Morocco', group: 'Group E', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177e', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png' },
 { team_a: 'USA', team_b: 'Paraguay', group: 'Group D', date: 'Jun 13', matchId: '6a20ec5003fec97668e1177f', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/e4dbfaa4c_image.png' }];
 
 
@@ -239,18 +239,18 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="p-5 flex flex-col flex-1">
+                <div className="p-4 flex flex-col flex-1">
                   {/* Teams */}
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-center flex-1">
+                    <div className="text-center flex-1 min-w-0">
                       <div className="text-3xl mb-1">{getTeamFlag(fm.team_a)}</div>
                       <p className="font-heading font-bold text-sm leading-tight truncate">{fm.team_a}</p>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5 px-3">
+                    <div className="flex flex-col items-center gap-0.5 px-2">
                       <span className="font-heading font-black text-primary text-base">VS</span>
-                      <span className="text-[10px] text-muted-foreground">{fm.date}</span>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{fm.date}</span>
                     </div>
-                    <div className="text-center flex-1">
+                    <div className="text-center flex-1 min-w-0">
                       <div className="text-3xl mb-1">{getTeamFlag(fm.team_b)}</div>
                       <p className="font-heading font-bold text-sm leading-tight truncate">{fm.team_b}</p>
                     </div>
@@ -258,16 +258,16 @@ export default function Home() {
 
                   {/* Odds Multipliers */}
                   {bet && (
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 text-center">
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-1.5 text-center">
                         <p className="text-[9px] text-muted-foreground font-medium truncate">{fm.team_a}</p>
                         <p className="font-heading font-bold text-sm text-primary">{bet.odds_a?.toFixed(2) || '0.00'}x</p>
                       </div>
-                      <div className="bg-secondary/50 border border-border/30 rounded-lg p-2 text-center">
+                      <div className="bg-secondary/50 border border-border/30 rounded-lg p-1.5 text-center">
                         <p className="text-[9px] text-muted-foreground font-medium">Draw</p>
                         <p className="font-heading font-bold text-sm text-foreground">{bet.odds_draw?.toFixed(2) || '0.00'}x</p>
                       </div>
-                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 text-center">
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-1.5 text-center">
                         <p className="text-[9px] text-muted-foreground font-medium truncate">{fm.team_b}</p>
                         <p className="font-heading font-bold text-sm text-primary">{bet.odds_b?.toFixed(2) || '0.00'}x</p>
                       </div>
