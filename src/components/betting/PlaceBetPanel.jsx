@@ -38,10 +38,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       return offers;
     },
     enabled: !!bet?.id,
-    staleTime: 0,
-    refetchInterval: 1000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    staleTime: 5000,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: false,
   });
 
   // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome OR selected offer
@@ -409,10 +408,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         
       </div>
 
-      <div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-muted-foreground">Enter Stake Amount</label>
+          {maxMatcherStake !== null && maxMatcherStake > 0 && (
+            <span className="text-[10px] text-accent font-medium">Max: ◎{Number(maxMatcherStake).toFixed(4)}</span>
+          )}
+        </div>
         <Input
           type="number"
-          placeholder="0.00"
+          placeholder="◎0.00"
           value={amount}
           min={0}
           max={maxMatcherStake !== null ? maxMatcherStake : undefined}
@@ -546,7 +551,15 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         disabled={stakeNum <= 0 || isPreparing || timeRemaining && timeRemaining.total <= 0 || mode === 'match' && !hasLiquidityForOutcome || mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake}
         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">
         
-          {timeRemaining && timeRemaining.total <= 0 ?
+        {(() => {
+          // Debug: show why button is disabled
+          if (stakeNum <= 0) console.log('[PlaceBetPanel] Button disabled: stakeNum <= 0', stakeNum);
+          if (isPreparing) console.log('[PlaceBetPanel] Button disabled: isPreparing');
+          if (timeRemaining && timeRemaining.total <= 0) console.log('[PlaceBetPanel] Button disabled: betting closed');
+          if (mode === 'match' && !hasLiquidityForOutcome) console.log('[PlaceBetPanel] Button disabled: no liquidity', { hasLiquidityForOutcome, totalLiquidityForOutcome, selectedOffer: selectedOffer?.id });
+          if (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake) console.log('[PlaceBetPanel] Button disabled: stake exceeds max', { stakeNum, maxMatcherStake });
+          
+          return timeRemaining && timeRemaining.total <= 0 ?
         <>
               <Clock className="w-4 h-4 mr-2" />
               Betting Closed
@@ -557,8 +570,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
               No LP — Go to LP Dashboard
             </> :
         isPreparing ? 'Preparing...' :
-        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`
-        }
+        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`;
+        })()}
         </Button>
       }
     </div>);
