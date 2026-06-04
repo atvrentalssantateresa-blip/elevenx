@@ -465,16 +465,10 @@ export default function LpDashboard() {
               ))}
             </div>
 
-            {/* Provide liquidity panel */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Plus className="w-4 h-4 text-primary" />
-                <h2 className="font-heading font-bold text-sm">Provide Liquidity</h2>
-              </div>
-
+            {/* Provide liquidity section */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               {error && (
-                <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+                <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 mb-4">
                   <AlertCircle className="w-4 h-4 text-destructive" />
                   <AlertDescription className="text-destructive text-sm">
                     {error}
@@ -491,21 +485,21 @@ export default function LpDashboard() {
                   onError={handleTxError}
                 />
               ) : (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs text-muted-foreground">Select Market</label>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setMatchViewMode(matchViewMode === 'all' ? 'dropdown' : 'all')}
-                        className="h-6 text-xs"
-                      >
-                        {matchViewMode === 'all' ? 'Show as List' : 'Show as Grid'}
-                      </Button>
-                    </div>
-                    
-                    {matchViewMode === 'dropdown' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-heading font-bold text-sm">Provide Liquidity</h2>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setMatchViewMode(matchViewMode === 'all' ? 'dropdown' : 'all')}
+                      className="h-6 text-xs"
+                    >
+                      {matchViewMode === 'all' ? 'Show as List' : 'Show as Grid'}
+                    </Button>
+                  </div>
+                  
+                  {matchViewMode === 'dropdown' ? (
+                    <div className="space-y-3">
                       <Select onValueChange={(val) => {
                         const bet = filteredOpenBets.find(b => b.id === val);
                         setSelectedBet(bet || null);
@@ -523,109 +517,109 @@ export default function LpDashboard() {
                           ))}
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <div>
-                        {/* Group Navigation */}
-                        <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+
+                      {selectedBet && (
+                        <>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1.5 block">Select Outcome to Cover</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                { key: 'a', label: selectedBet.outcome_a, odds: selectedBet.odds_a || selectedBet.oracle_odds_a },
+                                { key: 'draw', label: 'Draw', odds: selectedBet.odds_draw || selectedBet.oracle_odds_draw },
+                                { key: 'b', label: selectedBet.outcome_b, odds: selectedBet.odds_b || selectedBet.oracle_odds_b },
+                              ].map(o => {
+                                let displayOdds = '—';
+                                if (o.odds) {
+                                  const oddsNum = typeof o.odds === 'string' ? parseFloat(o.odds) : o.odds;
+                                  displayOdds = oddsNum.toFixed(2) + 'x';
+                                }
+                                return (
+                                  <button key={o.key}
+                                    onClick={() => setSelectedOutcome(o.key)}
+                                    className={`rounded-xl p-3 border-2 text-center transition-all ${
+                                      selectedOutcome === o.key
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border/50 bg-secondary/30 hover:border-border'
+                                    }`}>
+                                    <p className="font-heading font-bold text-xs">{o.label}</p>
+                                    <p className="text-primary font-bold text-sm mt-0.5">{displayOdds}</p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1.5 block">Amount (◎ SOL)</label>
+                            <Input type="number" placeholder="0.00" value={amount}
+                              onChange={e => setAmount(e.target.value)}
+                              className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
+                            <div className="flex gap-2 mt-2">
+                              {[0.5, 1, 5, 10].map(qa => (
+                                <button key={qa} onClick={() => setAmount(String(qa))}
+                                  className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg">◎{qa}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <Button
+                            onClick={() => provideLiquidityMutation.mutate()}
+                            disabled={!amount || parseFloat(amount) <= 0 || provideLiquidityMutation.isPending}
+                            className="w-full h-12 font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                            {provideLiquidityMutation.isPending ? (
+                              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                            ) : `Commit ◎${parseFloat(amount) || 0} Liquidity`}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Group Navigation */}
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        <button
+                          onClick={() => setActiveGroup('all')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                            activeGroup === 'all'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          All Groups
+                        </button>
+                        {groups.filter(g => g !== 'all').map(group => (
                           <button
-                            onClick={() => setActiveGroup('all')}
+                            key={group}
+                            onClick={() => setActiveGroup(group)}
                             className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                              activeGroup === 'all'
+                              activeGroup === group
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                             }`}
                           >
-                            All Groups
+                            {group}
                           </button>
-                          {groups.filter(g => g !== 'all').map(group => (
-                            <button
-                              key={group}
-                              onClick={() => setActiveGroup(group)}
-                              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                                activeGroup === group
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
-                              }`}
-                            >
-                              {group}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
-                          {filteredOpenBets.map(bet => {
-                            const match = matches.find(m => m.id === bet.match_id);
-                            return (
-                              <MatchLiquidityCard
-                                key={bet.id}
-                                bet={bet}
-                                match={match}
-                                isSelected={selectedBet?.id === bet.id}
-                                onClick={() => {
-                                  setSelectedBetForDetail({ bet, match });
-                                  setDetailModalOpen(true);
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedBet && (
-                    <>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1.5 block">Select Outcome to Cover</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { key: 'a', label: selectedBet.outcome_a, odds: selectedBet.odds_a || selectedBet.oracle_odds_a },
-                            { key: 'draw', label: 'Draw', odds: selectedBet.odds_draw || selectedBet.oracle_odds_draw },
-                            { key: 'b', label: selectedBet.outcome_b, odds: selectedBet.odds_b || selectedBet.oracle_odds_b },
-                          ].map(o => {
-                            let displayOdds = '—';
-                            if (o.odds) {
-                              const oddsNum = typeof o.odds === 'string' ? parseFloat(o.odds) : o.odds;
-                              displayOdds = oddsNum.toFixed(2) + 'x';
-                            }
-                            return (
-                              <button key={o.key}
-                                onClick={() => setSelectedOutcome(o.key)}
-                                className={`rounded-xl p-3 border-2 text-center transition-all ${
-                                  selectedOutcome === o.key
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border/50 bg-secondary/30 hover:border-border'
-                                }`}>
-                                <p className="font-heading font-bold text-xs">{o.label}</p>
-                                <p className="text-primary font-bold text-sm mt-0.5">{displayOdds}</p>
-                              </button>
-                            );
-                          })}
-                        </div>
+                        ))}
                       </div>
 
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1.5 block">Amount (◎ SOL)</label>
-                        <Input type="number" placeholder="0.00" value={amount}
-                          onChange={e => setAmount(e.target.value)}
-                          className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
-                        <div className="flex gap-2 mt-2">
-                          {[0.5, 1, 5, 10].map(qa => (
-                            <button key={qa} onClick={() => setAmount(String(qa))}
-                              className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg">◎{qa}</button>
-                          ))}
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {filteredOpenBets.map(bet => {
+                          const match = matches.find(m => m.id === bet.match_id);
+                          return (
+                            <MatchLiquidityCard
+                              key={bet.id}
+                              bet={bet}
+                              match={match}
+                              isSelected={selectedBet?.id === bet.id}
+                              onClick={() => {
+                                setSelectedBetForDetail({ bet, match });
+                                setDetailModalOpen(true);
+                              }}
+                            />
+                          );
+                        })}
                       </div>
-
-                      <Button
-                        onClick={() => provideLiquidityMutation.mutate()}
-                        disabled={!amount || parseFloat(amount) <= 0 || provideLiquidityMutation.isPending}
-                        className="w-full h-12 font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                        {provideLiquidityMutation.isPending ? (
-                          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        ) : `Commit ◎${parseFloat(amount) || 0} Liquidity`}
-                      </Button>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
