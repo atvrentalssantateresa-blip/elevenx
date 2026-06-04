@@ -15,55 +15,71 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Missing bet_id' }, { status: 400 });
         }
 
-        const apiKey = Deno.env.get('THE_ODDS_API_KEY');
-        if (!apiKey) {
-            return Response.json({ error: 'THE_ODDS_API_KEY not configured' }, { status: 500 });
-        }
-
-        // Fetch all odds from The Odds API
-        const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${apiKey}&regions=eu,us&markets=h2h&oddsFormat=decimal`;
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            return Response.json({ 
-                error: 'API request failed', 
-                message: `Status: ${response.status}` 
-            }, { status: response.status });
-        }
-
-        const data = await response.json();
-        
-        if (!Array.isArray(data)) {
-            return Response.json({ 
-                error: 'Invalid API response', 
-                message: 'Expected array of matches' 
-            }, { status: 500 });
-        }
-
         // Get the bet to find team names
         const bet = await base44.entities.Bet.get(bet_id);
         if (!bet) {
             return Response.json({ error: 'Bet not found' }, { status: 404 });
         }
 
-        // Find matching game by team names
-        const matchedGame = data.find(game => {
-            const homeMatch = game.home_team.toLowerCase() === bet.outcome_a.toLowerCase() ||
-                             bet.outcome_a.toLowerCase().includes(game.home_team.toLowerCase());
-            const awayMatch = game.away_team.toLowerCase() === bet.outcome_b.toLowerCase() ||
-                             bet.outcome_b.toLowerCase().includes(game.away_team.toLowerCase());
-            return homeMatch && awayMatch;
+        // Get the match
+        const match = await base44.entities.Match.get(bet.match_id);
+        if (!match) {
+            return Response.json({ error: 'Match not found' }, { status: 404 });
+        }
+
+        // Call fetchTheOddsApi to get all matches
+        const oddsRes = await fetch('https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/', {
+            headers: {
+                'X-API-Key': Deno.env.get('THE_ODDS_API_KEY') || ''
+            }
+        });
+
+        if (!oddsRes.ok) {
+            return Response.json({ 
+                error: 'API request failed', 
+                message: `Status: ${oddsRes.status}` 
+            }, { status: oddsRes.status });
+        }
+
+        const allMatches = await oddsRes.json();
+        
+        if (!Array.isArray(allMatches)) {
+            return Response.json({ 
+                error: 'Invalid API response', 
+                message: 'Expected array of matches' 
+            }, { status: 500 });
+        }
+
+        // Find matching game by team names (flexible matching)
+        const matchedGame = allMatches.find(game => {
+            const home = game.home_team.toLowerCase();
+            const away = game.away_team.toLowerCase();
+            const teamA = match.team_a.toLowerCase();
+            const teamB = match.team_b.toLowerCase();
+            
+            // Try exact match
+            if (home === teamA && away === teamB) return true;
+            
+            // Try reverse (API might have teams swapped)
+            if (home === teamB && away === teamA) return true;
+            
+            // Try partial match (e.g. "Czech Republic" vs "Czechia")
+            if ((home.includes(teamA) || teamA.includes(home)) &&
+                (away.includes(teamB) || teamB.includes(away))) return true;
+            
+            return false;
         });
 
         if (!matchedGame) {
             return Response.json({ 
                 error: 'Match not found in API', 
-                message: `Could not find ${bet.outcome_a} vs ${bet.outcome_b} in The Odds API` 
+                message: `Could not find ${match.team_a} vs ${match.team_b}. Make sure team names match exactly.` 
             }, { status: 404 });
         }
 
-        // Extract odds from first bookmaker
-        const bookmaker = matchedGame.bookmakers?.[0];
+        // Extract odds from Pinnacle first, then fallback to any bookmaker
+        let bookmaker = matchedGame.bookmakers?.find(b => b.title === 'Pinnacle') || matchedGame.bookmakers?.[0];
+        
         if (!bookmaker?.markets?.[0]?.outcomes) {
             return Response.json({ 
                 error: 'No odds available', 
@@ -89,7 +105,7 @@ Deno.serve(async (req) => {
             success: true,
             bookmaker: bookmaker.title || 'The Odds API',
             odds: { home: homeOdds, away: awayOdds, draw: drawOdds },
-            message: 'Odds updated successfully'
+            message: `Odds updated: ${match.team_a} ${homeOdds.toFixed(2)}x | Draw ${drawOdds.toFixed(2)}x | ${match.team_b} ${awayOdds.toFixed(2)}x`
         });
 
     } catch (error) {

@@ -30,15 +30,15 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
       });
       
       if (res.data.error) {
-        alert(res.data.error);
+        alert('❌ ' + res.data.error);
       } else if (res.data.success) {
         if (onOddsRefresh) onOddsRefresh();
-        alert(`Odds updated! ${res.data.bookmaker}: ${match.team_a} ${res.data.odds.home.toFixed(2)}x | Draw ${res.data.odds.draw.toFixed(2)}x | ${match.team_b} ${res.data.odds.away.toFixed(2)}x`);
+        alert('✅ ' + res.data.message);
       } else {
-        alert(res.data.message || 'Failed to fetch odds');
+        alert('⚠️ ' + (res.data.message || 'Failed to fetch odds'));
       }
     } catch (err) {
-      alert('Failed to fetch odds: ' + err.message);
+      alert('❌ Error: ' + err.message);
     } finally {
       setIsRefreshing(false);
     }
