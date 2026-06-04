@@ -41,7 +41,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
                background: 'linear-gradient(145deg, rgba(15,10,30,0.95) 0%, rgba(26,16,64,0.9) 100%)',
              }}>
           {/* Purple gradient border frame */}
-          <div className="absolute inset-0 rounded-2xl p-[2px] pointer-events-none">
+          <div className="absolute inset-0 rounded-2xl p-[1px] pointer-events-none">
             <div className="absolute inset-0 rounded-2xl" 
                  style={{
                    background: 'linear-gradient(135deg, #a69cf2, #8b84e8, #6d5dd3)',
@@ -49,7 +49,7 @@ export default function MatchCard({ match, bet, index = 0 }) {
           </div>
           
           {/* Inner content */}
-          <div className="relative z-10 rounded-2xl bg-[#0f0a1e]/95 backdrop-blur-sm m-[2px]">
+          <div className="relative z-10 rounded-2xl bg-[#0f0a1e]/95 backdrop-blur-sm m-[1px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs text-muted-foreground font-semibold">
