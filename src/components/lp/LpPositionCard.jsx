@@ -1,28 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2 } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import BetCountdown from '@/components/betting/BetCountdown';
+import { base44 } from '@/api/base44Client';
 
-export default function LpPositionCard({ offer, match, onWithdraw }) {
-  if (!offer || !match) return null;
+export default function LpPositionCard({ position, match, walletAddress, onWithdrawRequest }) {
+  // Support both BetOffer (offer) and UserBet (position) entities
+  const offer = position;
+  if (!offer) return null;
+  
+  // Get match from position data if not passed
+  const matchData = match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '' };
 
-  const matchPct = offer.amount_offered > 0
-    ? Math.round((offer.amount_matched / offer.amount_offered) * 100)
+  // Handle UserBet entity structure (liquidity_deposited, liquidity_matched, liquidity_unmatched)
+  const liquidityDeposited = offer.liquidity_deposited || offer.amount_offered || 0;
+  const liquidityMatched = offer.liquidity_matched || offer.amount_matched || 0;
+  const liquidityUnmatched = offer.liquidity_unmatched || offer.amount_unmatched || 0;
+  
+  const matchPct = liquidityDeposited > 0
+    ? Math.round((liquidityMatched / liquidityDeposited) * 100)
     : 0;
 
-  const hasUnmatched = (offer.amount_unmatched || 0) > 0;
-  const isFullyMatched = offer.status === 'fully_matched';
+  const hasUnmatched = liquidityUnmatched > 0;
+  const isFullyMatched = offer.status === 'fully_matched' || offer.status === 'settled';
   const isPartiallyMatched = offer.status === 'partially_matched';
+  const isOpen = offer.status === 'open';
 
   // Calculate potential earnings (2% fee on matched portion)
-  const potentialEarnings = offer.amount_matched * 0.02;
+  const potentialEarnings = liquidityMatched * 0.02;
 
   const getOutcomeLabel = () => {
-    if (offer.outcome === 'a') return offer.outcome_label || match.team_a;
-    if (offer.outcome === 'b') return offer.outcome_label || match.team_b;
+    if (offer.outcome === 'a') return offer.outcome_label || matchData.team_a;
+    if (offer.outcome === 'b') return offer.outcome_label || matchData.team_b;
     return 'Draw';
   };
 
@@ -30,9 +42,48 @@ export default function LpPositionCard({ offer, match, onWithdraw }) {
     open: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30' },
     partially_matched: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
     fully_matched: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30' },
+    withdrawn: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30' },
+    settled: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30' },
   };
 
   const currentStatus = statusConfig[offer.status] || statusConfig.open;
+  
+  // Handle withdraw click - fetch match data and prepare withdraw instruction
+  const handleWithdraw = async () => {
+    if (!onWithdrawRequest) return;
+    
+    try {
+      // Fetch match data if not provided
+      let matchData = match;
+      if (!matchData && offer.match_id) {
+        const matches = await base44.entities.Match.list();
+        matchData = matches.find(m => m.id === offer.match_id);
+      }
+      
+      // Call backend to prepare withdraw instruction
+      const res = await base44.functions.invoke('withdrawLiquidity', {
+        walletAddress,
+        userBetId: offer.id,
+        offer_id: offer.offer_id
+      });
+      
+      if (res.data.error) {
+        console.error('[LpPositionCard] Withdraw error:', res.data.error);
+        return;
+      }
+      
+      // Pass withdraw data to parent
+      onWithdrawRequest({
+        solanaInstruction: res.data.solana_instruction,
+        withdrawAmount: res.data.amount,
+        positionId: offer.id,
+        offerId: offer.offer_id,
+        match: matchData
+      });
+    } catch (err) {
+      console.error('[LpPositionCard] Withdraw failed:', err);
+    }
+  };
 
   return (
     <motion.div
@@ -90,10 +141,10 @@ export default function LpPositionCard({ offer, match, onWithdraw }) {
           <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2.5 border border-white/10">
             <div className="flex items-center gap-1 mb-1">
               <DollarSign className="w-2.5 h-2.5 text-muted-foreground" />
-              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Committed</span>
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Deposited</span>
             </div>
             <p className="font-heading font-bold text-white text-xs sm:text-sm">
-              ◎{(offer.amount_offered || 0).toFixed(4)}
+              ◎{liquidityDeposited.toFixed(4)}
             </p>
           </div>
 
@@ -103,17 +154,17 @@ export default function LpPositionCard({ offer, match, onWithdraw }) {
               <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Matched</span>
             </div>
             <p className="font-heading font-bold text-accent text-xs sm:text-sm">
-              ◎{(offer.amount_matched || 0).toFixed(4)}
+              ◎{liquidityMatched.toFixed(4)}
             </p>
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2.5 border border-white/10">
             <div className="flex items-center gap-1 mb-1">
-              <Clock className="w-2.5 h-2.5 text-yellow-400" />
-              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Unmatched</span>
+              <Wallet className="w-2.5 h-2.5 text-yellow-400" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Available</span>
             </div>
             <p className="font-heading font-bold text-yellow-400 text-xs sm:text-sm">
-              ◎{(offer.amount_unmatched || 0).toFixed(4)}
+              ◎{liquidityUnmatched.toFixed(4)}
             </p>
           </div>
         </div>
@@ -150,14 +201,14 @@ export default function LpPositionCard({ offer, match, onWithdraw }) {
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
-          {hasUnmatched && onWithdraw ? (
+          {hasUnmatched && onWithdrawRequest ? (
             <Button
-              onClick={() => onWithdraw(offer)}
+              onClick={handleWithdraw}
               variant="outline"
               className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
             >
-              <Clock className="w-3 h-3 mr-1" />
-              Withdraw ◎{(offer.amount_unmatched || 0).toFixed(4)}
+              <Wallet className="w-3 h-3 mr-1" />
+              Withdraw ◎{liquidityUnmatched.toFixed(4)}
             </Button>
           ) : (
             <Button

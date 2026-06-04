@@ -426,7 +426,24 @@ export default function MyBets() {
 
         <TabsContent value="liquidity" className="space-y-3">
           {myLpPositions.length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-4">
+            {/* Unmatched Liquidity Summary */}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-yellow-400" />
+                  <h3 className="font-heading font-bold text-sm text-yellow-400">Available to Withdraw</h3>
+                </div>
+                <p className="font-heading font-bold text-xl text-yellow-400">
+                  ◎{myLpPositions.reduce((s, lp) => s + (lp.liquidity_unmatched || 0), 0).toFixed(4)} SOL
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Unmatched funds can be withdrawn anytime — no lock-up period
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {myLpPositions.map((lp, i) => (
                 <LpPositionCard
                   key={lp.id}
@@ -444,7 +461,8 @@ export default function MyBets() {
                   }}
                 />
               ))}
-            </div> :
+            </div>
+          </div> :
 
           <EmptyState message="No liquidity positions" actionText="Provide Liquidity" link="/matches" />
           }
@@ -468,6 +486,40 @@ export default function MyBets() {
           }
         </TabsContent>
       </Tabs>
+
+      {/* LP Withdraw Dialog */}
+      {pendingWithdrawTx && (
+        <Dialog open={!!pendingWithdrawTx} onOpenChange={() => setPendingWithdrawTx(null)}>
+          <DialogContent className="bg-card border-border/50 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-heading">Withdraw Unmatched Liquidity</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
+                <p className="text-sm text-muted-foreground">Withdraw Amount</p>
+                <p className="font-heading font-bold text-2xl text-yellow-400">◎{pendingWithdrawTx.amount?.toFixed(4)} SOL</p>
+                <p className="text-xs text-muted-foreground mt-2">Unmatched liquidity returned to your wallet</p>
+              </div>
+              
+              <SolanaTransactionSigner
+                instruction={pendingWithdrawTx.instruction}
+                amount={pendingWithdrawTx.amount?.toFixed(4) || '0'}
+                userBetId={pendingWithdrawTx.userBetId}
+                offerId={pendingWithdrawTx.offerId}
+                onSuccess={handleWithdrawSuccess}
+                onError={handleWithdrawError} />
+              
+              <Button
+                variant="outline"
+                onClick={() => setPendingWithdrawTx(null)}
+                className="w-full h-10 text-sm rounded-xl border-border/50">
+                
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {myBets.length === 0 && !isLoading &&
       <div className="text-center py-16 sm:py-20">
