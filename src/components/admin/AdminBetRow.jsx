@@ -68,7 +68,7 @@ export default function AdminBetRow({ bet, matches, index }) {
     await queryClient.refetchQueries({ queryKey: ['marketStatus', match?.id] });
   };
   
-  React.useEffect(() => {
+  useEffect(() => {
     if (marketStatus) {
       console.log('[AdminBetRow] Market status for', bet.match_id, ':', marketStatus);
     }
