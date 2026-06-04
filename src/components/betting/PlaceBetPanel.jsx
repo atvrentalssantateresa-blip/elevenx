@@ -383,11 +383,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       </AnimatePresence>
 
       {/* Block betting when no LP liquidity exists */}
-      {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
-      <p className="text-xs text-destructive text-center font-bold bg-destructive/10 border border-destructive/30 rounded-lg p-3 hidden">
-        🚫 Betting Unavailable - No LP Liquidity
-      </p>
-      }
+      
+
+
+
+      
       
       {/* Warn when stake exceeds available LP coverage */}
       {stakeNum > 0 && mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake &&
