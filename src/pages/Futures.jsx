@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, TrendingUp, Clock, ChevronRight, Lock, Trophy, Calendar, Loader, RefreshCcw, Sparkles, Globe, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Trophy, Loader, Search, Globe } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import GroupCountryCard from '@/components/futures/GroupCountryCard';
-import { Droplets, Crown, Zap } from 'lucide-react';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 import FuturesBetSlip from '@/components/futures/FuturesBetSlip';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
@@ -16,11 +14,9 @@ export default function Futures() {
   const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [selectedMarket, setSelectedMarket] = useState(null);
   const [showBetSlip, setShowBetSlip] = useState(false);
-  const [activeTab, setActiveTab] = useState('futures');
   const [activeGroup, setActiveGroup] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
-  const groupRefs = useRef({});
 
   // Fetch futures markets from database
   const { data: futuresMarkets = [], isLoading } = useQuery({
@@ -253,76 +249,57 @@ export default function Futures() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Tab Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsContent value="futures" className="mt-6">
-          {/* Combined Hero + How It Works Banner */}
+    <div className="space-y-6">
+      {/* Hero Section - Full Width like Matches */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-2xl sm:rounded-3xl overflow-hidden p-4 sm:p-7 mb-6"
-            style={{ background: 'linear-gradient(135deg, #1a0a3e 0%, #0d0520 50%, #0a1a2e 100%)' }}
+            transition={{ duration: 0.5 }}
+            className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-8"
+            style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}
           >
-            {/* Glow orbs */}
-            <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
-              style={{ background: 'radial-gradient(circle, #a69cf2, transparent)' }} />
-            <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15 blur-3xl"
-              style={{ background: 'radial-gradient(circle, #34d399, transparent)' }} />
-
-            <div className="relative">
+            <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
+            <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: '#14f195' }} />
+            
+            <div className="relative z-10">
               <div className="flex items-center gap-2 mb-3">
-                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
-                <span className="text-[9px] sm:text-xs font-bold text-orange-400 uppercase tracking-widest">World Cup 2026</span>
-                <Badge className="ml-auto text-[8px] sm:text-[10px] bg-primary/20 text-primary border border-primary/30 hidden sm:inline-flex">Official Groups</Badge>
+                <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full">
+                  <Trophy className="w-3 h-3 text-primary" />
+                  <span className="text-[10px] sm:text-[11px] font-bold text-primary tracking-widest">WORLD CUP 2026</span>
+                </div>
               </div>
-
-              <div className="flex items-center justify-between mb-2">
-                <h1 className="font-heading font-black text-2xl sm:text-3xl text-white">Tournament Futures</h1>
-                <Button
-                  size="sm"
-                  onClick={() => fetchOddsMutation.mutate()}
-                  disabled={fetchOddsMutation.isPending}
-                  className="bg-accent/20 hover:bg-accent/30 text-accent border border-accent/30 text-[10px] sm:text-xs font-bold h-8 sm:h-9 px-2 sm:px-3"
-                >
-                  {fetchOddsMutation.isPending ? (
-                    <Loader className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5 animate-spin" />
-                  ) : (
-                    <RefreshCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-1.5" />
-                  )}
-                  <span className="hidden sm:inline">Update Odds</span>
-                  <span className="sm:hidden">Update</span>
-                </Button>
-              </div>
+              <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 text-white">
+                Tournament Futures
+              </h1>
               <p className="text-white/50 text-xs sm:text-sm max-w-md mb-4">
                 All 48 teams across 12 groups. Bet on 1st, 2nd, or 3rd place finishes with live multipliers.
               </p>
 
-              {/* How It Works - Integrated into Hero */}
+              {/* How Futures Betting Works - Integrated into Hero */}
               <div className="border-t border-white/10 pt-4">
                 <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full text-primary text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-3">
-                  🏆 How Futures Work
+                  🏆 How Futures Betting Works
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
                     <span className="text-lg sm:text-xl">💡</span>
                     <h3 className="font-heading font-bold text-[11px] sm:text-xs text-primary">How It Works</h3>
                     <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                      <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover payouts. Your stake goes into the pool. Winners share after tournament ends.
+                      <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover payouts. Your bet goes <strong>pending</strong> until matched, then <strong>locked in</strong> with fixed odds.
                     </p>
                   </div>
                   <div className="space-y-1.5">
                     <span className="text-lg sm:text-xl">👑</span>
                     <h3 className="font-heading font-bold text-[11px] sm:text-xs text-accent">Be the House (LP)</h3>
                     <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                      Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing stakes! <strong>Withdraw unmatched funds anytime</strong> — only locked once matched.
+                      Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing stakes! <strong>Withdraw unmatched funds anytime</strong> — only locked once matched. <strong>Claims processed instantly</strong> — winnings paid via admin withdrawal.
                     </p>
                   </div>
                   <div className="space-y-1.5">
                     <span className="text-lg sm:text-xl">⚠️</span>
                     <h3 className="font-heading font-bold text-[11px] sm:text-xs text-yellow-400">Important</h3>
                     <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                      Bets go into <strong>pending pool</strong> until LP matches them. Once matched, your bet is <strong>locked in</strong> with fixed odds. No LP = bet stays pending!
+                      Bets go into <strong>pending pool</strong> until LP matches them. Once matched, your bet is <strong>locked in</strong> with fixed odds. No LP = bet stays pending! <strong>Instant DB claims</strong> — no on-chain delays.
                     </p>
                   </div>
                 </div>
@@ -330,127 +307,80 @@ export default function Futures() {
             </div>
           </motion.div>
 
+      {/* Search & Group Filter */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="space-y-3"
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search countries..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-9 sm:pl-10 bg-card border-border/50 h-10 sm:h-11 rounded-xl text-xs sm:text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="text-[10px] sm:text-xs font-bold">Clear</span>
+            </button>
+          )}
+        </div>
 
+        {/* Quick-Jump Group Navigation */}
+        <GroupNavigation 
+          onGroupClick={(groupName) => {
+            setActiveGroup(groupName);
+            if (groupName !== 'ALL') {
+              const element = document.getElementById(`group-${groupName}`);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }
+          }} 
+          activeGroup={activeGroup} 
+        />
+      </motion.div>
 
-          {/* Search Bar */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search country (e.g. Brazil, Argentina)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border/50 rounded-xl pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <span className="text-[10px] sm:text-xs font-bold">Clear</span>
-              </button>
-            )}
-          </div>
-
-          {/* Group Navigation with Stats */}
-          <div className="flex flex-col gap-3">
-            <GroupNavigation 
-              onGroupClick={(groupName) => {
-                setActiveGroup(groupName);
-                if (groupName !== 'ALL') {
-                  const element = document.getElementById(`group-${groupName}`);
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }
-              }} 
-              activeGroup={activeGroup} 
-            />
-            
-            {/* Stats - Pool & LP Offers */}
-            <div className="flex items-center justify-center gap-4 sm:gap-3 bg-card/50 border border-border/50 rounded-xl px-3 sm:px-4 py-2">
-              <div className="text-center">
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Total Pool</p>
-                <p className="font-heading font-bold text-xs sm:text-sm text-primary">◎{(totalPool / 1000).toFixed(2)}K</p>
+      {filteredMarkets.length > 0 ? (
+        activeGroup !== 'ALL' ? (
+          /* Single Group View */
+          <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                <span className="font-heading font-black text-base sm:text-lg text-primary">{activeGroup}</span>
               </div>
-              <div className="w-px h-6 sm:h-8 bg-border" />
-              <div className="text-center">
-                <p className="text-[9px] sm:text-[10px] text-muted-foreground">LP Offers</p>
-                <p className="font-heading font-bold text-xs sm:text-sm text-accent">{totalLpOffers}</p>
+              <div>
+                <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                  {filteredMarkets.length} teams
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* Single Group View or All Groups View */}
-          {activeGroup !== 'ALL' ? (
-            /* Single Group View */
-            <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
-              <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                  <span className="font-heading font-black text-base sm:text-lg text-primary">{activeGroup}</span>
-                </div>
-                <div>
-                  <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    {filteredMarkets.length > 0 ? `${filteredMarkets.length} teams` : 'Coming soon'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
-                {filteredMarkets.length > 0 ? (
-                  filteredMarkets.map((market, index) => (
-                    <GroupCountryCard
-                      key={market.id}
-                      market={market}
-                      onSelect={handleCountrySelect}
-                    />
-                  ))
-                ) : (
-                  WORLD_CUP_GROUPS_2026[activeGroup].map((team, index) => (
-                    <motion.div
-                      key={team.name}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="bg-card/40 border border-border/20 rounded-2xl p-4 opacity-50"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-2xl grayscale">
-                          {team.flag}
-                        </div>
-                        <div>
-                          <h3 className="font-heading font-bold text-sm text-muted-foreground">{team.name}</h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Lock className="w-2.5 h-2.5 text-muted-foreground" />
-                            <span className="text-[9px] text-muted-foreground">Coming Soon</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[1, 2, 3].map((pos) => (
-                          <div key={pos} className="rounded-xl p-2.5 border border-border/20 bg-secondary/10 opacity-40">
-                            <div className="text-center">
-                              <div className="text-[9px] mb-1 text-muted-foreground">
-                                {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
-                              </div>
-                              <div className="font-heading font-black text-xs text-muted-foreground">--</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </section>
-          ) : (
-            /* All Groups View */
-            Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {filteredMarkets.map((m, i) => (
+                <GroupCountryCard
+                  key={m.id}
+                  market={m}
+                  onSelect={handleCountrySelect}
+                />
+              ))}
+            </div>
+          </section>
+        ) : (
+          /* All Groups View */
+          <div className="space-y-6 sm:space-y-8">
+            {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
               const groupMarkets = filteredMarkets.filter(m => 
                 m.country && teams.some(t => t.name === m.country)
               );
-              const hasMarkets = groupMarkets.length > 0;
+              if (groupMarkets.length === 0) return null;
 
               return (
                 <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
@@ -461,112 +391,39 @@ export default function Futures() {
                     <div>
                       <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {groupName}</h2>
                       <p className="text-[10px] sm:text-xs text-muted-foreground">
-                        {hasMarkets ? `${groupMarkets.length} teams` : 'Coming soon'}
+                        {groupMarkets.length} teams
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
-                    {hasMarkets ? (
-                      groupMarkets.map((market, index) => (
-                        <GroupCountryCard
-                          key={market.id}
-                          market={market}
-                          onSelect={handleCountrySelect}
-                        />
-                      ))
-                    ) : (
-                      teams.map((team, index) => (
-                        <motion.div
-                          key={team.name}
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.03 }}
-                          className="bg-card/40 border border-border/20 rounded-2xl p-3 sm:p-4 opacity-50"
-                        >
-                          <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary/30 border-2 border-border/30 flex items-center justify-center text-xl sm:text-2xl grayscale">
-                              {team.flag}
-                            </div>
-                            <div>
-                              <h3 className="font-heading font-bold text-xs sm:text-sm text-muted-foreground">{team.name}</h3>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-muted-foreground" />
-                                <span className="text-[9px] text-muted-foreground">Coming Soon</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                            {[1, 2, 3].map((pos) => (
-                              <div key={pos} className="rounded-lg sm:rounded-xl p-2 sm:p-2.5 border border-border/20 bg-secondary/10 opacity-40">
-                                <div className="text-center">
-                                  <div className="text-[8px] sm:text-[9px] mb-1 text-muted-foreground">
-                                    {pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'} {pos}{pos === 1 ? 'st' : pos === 2 ? 'nd' : 'rd'}
-                                  </div>
-                                  <div className="font-heading font-black text-xs text-muted-foreground">--</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      ))
-                    )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {groupMarkets.map((market, index) => (
+                      <GroupCountryCard
+                        key={market.id}
+                        market={market}
+                        onSelect={handleCountrySelect}
+                      />
+                    ))}
                   </div>
                 </section>
               );
-            })
-          )}
+            })}
+          </div>
+        )
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20 bg-card border border-border/50 rounded-3xl"
+        >
+          <Trophy className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">No markets found</p>
+        </motion.div>
+      )}
 
 
 
-          {/* Info banner - country markets status */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-2xl p-4 sm:p-5"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-heading font-bold text-xs sm:text-sm text-foreground mb-1">Country Markets Status</h3>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-3">
-                  {futuresMarkets.filter(m => m.country).length} markets active. 
-                  Create country markets from Admin to unlock all 48 teams.
-                </p>
-                <Button
-                  onClick={() => window.location.href = '/admin'}
-                  size="sm"
-                  className="bg-primary hover:bg-primary/90 text-[10px] sm:text-xs font-bold h-8 sm:h-9 px-3"
-                >
-                  Create Markets →
-                </Button>
-              </div>
-            </div>
-          </motion.div>
 
-          {/* CTA banner */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="rounded-2xl border border-accent/20 bg-accent/5 p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4"
-          >
-            <div>
-              <p className="font-heading font-bold text-xs sm:text-sm text-accent mb-1">Provide Futures Liquidity</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">LPs can back futures outcomes and earn when bettors lose.</p>
-            </div>
-            <Button
-              variant="outline"
-              className="border-accent/40 text-accent hover:bg-accent/10 rounded-xl text-[10px] sm:text-xs font-bold shrink-0 h-8 sm:h-9 px-2 sm:px-3"
-              onClick={() => window.location.href = '/lp'}
-            >
-              <span className="hidden sm:inline">Go to Match LP</span>
-              <span className="sm:hidden">Match LP</span>
-              <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </motion.div>
 
           {/* Bet Slip Modal */}
           <AnimatePresence>
@@ -620,25 +477,7 @@ export default function Futures() {
               </div>
             </div>
           )}
-        </TabsContent>
 
-        <TabsContent value="matches" className="mt-6">
-          <div className="text-center py-12 sm:py-16">
-            <Calendar className="w-10 h-10 sm:w-12 sm:h-12 text-primary mx-auto mb-4" />
-            <h3 className="font-heading font-bold text-base sm:text-lg mb-2">Live Match LP</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-4">
-              Provide liquidity for individual match markets with fixed odds.
-            </p>
-            <Button
-              onClick={() => window.location.href = '/lp'}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm h-9 sm:h-10 px-4 sm:px-6"
-            >
-              <span className="hidden sm:inline">Go to Match LP Dashboard</span>
-              <span className="sm:hidden">Match LP Dashboard</span>
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
