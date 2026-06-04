@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
       team_b_flag: '🔴',
       group_stage: 'Smooth Test',
       match_time: openUntil.toISOString(),
+      match_end_time: settleAfter.toISOString(),
       venue: 'Test Arena',
       status: 'upcoming',
     });
@@ -78,13 +79,35 @@ Deno.serve(async (req) => {
 
     // Get platform admin from on-chain config
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    const platformInfo = await connection.getAccountInfo(platformConfigPda);
-    if (!platformInfo) {
-      return Response.json({ error: 'Platform config not initialized on-chain' }, { status: 400 });
+    let admin_wallet = null;
+    try {
+      const platformInfo = await connection.getAccountInfo(platformConfigPda);
+      if (platformInfo) {
+        const adminPubkey = new PublicKey(platformInfo.data.slice(8, 40));
+        admin_wallet = adminPubkey.toBase58();
+        console.log('[smoothTest] Platform admin:', admin_wallet);
+      } else {
+        console.log('[smoothTest] Platform not initialized, will use admin from DB');
+      }
+    } catch (platformErr) {
+      console.log('[smoothTest] Platform check failed:', platformErr.message);
     }
-    const adminPubkey = new PublicKey(platformInfo.data.slice(8, 40));
-    const admin_wallet = adminPubkey.toBase58();
-    console.log('[smoothTest] Platform admin:', admin_wallet);
+    
+    // Fallback: use current user's wallet if platform not initialized
+    if (!admin_wallet) {
+      // Try to get wallet from user's WalletUser record
+      const walletUsers = await base44.asServiceRole.entities.WalletUser.filter({});
+      const userWallet = walletUsers.find(w => w.id === user.id);
+      if (userWallet && userWallet.wallet_address) {
+        admin_wallet = userWallet.wallet_address;
+        console.log('[smoothTest] Using wallet from WalletUser:', admin_wallet);
+      } else {
+        return Response.json({ 
+          error: 'Platform config not initialized on-chain. Please initialize platform first.',
+          needs_platform_init: true
+        }, { status: 400 });
+      }
+    }
 
     // Build create_market instruction data
     const discriminator = Buffer.from(sha256('global:create_market')).slice(0, 8);
