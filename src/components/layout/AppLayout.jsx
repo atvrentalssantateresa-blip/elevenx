@@ -73,7 +73,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-3">
             {/* Social links - visible on all screens */}
             <div className="flex items-center gap-1">
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://x.com/elevenxbets" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200">
                 <TwitterIcon />
               </a>
