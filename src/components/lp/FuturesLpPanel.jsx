@@ -14,9 +14,8 @@ export default function FuturesLpPanel({
   connect 
 }) {
   const [selectedOutcome, setSelectedOutcome] = React.useState(null);
-  const [activeGroup, setActiveGroup] = useState('A');
+  const [activeGroup, setActiveGroup] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAllGroups, setShowAllGroups] = useState(true);
 
   // Flatten all country outcomes from all markets
   const allOutcomes = React.useMemo(() => {
@@ -58,8 +57,10 @@ export default function FuturesLpPanel({
     return grouped;
   }, [filteredOutcomes]);
 
-  // All outcomes for "All Groups" view
-  const allGroupOutcomes = showAllGroups ? filteredOutcomes : outcomesByGroup[activeGroup] || [];
+  // Filter outcomes by active group
+  const displayedOutcomes = activeGroup === 'ALL' 
+    ? filteredOutcomes 
+    : (outcomesByGroup[activeGroup] || []);
 
   if (!isConnected) {
     return (
@@ -103,80 +104,33 @@ export default function FuturesLpPanel({
       <GroupNavigation 
         onGroupClick={(groupName) => {
           setActiveGroup(groupName);
-          setShowAllGroups(false);
-          const element = document.getElementById(`lp-group-${groupName}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (groupName !== 'ALL') {
+            const element = document.getElementById(`lp-group-${groupName}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           }
         }} 
         activeGroup={activeGroup} 
       />
 
-      {/* All Groups View */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5 text-primary" />
-            <h2 className="font-heading font-bold text-base">
-              {showAllGroups ? 'All Countries' : `Group ${activeGroup}`}
-            </h2>
-            <Badge variant="outline" className="text-xs">
-              {allGroupOutcomes.length} outcomes
-            </Badge>
-          </div>
-          {!showAllGroups && (
-            <Button
-              size="sm"
-              onClick={() => setShowAllGroups(true)}
-              variant="outline"
-              className="text-xs border-border/50"
-            >
-              Show All Groups
-            </Button>
-          )}
-        </div>
-
-        {allGroupOutcomes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allGroupOutcomes.map((outcome, i) => (
-              <FuturesOutcomeCard
-                key={`${outcome.market_id}-${outcome.label}`}
-                outcome={outcome}
-                selectedOutcome={selectedOutcome}
-                setSelectedOutcome={setSelectedOutcome}
-                onProvideLiquidity={onProvideLiquidity}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Globe className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">
-              {searchQuery ? 'No countries match your search' : 'No markets available for this group'}
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Group-by-Group Sections (when viewing all groups) */}
-      {showAllGroups && !searchQuery && Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
-        const groupOutcomes = outcomesByGroup[groupName] || [];
-        if (groupOutcomes.length === 0) return null;
-
-        return (
-          <section key={groupName} id={`lp-group-${groupName}`} className="scroll-mt-24">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                <span className="font-heading font-black text-lg text-primary">{groupName}</span>
-              </div>
-              <div>
-                <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
-                <p className="text-xs text-muted-foreground">{groupOutcomes.length} countries with LP markets</p>
-              </div>
+      {/* Single Group View or All Groups View */}
+      {activeGroup !== 'ALL' ? (
+        /* Single Group View */
+        <section id={`lp-group-${activeGroup}`} className="scroll-mt-24">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+              <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
             </div>
+            <div>
+              <h2 className="font-heading font-bold text-base text-foreground">Group {activeGroup}</h2>
+              <p className="text-xs text-muted-foreground">{displayedOutcomes.length} countries with LP markets</p>
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {groupOutcomes.map((outcome, i) => (
+          {displayedOutcomes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedOutcomes.map((outcome, i) => (
                 <FuturesOutcomeCard
                   key={`${outcome.market_id}-${outcome.label}`}
                   outcome={outcome}
@@ -186,9 +140,46 @@ export default function FuturesLpPanel({
                 />
               ))}
             </div>
-          </section>
-        );
-      })}
+          ) : (
+            <div className="text-center py-12">
+              <Globe className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No markets available for this group</p>
+            </div>
+          )}
+        </section>
+      ) : (
+        /* All Groups View */
+        Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+          const groupOutcomes = outcomesByGroup[groupName] || [];
+          if (groupOutcomes.length === 0) return null;
+
+          return (
+            <section key={groupName} id={`lp-group-${groupName}`} className="scroll-mt-24">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                  <span className="font-heading font-black text-lg text-primary">{groupName}</span>
+                </div>
+                <div>
+                  <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
+                  <p className="text-xs text-muted-foreground">{groupOutcomes.length} countries with LP markets</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {groupOutcomes.map((outcome, i) => (
+                  <FuturesOutcomeCard
+                    key={`${outcome.market_id}-${outcome.label}`}
+                    outcome={outcome}
+                    selectedOutcome={selectedOutcome}
+                    setSelectedOutcome={setSelectedOutcome}
+                    onProvideLiquidity={onProvideLiquidity}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })
+      )}
     </div>
   );
 }

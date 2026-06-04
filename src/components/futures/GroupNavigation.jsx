@@ -94,7 +94,7 @@ export default function GroupNavigation({ onGroupClick, activeGroup }) {
               : 'bg-secondary/30 text-muted-foreground border-border/30 hover:border-primary/30 hover:text-foreground'
           }`}
         >
-          All Groups
+          All
         </motion.button>
         
         {Object.keys(WORLD_CUP_GROUPS_2026).map((groupName, index) => (
