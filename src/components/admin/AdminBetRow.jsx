@@ -183,7 +183,31 @@ export default function AdminBetRow({ bet, matches, index }) {
   const handleSettleError = (err) => {
     setPendingSettle(null);
     console.error('[AdminBetRow] Settlement error:', err);
-    alert('Settlement failed: ' + err.message);
+    
+    // Parse error code from Solana
+    let errorCode = null;
+    let errorMsg = err.message;
+    
+    // Try to extract error code from various formats
+    const errorMatch = err.message?.match(/Error\s+(\d+)/);
+    if (errorMatch) {
+      errorCode = errorMatch[1];
+    }
+    
+    const errorMessages = {
+      '6005': '❌ Error 6005: Unauthorized - Your wallet is NOT the admin registered in platform config',
+      '3007': '❌ Error 3007: Platform not initialized',
+      '0': '❌ Error 0: Betting window closed',
+      '1': '❌ Error 1: Market already settled',
+      '15': '❌ Error 15: Market already initialized',
+      '101': '❌ Error 101: Invalid instruction data',
+    };
+    
+    const detailedMsg = errorCode && errorMessages[errorCode] 
+      ? errorMessages[errorCode] + '\n\n' + errorMsg
+      : errorMsg;
+    
+    alert('Settlement failed:\n' + detailedMsg + '\n\nTip: Click "Debug" to check wallet mismatch');
   };
 
   const dbSettleMutation = useMutation({
@@ -298,8 +322,19 @@ export default function AdminBetRow({ bet, matches, index }) {
               variant="outline"
               onClick={async () => {
                 try {
-                  const res = await base44.functions.invoke('debugMarketSettlement', { bet_id: bet.id, match_id: bet.match_id });
-                  alert('Market Debug:\n' + JSON.stringify(res.data, null, 2));
+                  const [marketDebug, platformDebug] = await Promise.all([
+                    base44.functions.invoke('debugMarketSettlement', { bet_id: bet.id, match_id: bet.match_id }),
+                    base44.functions.invoke('debugPlatformAdmin', {}),
+                  ]);
+                  
+                  const debugInfo = {
+                    market: marketDebug.data,
+                    platform: platformDebug.data,
+                    your_wallet: walletAddress,
+                    wallet_matches_admin: walletAddress === platformDebug.data?.admin,
+                  };
+                  
+                  alert('Debug Info:\n\n' + JSON.stringify(debugInfo, null, 2));
                 } catch (err) {
                   alert('Debug error: ' + err.message);
                 }
