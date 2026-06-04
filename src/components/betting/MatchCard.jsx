@@ -34,41 +34,52 @@ export default function MatchCard({ match, bet, index = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
+      whileHover={{ scale: 1.02, y: -4 }}
+      className="relative"
     >
       <Link to={`/match/${match.id}`} className="group block">
-        <div className="relative bg-card border border-border/50 rounded-2xl p-4 hover:border-primary/30 transition-all duration-300 hover:shadow-[0_0_30px_-10px_hsl(45,100%,51%,0.15)]">
+        {/* Purple gradient border frame - thicker and more noticeable */}
+        <div className="absolute inset-0 rounded-2xl p-[3px] pointer-events-none">
+          <div className="absolute inset-0 rounded-2xl" 
+               style={{
+                 background: 'linear-gradient(135deg, #a69cf2, #8b84e8, #6d5dd3)',
+               }} />
+        </div>
+        
+        {/* Inner content container */}
+        <div className="relative z-10 bg-[#0f0a1e]/95 backdrop-blur-sm rounded-2xl m-[3px] p-5 hover:shadow-[0_0_40px_-10px_hsl(252,82%,78%,0.3)] transition-all duration-300">
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] text-muted-foreground font-semibold">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs text-muted-foreground font-semibold">
               {match.group_stage || 'World Cup 2026'}
             </span>
-            <Badge className={`text-[9px] font-semibold uppercase tracking-wider ${statusStyles[match.status] || statusStyles.upcoming}`}>
-              {match.status === 'live' && <span className="w-1 h-1 rounded-full bg-destructive animate-pulse mr-1" />}
+            <Badge className={`text-xs font-semibold uppercase tracking-wider ${statusStyles[match.status] || statusStyles.upcoming}`}>
+              {match.status === 'live' && <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse mr-1.5" />}
               {match.status}
             </Badge>
           </div>
 
           {/* Match Matchup */}
-          <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center justify-between gap-3 mb-4">
             {/* Team A */}
             <div className="flex-1 text-center">
-              <div className="text-xl mb-1">{getTeamFlag(match.team_a, match.team_a_flag)}</div>
-              <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
+              <div className="text-3xl mb-1.5">{getTeamFlag(match.team_a, match.team_a_flag)}</div>
+              <p className="text-xs text-foreground truncate font-medium">{match.team_a}</p>
             </div>
 
             {/* Score/VS */}
-            <div className="flex flex-col items-center gap-1 px-2">
+            <div className="flex flex-col items-center gap-1.5 px-3">
               {match.status === 'finished' || match.status === 'live' ? (
-                <div className="flex items-center gap-1.5 text-sm font-bold">
+                <div className="flex items-center gap-2 text-base font-bold">
                   <span>{match.score_a ?? 0}</span>
-                  <span className="text-muted-foreground text-xs">-</span>
+                  <span className="text-muted-foreground text-sm">-</span>
                   <span>{match.score_b ?? 0}</span>
                 </div>
               ) : (
-                <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">VS</span>
+                <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded">VS</span>
               )}
               {matchTime && (
-                <span className="text-[8px] text-muted-foreground whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {format(matchTime, 'MMM d')}
                 </span>
               )}
@@ -76,39 +87,39 @@ export default function MatchCard({ match, bet, index = 0 }) {
 
             {/* Team B */}
             <div className="flex-1 text-center">
-              <div className="text-xl mb-1">{getTeamFlag(match.team_b, match.team_b_flag)}</div>
-              <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
+              <div className="text-3xl mb-1.5">{getTeamFlag(match.team_b, match.team_b_flag)}</div>
+              <p className="text-xs text-foreground truncate font-medium">{match.team_b}</p>
             </div>
           </div>
 
           {/* Odds/Pool */}
           {bet ? (
-            <div className="pt-2 border-t border-border/50">
-              <div className={`grid gap-1.5 mb-2 ${oracleOddsDraw ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <div className={`rounded px-1.5 py-1 text-center text-[9px] border ${lpA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
+            <div className="pt-3 border-t border-border/50">
+              <div className={`grid gap-2 mb-2.5 ${oracleOddsDraw ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                   <p className="text-muted-foreground truncate">{match.team_a}</p>
-                  <p className="font-bold text-primary">{oddsA.toFixed(2)}x</p>
+                  <p className="font-bold text-primary text-sm">{oddsA.toFixed(2)}x</p>
                 </div>
                 {oracleOddsDraw && (
-                  <div className={`rounded px-1.5 py-1 text-center text-[9px] border ${lpDraw > 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
+                  <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpDraw > 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
                     <p className="text-muted-foreground">Draw</p>
-                    <p className="font-bold text-yellow-400">{oddsDraw.toFixed(2)}x</p>
+                    <p className="font-bold text-yellow-400 text-sm">{oddsDraw.toFixed(2)}x</p>
                   </div>
                 )}
-                <div className={`rounded px-1.5 py-1 text-center text-[9px] border ${lpB > 0 ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
+                <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpB > 0 ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
                   <p className="text-muted-foreground truncate">{match.team_b}</p>
-                  <p className="font-bold text-accent">{oddsB.toFixed(2)}x</p>
+                  <p className="font-bold text-accent text-sm">{oddsB.toFixed(2)}x</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[8px] text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>◎{(bet.total_pool || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
             </div>
           ) : (
-            <div className="pt-2 border-t border-border/30 flex items-center justify-between text-[9px] text-muted-foreground">
+            <div className="pt-3 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
               <span>No pool yet</span>
-              <ChevronRight className="w-3 h-3 group-hover:text-primary transition-colors" />
+              <ChevronRight className="w-4 h-4 group-hover:text-primary transition-colors" />
             </div>
           )}
         </div>
