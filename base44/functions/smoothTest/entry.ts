@@ -38,7 +38,40 @@ Deno.serve(async (req) => {
 
     console.log('[smoothTest] Created match:', match.id);
 
-    // Step 2: Create bet with VALID future timestamps
+    // Step 2: Fetch live odds from The Odds API
+    let odds_a = 2.0, odds_b = 2.0, odds_draw = 3.0, odds_bookmaker = 'Test';
+    try {
+      const apiKey = Deno.env.get('THE_ODDS_API_KEY');
+      if (apiKey) {
+        const oddsUrl = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${apiKey}&regions=eu&markets=h2h&oddsFormat=decimal`;
+        const oddsRes = await fetch(oddsUrl);
+        if (oddsRes.ok) {
+          const oddsData = await oddsRes.json();
+          const matches = Array.isArray(oddsData) ? oddsData : (oddsData.data || []);
+          // Use first match odds as reference for test
+          if (matches.length > 0) {
+            const bookmakers = matches[0].bookmakers || [];
+            const pinnacle = bookmakers.find(b => b.key === 'pinnacle');
+            const bet365 = bookmakers.find(b => b.key === 'bet365');
+            const primaryBookmaker = pinnacle || bet365 || bookmakers[0];
+            const h2hMarkets = primaryBookmaker?.markets?.find(m => m.key === 'h2h') || {};
+            const h2hOutcomes = h2hMarkets.outcomes || [];
+            const homeOdds = h2hOutcomes.find(o => o.name === matches[0].home_team)?.price || 2.0;
+            const awayOdds = h2hOutcomes.find(o => o.name === matches[0].away_team)?.price || 2.0;
+            const drawOdds = h2hOutcomes.find(o => o.name === 'Draw')?.price || 3.0;
+            if (homeOdds > 0) odds_a = homeOdds;
+            if (awayOdds > 0) odds_b = awayOdds;
+            if (drawOdds > 0) odds_draw = drawOdds;
+            odds_bookmaker = primaryBookmaker?.title || 'The Odds API';
+            console.log('[smoothTest] Fetched live odds:', { odds_a, odds_b, odds_draw, bookmaker: odds_bookmaker });
+          }
+        }
+      }
+    } catch (oddsErr) {
+      console.log('[smoothTest] Odds fetch failed, using defaults:', oddsErr.message);
+    }
+
+    // Step 2: Create bet with VALID future timestamps and live odds
     const bet = await base44.asServiceRole.entities.Bet.create({
       match_id: match.id,
       title: 'test1 vs test2 - Smooth Test',
@@ -47,10 +80,10 @@ Deno.serve(async (req) => {
       outcome_draw: 'Draw',
       open_until: openUntil.toISOString(),
       status: 'open',
-      odds_a: 2.0,
-      odds_b: 2.0,
-      odds_draw: 3.0,
-      odds_bookmaker: 'Test',
+      odds_a,
+      odds_b,
+      odds_draw,
+      odds_bookmaker,
       odds_updated_at: new Date().toISOString(),
       fee_percent: 0,
     });
