@@ -107,7 +107,7 @@ export default function Matches() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-3xl p-8"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-8"
         style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}
       >
         <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
@@ -115,42 +115,42 @@ export default function Matches() {
         
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full">
               <Trophy className="w-3 h-3 text-primary" />
-              <span className="text-[11px] font-bold text-primary tracking-widest">WORLD CUP 2026</span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-primary tracking-widest">WORLD CUP 2026</span>
             </div>
           </div>
-          <h1 className="font-heading font-black text-3xl md:text-4xl leading-tight mb-2 text-white">
+          <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 text-white">
             Match Schedule
           </h1>
-          <p className="text-white/50 text-sm max-w-md mb-4">
+          <p className="text-white/50 text-xs sm:text-sm max-w-md mb-4">
             Browse all 104 matches from the group stage to the final. Search by team, filter by group, and bet P2P on every match.
           </p>
 
           {/* How Match Betting Works - Integrated into Hero */}
           <div className="border-t border-white/10 pt-4">
-            <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full text-primary text-[10px] font-bold tracking-widest uppercase mb-3">
+            <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full text-primary text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-3">
               ⚽ How Match Betting Works
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="space-y-1.5">
-                <span className="text-xl">💡</span>
-                <h3 className="font-heading font-bold text-xs text-primary">How It Works</h3>
-                <p className="text-[11px] text-white/60 leading-relaxed">
+                <span className="text-lg sm:text-xl">💡</span>
+                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-primary">How It Works</h3>
+                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
                   <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover payouts. Your bet goes <strong>pending</strong> until matched, then <strong>locked in</strong> with fixed odds.
                 </p>
               </div>
               <div className="space-y-1.5">
-                <span className="text-xl">👑</span>
-                <h3 className="font-heading font-bold text-xs text-accent">Be the House (LP)</h3>
-                <p className="text-[11px] text-white/60 leading-relaxed">
+                <span className="text-lg sm:text-xl">👑</span>
+                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-accent">Be the House (LP)</h3>
+                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
                   Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing stakes! <strong>Withdraw unmatched funds anytime</strong> — only locked once matched.
                 </p>
               </div>
               <div className="space-y-1.5">
-                <span className="text-xl">⚠️</span>
-                <h3 className="font-heading font-bold text-xs text-yellow-400">Important</h3>
-                <p className="text-[11px] text-white/60 leading-relaxed">
+                <span className="text-lg sm:text-xl">⚠️</span>
+                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-yellow-400">Important</h3>
+                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
                   Bets go into <strong>pending pool</strong> until LP matches them. Once matched, your bet is <strong>locked in</strong> with fixed odds. No LP = bet stays pending!
                 </p>
               </div>
@@ -167,12 +167,12 @@ export default function Matches() {
         className="space-y-3"
       >
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
           <Input
             placeholder="Search teams..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-10 bg-card border-border/50 h-11 rounded-xl"
+            className="pl-9 sm:pl-10 bg-card border-border/50 h-10 sm:h-11 rounded-xl text-xs sm:text-sm"
           />
         </div>
 
@@ -201,20 +201,20 @@ export default function Matches() {
       {sortedMatches.length > 0 ? (
         activeGroup !== 'ALL' ? (
           /* Single Group View */
-          <section id={`group-${activeGroup}`} className="scroll-mt-24">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
+          <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                <span className="font-heading font-black text-base sm:text-lg text-primary">{activeGroup}</span>
               </div>
               <div>
-                <h2 className="font-heading font-bold text-base text-foreground">Group {activeGroup}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {sortedMatches.length} matches in this group
+                <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                  {sortedMatches.length} matches
                 </p>
               </div>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {sortedDates.map((dateKey, dateIndex) => {
                 const { label, matches: dateMatches } = groupedByDate[dateKey];
                 return (
@@ -224,14 +224,14 @@ export default function Matches() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
                   >
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2">
-                        <span className="font-heading font-bold text-sm text-primary">{label}</span>
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5">
+                      <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2">
+                        <span className="font-heading font-bold text-xs sm:text-sm text-primary">{label}</span>
                       </div>
                       <div className="flex-1 h-px bg-border/30" />
                     </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {dateMatches.map((m, i) => (
                         <div
                           key={m.id}
@@ -256,7 +256,7 @@ export default function Matches() {
           </section>
         ) : (
           /* All Groups View */
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {sortedDates.map((dateKey, dateIndex) => {
               const { label, matches: dateMatches } = groupedByDate[dateKey];
               return (
@@ -266,14 +266,14 @@ export default function Matches() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
                 >
-                  <div className="flex items-center gap-3 mb-5 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-3">
-                    <div className="flex items-center gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-2xl px-4 py-2 shadow-lg">
-                      <span className="font-heading font-bold text-base text-primary">{label}</span>
+                  <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 sticky top-14 sm:top-16 z-10 bg-background/95 backdrop-blur-sm py-2 sm:py-3">
+                    <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 shadow-lg">
+                      <span className="font-heading font-bold text-xs sm:text-base text-primary">{label}</span>
                     </div>
                     <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
                   </div>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {dateMatches.map((m, i) => (
                       <div
                         key={m.id}
