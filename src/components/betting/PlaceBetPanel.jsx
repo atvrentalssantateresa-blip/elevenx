@@ -10,7 +10,8 @@ import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
-// Betting panel - bet against existing LP offers (mode='match') or provide liquidity (mode='offer' - LP Dashboard only)
+// Betting panel - BETTOR ONLY: bet against existing LP offers (mode='match' only)
+// LP provision is ONLY available in LP Dashboard, not in Matches section
 export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOutcome, selectedOffer, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
@@ -25,12 +26,17 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     staleTime: 5000,
   });
 
-  // Check if there's any LP liquidity for the selected outcome
-  const hasLiquidityForOutcome = allOffers.some(o =>
-    (o.status === 'open' || o.status === 'partially_matched') &&
-    o.outcome === selectedOutcome &&
-    (o.amount_unmatched || 0) > 0
-  );
+  // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome
+  const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
+    allOffers
+      .filter(o =>
+        (o.status === 'open' || o.status === 'partially_matched') &&
+        o.outcome === selectedOutcome
+      )
+      .reduce((sum, o) => sum + (o.amount_unmatched || 0), 0) :
+    0;
+
+  const hasLiquidityForOutcome = totalLiquidityForOutcome > 0;
 
   // Calculate time remaining until betting closes
   React.useEffect(() => {
@@ -67,16 +73,14 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   // Get odds for the selected outcome
   const odds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
 
-  // For match mode: max stake is what the LP offer covers (amount_unmatched / (odds - 1))
-  // This ensures the LP's liability covers the bettor's potential winnings
-  const maxMatcherStake = mode === 'match' && selectedOffer ?
-    selectedOffer.amount_unmatched / (selectedOffer.odds_at_creation - 1) :
+  // For BETTORS (mode='match'): max stake is limited by total LP liquidity available
+  // Bettors can only bet up to what LP holders have underwritten
+  const maxMatcherStake = mode === 'match' && selectedOutcome ?
+    totalLiquidityForOutcome :
     null;
 
-  const lpPayout = mode === 'offer' ? stakeNum * odds : 0;
-  const matcherPayout = mode === 'match' && selectedOffer ?
-    stakeNum * selectedOffer.odds_at_creation :
-    0;
+  // Bettor payout: stake * odds from the Bet entity
+  const matcherPayout = stakeNum * odds;
 
   const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -166,8 +170,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         console.log('[PlaceBetPanel] matchBet response:', res.data);
       } else {
         console.log('[PlaceBetPanel] Betting on outcome (needs LP offer):', wallet);
-        // User clicked odds but no LP offer exists - this should have been blocked by MatchDetail
-        throw new Error('No LP offer available for this outcome. Go to LP Dashboard to provide liquidity first.');
+        // Bettor clicked odds but no LP exists - block with clear message
+        throw new Error('No LP liquidity available for this outcome. Wait for an LP holder to underwrite this outcome, or go to LP Dashboard to add liquidity yourself.');
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit
@@ -232,11 +236,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     console.error('Transaction failed:', error);
   };
 
-  const outcomeLabel = mode === 'offer' ?
-  selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw' :
-  selectedOffer ?
-  selectedOffer.outcome === 'a' ? bet?.outcome_b : selectedOffer.outcome === 'b' ? bet?.outcome_a : 'Not Draw' :
-  '';
+  const outcomeLabel = selectedOutcome ?
+    (selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw') :
+    selectedOffer ?
+    (selectedOffer.outcome === 'a' ? bet?.outcome_b : selectedOffer.outcome === 'b' ? bet?.outcome_a : 'Not Draw') :
+    '';
 
   if (!isConnected) {
     return (
@@ -255,7 +259,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <h3 className="font-heading font-bold text-base">
-            {selectedOffer ? `Bet against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
+            {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
           </h3>
           {timeRemaining && timeRemaining.total > 0 &&
           <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
@@ -272,20 +276,22 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         </div>
         <p className="text-xs text-muted-foreground">
           {selectedOffer ?
-          `Max stake: ◎${maxMatcherStake?.toFixed(4)} @ ${selectedOffer.odds_at_creation.toFixed(2)}x — locked immediately` :
-          'Select an outcome or click "Bet Against" an offer'
+          `Max stake: ◎${maxMatcherStake?.toFixed(4)} @ ${odds.toFixed(2)}x — locked immediately` :
+          hasLiquidityForOutcome ?
+          `Max stake: ◎${maxMatcherStake?.toFixed(4)} — limited by available LP liquidity` :
+          '⚠️ No LP liquidity - Go to LP Dashboard to add liquidity'
           }
         </p>
 
-        {/* Show message when mode='match' (betting) but no LP liquidity exists */}
+        {/* Block betting when mode='match' but no LP liquidity exists */}
         {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-2">
-            <p className="text-xs font-bold text-yellow-500">⚠️ No LP Liquidity for {selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</p>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-destructive">🚫 No Liquidity Available</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              There are no active offers for this outcome.
+              No LP holders have underwritten <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong> yet.
             </p>
             <p className="text-[10px] text-muted-foreground">
-              Go to <strong>LP Dashboard → Match LP</strong> to provide liquidity, or wait for LPs and bet from here.
+              Go to <strong>LP Dashboard → Match LP</strong> to add liquidity yourself, or wait for LP holders to underwrite this outcome.
             </p>
           </div>
         )}
@@ -319,7 +325,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           placeholder="0.00"
           value={amount}
           min={0}
-          max={mode === 'match' && maxMatcherStake ? maxMatcherStake : undefined}
+          max={maxMatcherStake !== null ? maxMatcherStake : undefined}
           step="any"
           onChange={(e) => setAmount(e.target.value)}
           className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
@@ -350,10 +356,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       </div>
 
       <AnimatePresence>
-        {stakeNum > 0 &&
+        {stakeNum > 0 && mode === 'match' &&
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
         className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2 text-xs overflow-hidden">
-            <p className="font-bold text-foreground mb-1">Summary</p>
+            <p className="font-bold text-foreground mb-1">Bet Summary</p>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Backing</span>
               <span className="font-bold">{outcomeLabel}</span>
@@ -364,30 +370,32 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Odds locked at</span>
-              <span className="font-bold">{selectedOffer ? selectedOffer.odds_at_creation.toFixed(2) : odds.toFixed(2)}x</span>
+              <span className="font-bold">{odds.toFixed(2)}x</span>
             </div>
             <div className="h-px bg-border/30 my-1" />
             <div className="flex justify-between font-bold text-sm">
               <span>Payout if you win</span>
-              <span className="text-accent text-base">◎{selectedOffer ? matcherPayout.toFixed(4) : lpPayout.toFixed(4)}</span>
+              <span className="text-accent text-base">◎{matcherPayout.toFixed(4)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
           </motion.div>
         }
       </AnimatePresence>
 
-      {mode === 'match' && maxMatcherStake !== null && maxMatcherStake <= 0 &&
+      {/* Block betting when no LP liquidity exists */}
+      {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
       <p className="text-xs text-destructive text-center font-bold bg-destructive/10 border border-destructive/30 rounded-lg p-3">
-        ⚠️ No liquidity available - An LP must provide liquidity for this outcome first
+        🚫 Betting Unavailable - No LP Liquidity
       </p>
       }
       
+      {/* Warn when stake exceeds available LP coverage */}
       {stakeNum > 0 && mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake &&
       <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-1.5">
         <p className="text-xs text-destructive font-bold text-center">⚠️ Stake Exceeds Available Liquidity</p>
         <p className="text-[10px] text-destructive/80 text-center leading-relaxed">
           Maximum bet for this outcome is <strong>◎{maxMatcherStake.toFixed(4)}</strong> based on current LP coverage. 
-          Reduce your stake or provide more LP liquidity to increase the limit.
+          Reduce your stake or wait for more LP liquidity.
         </p>
       </div>
       }
@@ -439,14 +447,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       <SolanaTransactionSigner
         instruction={instruction}
         amount={stakeNum}
-        isOffer={mode === 'offer'}
         onSuccess={handleTransactionSuccess}
         onError={handleTransactionError} /> :
 
 
       <Button
         onClick={handleGetInstruction}
-        disabled={stakeNum <= 0 || isPreparing || timeRemaining && timeRemaining.total <= 0 || mode === 'match' && maxMatcherStake !== null && maxMatcherStake <= 0 || mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake}
+        disabled={stakeNum <= 0 || isPreparing || timeRemaining && timeRemaining.total <= 0 || mode === 'match' && !hasLiquidityForOutcome || mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake}
         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">
         
           {timeRemaining && timeRemaining.total <= 0 ?
@@ -454,10 +461,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
               <Clock className="w-4 h-4 mr-2" />
               Betting Closed
             </> :
-        mode === 'match' && maxMatcherStake !== null && maxMatcherStake <= 0 ?
+        mode === 'match' && !hasLiquidityForOutcome ?
         <>
               <X className="w-4 h-4 mr-2" />
-              No Liquidity Available
+              No LP Liquidity
             </> :
         isPreparing ? 'Preparing...' :
         `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`

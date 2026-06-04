@@ -174,10 +174,10 @@ export default function MatchDetail() {
   };
 
   const handleSelectOutcome = (outcome) => {
-    // Clicking odds = user wants to PROVIDE LIQUIDITY (act as LP)
+    // Clicking odds = user wants to BET AGAINST existing LP (act as bettor)
     setSelectedOutcome(outcome);
     setSelectedOffer(null);
-    setBetMode('offer');
+    setBetMode('match');
   };
 
   const handleBetSuccess = () => {
@@ -404,9 +404,8 @@ export default function MatchDetail() {
           <OddsPanel
           bet={bet}
           match={match}
-          selectedOutcome={betMode === 'offer' ? selectedOutcome : null}
+          selectedOutcome={selectedOutcome}
           onSelectOutcome={isOpen ? handleSelectOutcome : undefined}
-
           isRefreshing={isRefreshingOdds} />
         
         </motion.div>
