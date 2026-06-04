@@ -201,16 +201,17 @@ export default function AdminMatchRow({ match, bets, index }) {
                   return;
                 }
 
-                // Check if we have a create_market instruction ready to use
-                if (marketRes.data.solana_instruction && marketRes.data.solana_instruction.instruction_type === 'create_market') {
-                  console.log('[Init On-Chain] Showing create market instruction');
+                // Platform init first, then create market
+                if (marketRes.data.needsPlatformInit && marketRes.data.solana_instruction) {
+                  console.log('[Init On-Chain] Platform init needed, showing instruction');
                   setPendingMarketInit({
                     instruction: marketRes.data.solana_instruction,
+                    createMarketInstruction: marketRes.data.createMarketInstruction,
                     betId: existingBet.id,
-                    step: 'create_market',
+                    step: 'platform_init',
                   });
                 } else if (marketRes.data.createMarketInstruction) {
-                  console.log('[Init On-Chain] Showing create market instruction (alt format)');
+                  console.log('[Init On-Chain] Showing create market instruction');
                   setPendingMarketInit({
                     instruction: marketRes.data.createMarketInstruction,
                     betId: existingBet.id,
