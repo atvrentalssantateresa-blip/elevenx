@@ -259,6 +259,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
           {timeRemaining && timeRemaining.total > 0 && (
             <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
               <Clock className="w-3.5 h-3.5" />
+              <span className="text-[9px] mr-0.5">Betting closes in</span>
               {timeRemaining.days > 0 
                 ? `${timeRemaining.days}d ${timeRemaining.hours}h`
                 : timeRemaining.hours > 0 
