@@ -353,19 +353,22 @@ export default function AdminBetRow({ bet, matches, index }) {
               />
             </div>
           ) : (
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => settleOnChainMutation.mutate('a')} disabled={settleOnChainMutation.isPending}
-                className="h-8 text-xs bg-primary/20 text-primary hover:bg-primary/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_a}
-              </Button>
-              <Button size="sm" onClick={() => settleOnChainMutation.mutate('draw')} disabled={settleOnChainMutation.isPending}
-                className="h-8 text-xs bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> Draw
-              </Button>
-              <Button size="sm" onClick={() => settleOnChainMutation.mutate('b')} disabled={settleOnChainMutation.isPending}
-                className="h-8 text-xs bg-accent/20 text-accent hover:bg-accent/30 rounded-lg flex-1">
-                <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_b}
-              </Button>
+            <div className="space-y-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">Settle Market On-Chain — Select Winner:</p>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => settleOnChainMutation.mutate('a')} disabled={settleOnChainMutation.isPending}
+                  className="h-8 text-xs bg-primary/20 text-primary hover:bg-primary/30 rounded-lg flex-1">
+                  <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_a}
+                </Button>
+                <Button size="sm" onClick={() => settleOnChainMutation.mutate('draw')} disabled={settleOnChainMutation.isPending}
+                  className="h-8 text-xs bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg flex-1">
+                  <Trophy className="w-3 h-3 mr-1" /> Draw
+                </Button>
+                <Button size="sm" onClick={() => settleOnChainMutation.mutate('b')} disabled={settleOnChainMutation.isPending}
+                  className="h-8 text-xs bg-accent/20 text-accent hover:bg-accent/30 rounded-lg flex-1">
+                  <Trophy className="w-3 h-3 mr-1" /> {bet.outcome_b}
+                </Button>
+              </div>
             </div>
           )}
         </div>
