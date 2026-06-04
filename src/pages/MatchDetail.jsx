@@ -415,10 +415,10 @@ export default function MatchDetail() {
       {hasBet && isOpen && (selectedOutcome || selectedOffer) &&
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
           {betMode === 'offer' && (
-            <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 mb-4">
-              <p className="text-xs text-accent font-bold mb-1">💼 You're Providing Liquidity</p>
+            <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-4">
+              <p className="text-xs text-primary font-bold mb-1">🎯 You're Placing a Bet</p>
               <p className="text-xs text-muted-foreground">
-                You're creating a bet offer that others can match. Your SOL stays available until matched, and you earn <span className="text-accent font-bold">2% fees</span> when bettors match your offer.
+                Select your stake and confirm. Your bet will be matched against existing LP liquidity and locked in with fixed odds.
               </p>
             </div>
           )}
