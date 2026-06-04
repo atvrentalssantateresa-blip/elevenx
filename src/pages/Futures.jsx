@@ -320,7 +320,7 @@ export default function Futures() {
                     <span className="text-xl">⚠️</span>
                     <h3 className="font-heading font-bold text-xs text-yellow-400">Important</h3>
                     <p className="text-[11px] text-white/60 leading-relaxed">
-                      You can only bet if there's enough LP liquidity. <strong>No LP = no betting.</strong> LPs earn fees and keep losing stakes!
+                      Bets go into <strong>pending pool</strong> until LP matches them. Once matched, your bet is <strong>locked in</strong> with fixed odds. No LP = bet stays pending!
                     </p>
                   </div>
                 </div>
