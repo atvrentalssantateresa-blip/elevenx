@@ -35,6 +35,18 @@ export default function BetDetail() {
     enabled: !!betId,
   });
 
+  // Scroll to Fixed Odds section on page load
+  useEffect(() => {
+    if (bet) {
+      setTimeout(() => {
+        const element = document.getElementById('fixed-odds-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  }, [bet?.id]);
+
   // Calculate time remaining - updates every second
   useEffect(() => {
     if (!bet?.open_until) {
@@ -185,6 +197,7 @@ export default function BetDetail() {
 
       {/* Odds */}
       <motion.div
+        id="fixed-odds-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
