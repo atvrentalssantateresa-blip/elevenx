@@ -409,9 +409,9 @@ export default function LpDashboard() {
           </div>
           <div className="space-y-1.5">
             <span className="text-xl">📈</span>
-            <h3 className="font-heading font-bold text-xs text-accent">2. Earn Organic Yield</h3>
+            <h3 className="font-heading font-bold text-xs text-accent">2. Earn 2% on Every Bet</h3>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Your SOL is locked on-chain to cover incoming bets. When bettors lose, their stake is paid directly into your LP position, growing your capital.
+              As an LP, you earn <strong>2% fees</strong> on all bets matched against your liquidity. Plus, when bettors lose, their entire stake goes to you!
             </p>
           </div>
           <div className="space-y-1.5">
