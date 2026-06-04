@@ -220,7 +220,7 @@ export default function Home() {
                  initial={{ opacity: 0, y: 20 }}
                  animate={{ opacity: 1, y: 0 }}
                  transition={{ delay: 0.1 + i * 0.08 }}
-                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col">
+                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group h-full flex flex-col">
 
                 {/* Match photo strip */}
                 <div className="relative h-40 overflow-hidden flex-shrink-0">
@@ -244,7 +244,7 @@ export default function Home() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-center flex-1">
                       <div className="text-3xl mb-1">{getTeamFlag(fm.team_a)}</div>
-                      <p className="font-heading font-bold text-sm leading-tight">{fm.team_a}</p>
+                      <p className="font-heading font-bold text-sm leading-tight truncate">{fm.team_a}</p>
                     </div>
                     <div className="flex flex-col items-center gap-0.5 px-3">
                       <span className="font-heading font-black text-primary text-base">VS</span>
@@ -252,7 +252,7 @@ export default function Home() {
                     </div>
                     <div className="text-center flex-1">
                       <div className="text-3xl mb-1">{getTeamFlag(fm.team_b)}</div>
-                      <p className="font-heading font-bold text-sm leading-tight">{fm.team_b}</p>
+                      <p className="font-heading font-bold text-sm leading-tight truncate">{fm.team_b}</p>
                     </div>
                   </div>
 
@@ -260,7 +260,7 @@ export default function Home() {
                   {bet && (
                     <div className="grid grid-cols-3 gap-2 mb-4">
                       <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 text-center">
-                        <p className="text-[9px] text-muted-foreground font-medium">{fm.team_a}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium truncate">{fm.team_a}</p>
                         <p className="font-heading font-bold text-sm text-primary">{bet.odds_a?.toFixed(2) || '0.00'}x</p>
                       </div>
                       <div className="bg-secondary/50 border border-border/30 rounded-lg p-2 text-center">
@@ -268,7 +268,7 @@ export default function Home() {
                         <p className="font-heading font-bold text-sm text-foreground">{bet.odds_draw?.toFixed(2) || '0.00'}x</p>
                       </div>
                       <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 text-center">
-                        <p className="text-[9px] text-muted-foreground font-medium">{fm.team_b}</p>
+                        <p className="text-[9px] text-muted-foreground font-medium truncate">{fm.team_b}</p>
                         <p className="font-heading font-bold text-sm text-primary">{bet.odds_b?.toFixed(2) || '0.00'}x</p>
                       </div>
                     </div>
@@ -408,7 +408,7 @@ export default function Home() {
                  initial={{ opacity: 0, y: 15 }}
                  animate={{ opacity: 1, y: 0 }}
                  transition={{ delay: i * 0.05 }}
-                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group">
+                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group h-full">
                  
                   <Link to={`/futures?group=${group}`} className="block">
                     <div className="p-5">
