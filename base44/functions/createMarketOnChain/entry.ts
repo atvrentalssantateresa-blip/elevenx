@@ -139,6 +139,18 @@ Deno.serve(async (req) => {
       platformInitialized = false;
     }
     
+    // Check if market exists on-chain (only if DB says it's created or force_recreate)
+    let marketExistsOnChain = false;
+    if (bet.solana_market_created || payload.force_recreate) {
+      try {
+        const marketInfo = await connection.getAccountInfo(marketPda);
+        marketExistsOnChain = marketInfo !== null && marketInfo.data.length > 100;
+        console.log('Market on-chain check:', { exists: marketExistsOnChain, hasData: marketInfo?.data.length });
+      } catch (err) {
+        console.error('Failed to check market status:', err.message);
+      }
+    }
+    
     // Build create market instruction
     const createMarketInstruction = {
       instruction_type: 'create_market',
@@ -153,12 +165,15 @@ Deno.serve(async (req) => {
       }
     };
     
+    // If DB says created but market doesn't exist on-chain, force recreate
+    const shouldForceRecreate = (bet.solana_market_created && !marketExistsOnChain) || payload.force_recreate;
+    
     // Only return platform init if NOT already initialized
     const response = {
       success: true,
       marketPda: marketPda.toBase58(),
-      alreadyExists: false,
-      forceRecreated: payload.force_recreate === true,
+      alreadyExists: marketExistsOnChain && !shouldForceRecreate,
+      forceRecreated: shouldForceRecreate,
       needsPlatformInit: !platformInitialized,
       platformConfigPda: platformConfigPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
@@ -173,7 +188,7 @@ Deno.serve(async (req) => {
         }
       },
       createMarketInstruction: createMarketInstruction,
-      message: platformInitialized ? 'Platform already initialized, create market now' : 'Initialize platform first, then create market',
+      message: shouldForceRecreate ? 'Recreating market (DB says created but on-chain missing)' : (platformInitialized ? 'Platform already initialized, create market now' : 'Initialize platform first, then create market'),
       bet_id: bet.id,
     };
     

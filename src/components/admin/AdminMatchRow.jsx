@@ -183,14 +183,17 @@ export default function AdminMatchRow({ match, bets, index }) {
             onClick={async () => {
               console.log('[Init On-Chain] Calling createMarketOnChain with bet_id:', existingBet.id, 'match_id:', match.id);
               try {
+                // If DB says created but market not initialized, force recreate
+                const shouldForceRecreate = existingBet.solana_market_created && !isMarketInitialized;
+                
                 const marketRes = await base44.functions.invoke('createMarketOnChain', {
                   bet_id: existingBet.id,
                   match_id: match.id,
+                  force_recreate: shouldForceRecreate,
                 });
                 console.log('[Init On-Chain] Full response:', marketRes);
                 console.log('[Init On-Chain] Response data:', marketRes.data);
 
-                // Check if response has the expected structure
                 if (!marketRes.data) {
                   alert('Error: No response data from server');
                   return;
@@ -201,7 +204,6 @@ export default function AdminMatchRow({ match, bets, index }) {
                   return;
                 }
 
-                // Platform init first (if needed), then create market
                 if (marketRes.data.needsPlatformInit && marketRes.data.solana_instruction) {
                   console.log('[Init On-Chain] Platform init needed');
                   setPendingMarketInit({
@@ -211,7 +213,7 @@ export default function AdminMatchRow({ match, bets, index }) {
                     step: 'platform_init',
                   });
                 } else if (marketRes.data.createMarketInstruction) {
-                  console.log('[Init On-Chain] Platform already initialized, creating market directly');
+                  console.log('[Init On-Chain] Creating market:', marketRes.data.message);
                   setPendingMarketInit({
                     instruction: marketRes.data.createMarketInstruction,
                     betId: existingBet.id,
@@ -228,7 +230,6 @@ export default function AdminMatchRow({ match, bets, index }) {
                 }
               } catch (err) {
                 console.error('[Init On-Chain] Error:', err);
-                console.error('[Init On-Chain] Error message:', err.message);
                 alert('Failed to initialize market: ' + err.message);
               }
             }}
