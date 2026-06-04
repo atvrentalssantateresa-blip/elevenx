@@ -212,50 +212,53 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-          {FEATURED_MATCHES.map((fm, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + i * 0.08 }}
-              className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
-            >
-              {/* Match photo strip */}
-              <div className="relative h-40 overflow-hidden flex-shrink-0">
-                <img
-                  src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
-                  alt="match"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  style={i === 1 ? { objectPosition: 'center 20%' } : {}}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                <div className="absolute top-2 left-2">
-                  <span className="text-[10px] font-bold bg-black/50 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">{fm.group}</span>
-                </div>
-                <div className="absolute top-2 right-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white text-green-500 border-green-500/30 shadow-sm">OPEN</span>
-                </div>
-              </div>
+           {FEATURED_MATCHES.map((fm, i) => {
+             const matchBet = betByMatch[fm.matchId];
+             const betUrl = matchBet ? `/bet/${matchBet.id}` : `/matches`;
+             return (
+             <motion.div
+               key={i}
+               initial={{ opacity: 0, x: 20 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ delay: 0.1 + i * 0.08 }}
+               className="flex-shrink-0 w-64 h-80 bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group flex flex-col"
+             >
+               {/* Match photo strip */}
+               <div className="relative h-40 overflow-hidden flex-shrink-0">
+                 <img
+                   src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
+                   alt="match"
+                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                   style={i === 1 ? { objectPosition: 'center 20%' } : {}}
+                 />
+                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                 <div className="absolute top-2 left-2">
+                   <span className="text-[10px] font-bold bg-black/50 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">{fm.group}</span>
+                 </div>
+                 <div className="absolute top-2 right-2">
+                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-white text-green-500 border-green-500/30 shadow-sm">OPEN</span>
+                 </div>
+               </div>
 
-              <div className="p-4 flex flex-col flex-1 justify-center">
-                {/* Teams */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-center flex-1">
-                    <div className="text-2xl mb-1">{getTeamFlag(fm.team_a)}</div>
-                    <p className="font-heading font-bold text-xs leading-tight">{fm.team_a}</p>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5 px-2">
-                    <span className="font-heading font-black text-primary text-sm">VS</span>
-                    <span className="text-[9px] text-muted-foreground">{fm.date}</span>
-                  </div>
-                  <div className="text-center flex-1">
-                    <div className="text-2xl mb-1">{getTeamFlag(fm.team_b)}</div>
-                    <p className="font-heading font-bold text-xs leading-tight">{fm.team_b}</p>
-                  </div>
-                </div>
+               <div className="p-4 flex flex-col flex-1 justify-center">
+                 {/* Teams */}
+                 <div className="flex items-center justify-between mb-2">
+                   <div className="text-center flex-1">
+                     <div className="text-2xl mb-1">{getTeamFlag(fm.team_a)}</div>
+                     <p className="font-heading font-bold text-xs leading-tight">{fm.team_a}</p>
+                   </div>
+                   <div className="flex flex-col items-center gap-0.5 px-2">
+                     <span className="font-heading font-black text-primary text-sm">VS</span>
+                     <span className="text-[9px] text-muted-foreground">{fm.date}</span>
+                   </div>
+                   <div className="text-center flex-1">
+                     <div className="text-2xl mb-1">{getTeamFlag(fm.team_b)}</div>
+                     <p className="font-heading font-bold text-xs leading-tight">{fm.team_b}</p>
+                   </div>
+                 </div>
 
-                <div className="mt-auto">
-                  <Link to={`/matches?bet=${fm.matchId}`} className="block">
+                 <div className="mt-auto">
+                   <Link to={betUrl} className="block">
                     <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl border transition-colors"
                       style={{ background: 'rgba(33,196,93,0.1)', color: '#21c45d', borderColor: 'rgba(33,196,93,0.25)' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(33,196,93,0.2)'}
@@ -263,10 +266,11 @@ export default function Home() {
                       Bet Now →
                     </Button>
                   </Link>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                  </div>
+                  </div>
+                  </motion.div>
+                  );
+                  })}
         </div>
       </section>
 
