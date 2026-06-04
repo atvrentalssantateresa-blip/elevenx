@@ -237,8 +237,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           wallet_address: wallet
         });
         console.log('[PlaceBetPanel] matchBet response:', res.data);
-      } else if (selectedOutcome && hasLiquidityForOutcome) {
-        // User clicked odds and there's liquidity - auto-select first available offer
+      } else if (selectedOutcome) {
+        // User clicked odds - auto-select first available offer OR allow bet even if no LP (will go pending)
         const firstAvailableOffer = allOffers.find(o => 
           (o.status === 'open' || o.status === 'partially_matched') && 
           o.outcome === selectedOutcome && 
@@ -246,7 +246,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         );
         if (firstAvailableOffer) {
           console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
-          // Call matchBet with the auto-selected offer
           res = await base44.functions.invoke('matchBet', {
             offer_id: firstAvailableOffer.id,
             amount: stakeNum,
@@ -254,11 +253,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           });
           console.log('[PlaceBetPanel] matchBet response:', res.data);
         } else {
-          throw new Error('No available offers found. Please refresh and try again.');
+          // No LP available - bet will go into pending pool (no matched portion)
+          console.log('[PlaceBetPanel] No LP offer available, betting into pending pool');
+          // Still call matchBet but it will handle the case where there's no matching LP
+          throw new Error('No LP liquidity for this outcome. Please add liquidity first or select another outcome.');
         }
-      } else {
-        console.log('[PlaceBetPanel] Betting on outcome (no liquidity):', wallet);
-        throw new Error('No LP liquidity available for this outcome. Go to LP Dashboard to add liquidity.');
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit

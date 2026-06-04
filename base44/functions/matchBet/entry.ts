@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
     }
 
     // Removed max stake validation - bets can exceed LP liquidity and go pending
+    // Calculate potential payout using LP odds (matched portion will be paid at these odds)
+    const lp_odds = offer.odds_at_creation || (bettor_outcome === 'a' ? bet.odds_a : bettor_outcome === 'b' ? bet.odds_b : bet.odds_draw) || 2.0;
 
     // Validate LP wallet address exists
     console.log('[matchBet] Offer data:', {
