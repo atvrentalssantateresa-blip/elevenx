@@ -166,7 +166,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(createMarketIx);
         
       } else if (instruction.instruction_type === 'settle_market') {
-        // settle_market - program instruction to announce winner and settle market
+        // settle_market - program instruction to announce winner and settle market (emergency_settle)
         console.log('Creating settle_market program instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
@@ -178,21 +178,25 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         // Build keys from instruction, replacing SIGNER_WALLET placeholder with actual wallet
         const keys = instruction.keys?.map(k => {
-          const pubkey = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+          const pubkeyStr = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+          console.log('[SolanaTransactionSigner] Processing key:', {
+            original: k.pubkey,
+            replaced: pubkeyStr,
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          });
           return {
-            pubkey: new PublicKey(pubkey),
+            pubkey: new PublicKey(pubkeyStr),
             isSigner: k.isSigner,
             isWritable: k.isWritable,
           };
-        }) || [
-          { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
-          { pubkey: new PublicKey(instruction.platformConfigPda), isSigner: false, isWritable: true },
-          { pubkey: new PublicKey(instruction.feeVaultPda), isSigner: false, isWritable: true },
-          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // admin signer
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        ];
+        });
         
-        console.log('[SolanaTransactionSigner] settle_market keys:', keys.map(k => k.pubkey.toBase58()));
+        console.log('[SolanaTransactionSigner] settle_market final keys:', keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })));
         
         const settleMarketIx = new TransactionInstruction({
           keys,
