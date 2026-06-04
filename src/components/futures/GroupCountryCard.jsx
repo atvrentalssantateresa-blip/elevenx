@@ -25,26 +25,27 @@ export default function GroupCountryCard({ market, onSelect }) {
       {/* Subtle gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-card via-card to-card/95" />
       
-      <div className="relative p-5">
+      <div className="relative p-3 sm:p-5">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center text-3xl overflow-hidden ${
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className={`w-11 h-11 sm:w-14 sm:h-14 rounded-xl border-2 flex items-center justify-center text-2xl sm:text-3xl overflow-hidden ${
               isOpen ? 'border-border/40 bg-secondary/30' : 'border-border/20 bg-secondary/20 grayscale'
             }`}>
               {market.country_flag || '🌍'}
             </div>
             <div>
-              <h3 className="font-heading font-bold text-lg text-foreground">{market.country}</h3>
-              <div className="flex items-center gap-2 mt-1">
+              <h3 className="font-heading font-bold text-sm sm:text-lg text-foreground">{market.country}</h3>
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
                 {isOpen ? (
-                  <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold px-2 py-0">
+                  <Badge className="text-[8px] sm:text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold px-1.5 sm:px-2 py-0">
                     OPEN
                   </Badge>
                 ) : (
-                  <Badge className="text-[9px] bg-secondary text-muted-foreground border border-border px-2 py-0">
-                    <Lock className="w-2.5 h-2.5 mr-1" />
-                    SOON
+                  <Badge className="text-[8px] sm:text-[9px] bg-secondary text-muted-foreground border border-border px-1.5 sm:px-2 py-0">
+                    <Lock className="w-2 h-2 sm:w-2.5 sm:h-2.5 mr-1" />
+                    <span className="hidden sm:inline">SOON</span>
+                    <span className="sm:hidden">LOCKED</span>
                   </Badge>
                 )}
               </div>
@@ -53,7 +54,7 @@ export default function GroupCountryCard({ market, onSelect }) {
         </div>
 
         {/* Outcomes Grid */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
           {[
             { place: firstPlace, position: '1st', label: '1st', color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
             { place: secondPlace, position: '2nd', label: '2nd', color: 'text-slate-400', bg: 'bg-slate-400/10', border: 'border-slate-400/20' },
@@ -63,19 +64,19 @@ export default function GroupCountryCard({ market, onSelect }) {
               key={position}
               onClick={() => isOpen && place && onSelect(market, place)}
               disabled={!isOpen || !place}
-              className={`rounded-xl p-3 border transition-all duration-200 ${
+              className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border transition-all duration-200 ${
                 isOpen && place
                   ? `${bg} ${border} hover:border-${color.split('-')[1]}-400/40 hover:bg-${color.split('-')[1]}-400/15`
                   : 'border-border/20 bg-secondary/10 opacity-50 cursor-not-allowed'
               }`}
             >
               <div className="text-center">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-                <p className={`font-heading font-bold text-lg ${color}`}>
+                <p className="text-[8px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className={`font-heading font-bold text-base sm:text-lg ${color}`}>
                   {place?.odds ? `${place.odds.toFixed(2)}x` : '--'}
                 </p>
                 {place?.pool > 0 && (
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-0.5">
                     ◎{(place.pool / 1000).toFixed(1)}K
                   </p>
                 )}
@@ -85,21 +86,21 @@ export default function GroupCountryCard({ market, onSelect }) {
         </div>
 
         {/* Stats Footer */}
-        <div className="rounded-xl p-3.5 border border-border/30 bg-secondary/20">
+        <div className="rounded-lg sm:rounded-xl p-2.5 sm:p-3.5 border border-border/30 bg-secondary/20">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
               </div>
               <div>
-                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide">Pool</p>
-                <p className="font-heading font-bold text-sm text-primary">◎{(totalPool / 1000).toFixed(2)}K</p>
+                <p className="text-[8px] sm:text-[9px] text-muted-foreground font-medium uppercase tracking-wide">Pool</p>
+                <p className="font-heading font-bold text-xs sm:text-sm text-primary">◎{(totalPool / 1000).toFixed(2)}K</p>
               </div>
             </div>
 
             <div className="text-right">
-              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide">LP Offers</p>
-              <p className="font-heading font-bold text-sm text-foreground">{totalLpOffers}</p>
+              <p className="text-[8px] sm:text-[9px] text-muted-foreground font-medium uppercase tracking-wide">LP Offers</p>
+              <p className="font-heading font-bold text-xs sm:text-sm text-foreground">{totalLpOffers}</p>
             </div>
           </div>
         </div>
