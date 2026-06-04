@@ -366,14 +366,14 @@ export default function LpDashboard() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto w-full px-0 sm:px-4">
       <SuccessDialog open={!!successDialog} data={successDialog} onClose={() => setSuccessDialog(null)} />
       <SuccessDialog open={!!withdrawSuccessDialog} data={withdrawSuccessDialog} onClose={() => setWithdrawSuccessDialog(null)} isWithdraw={true} />
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading font-black text-2xl mb-1">LP Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Provide liquidity for matches & futures</p>
+          <h1 className="font-heading font-black text-xl sm:text-2xl mb-1">LP Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Provide liquidity for matches & futures</p>
         </div>
       </div>
 
@@ -381,44 +381,50 @@ export default function LpDashboard() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-[#1a1040]/80 via-[#0f0a1e]/90 to-[#12102a]/80 border border-primary/20 rounded-2xl p-6 relative overflow-hidden mb-6"
+        className="bg-gradient-to-r from-[#1a1040]/80 via-[#0f0a1e]/90 to-[#12102a]/80 border border-primary/20 rounded-2xl p-4 sm:p-6 relative overflow-hidden mb-4 sm:mb-6"
       >
         {/* Decorative Glow Orbs */}
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-25 bg-[#a69cf2]" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full blur-2xl opacity-15 bg-[#14f195]" />
+        <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 rounded-full blur-2xl opacity-25 bg-[#a69cf2]" />
+        <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-24 sm:h-24 rounded-full blur-2xl opacity-15 bg-[#14f195]" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full text-primary text-[10px] font-bold tracking-widest uppercase">
+        <div className="relative z-10 space-y-4">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full text-primary text-[8px] sm:text-[10px] font-bold tracking-widest uppercase">
               👑 Be the House
             </div>
-            <h2 className="font-heading font-black text-lg md:text-xl text-white">How Liquidity Providing Works</h2>
-            <p className="text-xs text-white/70 leading-relaxed">
-              ElevenX has no house edge or greedy middlemen. Instead, <strong>YOU</strong> get to act as the bookmaker, set the odds, and take the other side of the action!
+            <h2 className="font-heading font-black text-base sm:text-lg md:text-xl text-white">How Liquidity Providing Works</h2>
+            <p className="text-[10px] sm:text-xs text-white/70 leading-relaxed">
+              ElevenX has no house edge. Instead, <strong>YOU</strong> act as the bookmaker and take the other side!
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10 relative z-10">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 relative z-10">
           <div className="space-y-1.5">
-            <span className="text-xl">🎲</span>
-            <h3 className="font-heading font-bold text-xs text-primary">1. Underwrite an Outcome</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              By providing liquidity on an outcome (e.g. Mexico), you are betting <strong>against</strong> it. If Mexico loses or draws, you keep your deposit and win the bettors' money!
+            <div className="flex items-center gap-2">
+              <span className="text-lg sm:text-xl">🎲</span>
+              <h3 className="font-heading font-bold text-xs sm:text-xs text-primary">1. Underwrite an Outcome</h3>
+            </div>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground leading-relaxed">
+              Provide liquidity on an outcome. If it loses, you win the bettors' money!
             </p>
           </div>
           <div className="space-y-1.5">
-            <span className="text-xl">📈</span>
-            <h3 className="font-heading font-bold text-xs text-accent">2. Earn 2% on Every Bet</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              As an LP, you earn <strong>2% fees</strong> on all bets matched against your liquidity. Plus, when bettors lose, their entire stake goes to you!
+            <div className="flex items-center gap-2">
+              <span className="text-lg sm:text-xl">📈</span>
+              <h3 className="font-heading font-bold text-xs sm:text-xs text-accent">2. Earn 2% Fees</h3>
+            </div>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground leading-relaxed">
+              Earn <strong>2% fees</strong> on bets matched against your liquidity.
             </p>
           </div>
           <div className="space-y-1.5">
-            <span className="text-xl">🔓</span>
-            <h3 className="font-heading font-bold text-xs text-yellow-400">3. 100% Flexible Withdrawals</h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Your funds are yours. Any portion of your committed liquidity that hasn't been matched by an active bettor can be withdrawn <strong>instantly at any time</strong>.
+            <div className="flex items-center gap-2">
+              <span className="text-lg sm:text-xl">🔓</span>
+              <h3 className="font-heading font-bold text-xs sm:text-xs text-yellow-400">3. Flexible Withdrawals</h3>
+            </div>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground leading-relaxed">
+              Withdraw unmatched liquidity <strong>instantly at any time</strong>.
             </p>
           </div>
         </div>
@@ -426,12 +432,12 @@ export default function LpDashboard() {
 
       {!isConnected && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-primary/20 p-8 text-center"
+          className="rounded-2xl border border-primary/20 p-6 sm:p-8 text-center"
           style={{ background: 'linear-gradient(145deg, #1a1040 0%, #0f0a1e 100%)' }}>
-          <Wallet className="w-12 h-12 text-primary mx-auto mb-4" />
-          <h3 className="font-heading font-black text-xl text-white mb-2">Connect Wallet to Provide Liquidity</h3>
-          <p className="text-white/50 text-sm mb-5 max-w-xs mx-auto">Connect your Phantom wallet to start providing LP liquidity and earning yield.</p>
-          <Button onClick={connect} className="font-heading font-bold px-8 h-11 rounded-xl"
+          <Wallet className="w-10 h-10 sm:w-12 sm:h-12 text-primary mx-auto mb-4" />
+          <h3 className="font-heading font-black text-lg sm:text-xl text-white mb-2">Connect Wallet to Provide Liquidity</h3>
+          <p className="text-white/50 text-xs sm:text-sm mb-5 max-w-xs mx-auto px-4">Connect Phantom to start providing LP liquidity.</p>
+          <Button onClick={connect} className="font-heading font-bold px-6 sm:px-8 h-10 sm:h-11 rounded-xl text-sm"
             style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}>
             <Wallet className="w-4 h-4 mr-2" /> Connect Phantom
           </Button>
@@ -449,18 +455,18 @@ export default function LpDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="matches" className="space-y-6">
+          <TabsContent value="matches" className="space-y-4 sm:space-y-6">
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[
                 { label: 'Total Committed', value: `◎${totalCommitted.toFixed(4)}`, icon: DollarSign, color: 'text-primary' },
                 { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, icon: CheckCircle2, color: 'text-accent' },
                 { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, icon: Clock, color: 'text-yellow-400' },
               ].map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="bg-card border border-border/50 rounded-2xl p-4">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{s.label}</p>
-                  <p className={`font-heading font-bold text-lg ${s.color}`}>{s.value}</p>
+                  className="bg-card border border-border/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-4">
+                  <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{s.label}</p>
+                  <p className={`font-heading font-bold text-sm sm:text-lg ${s.color}`}>{s.value}</p>
                 </motion.div>
               ))}
             </div>
@@ -536,13 +542,13 @@ export default function LpDashboard() {
                                 return (
                                   <button key={o.key}
                                     onClick={() => setSelectedOutcome(o.key)}
-                                    className={`rounded-xl p-3 border-2 text-center transition-all ${
+                                    className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border-2 text-center transition-all ${
                                       selectedOutcome === o.key
                                         ? 'border-primary bg-primary/10'
                                         : 'border-border/50 bg-secondary/30 hover:border-border'
                                     }`}>
-                                    <p className="font-heading font-bold text-xs">{o.label}</p>
-                                    <p className="text-primary font-bold text-sm mt-0.5">{displayOdds}</p>
+                                    <p className="font-heading font-bold text-[10px] sm:text-xs">{o.label}</p>
+                                    <p className="text-primary font-bold text-xs sm:text-sm mt-0.5">{displayOdds}</p>
                                   </button>
                                 );
                               })}
@@ -579,7 +585,7 @@ export default function LpDashboard() {
                       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                         <button
                           onClick={() => setActiveGroup('all')}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                          className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
                             activeGroup === 'all'
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
@@ -591,7 +597,7 @@ export default function LpDashboard() {
                           <button
                             key={group}
                             onClick={() => setActiveGroup(group)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
                               activeGroup === group
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
@@ -602,7 +608,7 @@ export default function LpDashboard() {
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {filteredOpenBets.map(bet => {
                           const match = matches.find(m => m.id === bet.match_id);
                           return (
@@ -641,19 +647,19 @@ export default function LpDashboard() {
                     
                     return (
                       <motion.div key={offer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                        className="bg-card border border-border/50 rounded-xl p-4">
+                        className="bg-card border border-border/50 rounded-xl p-3 sm:p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <p className="font-heading font-bold text-sm">{getOutcomeLabel(offer)}</p>
-                            <p className="text-[10px] text-muted-foreground">{getMatchTitle(offer.match_id)}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-heading font-bold text-xs sm:text-sm truncate">{getOutcomeLabel(offer)}</p>
+                            <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">{getMatchTitle(offer.match_id)}</p>
                           </div>
-                          <Badge className={`text-[10px] ${
+                          <Badge className={`text-[8px] sm:text-[10px] shrink-0 ${
                             offer.status === 'fully_matched' ? 'bg-accent/20 text-accent' :
                             offer.status === 'partially_matched' ? 'bg-yellow-500/20 text-yellow-400' :
                             'bg-secondary text-secondary-foreground'
                           }`}>{offer.status}</Badge>
                         </div>
-                        <div className="grid grid-cols-3 gap-3 text-xs mt-2">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-[10px] sm:text-xs mt-2">
                           <div>
                             <p className="text-muted-foreground">Committed</p>
                             <p className="font-bold">◎{(offer.amount_offered || 0).toFixed(4)}</p>
@@ -668,7 +674,7 @@ export default function LpDashboard() {
                           </div>
                         </div>
                         <div className="mt-3">
-                          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                          <div className="flex justify-between text-[8px] sm:text-[10px] text-muted-foreground mb-1">
                             <span>Match rate</span><span>{matchPct}%</span>
                           </div>
                           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -690,10 +696,10 @@ export default function LpDashboard() {
                                 onClick={() => withdrawLiquidityMutation.mutate(offerWithUserBet)}
                                 disabled={withdrawLiquidityMutation.isPending}
                                 variant="outline"
-                                className="w-full h-8 text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
+                                className="w-full h-7 sm:h-8 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-lg"
                               >
                                 {withdrawLiquidityMutation.isPending ? (
-                                  <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                                  <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
                                 ) : (
                                   <>Withdraw ◎{(offer.amount_unmatched || 0).toFixed(4)}</>
                                 )}
@@ -703,8 +709,10 @@ export default function LpDashboard() {
                         )}
                         
                         <Link to={`/match/${offer.match_id}`}>
-                          <Button size="sm" variant="outline" className="w-full mt-3 h-8 text-xs border-border/50 rounded-lg">
-                            View Market <ArrowRight className="w-3 h-3 ml-1" />
+                          <Button size="sm" variant="outline" className="w-full mt-3 h-7 sm:h-8 text-[10px] sm:text-xs border-border/50 rounded-lg">
+                            <span className="hidden sm:inline">View Market</span>
+                            <span className="sm:hidden">View</span>
+                            <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-1" />
                           </Button>
                         </Link>
                       </motion.div>
@@ -715,10 +723,10 @@ export default function LpDashboard() {
             )}
 
             {myOffers.length === 0 && (
-              <div className="text-center py-12">
-                <TrendingUp className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No LP positions yet</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Select a market above to provide your first liquidity</p>
+              <div className="text-center py-12 sm:py-16">
+                <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No LP positions yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Select a market to provide liquidity</p>
               </div>
             )}
           </TabsContent>
