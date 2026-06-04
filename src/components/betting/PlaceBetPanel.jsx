@@ -170,7 +170,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       matchId,
       selectedOutcome,
       selectedOffer: selectedOffer?.id,
-      stakeNum
+      stakeNum,
+      amount_unmatched: selectedOffer?.amount_unmatched
     });
 
     // Debug: show both wallets
@@ -194,16 +195,26 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         wallet_trimmed: wallet?.trim(),
         mode,
         bet_id: bet?.id,
-        matchId
+        matchId,
+        selectedOffer: selectedOffer?.id,
+        stakeNum
       });
 
       let res;
       if (selectedOffer) {
         // Validate offer has unmatched liquidity
-        if ((selectedOffer.amount_unmatched || 0) <= 0) {
+        const unmatched = parseFloat((selectedOffer.amount_unmatched || 0).toFixed(9));
+        console.log('[PlaceBetPanel] Selected offer details:', {
+          offer_id: selectedOffer.id,
+          amount_unmatched: unmatched,
+          amount_offered: selectedOffer.amount_offered,
+          amount_matched: selectedOffer.amount_matched,
+          status: selectedOffer.status
+        });
+        if (unmatched <= 0) {
           throw new Error('This offer is fully matched. Select another offer.');
         }
-        console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet);
+        console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet, 'offer:', selectedOffer.id, 'amount:', stakeNum);
         res = await base44.functions.invoke('matchBet', {
           offer_id: selectedOffer.id,
           amount: stakeNum,

@@ -229,33 +229,48 @@ export default function OfferBook({ betId, bet, onSelectOffer }) {
 
                   {/* Action Button */}
                   <div className="flex flex-col gap-2 flex-shrink-0">
-                    {isOwn ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-3 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 rounded-lg font-heading font-bold"
-                        onClick={() => withdrawMutation.mutate(offer.id)}
-                        disabled={withdrawMutation.isPending}
-                      >
-                        {withdrawMutation.isPending ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <X className="w-3 h-3" />
-                            <span className="ml-1">Withdraw</span>
-                          </>
-                        )}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className={`h-8 px-4 text-xs font-bold rounded-lg ${getOutcomeButtonColor(offer.outcome)}`}
-                        onClick={() => onSelectOffer && onSelectOffer(offer)}
-                      >
-                        Bet Against
-                        <ArrowRight className="w-3 h-3 ml-1" />
-                      </Button>
-                    )}
+                  {isOwn ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-3 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 rounded-lg font-heading font-bold"
+                      onClick={() => withdrawMutation.mutate(offer.id)}
+                      disabled={withdrawMutation.isPending}
+                    >
+                      {withdrawMutation.isPending ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <>
+                          <X className="w-3 h-3" />
+                          <span className="ml-1">Withdraw</span>
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className={`h-8 px-4 text-xs font-bold rounded-lg ${getOutcomeButtonColor(offer.outcome)} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('[OfferBook] Bet Against clicked:', {
+                          offer_id: offer.id,
+                          outcome: offer.outcome,
+                          amount_unmatched: offer.amount_unmatched,
+                          status: offer.status
+                        });
+                        if (onSelectOffer) {
+                          onSelectOffer(offer);
+                        } else {
+                          console.error('[OfferBook] onSelectOffer is not defined!');
+                        }
+                      }}
+                      disabled={!onSelectOffer || (offer.amount_unmatched || 0) <= 0}
+                    >
+                      Bet Against
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  )}
                   </div>
                 </div>
               </motion.div>
