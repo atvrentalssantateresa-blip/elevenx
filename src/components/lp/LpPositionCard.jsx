@@ -52,17 +52,30 @@ export default function LpPositionCard({ offer, match, onWithdraw }) {
         {/* Header - Outcome & Status */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg sm:text-xl filter drop-shadow-lg">
-                {offer.outcome === 'a' ? match.team_a_flag : offer.outcome === 'b' ? match.team_b_flag : '🤝'}
-              </span>
-              <h3 className="font-heading font-bold text-sm sm:text-base text-white truncate">
-                {getOutcomeLabel()}
-              </h3>
+            <div className="flex items-center gap-2.5 mb-1">
+              {/* LP Side Indicator - Flag */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-md rounded-full" />
+                <div className="relative bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 rounded-lg p-1.5">
+                  <span className="text-xl filter drop-shadow-md">
+                    {offer.outcome === 'a' ? (match.team_a_flag || '🏠') : offer.outcome === 'b' ? (match.team_b_flag || '🏠') : '🤝'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-heading font-bold text-sm sm:text-base text-white truncate">
+                    {getOutcomeLabel()}
+                  </h3>
+                  <span className="text-[9px] text-primary/80 font-bold">
+                    {offer.outcome === 'a' ? match.team_a : offer.outcome === 'b' ? match.team_b : 'Draw'}
+                  </span>
+                </div>
+                <p className="text-[9px] sm:text-[10px] text-white/50 truncate">
+                  {match.group_stage || 'World Cup 2026'}
+                </p>
+              </div>
             </div>
-            <p className="text-[9px] sm:text-[10px] text-white/50 truncate">
-              {match.group_stage || 'World Cup 2026'}
-            </p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className={`${currentStatus.bg} ${currentStatus.border} ${currentStatus.color} text-[9px] sm:text-[10px] font-bold border`}>
