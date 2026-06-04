@@ -35,6 +35,8 @@ Deno.serve(async (req) => {
     }
 
     // Create match entity
+    const matchTime = new Date(apiMatch.utc_date);
+    const matchEndTime = new Date(matchTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours after kickoff
     const match = await base44.entities.Match.create({
       team_a: apiMatch.home_team?.name || 'Home Team',
       team_b: apiMatch.away_team?.name || 'Away Team',
@@ -42,12 +44,12 @@ Deno.serve(async (req) => {
       team_b_flag: apiMatch.away_team?.code || '✈️',
       group_stage: apiMatch.competition?.name || 'Friendly',
       match_time: apiMatch.utc_date,
+      match_end_time: matchEndTime.toISOString(),
       venue: apiMatch.venue?.name || 'TBD',
       status: 'upcoming',
     });
 
     // Calculate betting times (open until 1 hour before match)
-    const matchTime = new Date(apiMatch.utc_date);
     const openUntil = new Date(matchTime.getTime() - 60 * 60 * 1000); // 1 hour before
     if (openUntil < new Date()) {
       openUntil.setTime(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now if match is soon

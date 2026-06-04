@@ -40,14 +40,19 @@ Deno.serve(async (req) => {
       console.log(`Using ${apiMatches.length} fallback matches`);
     }
 
-    const matchPayloads = apiMatches.map(m => ({
-      team_a: m.home_team,
-      team_b: m.away_team,
-      match_time: m.utc_date,
-      status: 'upcoming',
-      group_stage: 'World Cup 2026',
-      venue: '',
-    }));
+    const matchPayloads = apiMatches.map(m => {
+      const matchTime = new Date(m.utc_date);
+      const matchEndTime = new Date(matchTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours after kickoff
+      return {
+        team_a: m.home_team,
+        team_b: m.away_team,
+        match_time: m.utc_date,
+        match_end_time: matchEndTime.toISOString(),
+        status: 'upcoming',
+        group_stage: 'World Cup 2026',
+        venue: '',
+      };
+    });
 
     const createdMatches = await base44.asServiceRole.entities.Match.bulkCreate(matchPayloads);
 
