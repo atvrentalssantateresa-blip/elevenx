@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
           market: marketPda.toBase58(),
           voteTally: voteTallyPda.toBase58(),
           platformConfig: platformConfigPda.toBase58(),
-          payer: admin_wallet,
+          admin: admin_wallet,
           systemProgram: '11111111111111111111111111111111',
         },
       },
