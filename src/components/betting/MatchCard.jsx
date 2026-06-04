@@ -21,13 +21,10 @@ export default function MatchCard({ match, bet, index = 0 }) {
   const lpDraw = bet?.lp_amount_draw || 0;
   const totalLP = lpA + lpB + lpDraw;
   
-  const oracleOddsA = (bet?.oracle_odds_a || 200) / 100;
-  const oracleOddsB = (bet?.oracle_odds_b || 300) / 100;
-  const oracleOddsDraw = (bet?.oracle_odds_draw || 320) / 100;
-  
-  const oddsA = (lpA > 0 && (lpB + lpDraw) > 0) ? (lpB + lpDraw) / lpA : oracleOddsA;
-  const oddsB = (lpB > 0 && (lpA + lpDraw) > 0) ? (lpA + lpDraw) / lpB : oracleOddsB;
-  const oddsDraw = (lpDraw > 0 && (lpA + lpB) > 0) ? (lpA + lpB) / lpDraw : oracleOddsDraw;
+  // Use authoritative odds_a/b/draw values (same as OddsPanel)
+  const oddsA = bet?.odds_a || (bet?.oracle_odds_a ? bet.oracle_odds_a / 100 : 0);
+  const oddsB = bet?.odds_b || (bet?.oracle_odds_b ? bet.oracle_odds_b / 100 : 0);
+  const oddsDraw = bet?.odds_draw || (bet?.oracle_odds_draw ? bet.oracle_odds_draw / 100 : 0);
 
   return (
     <motion.div
@@ -86,20 +83,18 @@ export default function MatchCard({ match, bet, index = 0 }) {
           {/* Odds/Pool */}
           {bet ? (
             <div className="pt-3 border-t border-border/50">
-              <div className={`grid gap-2 mb-2.5 ${oracleOddsDraw ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
                 <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                   <p className="text-muted-foreground truncate">{match.team_a}</p>
-                  <p className="font-bold text-primary text-sm">{oddsA.toFixed(2)}x</p>
+                  <p className="font-bold text-primary text-sm">{oddsA > 0 ? oddsA.toFixed(2) + 'x' : '—'}</p>
                 </div>
-                {oracleOddsDraw && (
-                  <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpDraw > 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
-                    <p className="text-muted-foreground">Draw</p>
-                    <p className="font-bold text-yellow-400 text-sm">{oddsDraw.toFixed(2)}x</p>
-                  </div>
-                )}
+                <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpDraw > 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
+                  <p className="text-muted-foreground">Draw</p>
+                  <p className="font-bold text-yellow-400 text-sm">{oddsDraw > 0 ? oddsDraw.toFixed(2) + 'x' : '—'}</p>
+                </div>
                 <div className={`rounded-lg px-2 py-1.5 text-center text-xs border ${lpB > 0 ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
                   <p className="text-muted-foreground truncate">{match.team_b}</p>
-                  <p className="font-bold text-accent text-sm">{oddsB.toFixed(2)}x</p>
+                  <p className="font-bold text-accent text-sm">{oddsB > 0 ? oddsB.toFixed(2) + 'x' : '—'}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
