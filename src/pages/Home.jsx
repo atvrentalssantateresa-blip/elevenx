@@ -277,9 +277,9 @@ export default function Home() {
                   <div className="mt-auto grid grid-cols-2 gap-2">
                     <Link to={`/match/${fm.matchId}`} className="block">
                      <Button className="w-full h-10 text-xs font-heading font-bold rounded-xl"
-                       style={{ background: '#21c45d', color: '#fff', boxShadow: '0 0 20px rgba(33,196,93,0.3)' }}
-                       onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                       onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}>
+                       style={{ background: 'rgba(100,200,140,0.25)', color: '#64c88c', borderColor: 'rgba(100,200,140,0.4)', borderWidth: '1px' }}
+                       onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(100,200,140,0.35)'}
+                       onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(100,200,140,0.25)'}>
                        Bet Now →
                      </Button>
                    </Link>
