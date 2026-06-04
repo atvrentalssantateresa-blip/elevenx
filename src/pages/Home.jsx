@@ -18,10 +18,10 @@ const WC_PHOTOS = [
 
 
 const FEATURED_MATCHES = [
-{ team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a20783be76a39e8d6c1ebbe', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/a1d1835b2_image.png' },
-{ team_a: 'South Korea', team_b: 'Czechia', group: 'Group A', date: 'Jun 12', matchId: '6a20783be76a39e8d6c1ebbd', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/cf05870f3_image.png' },
-{ team_a: 'Canada', team_b: 'Bosnia & Herzegovina', group: 'Group B', date: 'Jun 12', matchId: '6a20783be76a39e8d6c1ebbc', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png' },
-{ team_a: 'USA', team_b: 'Paraguay', group: 'Group D', date: 'Jun 13', matchId: '6a20783be76a39e8d6c1ebbb', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/e4dbfaa4c_image.png' }];
+{ team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a20ec5003fec97668e1177c', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/a1d1835b2_image.png' },
+{ team_a: 'South Korea', team_b: 'Czech Republic', group: 'Group A', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177d', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/cf05870f3_image.png' },
+{ team_a: 'Canada', team_b: 'Bosnia & Herzegovina', group: 'Group B', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177e', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png' },
+{ team_a: 'USA', team_b: 'Paraguay', group: 'Group D', date: 'Jun 13', matchId: '6a20ec5003fec97668e1177f', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/e4dbfaa4c_image.png' }];
 
 
 
