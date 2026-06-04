@@ -21,13 +21,22 @@ Deno.serve(async (req) => {
     console.log('[resetAndSync] Starting complete database reset...');
 
     // Step 1: Delete all user-facing data (in order of dependencies)
-    // Helper to safely delete entities (skip if already deleted)
+    // Helper to safely delete entities with rate limit handling
     const safeDelete = async (entityType, id) => {
-      try {
-        await base44.asServiceRole.entities[entityType].delete(id);
-      } catch (err) {
-        // Ignore 404 errors (already deleted)
-        if (err.status !== 404) throw err;
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          await base44.asServiceRole.entities[entityType].delete(id);
+          return;
+        } catch (err) {
+          if (err.status === 429) {
+            retries--;
+            if (retries === 0) throw err;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else if (err.status !== 404) {
+            throw err;
+          }
+        }
       }
     };
 
