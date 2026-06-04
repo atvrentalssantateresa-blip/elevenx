@@ -161,18 +161,7 @@ export default function Admin() {
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['matches', 'bets'] });
-      // Auto-trigger market creation after bet is created
-      try {
-        const marketRes = await base44.functions.invoke('recreateMarketWithValidDates', {
-          bet_id: data.bet_id,
-          match_id: data.match_id,
-        });
-        if (marketRes.data.solana_instruction) {
-          alert(`✓ Test market ready!\n\n${data.message}\n\nNow click "⚡ Test Mode" on the FFO vs FFO1 market to deploy it on-chain with timestamps ending in 5 minutes.`);
-        }
-      } catch (err) {
-        alert(`✓ Bet created!\n${data.message}\n\nNote: Market deployment failed: ${err.message}`);
-      }
+      alert(`✓ Test market created!\n\nMatch: test1 vs test2\nBetting closes in: 5 minutes\nSettlement enabled: 6 minutes\n\nGo to Matches tab → Click "Initialize Market" → Sign transaction`);
     },
     onError: (err) => alert('Error: ' + err.message),
   });
@@ -237,6 +226,19 @@ export default function Admin() {
   const handleBulkMatchDeploySuccess = async (result) => {
     console.log('Bulk match deploy success:', result);
     
+    // For smooth test: commit the bet market data after successful transaction
+    if (pendingBulkMatchDeploy?.instructions?.[0]?.betId) {
+      try {
+        await base44.entities.Bet.update(pendingBulkMatchDeploy.instructions[0].betId, {
+          solana_market_created: true,
+          solana_market_pda: pendingBulkMatchDeploy.instructions[0].accounts?.market,
+        });
+        console.log('✓ Smooth test: Bet committed to database');
+      } catch (err) {
+        console.error('Failed to commit bet:', err);
+      }
+    }
+    
     if (pendingBulkMatchDeploy?.betUpdates) {
       for (const betUpdate of pendingBulkMatchDeploy.betUpdates) {
         await base44.entities.Bet.update(betUpdate.id, {
@@ -248,7 +250,7 @@ export default function Admin() {
     
     setPendingBulkMatchDeploy(null);
     queryClient.invalidateQueries({ queryKey: ['bets', 'matches'] });
-    alert(`✓ Successfully deployed ${pendingBulkMatchDeploy?.marketCount || 0} match markets to Solana!`);
+    alert(`✓ ${pendingBulkMatchDeploy?.message || 'Successfully deployed ' + (pendingBulkMatchDeploy?.marketCount || 0) + ' match markets to Solana!'}`);
   };
 
   if (user?.role !== 'admin') {
@@ -370,28 +372,40 @@ export default function Admin() {
             </div>
           </div>
 
-          <div className="bg-card border border-accent/30 rounded-xl p-4">
+          <div className="bg-card border border-green-500/30 rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <Zap className="w-5 h-5 text-accent" />
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
                 <div>
-                  <p className="text-sm font-bold text-foreground">⚡ Quick Test: FFO vs FFO1 (5 min)</p>
-                  <p className="text-xs text-muted-foreground">Creates match + bet + market ready to settle in 5 minutes</p>
+                  <p className="text-sm font-bold text-foreground">✅ ONE-CLICK SMOOTH TEST: test1 vs test2</p>
+                  <p className="text-xs text-muted-foreground">Creates match + bet + ready-to-sign tx (NO ERRORS!)</p>
                 </div>
               </div>
               <Button
-                onClick={() => quickTestMarketMutation.mutate()}
-                disabled={quickTestMarketMutation.isPending}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground font-heading font-bold rounded-xl h-9"
+                onClick={async () => {
+                  try {
+                    const res = await base44.functions.invoke('smoothTest', {});
+                    if (res.data.error) throw new Error(res.data.error);
+                    // Auto-trigger signing
+                    setPendingBulkMatchDeploy({
+                      instructions: [{
+                        ...res.data.solana_instruction,
+                        betId: res.data.bet_id,
+                        matchId: res.data.match_id,
+                      }],
+                      betUpdates: [],
+                      marketCount: 1,
+                      message: res.data.message,
+                    });
+                  } catch (err) {
+                    alert('Error: ' + err.message);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white font-heading font-bold rounded-xl h-9"
               >
-                {quickTestMarketMutation.isPending ? 'Creating...' : 'Create Quick Test'}
+                <Zap className="w-4 h-4 mr-2" /> Start Smooth Test
               </Button>
             </div>
-            {quickTestMarketMutation.isSuccess && (
-              <p className="mt-3 text-xs text-accent bg-accent/10 rounded-lg px-3 py-2">
-                ✓ Test market created! Click ⚡ Test Mode on the FFO vs FFO1 market to deploy on-chain.
-              </p>
-            )}
           </div>
 
           <div className="bg-card border border-primary/20 rounded-xl p-4">
