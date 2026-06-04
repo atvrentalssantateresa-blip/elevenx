@@ -256,11 +256,11 @@ export default function Futures() {
       {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="futures" className="mt-6">
-          {/* Hero */}
+          {/* Combined Hero + How It Works Banner */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-3xl overflow-hidden p-7"
+            className="relative rounded-3xl overflow-hidden p-7 mb-6"
             style={{ background: 'linear-gradient(135deg, #1a0a3e 0%, #0d0520 50%, #0a1a2e 100%)' }}
           >
             {/* Glow orbs */}
@@ -292,75 +292,43 @@ export default function Futures() {
                   Update Odds
                 </Button>
               </div>
-              <p className="text-white/50 text-sm max-w-md">
+              <p className="text-white/50 text-sm max-w-md mb-4">
                 All 48 teams across 12 groups. Bet on 1st, 2nd, or 3rd place finishes with live multipliers.
               </p>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mt-5">
-                <div>
-                  <p className="text-white font-heading font-bold text-xl">12</p>
-                  <p className="text-white/40 text-[10px]">Groups (A-L)</p>
+              {/* How It Works - Integrated into Hero */}
+              <div className="border-t border-white/10 pt-4">
+                <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full text-primary text-[10px] font-bold tracking-widest uppercase mb-3">
+                  🏆 How Futures Work
                 </div>
-                <div>
-                  <p className="text-white font-heading font-bold text-xl">◎{(totalPool / 1000).toFixed(2)}K</p>
-                  <p className="text-white/40 text-[10px]">Total Pool</p>
-                </div>
-                <div>
-                  <p className="text-white font-heading font-bold text-xl">{totalLpOffers}</p>
-                  <p className="text-white/40 text-[10px]">LP Offers</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-xl">💡</span>
+                    <h3 className="font-heading font-bold text-xs text-primary">How It Works</h3>
+                    <p className="text-[11px] text-white/60 leading-relaxed">
+                      <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover payouts. Your stake goes into the pool. Winners share after tournament ends.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-xl">👑</span>
+                    <h3 className="font-heading font-bold text-xs text-accent">Be the House (LP)</h3>
+                    <p className="text-[11px] text-white/60 leading-relaxed">
+                      Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing stakes!
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-xl">⚠️</span>
+                    <h3 className="font-heading font-bold text-xs text-yellow-400">Important</h3>
+                    <p className="text-[11px] text-white/60 leading-relaxed">
+                      You can only bet if there's enough LP liquidity. <strong>No LP = no betting.</strong> LPs earn fees and keep losing stakes!
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* How Futures Work Banner */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-r from-[#1a1040]/80 via-[#0f0a1e]/90 to-[#12102a]/80 border border-primary/20 rounded-2xl p-6 relative overflow-hidden mb-6"
-          >
-            {/* Decorative Glow Orbs */}
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-25 bg-[#a69cf2]" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full blur-2xl opacity-15 bg-[#14f195]" />
 
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2 max-w-xl">
-                <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-3 py-1 rounded-full text-primary text-[10px] font-bold tracking-widest uppercase">
-                  🏆 Futures Betting
-                </div>
-                <h2 className="font-heading font-black text-lg md:text-xl text-white">Bet on Tournament Outcomes</h2>
-                <p className="text-xs text-white/70 leading-relaxed">
-                  Back any team to finish 1st, 2nd, or 3rd in their group. Odds are locked when you bet — if your team finishes in that position, you get paid out based on the multiplier!
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10 relative z-10">
-              <div className="space-y-1.5">
-                <span className="text-xl">💡</span>
-                <h3 className="font-heading font-bold text-xs text-primary">How It Works</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover potential payouts. When you bet, your stake goes into the pool. Winners share the pool after the tournament ends.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <span className="text-xl">👑</span>
-                <h3 className="font-heading font-bold text-xs text-accent">Be the House (LP)</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing bettors' stakes. Withdraw unmatched funds anytime!
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <span className="text-xl">⚠️</span>
-                <h3 className="font-heading font-bold text-xs text-yellow-400">Important</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  You can only bet if there's enough LP liquidity. <strong>No LP = no betting.</strong> LPs earn fees on every bet and keep losing stakes as profit!
-                </p>
-              </div>
-            </div>
-          </motion.div>
 
           {/* Search Bar */}
           <div className="relative mb-4">
@@ -382,19 +350,34 @@ export default function Futures() {
             )}
           </div>
 
-          {/* Quick-Jump Group Navigation */}
-          <GroupNavigation 
-            onGroupClick={(groupName) => {
-              setActiveGroup(groupName);
-              if (groupName !== 'ALL') {
-                const element = document.getElementById(`group-${groupName}`);
-                if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          {/* Group Navigation with Stats */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <GroupNavigation 
+              onGroupClick={(groupName) => {
+                setActiveGroup(groupName);
+                if (groupName !== 'ALL') {
+                  const element = document.getElementById(`group-${groupName}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
                 }
-              }
-            }} 
-            activeGroup={activeGroup} 
-          />
+              }} 
+              activeGroup={activeGroup} 
+            />
+            
+            {/* Stats - Pool & LP Offers */}
+            <div className="flex items-center gap-3 bg-card/50 border border-border/50 rounded-xl px-4 py-2">
+              <div className="text-center">
+                <p className="text-[10px] text-muted-foreground">Total Pool</p>
+                <p className="font-heading font-bold text-sm text-primary">◎{(totalPool / 1000).toFixed(2)}K</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div className="text-center">
+                <p className="text-[10px] text-muted-foreground">LP Offers</p>
+                <p className="font-heading font-bold text-sm text-accent">{totalLpOffers}</p>
+              </div>
+            </div>
+          </div>
 
           {/* Single Group View or All Groups View */}
           {activeGroup !== 'ALL' ? (
