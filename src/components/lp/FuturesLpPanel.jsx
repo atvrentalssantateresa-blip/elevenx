@@ -172,13 +172,11 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
         background: 'linear-gradient(145deg, rgba(15,10,30,0.95) 0%, rgba(26,16,64,0.9) 100%)',
       }}
     >
-      {/* Animated gradient border frame */}
+      {/* Purple gradient border frame */}
       <div className="absolute inset-0 rounded-2xl p-[2px] pointer-events-none">
         <div className="absolute inset-0 rounded-2xl" 
              style={{
-               background: 'linear-gradient(45deg, #a69cf2, #14f195, #a69cf2, #14f195)',
-               backgroundSize: '200% 200%',
-               animation: 'gradientShift 3s ease infinite'
+               background: 'linear-gradient(135deg, #a69cf2, #8b84e8, #6d5dd3)',
              }} />
       </div>
       
