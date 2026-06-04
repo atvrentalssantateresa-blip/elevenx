@@ -827,16 +827,16 @@ function CreateMatchDialog() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     team_a: '', team_b: '', team_a_flag: '', team_b_flag: '',
-    group_stage: '', match_time: '', venue: '', status: 'upcoming',
+    group_stage: '', match_time: '', match_end_time: '', venue: '', status: 'upcoming',
   });
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Match.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['matches'] });
-      setOpen(false);
-      setForm({ team_a: '', team_b: '', team_a_flag: '', team_b_flag: '', group_stage: '', match_time: '', venue: '', status: 'upcoming' });
+    queryClient.invalidateQueries({ queryKey: ['matches'] });
+    setOpen(false);
+    setForm({ team_a: '', team_b: '', team_a_flag: '', team_b_flag: '', group_stage: '', match_time: '', match_end_time: '', venue: '', status: 'upcoming' });
     },
   });
 
@@ -916,9 +916,15 @@ function CreateMatchDialog() {
             <Label className="text-xs">Group / Round</Label>
             <Input value={form.group_stage} onChange={e => setForm({...form, group_stage: e.target.value})} className="bg-secondary/50" placeholder="Group A" />
           </div>
-          <div>
-            <Label className="text-xs">Match Time</Label>
-            <Input type="datetime-local" value={form.match_time} onChange={e => setForm({...form, match_time: e.target.value})} className="bg-secondary/50" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Match Start</Label>
+              <Input type="datetime-local" value={form.match_time} onChange={e => setForm({...form, match_time: e.target.value})} className="bg-secondary/50" />
+            </div>
+            <div>
+              <Label className="text-xs">Match End</Label>
+              <Input type="datetime-local" value={form.match_end_time} onChange={e => setForm({...form, match_end_time: e.target.value})} className="bg-secondary/50" />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Venue</Label>
@@ -926,7 +932,7 @@ function CreateMatchDialog() {
           </div>
           <Button
             onClick={() => createMutation.mutate(form)}
-            disabled={!form.team_a || !form.team_b || !form.match_time || createMutation.isPending}
+            disabled={!form.team_a || !form.team_b || !form.match_time || !form.match_end_time || createMutation.isPending}
             className="w-full bg-primary text-primary-foreground font-heading font-bold rounded-xl h-10"
           >
             Create Match

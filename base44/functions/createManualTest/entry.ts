@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       team_b_flag: '🇧🇷',
       group_stage: 'Test Match',
       match_time: now.toISOString(),
+      match_end_time: settleAfter.toISOString(),
       venue: 'Test Stadium',
       status: 'upcoming',
     });

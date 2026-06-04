@@ -27,6 +27,11 @@
       "format": "date-time",
       "description": "Scheduled match kick-off time"
     },
+    "match_end_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the match ends (for betting/settlement timeline)"
+    },
     "venue": {
       "type": "string",
       "description": "Stadium / city"
@@ -63,6 +68,7 @@
   "required": [
     "team_a",
     "team_b",
-    "match_time"
+    "match_time",
+    "match_end_time"
   ]
 }
