@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Wallet, CheckCircle, X, Clock, AlertTriangle } from 'lucide-react';
+import { Wallet, CheckCircle, X, Clock } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
@@ -12,24 +12,25 @@ const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
 // Mode: 'offer' = place a new bet offer (LP), 'match' = bet against existing offer
 export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOutcome, selectedOffer, onSuccess }) {
-  // Fetch all LP offers for this bet to check if liquidity exists
-  const { data: allOffers = [] } = useQuery({
-    queryKey: ['allOffers', bet?.id],
-    queryFn: () => base44.entities.BetOffer.filter({ bet_id: bet?.id }),
-    enabled: !!bet?.id && mode === 'offer',
-    staleTime: 5000,
-  });
-  
-  // Check if there's any LP liquidity for the selected outcome
-  const hasLiquidityForOutcome = allOffers.some(o => 
-    (o.status === 'open' || o.status === 'partially_matched') && 
-    o.outcome === selectedOutcome &&
-    (o.amount_unmatched || 0) > 0
-  );
   const [amount, setAmount] = useState('');
   const [instruction, setInstruction] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const { isConnected, connect, isConnecting, walletAddress } = useWallet();
+
+  // Fetch all LP offers for this bet
+  const { data: allOffers = [] } = useQuery({
+    queryKey: ['allOffers', bet?.id],
+    queryFn: () => base44.entities.BetOffer.filter({ bet_id: bet?.id }),
+    enabled: !!bet?.id,
+    staleTime: 5000,
+  });
+
+  // Check if there's any LP liquidity for the selected outcome
+  const hasLiquidityForOutcome = allOffers.some(o =>
+    (o.status === 'open' || o.status === 'partially_matched') &&
+    o.outcome === selectedOutcome &&
+    (o.amount_unmatched || 0) > 0
+  );
 
   // Calculate time remaining until betting closes
   React.useEffect(() => {
@@ -280,29 +281,24 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         <p className="text-xs text-muted-foreground">
           {mode === 'offer' ?
           hasLiquidityForOutcome ?
-          `Odds: ${odds.toFixed(2)}x — Add any amount — your offer goes into the orderbook until matched` :
-          `Odds: ${odds.toFixed(2)}x — No LP liquidity yet — provide liquidity to earn fees` :
+          `Odds: ${odds.toFixed(2)}x — Your offer will be matched against existing liquidity` :
+          `Odds: ${odds.toFixed(2)}x — You're providing liquidity as an LP` :
           selectedOffer ?
           `Max stake: ◎${maxMatcherStake?.toFixed(4)} @ ${selectedOffer.odds_at_creation.toFixed(2)}x — locked immediately` :
           'No liquidity available for this outcome'
           }
         </p>
-        
-        {/* Help text explaining the mode */}
+
+        {/* Show message when no LP liquidity exists for selected outcome */}
         {mode === 'offer' && !hasLiquidityForOutcome && selectedOutcome && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-500" />
-              <p className="text-xs font-bold text-yellow-500">No Liquidity Available</p>
-            </div>
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-yellow-500">⚠️ No LP Liquidity for {selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              There are no active LP offers for <strong>{selectedOutcome === 'a' ? bet?.outcome_a : selectedOutcome === 'b' ? bet?.outcome_b : 'Draw'}</strong> yet. 
-              You can either:
+              There are no active offers for this outcome. By proceeding, you're acting as a <strong>Liquidity Provider (LP)</strong>.
             </p>
-            <ul className="text-[10px] text-muted-foreground list-disc list-inside space-y-0.5 ml-1">
-              <li><strong>Provide liquidity yourself</strong> (this panel) to earn 2% fees when bettors match against you</li>
-              <li><strong>Wait for LPs</strong> to provide liquidity, then use "Bet Against" to place your bet</li>
-            </ul>
+            <p className="text-[10px] text-muted-foreground">
+              To place a regular bet instead, wait for LPs to provide liquidity, then use "Bet Against" from the offers list.
+            </p>
           </div>
         )}
         

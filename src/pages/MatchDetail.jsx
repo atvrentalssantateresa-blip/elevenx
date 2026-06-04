@@ -414,14 +414,6 @@ export default function MatchDetail() {
       {/* ── Bet Panel ── */}
       {hasBet && isOpen && (selectedOutcome || selectedOffer) &&
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={betMode + selectedOutcome + selectedOffer?.id}>
-          {betMode === 'offer' && (
-            <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-4">
-              <p className="text-xs text-primary font-bold mb-1">🎯 You're Placing a Bet</p>
-              <p className="text-xs text-muted-foreground">
-                Select your stake and confirm. Your bet will be matched against existing LP liquidity and locked in with fixed odds.
-              </p>
-            </div>
-          )}
           {betMode === 'match' && selectedOffer && (
             <div className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-4">
               <p className="text-xs text-primary font-bold mb-1">🎯 You're Placing a Bet</p>
