@@ -15,8 +15,9 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const openUntil = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
-    const settleAfter = new Date(now.getTime() + 6 * 60 * 1000); // 6 minutes from now
+    const matchStartTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
+    const openUntil = new Date(matchStartTime.getTime() + 60 * 60 * 1000); // 1 hour after match starts
+    const settleAfter = new Date(openUntil.getTime() + 5 * 60 * 1000); // 5 minutes after betting closes
 
     // Create test match
     const match = await serviceRole.entities.Match.create({
@@ -25,7 +26,7 @@ Deno.serve(async (req) => {
       team_a_flag: '🇺🇸',
       team_b_flag: '🇧🇷',
       group_stage: 'Test Match',
-      match_time: now.toISOString(),
+      match_time: matchStartTime.toISOString(),
       match_end_time: settleAfter.toISOString(),
       venue: 'Test Stadium',
       status: 'upcoming',
@@ -50,9 +51,7 @@ Deno.serve(async (req) => {
       success: true, 
       matchId: match.id,
       betId: bet.id,
-      openUntil: openUntil.toISOString(),
-      settleAfter: settleAfter.toISOString(),
-      message: `✓ Test match created!\n\nBetting closes in: 5 minutes\nSettlement enabled: 6 minutes\n\nGo to Matches → Initialize Market → Provide LP → Test betting`
+      message: `✓ Test match created!\n\nMatch starts in: 10 minutes\nBetting closes: 1 hour after match starts\n\nGo to Matches tab → Click "Initialize Market"`
     });
 
   } catch (error) {
