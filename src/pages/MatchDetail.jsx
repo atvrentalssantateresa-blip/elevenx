@@ -477,13 +477,18 @@ export default function MatchDetail() {
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  const res = await base44.functions.invoke('fixCancelledOffer', { bet_id: bet.id, outcome });
-                  if (res.data.success) {
-                    alert(res.data.message);
-                    queryClient.invalidateQueries({ queryKey: ['debugOffers', bet.id] });
-                    queryClient.invalidateQueries({ queryKey: ['allOffers', bet.id] });
-                  } else {
-                    alert(res.data.error || 'Failed to fix');
+                  try {
+                    const res = await base44.functions.invoke('fixCancelledOffer', { bet_id: bet.id, outcome });
+                    if (res.data.success) {
+                      alert(res.data.message);
+                      queryClient.invalidateQueries({ queryKey: ['debugOffers', bet.id] });
+                      queryClient.invalidateQueries({ queryKey: ['allOffers', bet.id] });
+                    } else if (res.data.error) {
+                      alert(res.data.error);
+                    }
+                  } catch (err) {
+                    console.error('Error fixing cancelled offer:', err);
+                    alert('Failed to fix: ' + (err.response?.data?.error || err.message));
                   }
                 }}
                 className="text-xs"
