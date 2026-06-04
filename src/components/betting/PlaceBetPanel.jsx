@@ -277,28 +277,28 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'offer', selectedOu
         </p>
         
         {/* Help text explaining the mode */}
-        <div className={`rounded-xl p-3 text-[10px] hidden ${
-        mode === 'offer' ?
-        'bg-primary/5 border border-primary/20' :
-        'bg-primary/5 border border-primary/20'}`
-        }>
-          {mode === 'offer' ?
-          <>
-              <p className="font-bold text-primary mb-1">🎯 You're Placing a Bet</p>
-              <p className="text-muted-foreground">
-                Your bet will be matched against existing LP liquidity. Once matched, your funds are locked with fixed odds.
-              </p>
-            </> :
+        
 
-          <>
-              <p className="font-bold text-primary mb-1">🎯 You're Placing a Bet</p>
-              <p className="text-muted-foreground">
-                You're betting against an existing offer. Your SOL is locked immediately and cannot be withdrawn. 
-                Win and get paid out automatically after the match ends.
-              </p>
-            </>
-          }
-        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
       </div>
 
       <div>
