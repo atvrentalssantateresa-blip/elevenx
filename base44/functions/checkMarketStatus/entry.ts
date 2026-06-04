@@ -2,9 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-// Simple in-memory cache to prevent Solana RPC rate limiting (30-second TTL)
+// Simple in-memory cache to prevent Solana RPC rate limiting (60-second TTL)
 const cache = new Map();
-const CACHE_TTL_MS = 30000;
+const CACHE_TTL_MS = 60000;
 
 /**
  * Checks if a pari-mutuel market is properly initialized on-chain and whether it's settled.

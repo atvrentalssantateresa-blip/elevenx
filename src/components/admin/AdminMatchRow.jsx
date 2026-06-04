@@ -21,17 +21,17 @@ export default function AdminMatchRow({ match, bets, index }) {
         const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
         return res.data;
       } catch (err) {
-        if (err.response?.status === 429) {
+        if (err.response?.status === 429 || err.message?.includes('rate limit')) {
           console.warn('Rate limited - skipping market status check for match:', match.id);
           return null;
         }
         throw err;
       }
     },
-    staleTime: 60000, // Cache for 60 seconds to reduce API calls
+    staleTime: 120000, // Cache for 2 minutes to reduce API calls
     retry: (failureCount, error) => {
       // Don't retry on 429 rate limit errors
-      if (error.response?.status === 429) return false;
+      if (error.response?.status === 429 || error.message?.includes('rate limit')) return false;
       return failureCount < 2;
     },
   });
@@ -74,9 +74,9 @@ export default function AdminMatchRow({ match, bets, index }) {
           });
           break; // Success, exit retry loop
         } catch (err) {
-          if (err.response?.status === 429 && retries < maxRetries - 1) {
+          if ((err.response?.status === 429 || err.message?.includes('rate limit')) && retries < maxRetries - 1) {
             retries++;
-            const delay = 2000 * retries; // 2s, 4s, 6s
+            const delay = 5000 * retries; // 5s, 10s, 15s
             console.log('[createBetMutation] Rate limited, waiting', delay, 'ms...');
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
