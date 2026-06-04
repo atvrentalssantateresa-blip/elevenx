@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const betPayloads = apiMatches.map((m, i) => {
       const matchTime = new Date(m.utc_date);
-      const openUntil = new Date(matchTime.getTime() + 60 * 60 * 1000);
+      const openUntil = new Date(matchTime.getTime() + 60 * 60 * 1000); // 1 hour after match starts
       
       return {
         title: `${m.home_team} vs ${m.away_team}`,

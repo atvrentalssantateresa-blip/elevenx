@@ -64,12 +64,11 @@ Deno.serve(async (req) => {
     // Prepare create_market instruction with new discriminator
     const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
 
-    // For market recreation, set open_until to 24 hours from now (not the original past date)
-    const isRecreate = payload.force_recreate === true;
-    const openUntil = isRecreate 
-      ? Math.floor(Date.now() / 1000) + 86400  // 24 hours from now for recreation
-      : (bet.open_until ? Math.floor(new Date(bet.open_until).getTime() / 1000) : Math.floor(Date.now() / 1000) + 86400);
-    const settleAfter = openUntil + 5; // 5 seconds (instant settlement after betting closes)
+    // Betting window: opens NOW (when initialized), closes 1 hour after match starts
+    const matchStartTime = new Date(match.match_time).getTime();
+    const bettingCloseTime = matchStartTime + (60 * 60 * 1000); // 1 hour after match begins
+    const openUntil = Math.floor(bettingCloseTime / 1000);
+    const settleAfter = openUntil + 300; // 5 minutes after betting closes for settlement
 
     const outcomeNames = [
       Buffer.alloc(32),
