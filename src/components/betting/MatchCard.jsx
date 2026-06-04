@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { getTeamFlag } from '@/utils/flags';
+import { base44 } from '@/api/base44Client';
 
 const statusStyles = {
   upcoming: 'bg-secondary text-secondary-foreground',
@@ -13,8 +15,40 @@ const statusStyles = {
   cancelled: 'bg-muted text-muted-foreground line-through',
 };
 
-export default function MatchCard({ match, bet, index = 0 }) {
+export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
   const matchTime = match.match_time ? new Date(match.match_time) : null;
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  const handleRefreshOdds = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!bet?.stats_api_match_id) {
+      alert('No TheStatsAPI match ID linked to this bet');
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      const res = await base44.functions.invoke('refreshMatchOdds', {
+        bet_id: bet.id,
+        stats_api_match_id: bet.stats_api_match_id
+      });
+      
+      if (res.data.error) {
+        alert(res.data.error);
+      } else if (res.data.success) {
+        if (onOddsRefresh) onOddsRefresh();
+        alert(`Odds updated! ${res.data.bookmaker}: ${match.team_a} ${res.data.odds.home.toFixed(2)}x | Draw ${res.data.odds.draw.toFixed(2)}x | ${match.team_b} ${res.data.odds.away.toFixed(2)}x`);
+      } else {
+        alert(res.data.message || 'Failed to fetch odds');
+      }
+    } catch (err) {
+      alert('Failed to fetch odds: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const lpA = bet?.lp_amount_a || 0;
   const lpB = bet?.lp_amount_b || 0;
@@ -41,10 +75,24 @@ export default function MatchCard({ match, bet, index = 0 }) {
             <span className="text-xs text-muted-foreground font-semibold">
               {match.group_stage || 'World Cup 2026'}
             </span>
-            <Badge className={`text-xs font-semibold uppercase tracking-wider ${statusStyles[match.status] || statusStyles.upcoming}`}>
-              {match.status === 'live' && <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse mr-1.5" />}
-              {match.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {bet && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleRefreshOdds}
+                  disabled={isRefreshing}
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                  title="Refresh odds (Admin only)"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+              <Badge className={`text-xs font-semibold uppercase tracking-wider ${statusStyles[match.status] || statusStyles.upcoming}`}>
+                {match.status === 'live' && <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse mr-1.5" />}
+                {match.status}
+              </Badge>
+            </div>
           </div>
 
           {/* Match Matchup */}

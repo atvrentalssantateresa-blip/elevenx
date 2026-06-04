@@ -24,8 +24,20 @@ Deno.serve(async (req) => {
             return Response.json({ error: data.message || 'API Error' }, { status: 400 });
         }
 
+        // API returns { data: [...] } format
+        const matchesArray = Array.isArray(data) ? data : (data.data || []);
+        
+        if (!Array.isArray(matchesArray) || matchesArray.length === 0) {
+            return Response.json({ 
+                success: true, 
+                count: 0, 
+                matches: [],
+                message: 'No matches found. The API might not have World Cup odds available yet.'
+            });
+        }
+
         // Parse and normalize odds data
-        const matches = data.map(event => {
+        const matches = matchesArray.map(event => {
             // Extract bookmaker odds
             const bookmakers = event.bookmakers || [];
             

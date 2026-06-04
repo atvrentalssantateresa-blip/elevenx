@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Trophy, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 export default function Matches() {
   const [activeGroup, setActiveGroup] = useState('all');
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
 
   const { data: rawMatches = [] } = useQuery({
     queryKey: ['matches'],
@@ -148,7 +149,15 @@ export default function Matches() {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dateMatches.map((m, i) => (
-                    <MatchCard key={m.id} match={m} bet={betByMatch[m.id]} index={i} />
+                    <MatchCard 
+                      key={m.id} 
+                      match={m} 
+                      bet={betByMatch[m.id]} 
+                      index={i}
+                      onOddsRefresh={() => {
+                        queryClient.invalidateQueries({ queryKey: ['bets'] });
+                      }}
+                    />
                   ))}
                 </div>
               </motion.div>
