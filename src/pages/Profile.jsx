@@ -1,23 +1,28 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useWallet } from '@/lib/WalletContext';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
-import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet, RefreshCcw } from 'lucide-react';
+import { User, Trophy, TrendingUp, DollarSign, LogOut, Wallet, RefreshCcw, Camera, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMutation } from '@tanstack/react-query';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function Profile() {
   const { user, refreshUser, logout } = useAuth();
   const { isConnected, connect, disconnect, walletAddress: connectedWalletAddress, isConnecting } = useWallet();
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
   
   // Use auth user directly
   const currentUser = user;
   
   // Define walletAddress early to avoid reference errors
   const walletAddress = connectedWalletAddress || currentUser?.wallet_address;
+  const profilePicture = currentUser?.profile_picture;
   
   console.log('Profile - currentUser:', currentUser);
   console.log('Profile - currentUser.full_name:', currentUser?.full_name);
@@ -72,6 +77,47 @@ export default function Profile() {
     },
   });
 
+  const uploadProfilePicture = async (file) => {
+    setIsUploading(true);
+    try {
+      // Upload file using Base44 integration
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      // Update user entity with profile picture URL
+      await base44.auth.updateMe({ profile_picture: file_url });
+      
+      // Refresh user data
+      await refreshUser();
+      
+      // Close dialog
+      setIsUploadDialogOpen(false);
+      
+      alert('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      uploadProfilePicture(file);
+    }
+  };
+
   // Show connect prompt if wallet not connected
   if (!walletAddress) {
     return (
@@ -113,8 +159,58 @@ export default function Profile() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-card border border-border/50 rounded-2xl p-6 text-center"
       >
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-          <User className="w-8 h-8 text-primary" />
+        <div className="relative w-20 h-20 mx-auto mb-4">
+          {profilePicture ? (
+            <img
+              src={profilePicture}
+              alt="Profile"
+              className="w-full h-full rounded-full object-cover border-2 border-primary/30"
+            />
+          ) : (
+            <img
+              src="https://media.base44.com/images/public/6a1da108eb293de119e4e930/610671979_Untitled-June032026at0751431.png"
+              alt="Profile"
+              className="w-full h-full rounded-full object-cover border-2 border-primary/30 bg-primary/10 p-2"
+            />
+          )}
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <button
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-card hover:bg-primary/90 transition-colors"
+                onClick={() => setIsUploadDialogOpen(true)}
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Change Profile Picture</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-medium mb-1">Click to upload or drag and drop</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                {isUploading && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    Uploading...
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <h1 className="font-heading font-bold text-xl">
           {walletAddress?.slice(0, 8) || 'User'}
