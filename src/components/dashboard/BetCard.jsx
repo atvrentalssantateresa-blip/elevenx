@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target, PieChart } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target, PieChart, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,14 +72,17 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       return res.data;
     },
     onSuccess: (data) => {
+      // Always show dialog - for db_only claims, show success immediately
       if (data.db_only) {
-        alert(data.message);
-        queryClient.invalidateQueries({ queryKey: ['myBets'] });
+        // DB-only claim - show success dialog with no transaction
+        setClaimInstruction({ db_only: true, message: data.message });
+        setClaimDialogOpen(true);
       } else {
         // Show transaction signer dialog
         setClaimInstruction(data);
         setClaimDialogOpen(true);
       }
+      queryClient.invalidateQueries({ queryKey: ['myBets'] });
     },
     onError: (err) => {
       console.error('[BetCard] Claim error:', err);
@@ -211,7 +214,7 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       </Dialog>
 
       {/* Claim Dialog - Only render if we have a solana instruction */}
-      <Dialog open={claimDialogOpen && claimInstruction && !claimInstruction.db_only} onOpenChange={handleCloseClaimDialog}>
+      <Dialog open={claimDialogOpen && claimInstruction} onOpenChange={handleCloseClaimDialog}>
         <DialogContent className="bg-card border-border/50 max-w-md">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
@@ -241,6 +244,21 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   variant="outline"
                   onClick={handleCloseClaimDialog}
                   className="w-full mt-3 h-10 text-sm rounded-xl border-border/50"
+                >
+                  Close
+                </Button>
+              </div>
+            ) : claimInstruction?.db_only ? (
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
+                <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
+                <p className="font-heading font-bold text-sm text-accent mb-1">✓ Claim Processed</p>
+                <p className="font-heading font-bold text-2xl text-accent">◎{(bet.potential_payout || 0).toFixed(4)} SOL</p>
+                <p className="text-xs text-muted-foreground mt-2">Market settled via admin override</p>
+                <p className="text-xs text-muted-foreground mt-1">SOL payout handled separately</p>
+                <Button
+                  variant="outline"
+                  onClick={handleCloseClaimDialog}
+                  className="w-full mt-4 h-10 text-sm rounded-xl border-border/50"
                 >
                   Close
                 </Button>
