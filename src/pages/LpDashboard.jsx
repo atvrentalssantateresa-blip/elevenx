@@ -109,9 +109,21 @@ export default function LpDashboard() {
 
   const { data: myOffers = [], refetch: refetchOffers } = useQuery({
     queryKey: ['myOffers', walletAddress],
-    queryFn: () => base44.entities.BetOffer.list('-created_date', 100),
+    queryFn: async () => {
+      // Fetch all UserBets with role='lp' (includes both traditional LP and parimutuel self-backed bets)
+      const allUserBets = await base44.entities.UserBet.list('-created_date', 200);
+      const lpUserBets = allUserBets.filter(ub => ub.wallet_address === walletAddress && ub.role === 'lp');
+      
+      // For each UserBet, fetch the associated BetOffer to display
+      const offersWithDetails = await Promise.all(lpUserBets.map(async (ub) => {
+        const offers = await base44.entities.BetOffer.filter({ id: ub.offer_id });
+        const offer = offers[0];
+        return offer ? { ...offer, userBetId: ub.id, userBet: ub } : null;
+      }));
+      
+      return offersWithDetails.filter(Boolean);
+    },
     enabled: !!walletAddress,
-    select: (offers) => offers.filter(o => o.lp_wallet_address === walletAddress),
     refetchOnWindowFocus: true,
   });
 
@@ -331,26 +343,8 @@ export default function LpDashboard() {
   const totalUnmatched = myOffers.reduce((s, o) => s + (o.amount_unmatched || 0), 0);
   const activeOffers   = myOffers.filter(o => o.status === 'open' || o.status === 'partially_matched');
   
-  const { data: allUserBets = [], refetch: refetchUserBets } = useQuery({
-    queryKey: ['allUserBets', walletAddress],
-    queryFn: async () => {
-      const all = await base44.entities.UserBet.list('-created_date', 200);
-      return all.filter(ub => ub.wallet_address === walletAddress && ub.role === 'lp');
-    },
-    enabled: !!walletAddress,
-  });
-  
-  // Don't group offers - show each LP position separately for individual withdrawal
-  const offersWithUserBet = myOffers.map(offer => {
-    const userBet = allUserBets.find(ub => ub.offer_id === offer.id);
-    if (!userBet) return null; // Skip offers without a linked UserBet
-    
-    return {
-      ...offer,
-      userBetId: userBet.id, // Single userBetId for withdrawal
-      userBetIds: [userBet.id],
-    };
-  }).filter(Boolean);
+  // myOffers now contains BetOffer + UserBet data merged, so offersWithUserBet is already computed
+  const offersWithUserBet = myOffers;
 
   const getMatchTitle = (matchId) => {
     const m = matches.find(m => m.id === matchId);
