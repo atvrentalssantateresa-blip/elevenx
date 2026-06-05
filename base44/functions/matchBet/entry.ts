@@ -39,10 +39,14 @@ Deno.serve(async (req) => {
     }
 
     // CRITICAL: Must have EITHER offer_id (fixed-odds) OR bet_id+match_id+outcome (parimutuel)
-    if (!offer_id && (!bet_id || !match_id || !outcome)) {
+    // Don't validate yet - check which mode we're in first
+    const isParimutuelMode = !offer_id && bet_id && match_id && outcome;
+    const isFixedOddsMode = offer_id;
+    
+    if (!isParimutuelMode && !isFixedOddsMode) {
       return Response.json({
-        error: 'Missing offer_id or amount',
-        hint: 'You must select an outcome first by clicking on the odds, then enter an amount',
+        error: 'Missing bet parameters',
+        hint: 'You must either provide an offer_id (fixed-odds) OR bet_id+match_id+outcome (parimutuel)',
         received: { offer_id, bet_id, match_id, outcome, amount }
       }, { status: 400 });
     }
