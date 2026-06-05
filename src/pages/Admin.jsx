@@ -37,7 +37,7 @@ export default function Admin() {
       const bets = await base44.entities.Bet.list();
       console.log('[Admin] Fetched bets count:', bets.length, 'Bets:', bets);
       return bets;
-    },
+    }
   });
 
   // Fetch all matches to map with bets
@@ -46,11 +46,11 @@ export default function Admin() {
     queryFn: async () => {
       const matches = await base44.entities.Match.list();
       const matchMap = {};
-      matches.forEach(m => {
+      matches.forEach((m) => {
         matchMap[m.id] = m;
       });
       return matchMap;
-    },
+    }
   });
 
   const handleSettle = async (bet, outcome) => {
@@ -59,7 +59,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: outcome,
-        admin_wallet: walletAddress,
+        admin_wallet: walletAddress
       });
 
       if (res.data.error) {
@@ -70,7 +70,7 @@ export default function Admin() {
       setSettleDialog({
         instruction: res.data.solana_instruction,
         bet,
-        outcome,
+        outcome
       });
     } catch (err) {
       console.error('[Admin] Settlement error:', err);
@@ -84,7 +84,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: 'void',
-        admin_wallet: walletAddress,
+        admin_wallet: walletAddress
       });
 
       if (res.data.error) {
@@ -94,7 +94,7 @@ export default function Admin() {
 
       setVoidDialog({
         instruction: res.data.solana_instruction,
-        bet,
+        bet
       });
     } catch (err) {
       console.error('[Admin] Void error:', err);
@@ -162,30 +162,30 @@ export default function Admin() {
             <Card className="bg-card/50 border-border/50 p-4">
               <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
               
-              {isLoadingBets ? (
-                <div className="flex items-center justify-center py-12">
+              {isLoadingBets ?
+              <div className="flex items-center justify-center py-12">
                   <Loader className="w-6 h-6 animate-spin text-primary mr-2" />
                   <span className="text-muted-foreground">Loading bets...</span>
-                </div>
-              ) : allBets.length === 0 ? (
-                <div className="flex items-center gap-3 py-6">
+                </div> :
+              allBets.length === 0 ?
+              <div className="flex items-center gap-3 py-6">
                   <AlertCircle className="w-5 h-5 text-muted-foreground" />
                   <p className="text-muted-foreground">No bets found</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {allBets.map((bet) => (
-                    <div key={bet.id} className="border border-border/30 rounded-lg p-3">
+                </div> :
+
+              <div className="space-y-4">
+                  {allBets.map((bet) =>
+                <div key={bet.id} className="border border-border/30 rounded-lg p-3">
                       <AdminBetRow
-                        bet={bet}
-                        match={allMatches[bet.match_id]}
-                        onSettle={handleSettle}
-                        onVoid={handleVoid}
-                      />
+                    bet={bet}
+                    match={allMatches[bet.match_id]}
+                    onSettle={handleSettle}
+                    onVoid={handleVoid} />
+                  
                     </div>
-                  ))}
+                )}
                 </div>
-              )}
+              }
             </Card>
           </TabsContent>
 
@@ -209,8 +209,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
-                >
+                  className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl">
+                  
                   <span className="font-bold">Create Test</span>
                   <span className="text-xs text-muted-foreground">Quick match</span>
                 </Button>
@@ -224,8 +224,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
-                >
+                  className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl">
+                  
                   <span className="font-bold">Bulk Deploy</span>
                   <span className="text-xs text-muted-foreground">All matches</span>
                 </Button>
@@ -239,8 +239,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
+                  
                   <span className="font-bold">Sync World Cup</span>
                   <span className="text-xs text-muted-foreground">Fetch matches</span>
                 </Button>
@@ -253,8 +253,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
+                  
                   <span className="font-bold">Deploy Futures</span>
                   <span className="text-xs text-muted-foreground">All futures</span>
                 </Button>
@@ -276,8 +276,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
+                  
                   Init Platform
                 </Button>
                 <Button
@@ -289,8 +289,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
+                  
                   Check Config
                 </Button>
                 <Button
@@ -302,8 +302,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
+                  
                   Debug Admin
                 </Button>
                 <Button
@@ -315,8 +315,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-                >
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
+                  
                   Full Test
                 </Button>
               </div>
@@ -325,51 +325,51 @@ export default function Admin() {
         </Tabs>
 
         {/* Settlement Dialog */}
-        {settleDialog && (
-          <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {settleDialog &&
+        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Settle Market</h3>
               <p className="text-sm text-muted-foreground">Outcome: <span className="text-primary font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
               <SolanaTransactionSigner
-                instruction={settleDialog.instruction}
-                amount={0}
-                onSuccess={handleSettleSuccess}
-                onError={(err) => console.error('[Admin] Settlement failed:', err)}
-              />
+              instruction={settleDialog.instruction}
+              amount={0}
+              onSuccess={handleSettleSuccess}
+              onError={(err) => console.error('[Admin] Settlement failed:', err)} />
+            
               <Button
-                onClick={() => setSettleDialog(null)}
-                variant="outline"
-                className="w-full"
-              >
+              onClick={() => setSettleDialog(null)}
+              variant="outline"
+              className="w-full">
+              
                 Cancel
               </Button>
             </div>
           </Card>
-        )}
+        }
 
         {/* Void Dialog */}
-        {voidDialog && (
-          <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {voidDialog &&
+        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Void Market</h3>
               <p className="text-sm text-muted-foreground">This will refund all bettors</p>
               <SolanaTransactionSigner
-                instruction={voidDialog.instruction}
-                amount={0}
-                onSuccess={handleVoidSuccess}
-                onError={(err) => console.error('[Admin] Void failed:', err)}
-              />
+              instruction={voidDialog.instruction}
+              amount={0}
+              onSuccess={handleVoidSuccess}
+              onError={(err) => console.error('[Admin] Void failed:', err)} />
+            
               <Button
-                onClick={() => setVoidDialog(null)}
-                variant="outline"
-                className="w-full"
-              >
+              onClick={() => setVoidDialog(null)}
+              variant="outline"
+              className="w-full">
+              
                 Cancel
               </Button>
             </div>
           </Card>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 }
