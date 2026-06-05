@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * Create a quick test futures market with immediate settlement capability.
  * Timeline:
  * - NOW: Current time
- * - Betting closes: NOW + 30 minutes
+ * - Betting closes: NOW + 10 minutes
  * - Settlement: Available immediately after betting closes (no delay)
  */
 Deno.serve(async (req) => {
@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     
-    // CRITICAL: Betting closes in 30 min, settlement available 1 second later
-    const bettingCloseTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 min from now
+    // CRITICAL: Betting closes in 10 min, settlement available 1 second later
+    const bettingCloseTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
     const settleAfterTime = new Date(bettingCloseTime.getTime() + 1000); // 1 second after betting closes (required by Solana program)
     
     // Validate timestamps (for debugging)
@@ -88,18 +88,18 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      message: '✓ Quick test futures market created! Betting closes in 30 min, settlement available immediately after.',
+      message: '✓ Quick test futures market created! Betting closes in 10 min, settlement available immediately after.',
       testData: {
         futuresMarketId: testFutures.id,
         bettingCloseTime: bettingCloseTime.toISOString(),
         settleAfterTime: settleAfterTime.toISOString(),
-        timeUntilBettingClose: '30 minutes',
+        timeUntilBettingClose: '10 minutes',
       },
       nextSteps: {
         step1: 'Go to /admin > Futures tab and click "Deploy" to create the market on-chain',
         step2: 'Go to /lp > Futures tab to provide liquidity (you\'ll see the test market there)',
         step3: 'Go to /futures to place bets',
-        step4: 'Wait 30 minutes, then settle in /admin',
+        step4: 'Wait 10 minutes, then settle in /admin',
       },
     });
 
