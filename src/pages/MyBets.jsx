@@ -170,9 +170,9 @@ export default function MyBets() {
     return 'Draw';
   };
 
-  // Traditional LP positions: role='lp' with offer_id (shows in LP tab)
+  // Traditional LP positions: role='lp' with offer_id AND belongs to current wallet (shows in LP tab)
   const myLpPositions = myBets.filter((b) => {
-    return b.role === 'lp' && b.offer_id !== null;
+    return b.role === 'lp' && b.offer_id !== null && b.wallet_address === walletAddress;
   });
   
   // All other bets (matcher + parimutuel + any bets without offer_id) show in Bets tab
