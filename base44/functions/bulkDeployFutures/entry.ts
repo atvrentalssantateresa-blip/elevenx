@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
 
     const programId = new PublicKey(PROGRAM_ID);
 
-    // Derive platform config PDA (needed for all markets)
+    // Derive platform config PDA (seed must match createFuturesMarketOnChain: 'platform')
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform_config')],
+      [Buffer.from('platform')],
       programId
     );
 
@@ -68,9 +68,9 @@ Deno.serve(async (req) => {
         programId
       );
 
-      // Derive vote tally PDA
+      // Derive vote tally PDA — seed is the market PDA's buffer (matches createFuturesMarketOnChain)
       const [voteTallyPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('vote_tally'), marketIdBytes],
+        [Buffer.from('vote_tally'), marketPda.toBuffer()],
         programId
       );
 
