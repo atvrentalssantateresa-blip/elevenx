@@ -64,6 +64,13 @@ export default function Admin() {
         return;
       }
 
+      // DB-only settlement already completed on the backend — no tx needed
+      if (res.data.db_only) {
+        alert('✅ ' + res.data.message);
+        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+        return;
+      }
+
       setSettleDialog({
         instruction: res.data.solana_instruction,
         bet,
