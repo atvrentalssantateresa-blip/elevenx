@@ -75,7 +75,7 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       // Always show dialog - for db_only claims, show success immediately
       if (data.db_only) {
         // DB-only claim - show success dialog with no transaction
-        setClaimInstruction({ db_only: true, message: data.message });
+        setClaimInstruction({ db_only: true, message: data.message, payout: bet.potential_payout });
         setClaimDialogOpen(true);
       } else {
         // Show transaction signer dialog
@@ -252,9 +252,9 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
                 <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
                 <p className="font-heading font-bold text-sm text-accent mb-1">✓ Claim Processed</p>
-                <p className="font-heading font-bold text-2xl text-accent">◎{(bet.potential_payout || 0).toFixed(4)} SOL</p>
-                <p className="text-xs text-muted-foreground mt-2">Market settled via admin override</p>
-                <p className="text-xs text-muted-foreground mt-1">SOL payout handled separately</p>
+                <p className="font-heading font-bold text-2xl text-accent">◎{(claimInstruction.payout || bet.potential_payout || 0).toFixed(4)} SOL</p>
+                <p className="text-xs text-muted-foreground mt-2">Status updated to claimed</p>
+                <p className="text-xs text-muted-foreground mt-1">SOL payout will be processed by admin</p>
                 <Button
                   variant="outline"
                   onClick={handleCloseClaimDialog}
