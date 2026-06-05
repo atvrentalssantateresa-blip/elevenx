@@ -73,7 +73,17 @@ export default function Admin() {
       }
 
       if (res.data.db_only) {
-        alert('⚠️ Market settled in DB only — no on-chain SOL transfer.\n\n' + res.data.message + '\n\nNote: Users will see "won" status but on-chain payout requires market to be on-chain first.');
+        // DB-only settlement - update DB directly
+        try {
+          await base44.functions.invoke('commitSettlement', {
+            bet_id: bet.id,
+            winning_outcome: outcome,
+            db_only: true,
+          });
+          alert('✓ Market settled (DB-only) — users can now claim winnings!\n\n' + res.data.message);
+        } catch (err) {
+          alert('DB settlement failed: ' + err.message);
+        }
         queryClient.invalidateQueries({ queryKey: ['allBets'] });
         return;
       }

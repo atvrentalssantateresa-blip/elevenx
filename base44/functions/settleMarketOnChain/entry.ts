@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
+import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 import bs58 from 'npm:bs58@5.0.0';
+import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
 
@@ -118,6 +119,40 @@ Deno.serve(async (req) => {
     const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
     if (!feeVaultInfo) {
       return Response.json({ error: 'Fee vault not found on-chain' }, { status: 400 });
+    }
+
+    // Check if market account exists and has correct discriminator
+    const marketInfo = await connection.getAccountInfo(marketPda);
+    if (!marketInfo || marketInfo.data.length < 249) {
+      console.log('[settleMarketOnChain] Market account missing or too small - doing DB-only settlement');
+      const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: `Market account corrupted on-chain. DB settlement only for: ${outcomeLabel}`,
+        bet_id: bet_id,
+        winning_outcome: winning_outcome,
+        note: 'Update DB directly - on-chain market account has invalid data',
+      });
+    }
+    
+    // Check discriminator - should match BetMarket account type
+    const marketDisc = marketInfo.data.slice(0, 8).toString('hex');
+    const { sha256 } = await import('npm:@noble/hashes@1.4.0/sha256');
+    const expectedDisc = Buffer.from(sha256("account:BetMarket")).slice(0, 8).toString('hex');
+    console.log('[settleMarketOnChain] Market discriminator:', marketDisc, '(expected:', expectedDisc + ')');
+    
+    if (marketDisc !== expectedDisc) {
+      console.log('[settleMarketOnChain] Market discriminator mismatch - doing DB-only settlement');
+      const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: `Market account has invalid discriminator (${marketDisc}). DB settlement only for: ${outcomeLabel}`,
+        bet_id: bet_id,
+        winning_outcome: winning_outcome,
+        note: 'On-chain market account was created with wrong data - using DB fallback',
+      });
     }
 
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
