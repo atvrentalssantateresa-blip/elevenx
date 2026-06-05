@@ -66,9 +66,9 @@ Deno.serve(async (req) => {
       openUntil = now - 3600;
       settleAfter = now;
     } else {
-      // Normal mode: set to future times based on match
-      openUntil = Math.floor(new Date(bet.open_until).getTime() / 1000);
-      settleAfter = openUntil + 7200; // 2 hours after betting closes
+      // Normal mode: betting closes at kickoff, settlement opens at match end
+      openUntil = Math.floor(new Date(match.match_time).getTime() / 1000);
+      settleAfter = Math.floor(new Date(match.match_end_time).getTime() / 1000);
     }
     
     console.log('[updateMarketTimestampsOnChain] Calculated timestamps:', {
