@@ -27,6 +27,7 @@ import Futures from '@/pages/Futures';
 import RecreateMarket from '@/pages/RecreateMarket';
 import InitPlatform from '@/pages/InitPlatform';
 import Diagnostics from '@/pages/Diagnostics';
+import FixAdmin from '@/pages/FixAdmin';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
         <Route path="/recreate-market" element={<RecreateMarket />} />
         <Route path="/init-platform" element={<InitPlatform />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/fix-admin" element={<FixAdmin />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
