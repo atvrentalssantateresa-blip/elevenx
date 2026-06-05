@@ -354,9 +354,18 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
   return (
     <div className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4">
+      {/* Betting Closed Banner - Show at TOP when window has ended */}
+      {timeRemaining && timeRemaining.total <= 0 && (
+        <div className="bg-destructive/20 border border-destructive/40 rounded-xl p-4 text-center mb-2">
+          <Clock className="w-6 h-6 text-destructive mx-auto mb-1" />
+          <p className="font-heading font-bold text-sm text-destructive">⏰ Betting Has Closed</p>
+          <p className="text-[10px] text-muted-foreground mt-1">This match is no longer accepting bets</p>
+        </div>
+      )}
+
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <h3 className="font-heading font-bold text-base">
+          <h3 className={`font-heading font-bold text-base ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>
             {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
           </h3>
           <div className="flex items-center gap-2">
@@ -447,25 +456,30 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-muted-foreground">Enter Stake Amount</label>
+          <label className={`text-xs font-bold text-muted-foreground ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>Enter Stake Amount</label>
 
         </div>
         <Input
           type="number"
-          placeholder="◎0.00"
+          placeholder={isBettingClosed ? "Betting Closed" : "◎0.00"}
           value={amount}
           min={0}
           max={maxMatcherStake !== null ? maxMatcherStake : undefined}
           step="any"
           onChange={(e) => setAmount(e.target.value)}
-          className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12" />
+          disabled={isBettingClosed}
+          className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12 disabled:opacity-50 disabled:cursor-not-allowed" />
         
         <div className="flex gap-2 mt-2 flex-wrap">
           {QUICK_AMOUNTS.map((qa) => (
-            <button key={qa} onClick={() => setAmount(String(Number(qa).toFixed(4)))}
-            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors">
-                ◎{qa}
-              </button>
+            <button
+              key={qa}
+              onClick={() => setAmount(String(Number(qa).toFixed(4)))}
+              disabled={isBettingClosed}
+              className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ◎{qa}
+            </button>
           ))}
         </div>
       </div>
@@ -518,12 +532,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
 
       
-      
-
-
-      {timeRemaining && timeRemaining.total <= 0 &&
-      <p className="text-xs text-destructive text-center font-bold">⏰ Betting has closed for this match</p>
-      }
       {prepareError && prepareError.includes('reconnect') &&
       <Button onClick={handleReconnect} className="w-full h-8 text-xs bg-secondary hover:bg-secondary/80 rounded-lg mb-2">
           Reconnect Wallet
