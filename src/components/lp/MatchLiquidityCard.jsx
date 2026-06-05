@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, Trophy } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, Trophy, Target } from 'lucide-react';
 import { getTeamFlag } from '@/utils/flags';
 import BetCountdown from '@/components/betting/BetCountdown';
 
@@ -27,23 +27,22 @@ export default function MatchLiquidityCard({ bet, match, isSelected, onClick }) 
         border: '1px solid rgba(255,255,255,0.1)'
       }}
     >
-      {/* Glow effect - color changes based on selection */}
+      {/* Glow effect */}
       <div 
-        className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl transition-opacity opacity-15`} 
+        className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-10`} 
         style={{ background: isSelected ? '#14f195' : '#a69cf2' }} 
       />
-      
-      {/* Content */}
+
       <div className="relative p-4 sm:p-5 space-y-3">
         {/* Header - Match Info & Status */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 mb-1">
-              {/* Match Badge */}
+              {/* Match Badge - Flag Style */}
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/20 blur-md rounded-full" />
                 <div className="relative bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 rounded-lg p-1.5">
-                  <Trophy className="w-4 h-4 text-primary" />
+                  <span className="text-xl filter drop-shadow-md">🏆</span>
                 </div>
               </div>
               <div>
@@ -65,31 +64,58 @@ export default function MatchLiquidityCard({ bet, match, isSelected, onClick }) 
                 <span className="font-heading font-bold text-emerald-400 text-[10px]">{totalPool.toFixed(2)}</span>
               </div>
             </div>
-            <BetCountdown openUntil={bet.open_until} label="Closes in" className="text-[8px]" />
+            <BetCountdown openUntil={bet.open_until} label="Betting closes" className="text-[8px]" />
           </div>
         </div>
 
-        {/* Teams & Odds Grid */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+        {/* Stats Grid - 2x2 with Odds */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
           {/* Team A */}
-          <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-2.5 border border-primary/20 text-center">
-            <div className="text-2xl mb-1 filter drop-shadow-lg">{getTeamFlag(match.team_a, match.team_a_flag)}</div>
-            <p className="text-[8px] text-white/40 uppercase tracking-wider mb-1 truncate">{match.team_a}</p>
-            <p className="font-heading font-bold text-primary text-xs sm:text-sm">{oddsA.toFixed(2)}x</p>
-          </div>
-
-          {/* Draw */}
-          <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 backdrop-blur-sm rounded-xl p-2.5 border border-yellow-500/20 text-center">
-            <div className="text-2xl mb-1">🤝</div>
-            <p className="text-[8px] text-white/40 uppercase tracking-wider mb-1">Draw</p>
-            <p className="font-heading font-bold text-yellow-400 text-xs sm:text-sm">{oddsDraw.toFixed(2)}x</p>
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-2.5 border border-primary/20">
+            <div className="flex items-center gap-1 mb-1">
+              <Target className="w-2.5 h-2.5 text-primary" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider truncate">{match.team_a}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl filter drop-shadow-lg">{getTeamFlag(match.team_a, match.team_a_flag)}</span>
+              <p className="font-heading font-bold text-primary text-xs sm:text-sm">{oddsA.toFixed(2)}x</p>
+            </div>
           </div>
 
           {/* Team B */}
-          <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-2.5 border border-primary/20 text-center">
-            <div className="text-2xl mb-1 filter drop-shadow-lg">{getTeamFlag(match.team_b, match.team_b_flag)}</div>
-            <p className="text-[8px] text-white/40 uppercase tracking-wider mb-1 truncate">{match.team_b}</p>
-            <p className="font-heading font-bold text-primary text-xs sm:text-sm">{oddsB.toFixed(2)}x</p>
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-2.5 border border-primary/20">
+            <div className="flex items-center gap-1 mb-1">
+              <Target className="w-2.5 h-2.5 text-primary" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider truncate">{match.team_b}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl filter drop-shadow-lg">{getTeamFlag(match.team_b, match.team_b_flag)}</span>
+              <p className="font-heading font-bold text-primary text-xs sm:text-sm">{oddsB.toFixed(2)}x</p>
+            </div>
+          </div>
+
+          {/* Draw */}
+          <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 backdrop-blur-sm rounded-xl p-2.5 border border-yellow-500/20">
+            <div className="flex items-center gap-1 mb-1">
+              <DollarSign className="w-2.5 h-2.5 text-yellow-400" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Draw</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl">🤝</span>
+              <p className="font-heading font-bold text-yellow-400 text-xs sm:text-sm">{oddsDraw.toFixed(2)}x</p>
+            </div>
+          </div>
+
+          {/* Pool Size */}
+          <div className="bg-gradient-to-br from-accent/10 to-accent/5 backdrop-blur-sm rounded-xl p-2.5 border border-accent/20">
+            <div className="flex items-center gap-1 mb-1">
+              <TrendingUp className="w-2.5 h-2.5 text-accent" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Pool</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <DollarSign className="w-4 h-4 text-accent" />
+              <p className="font-heading font-bold text-accent text-xs sm:text-sm">{totalPool.toFixed(2)} SOL</p>
+            </div>
           </div>
         </div>
 
