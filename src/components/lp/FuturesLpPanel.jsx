@@ -169,7 +169,7 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
       whileHover={{ y: -6 }}
       className="relative rounded-3xl h-full overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%)',
+        background: '#1c1c1c',
         boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
       }}
     >
