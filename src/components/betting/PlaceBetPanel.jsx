@@ -66,24 +66,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }, 0) :
   0;
 
-  // Phase Shift Detection: Check if outcome is fully matched (no unmatched LP left)
-  const isFullyMatched = selectedOutcome ? totalLiquidityForOutcome <= 0 && (bet?.[`pool_${selectedOutcome}`] || 0) > 0 : false;
+  // Fixed odds mode: bet against existing LP offers
+  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? true : false;
   
-  // Dynamic Pool Mode: If fully matched, users can still bet into the pool (parimutuel style)
-  // Calculate dynamic odds: (Total Pool / Outcome Pool) * (1 - Fee)
-  const feePercent = (bet?.fee_percent || 0) / 100;
-  const totalPool = bet?.total_pool || 0;
-  const outcomePool = selectedOutcome === 'a' ? (bet?.pool_a || 0) : selectedOutcome === 'b' ? (bet?.pool_b || 0) : (bet?.pool_draw || 0);
-  
-  const dynamicOdds = isFullyMatched && totalPool > 0 && outcomePool > 0
-    ? (totalPool / outcomePool) * (1 - feePercent)
-    : null;
-  
-  // Has liquidity if either selectedOutcome has LP (fixed odds) OR is fully matched (dynamic pool mode)
-  const hasLiquidityForOutcome = selectedOutcome ? (totalLiquidityForOutcome > 0 || isFullyMatched) : selectedOffer ? true : false;
-  
-  // Determine betting mode
-  const bettingMode = selectedOffer ? 'fixed_lp' : isFullyMatched ? 'dynamic_pool' : totalLiquidityForOutcome > 0 ? 'fixed_lp' : 'no_liquidity';
+  // Determine betting mode: fixed_lp (bet against LP) or no_liquidity (wait for LP)
+  const bettingMode = selectedOffer ? 'fixed_lp' : totalLiquidityForOutcome > 0 ? 'fixed_lp' : 'no_liquidity';
 
   console.log('[PlaceBetPanel] Liquidity calculation:', {
     selectedOutcome,
@@ -125,12 +112,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
   const stakeNum = parseFloat(amount) || 0;
 
-  // Get odds for the selected outcome
-  // Use dynamic pool odds if in Phase Shift mode, otherwise use fixed LP odds
+  // Get fixed odds from The Odds API for the selected outcome
   const fixedOdds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
-  const odds = bettingMode === 'dynamic_pool' && dynamicOdds ? dynamicOdds : fixedOdds;
+  const odds = fixedOdds;
 
-  // Calculate max stake based on available LP liquidity (for fixed odds mode)
+  // Calculate max stake based on available LP liquidity
   const maxMatcherStake = bettingMode === 'fixed_lp' ? 
     (selectedOffer ? 
       parseFloat((selectedOffer.amount_unmatched || 0).toFixed(4)) : 
@@ -373,13 +359,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
           </h3>
           <div className="flex items-center gap-2">
-            {/* Phase Shift Mode Indicator */}
-            {bettingMode === 'dynamic_pool' && (
-              <div className="flex items-center gap-1 bg-accent/20 border border-accent/40 px-2 py-0.5 rounded-full text-[8px] font-bold text-accent animate-pulse">
-                <Zap className="w-2.5 h-2.5" />
-                DYNAMIC POOL
-              </div>
-            )}
             {timeRemaining && timeRemaining.total > 0 &&
             <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
                 <Clock className="w-3.5 h-3.5" />
@@ -396,16 +375,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            {bettingMode === 'dynamic_pool' ? (
-              <span className="text-accent font-bold">
-                Pool odds: {odds.toFixed(2)}x — changes live based on pool ratio
-              </span>
-            ) : selectedOffer ? (
+            {selectedOffer ? (
               `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x — locked immediately`
             ) : hasLiquidityForOutcome ? (
-              `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} — limited by available LP liquidity`
+              `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x — limited by LP liquidity`
             ) : (
-              <span className="text-accent font-bold">⏳ Pending pool — your bet waits for opposite side</span>
+              <span className="text-accent font-bold">⏳ Pending — your bet waits for LP to seed this outcome</span>
             )}
           </p>
           <button
@@ -531,45 +506,35 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       </div>
 
       <AnimatePresence>
-        {stakeNum > 0 && mode === 'match' &&
-        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-        className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2 text-xs overflow-hidden">
-            <div className="flex items-center justify-between mb-1">
-              <p className="font-bold text-foreground">Bet Summary</p>
-              {bettingMode === 'dynamic_pool' && (
-                <Badge className="bg-accent/20 text-accent text-[8px] font-bold px-1.5 py-0">
-                  <Zap className="w-2 h-2 mr-0.5" />
-                  POOL MODE
-                </Badge>
-              )}
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Backing</span>
-              <span className="font-bold">{outcomeLabel}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Your stake</span>
-              <span className="font-bold">◎{stakeNum.toFixed(4)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                {bettingMode === 'dynamic_pool' ? 'Current pool odds' : 'Odds locked at'}
-              </span>
-              <span className="font-bold">{odds.toFixed(2)}x</span>
-            </div>
-            {bettingMode === 'dynamic_pool' && (
-              <p className="text-[9px] text-accent/80">
-                ⚠️ Odds will shift as others bet into the pool
-              </p>
-            )}
-            <div className="h-px bg-border/30 my-1" />
-            <div className="flex justify-between font-bold text-sm">
-              <span>Payout if you win</span>
-              <span className="text-accent text-base">◎{matcherPayout.toFixed(4)}</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
-          </motion.div>
-        }
+      {stakeNum > 0 && mode === 'match' &&
+      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+      className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2 text-xs overflow-hidden">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-bold text-foreground">Bet Summary</p>
+            <Badge className="bg-primary/20 text-primary text-[8px] font-bold px-1.5 py-0">
+              FIXED ODDS
+            </Badge>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Backing</span>
+            <span className="font-bold">{outcomeLabel}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Your stake</span>
+            <span className="font-bold">◎{stakeNum.toFixed(4)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Odds locked at</span>
+            <span className="font-bold">{odds.toFixed(2)}x</span>
+          </div>
+          <div className="h-px bg-border/30 my-1" />
+          <div className="flex justify-between font-bold text-sm">
+            <span>Payout if you win</span>
+            <span className="text-accent text-base">◎{matcherPayout.toFixed(4)}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
+        </motion.div>
+      }
       </AnimatePresence>
 
 
@@ -649,13 +614,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
               <Wallet className="w-4 h-4 mr-2" />
               No Liquidity Available
             </> :
-        bettingMode === 'dynamic_pool' ?
-        <>
-              <Zap className="w-4 h-4 mr-2" />
-              Bet into Pool ◎{stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}
-            </> :
         isPreparing ? 'Preparing...' :
-        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'}`;
+        `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} @ ${odds.toFixed(2)}x`;
         })()}
         </Button>
       }
