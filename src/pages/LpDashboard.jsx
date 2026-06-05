@@ -648,21 +648,36 @@ export default function LpDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {filteredOpenBets.map(bet => {
-                    const match = matches.find(m => m.id === bet.match_id);
-                    return (
-                      <MatchLiquidityCard
-                        key={bet.id}
-                        bet={bet}
-                        match={match}
-                        isSelected={selectedBet?.id === bet.id}
-                        onClick={() => {
-                          setSelectedBetForDetail({ bet, match });
-                          setDetailModalOpen(true);
-                        }}
-                      />
-                    );
-                  })}
+                  {(() => {
+                    // Deduplicate bets by match_id to prevent showing same match twice
+                    const seenMatches = new Set();
+                    const uniqueBets = filteredOpenBets.filter(bet => {
+                      if (seenMatches.has(bet.match_id)) {
+                        console.log('Removing duplicate bet for match:', bet.match_id, 'bet:', bet.id);
+                        return false;
+                      }
+                      seenMatches.add(bet.match_id);
+                      return true;
+                    });
+                    
+                    console.log('[LpDashboard] Unique bets to render:', uniqueBets.length, 'out of', filteredOpenBets.length);
+                    
+                    return uniqueBets.map(bet => {
+                      const match = matches.find(m => m.id === bet.match_id);
+                      return (
+                        <MatchLiquidityCard
+                          key={bet.id}
+                          bet={bet}
+                          match={match}
+                          isSelected={selectedBet?.id === bet.id}
+                          onClick={() => {
+                            setSelectedBetForDetail({ bet, match });
+                            setDetailModalOpen(true);
+                          }}
+                        />
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </motion.div>
