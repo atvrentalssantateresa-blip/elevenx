@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import GroupCountryCard from '@/components/futures/GroupCountryCard';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 import FuturesBetSlip from '@/components/futures/FuturesBetSlip';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import FuturesCard from '@/components/futures/FuturesCard';
 
 export default function Futures() {
   const [selectedOutcome, setSelectedOutcome] = useState(null);
@@ -363,12 +363,12 @@ export default function Futures() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMarkets.map((m, i) => (
-                <GroupCountryCard
+                <FuturesCard
                   key={m.id}
                   market={m}
-                  onSelect={handleCountrySelect}
+                  index={i}
                 />
               ))}
             </div>
@@ -396,12 +396,12 @@ export default function Futures() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {groupMarkets.map((market, index) => (
-                      <GroupCountryCard
+                      <FuturesCard
                         key={market.id}
                         market={market}
-                        onSelect={handleCountrySelect}
+                        index={index}
                       />
                     ))}
                   </div>
