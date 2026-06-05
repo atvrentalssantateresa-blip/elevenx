@@ -91,7 +91,22 @@ Deno.serve(async (req) => {
 
     const bets = await serviceRole.entities.Bet.filter({ id: userBet.bet_id });
     const bet  = bets[0];
-    if (!bet) return Response.json({ error: 'Bet not found' }, { status: 400 });
+    if (!bet) {
+      console.log('[claimWinnings] Bet entity not found, but UserBet has status "won" — proceeding with DB-only claim');
+      for (const b of betsToClaim_validated) {
+        await serviceRole.entities.UserBet.update(b.id, {
+          status: 'claimed',
+          actual_payout: b.actual_payout || b.potential_payout || 0,
+        });
+      }
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: `✓ ${betsToClaim_validated.length} winning bet(s) marked as claimed.`,
+        betIds: betsToClaim_validated.map(b => b.id),
+        totalPayout: betsToClaim_validated.reduce((sum, b) => sum + (b.actual_payout || b.potential_payout || 0), 0),
+      });
+    }
 
     // Check on-chain market state
     const { Connection: SolanaConnection } = await import('npm:@solana/web3.js@1.98.4');
