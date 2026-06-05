@@ -34,7 +34,7 @@ export default function Admin() {
     queryFn: async () => {
       const bets = await base44.entities.Bet.list();
       return bets;
-    }
+    },
   });
 
   const { data: allMatches = {} } = useQuery({
@@ -42,11 +42,11 @@ export default function Admin() {
     queryFn: async () => {
       const matches = await base44.entities.Match.list();
       const matchMap = {};
-      matches.forEach((m) => {
+      matches.forEach(m => {
         matchMap[m.id] = m;
       });
       return matchMap;
-    }
+    },
   });
 
   const handleSettle = async (bet, outcome) => {
@@ -55,7 +55,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: outcome,
-        admin_wallet: walletAddress
+        admin_wallet: walletAddress,
       });
 
       if (res.data.error) {
@@ -66,7 +66,7 @@ export default function Admin() {
       setSettleDialog({
         instruction: res.data.solana_instruction,
         bet,
-        outcome
+        outcome,
       });
     } catch (err) {
       alert('Failed to prepare settlement: ' + err.message);
@@ -79,7 +79,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: 'void',
-        admin_wallet: walletAddress
+        admin_wallet: walletAddress,
       });
 
       if (res.data.error) {
@@ -89,7 +89,7 @@ export default function Admin() {
 
       setVoidDialog({
         instruction: res.data.solana_instruction,
-        bet
+        bet,
       });
     } catch (err) {
       alert('Failed to prepare void: ' + err.message);
@@ -107,18 +107,18 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="min-h-screen bg-black p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
-          <h1 className="font-heading font-bold text-3xl text-black mb-2">Admin Dashboard</h1>
-          <p className="text-sm text-gray-600">Manage betting markets and settlements</p>
+          <h1 className="font-heading font-bold text-3xl text-white mb-2">Admin Dashboard</h1>
+          <p className="text-sm text-gray-400">Manage betting markets and settlements</p>
         </div>
 
-        <Card className="bg-gray-50 border border-gray-200 p-4">
+        <Card className="bg-gray-900 border border-gray-800 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-500">Connected Wallet</p>
-              <p className="font-mono text-sm text-black">{walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-8)}` : 'Not connected'}</p>
+              <p className="text-xs text-gray-400">Connected Wallet</p>
+              <p className="font-mono text-sm text-white">{walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-8)}` : 'Not connected'}</p>
             </div>
             <Badge variant={walletAddress ? 'default' : 'outline'}>
               {walletAddress ? '✓ Connected' : '✗ Disconnected'}
@@ -127,53 +127,53 @@ export default function Admin() {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-100 border border-gray-200 rounded-xl p-1">
-            <TabsTrigger value="bets" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-900 border border-gray-800 rounded-xl p-1">
+            <TabsTrigger value="bets" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">
               <List className="w-4 h-4 mr-2" />
               Bets
             </TabsTrigger>
-            <TabsTrigger value="futures" className="data-[state=active]:bg-green-600 data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="futures" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white rounded-lg">
               <TrendingUp className="w-4 h-4 mr-2" />
               Futures
             </TabsTrigger>
-            <TabsTrigger value="actions" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="actions" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">
               <Database className="w-4 h-4 mr-2" />
               Actions
             </TabsTrigger>
-            <TabsTrigger value="platform" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="platform" className="data-[state=active]:bg-gray-700 data-[state=active]:text-white rounded-lg">
               <Settings className="w-4 h-4 mr-2" />
               Platform
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="bets" className="mt-4">
-            <Card className="bg-white border border-gray-200 p-4">
-              <h2 className="font-heading font-bold text-xl text-black mb-4">Betting Markets ({allBets.length})</h2>
+            <Card className="bg-gray-900 border border-gray-800 p-4">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
               
-              {isLoadingBets ?
-              <div className="flex items-center justify-center py-12">
-                  <Loader className="w-6 h-6 animate-spin text-blue-600 mr-2" />
-                  <span className="text-gray-600">Loading bets...</span>
-                </div> :
-              allBets.length === 0 ?
-              <div className="flex items-center gap-3 py-6">
-                  <AlertCircle className="w-5 h-5 text-gray-400" />
-                  <p className="text-gray-600">No bets found</p>
-                </div> :
-
-              <div className="space-y-4">
-                  {allBets.map((bet) =>
-                <div key={bet.id} className="border border-gray-200 rounded-lg p-3">
-                      <AdminBetRow
-                    bet={bet}
-                    match={allMatches[bet.match_id]}
-                    onSettle={handleSettle}
-                    onVoid={handleVoid} />
-                  
-                    </div>
-                )}
+              {isLoadingBets ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader className="w-6 h-6 animate-spin text-purple-500 mr-2" />
+                  <span className="text-gray-400">Loading bets...</span>
                 </div>
-              }
+              ) : allBets.length === 0 ? (
+                <div className="flex items-center gap-3 py-6">
+                  <AlertCircle className="w-5 h-5 text-gray-500" />
+                  <p className="text-gray-400">No bets found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {allBets.map((bet) => (
+                    <div key={bet.id} className="border border-gray-800 rounded-lg p-3">
+                      <AdminBetRow
+                        bet={bet}
+                        match={allMatches[bet.match_id]}
+                        onSettle={handleSettle}
+                        onVoid={handleVoid}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
@@ -182,8 +182,8 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="actions" className="mt-4">
-            <Card className="bg-white border border-gray-200 p-6">
-              <h2 className="font-heading font-bold text-xl text-black mb-4">Quick Actions</h2>
+            <Card className="bg-gray-900 border border-gray-800 p-6">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Button
                   onClick={async () => {
@@ -195,10 +195,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">⚡ Create Quick Test</span>
-                  <span className="text-xs text-gray-600">Instant match + bet</span>
+                  className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">⚡ Create Quick Test</span>
+                  <span className="text-xs text-gray-400">Instant match + bet</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -210,10 +210,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">🚀 Bulk Deploy</span>
-                  <span className="text-xs text-gray-600">All matches</span>
+                  className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🚀 Bulk Deploy</span>
+                  <span className="text-xs text-gray-400">All matches</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -225,10 +225,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">🌍 Sync World Cup</span>
-                  <span className="text-xs text-gray-600">Fetch from API</span>
+                  className="h-24 flex flex-col gap-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🌍 Sync World Cup</span>
+                  <span className="text-xs text-gray-400">Fetch from API</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -239,10 +239,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">📊 Deploy Futures</span>
-                  <span className="text-xs text-gray-600">All countries</span>
+                  className="h-24 flex flex-col gap-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">📊 Deploy Futures</span>
+                  <span className="text-xs text-gray-400">All countries</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -254,10 +254,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">📈 Live Odds Bet</span>
-                  <span className="text-xs text-gray-600">Real API odds</span>
+                  className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">📈 Live Odds Bet</span>
+                  <span className="text-xs text-gray-400">Real API odds</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -269,10 +269,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">🎯 API Match</span>
-                  <span className="text-xs text-gray-600">Real match data</span>
+                  className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🎯 API Match</span>
+                  <span className="text-xs text-gray-400">Real match data</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -284,10 +284,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">🔄 Reset & Sync</span>
-                  <span className="text-xs text-gray-600">Clear all data</span>
+                  className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🔄 Reset & Sync</span>
+                  <span className="text-xs text-gray-400">Clear all data</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -299,18 +299,33 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl">
-                  
-                  <span className="font-bold text-lg text-black">🗑️ Clear DB</span>
-                  <span className="text-xs text-gray-600">Delete everything</span>
+                  className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🗑️ Clear DB</span>
+                  <span className="text-xs text-gray-400">Delete everything</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('clearDatabase');
+                      alert('✓ Platform data cleared!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🧹 Clear Platform</span>
+                  <span className="text-xs text-gray-400">Delete all platform data</span>
                 </Button>
               </div>
             </Card>
           </TabsContent>
 
           <TabsContent value="platform" className="mt-4">
-            <Card className="border-border/50 p-6">
-              <h2 className="font-heading font-bold text-xl mb-4 text-[hsl(var(--background))]">Platform Settings</h2>
+            <Card className="bg-gray-900 border border-gray-800 p-6">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Platform Settings</h2>
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={async () => {
@@ -321,8 +336,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                >
                   Init Platform
                 </Button>
                 <Button
@@ -334,8 +349,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                >
                   Check Config
                 </Button>
                 <Button
@@ -347,8 +362,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                >
                   Debug Admin
                 </Button>
                 <Button
@@ -360,8 +375,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                >
                   Full Test
                 </Button>
               </div>
@@ -369,50 +384,50 @@ export default function Admin() {
           </TabsContent>
         </Tabs>
 
-        {settleDialog &&
-        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {settleDialog && (
+          <Card className="bg-gray-900 border border-gray-800 p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Settle Market</h3>
-              <p className="text-sm text-muted-foreground">Outcome: <span className="text-primary font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
+              <p className="text-sm text-gray-400">Outcome: <span className="text-purple-400 font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
               <SolanaTransactionSigner
-              instruction={settleDialog.instruction}
-              amount={0}
-              onSuccess={handleSettleSuccess}
-              onError={(err) => console.error('[Admin] Settlement failed:', err)} />
-            
+                instruction={settleDialog.instruction}
+                amount={0}
+                onSuccess={handleSettleSuccess}
+                onError={(err) => console.error('[Admin] Settlement failed:', err)}
+              />
               <Button
-              onClick={() => setSettleDialog(null)}
-              variant="outline"
-              className="w-full">
-              
+                onClick={() => setSettleDialog(null)}
+                variant="outline"
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+              >
                 Cancel
               </Button>
             </div>
           </Card>
-        }
+        )}
 
-        {voidDialog &&
-        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {voidDialog && (
+          <Card className="bg-gray-900 border border-gray-800 p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Void Market</h3>
-              <p className="text-sm text-muted-foreground">This will refund all bettors</p>
+              <p className="text-sm text-gray-400">This will refund all bettors</p>
               <SolanaTransactionSigner
-              instruction={voidDialog.instruction}
-              amount={0}
-              onSuccess={handleVoidSuccess}
-              onError={(err) => console.error('[Admin] Void failed:', err)} />
-            
+                instruction={voidDialog.instruction}
+                amount={0}
+                onSuccess={handleVoidSuccess}
+                onError={(err) => console.error('[Admin] Void failed:', err)}
+              />
               <Button
-              onClick={() => setVoidDialog(null)}
-              variant="outline"
-              className="w-full">
-              
+                onClick={() => setVoidDialog(null)}
+                variant="outline"
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+              >
                 Cancel
               </Button>
             </div>
           </Card>
-        }
+        )}
       </div>
-    </div>);
-
+    </div>
+  );
 }
