@@ -72,18 +72,34 @@ Deno.serve(async (req) => {
     }
 
     // Calculate timestamps based on market type
+    // CRITICAL: Check if this is a TEST market (title contains "Test" or "Quick Test")
+    // Test markets should use their DB timeline, NOT World Cup Final dates
+    const isTestMarket = futuresMarket.title?.toLowerCase().includes('test') || 
+                         futuresMarket.subtitle?.toLowerCase().includes('test');
+    
     // World Cup Final: July 19, 2026, 1:00 PM Costa Rica time (UTC-6) = 19:00 UTC
     const WORLD_CUP_FINAL_KICKOFF = new Date('2026-07-19T13:00:00-06:00');
     const WORLD_CUP_FINAL_ENDS = new Date('2026-07-19T15:00:00-06:00');
     
     let openUntil, settleAfter;
     
-    if (futuresMarket.category === 'tournament') {
-      // Tournament-wide markets (Winner, To Reach Final) close at final kickoff
+    if (isTestMarket) {
+      // TEST MARKET: Use the timeline from the database (open_until field)
+      // This allows test markets to settle immediately after their short betting window
+      const dbOpenUntil = new Date(futuresMarket.open_until);
+      openUntil = Math.floor(dbOpenUntil.getTime() / 1000);
+      // Settle immediately after betting closes (no delay for test markets)
+      settleAfter = openUntil;
+      console.log('[createFuturesMarketOnChain] TEST market detected - using DB timeline:', {
+        openUntil: new Date(openUntil * 1000).toISOString(),
+        settleAfter: new Date(settleAfter * 1000).toISOString(),
+      });
+    } else if (futuresMarket.category === 'tournament') {
+      // PRODUCTION tournament-wide markets (Winner, To Reach Final) close at final kickoff
       openUntil = Math.floor(WORLD_CUP_FINAL_KICKOFF.getTime() / 1000);
       settleAfter = Math.floor(WORLD_CUP_FINAL_ENDS.getTime() / 1000);
     } else if (futuresMarket.category === 'player') {
-      // Golden Boot closes at final end time
+      // PRODUCTION Golden Boot closes at final end time
       openUntil = Math.floor(WORLD_CUP_FINAL_ENDS.getTime() / 1000);
       settleAfter = openUntil + 7200; // 2 hours after for settlement
     } else {
