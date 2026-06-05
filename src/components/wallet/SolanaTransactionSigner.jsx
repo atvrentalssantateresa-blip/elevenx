@@ -610,7 +610,6 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
             3002: 'Account not found - market may not be deployed on-chain yet',
             3007: 'Platform not initialized',
             3012: 'Unauthorized - your wallet is not registered as admin in platform config',
-            6000: 'Funds already withdrawn - check your wallet balance',
             6005: 'Constraint violation - account constraints not satisfied',
           };
           const errorMsg = errorMessages[customCode] || `Program error ${customCode}`;
