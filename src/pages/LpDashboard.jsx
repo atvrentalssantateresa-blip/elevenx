@@ -22,36 +22,36 @@ import LpPositionCard from '@/components/lp/LpPositionCard';
 const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
   const solscanUrl = `https://solscan.io/tx/${data?.signature}?cluster=devnet`;
   const hasLpBonus = data?.lpFeeBonus && data.lpFeeBonus > 0;
-  
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-card border-border/50 max-w-md">
         <DialogHeader>
           <DialogTitle className="font-heading flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-accent" />
-            {isWithdraw ? (hasLpBonus ? 'LP Winnings + Fee Bonus!' : 'Liquidity Withdrawn!') : 'Liquidity Provided!'}
+            {isWithdraw ? hasLpBonus ? 'LP Winnings + Fee Bonus!' : 'Liquidity Withdrawn!' : 'Liquidity Provided!'}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className={`${isWithdraw ? (hasLpBonus ? 'bg-accent/10 border-accent/30' : 'bg-yellow-500/10 border-yellow-500/30') : 'bg-accent/10 border-accent/30'} border rounded-xl p-4 text-center`}>
+          <div className={`${isWithdraw ? hasLpBonus ? 'bg-accent/10 border-accent/30' : 'bg-yellow-500/10 border-yellow-500/30' : 'bg-accent/10 border-accent/30'} border rounded-xl p-4 text-center`}>
             <p className="text-sm text-muted-foreground">{isWithdraw ? 'Total Withdrawal' : 'You committed'}</p>
-            <p className={`font-heading font-bold text-2xl ${isWithdraw ? (hasLpBonus ? 'text-accent' : 'text-yellow-400') : 'text-accent'}`}>
+            <p className={`font-heading font-bold text-2xl ${isWithdraw ? hasLpBonus ? 'text-accent' : 'text-yellow-400' : 'text-accent'}`}>
               ◎{hasLpBonus ? data?.totalWithdraw?.toFixed(4) : data?.amount?.toFixed(4)} SOL
             </p>
-            {hasLpBonus && (
-              <div className="mt-3 pt-3 border-t border-accent/20">
+            {hasLpBonus &&
+            <div className="mt-3 pt-3 border-t border-accent/20">
                 <p className="text-[10px] text-muted-foreground">Base winnings</p>
                 <p className="font-heading font-bold text-yellow-400">◎{data?.amount?.toFixed(4)}</p>
                 <p className="text-[10px] text-muted-foreground mt-2">+ LP fee bonus (50% of platform fees)</p>
                 <p className="font-heading font-bold text-accent">◎{data?.lpFeeBonus?.toFixed(4)}</p>
               </div>
-            )}
-            {!isWithdraw && (
-              <>
+            }
+            {!isWithdraw &&
+            <>
                 <p className="text-xs text-muted-foreground mt-2">for <span className="text-foreground font-bold">{data?.team}</span></p>
                 <p className="text-[10px] text-muted-foreground">{data?.match}</p>
               </>
-            )}
+            }
           </div>
           
           <div className="bg-secondary/40 rounded-xl p-3 space-y-2">
@@ -65,8 +65,8 @@ const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
               onClose();
             }}
             className="w-full h-11 font-heading font-bold rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}
-          >
+            style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}>
+            
             <ExternalLink className="w-4 h-4 mr-2" />
             View on Solscan
           </Button>
@@ -74,14 +74,14 @@ const SuccessDialog = ({ open, onClose, data, isWithdraw }) => {
           <Button
             variant="outline"
             onClick={onClose}
-            className="w-full h-10 text-sm rounded-xl border-border/50"
-          >
+            className="w-full h-10 text-sm rounded-xl border-border/50">
+            
             Close
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>);
+
 };
 
 export default function LpDashboard() {
@@ -109,7 +109,7 @@ export default function LpDashboard() {
 
   const { data: openBets = [] } = useQuery({
     queryKey: ['openBets'],
-    queryFn: () => base44.entities.Bet.filter({ status: 'open' }),
+    queryFn: () => base44.entities.Bet.filter({ status: 'open' })
   });
 
   const { data: myOffers = [], refetch: refetchOffers } = useQuery({
@@ -117,12 +117,12 @@ export default function LpDashboard() {
     queryFn: async () => {
       // Fetch ALL UserBets for this wallet, then filter for role='lp' client-side
       const allUserBets = await base44.entities.UserBet.list('-created_date', 100);
-      const lpUserBets = allUserBets.filter(ub => ub.wallet_address === walletAddress && ub.role === 'lp');
-      
+      const lpUserBets = allUserBets.filter((ub) => ub.wallet_address === walletAddress && ub.role === 'lp');
+
       console.log('=== LP DEBUG ===');
       console.log('All UserBets:', allUserBets.length);
       console.log('LP UserBets (role=lp, wallet match):', lpUserBets);
-      
+
       const offersWithDetails = await Promise.all(lpUserBets.map(async (ub) => {
         console.log('Processing UserBet:', ub.id, 'offer_id:', ub.offer_id);
         let offer = null;
@@ -131,15 +131,15 @@ export default function LpDashboard() {
           offer = offers[0];
           console.log('Found BetOffer:', offer);
         }
-        
+
         return offer ? { ...offer, userBetId: ub.id, userBet: ub } : null;
       }));
-      
-      const result = offersWithDetails.filter(o => o !== null);
-      
+
+      const result = offersWithDetails.filter((o) => o !== null);
+
       // Deduplicate by offer_id to prevent showing same LP position twice
       const seen = new Set();
-      const deduplicated = result.filter(o => {
+      const deduplicated = result.filter((o) => {
         const key = o.id || o.userBetId;
         if (seen.has(key)) {
           console.log('Removing duplicate LP position:', key);
@@ -148,36 +148,36 @@ export default function LpDashboard() {
         seen.add(key);
         return true;
       });
-      
+
       console.log('Final LP positions (deduplicated):', deduplicated);
       console.log('==================');
       return deduplicated;
     },
     enabled: !!walletAddress,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: true
   });
 
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
-    queryFn: () => base44.entities.Match.list(),
+    queryFn: () => base44.entities.Match.list()
   });
 
   // Extract unique groups from open bets, plus all World Cup groups A-L
-  const groupSet = new Set(openBets.map(bet => {
-    const match = matches.find(m => m.id === bet.match_id);
+  const groupSet = new Set(openBets.map((bet) => {
+    const match = matches.find((m) => m.id === bet.match_id);
     return match?.group_stage;
   }).filter(Boolean));
-  
+
   // Ensure all World Cup groups A-L are included
   const allWorldCupGroups = ['Group A', 'Group B', 'Group C', 'Group D', 'Group E', 'Group F', 'Group G', 'Group H', 'Group I', 'Group J', 'Group K', 'Group L'];
-  allWorldCupGroups.forEach(g => groupSet.add(g));
-  
+  allWorldCupGroups.forEach((g) => groupSet.add(g));
+
   const groups = ['all', ...Array.from(groupSet).sort()];
 
   // Filter open bets by active group
-  const filteredOpenBets = openBets.filter(bet => {
+  const filteredOpenBets = openBets.filter((bet) => {
     if (activeGroup !== 'all') {
-      const match = matches.find(m => m.id === bet.match_id);
+      const match = matches.find((m) => m.id === bet.match_id);
       if (!match || match.group_stage !== activeGroup) return false;
     }
     return true;
@@ -185,7 +185,7 @@ export default function LpDashboard() {
 
   const { data: futuresMarkets = [] } = useQuery({
     queryKey: ['futuresMarkets'],
-    queryFn: () => base44.entities.FuturesMarket.filter({ status: 'open' }),
+    queryFn: () => base44.entities.FuturesMarket.filter({ status: 'open' })
   });
 
   const [pendingCommitData, setPendingCommitData] = useState(null);
@@ -195,7 +195,7 @@ export default function LpDashboard() {
     mutationFn: async (params) => {
       const { walletAddress: wallet, bet_id, match_id, outcome, amount: amt } = params;
       const amountNum = parseFloat(amt);
-      
+
       if (!amountNum || amountNum <= 0) throw new Error('Invalid amount');
       if (!wallet) throw new Error('Wallet not connected');
 
@@ -204,7 +204,7 @@ export default function LpDashboard() {
         bet_id,
         match_id,
         outcome,
-        amount: amountNum,
+        amount: amountNum
       });
 
       const res = await base44.functions.invoke('provideLiquidity', {
@@ -212,7 +212,7 @@ export default function LpDashboard() {
         bet_id,
         match_id,
         outcome,
-        amount: amountNum,
+        amount: amountNum
       });
 
       console.log('[provideLiquidity] Response:', res.data);
@@ -229,14 +229,14 @@ export default function LpDashboard() {
       setPendingTx({
         instruction: data.solana_instruction,
         amount: amountNum || 0,
-        type: 'provide_liquidity',
+        type: 'provide_liquidity'
       });
       setPendingCommitData(data.commit_data);
     },
     onError: (err) => {
       console.error('[provideLiquidity] Error:', err);
       setError(err.message || 'Failed to provide liquidity');
-    },
+    }
   });
 
   const withdrawLiquidityMutation = useMutation({
@@ -246,40 +246,40 @@ export default function LpDashboard() {
         console.error('[withdrawLiquidityMutation] Missing userBetId in offer:', offer);
         throw new Error('No user bet found for this offer');
       }
-      
+
       // Fetch the UserBet to check its status before calling withdraw
       const userBets = await base44.entities.UserBet.filter({ id: offer.userBetId });
       const userBet = userBets[0];
       console.log('[withdrawLiquidityMutation] UserBet found:', userBet);
-      
+
       if (!userBet) throw new Error('UserBet not found');
       if (userBet.role !== 'lp') throw new Error('Not an LP bet');
-      
+
       // For parimutuel positions, use withdrawLiquidity (not withdrawLpWinnings)
       if (offer._isParimutuel || userBet._isParimutuel) {
         console.log('[withdrawLiquidityMutation] Parimutuel position - calling withdrawLiquidity');
         const res = await base44.functions.invoke('withdrawLiquidity', {
-          userBetId: offer.userBetId,
+          userBetId: offer.userBetId
         });
         if (res.data.error) throw new Error(res.data.error);
         return res.data;
       }
-      
+
       // Traditional LP: check if settled (use withdrawLpWinnings for fee bonus) or open (use withdrawLiquidity)
       const bet = await base44.entities.Bet.get(userBet.bet_id);
       const isSettled = bet?.status === 'settled';
-      
+
       if (isSettled) {
         console.log('[withdrawLiquidityMutation] Settled LP position - calling withdrawLpWinnings');
         const res = await base44.functions.invoke('withdrawLpWinnings', {
-          userBetId: offer.userBetId,
+          userBetId: offer.userBetId
         });
         if (res.data.error) throw new Error(res.data.error);
         return res.data;
       } else {
         console.log('[withdrawLiquidityMutation] Open LP position - calling withdrawLiquidity');
         const res = await base44.functions.invoke('withdrawLiquidity', {
-          userBetId: offer.userBetId,
+          userBetId: offer.userBetId
         });
         if (res.data.error) throw new Error(res.data.error);
         return res.data;
@@ -294,24 +294,24 @@ export default function LpDashboard() {
         totalWithdraw: data.totalWithdraw || (data.withdrawAmount || data.amount || 0) + (data.lpFeeBonus || 0),
         type: 'withdraw_liquidity',
         userBetId: data.userBetId,
-        offerId: data.offerId,
+        offerId: data.offerId
       });
     },
     onError: (err) => {
       console.error('[withdrawLiquidityMutation] Error:', err);
       setError(err.message || 'Failed to withdraw liquidity');
-    },
+    }
   });
 
   const handleTxSuccess = async (txResult) => {
     const signature = txResult.signature;
     const committedAmount = pendingTx?.amount || 0;
-    
+
     if (pendingCommitData) {
       try {
         const commitRes = await base44.functions.invoke('commitLiquidity', {
           signature,
-          commit_data: pendingCommitData,
+          commit_data: pendingCommitData
         });
         if (commitRes.data.error) {
           console.error('[LpDashboard] commitLiquidity error:', commitRes.data.error);
@@ -321,18 +321,18 @@ export default function LpDashboard() {
       }
       setPendingCommitData(null);
     }
-    
+
     // Use the outcome from pendingCommitData (which has the actual selected outcome)
     const outcomeLabel = pendingCommitData?.outcome_label || selectedBet?.outcome_a || 'Unknown';
     const matchTitle = pendingCommitData?.match_title || selectedBet ? `${selectedBet.outcome_a} vs ${selectedBet.outcome_b}` : 'Market';
-    
+
     setSuccessDialog({
       signature,
       amount: committedAmount,
       team: outcomeLabel,
-      match: matchTitle,
+      match: matchTitle
     });
-    
+
     setPendingTx(null);
     setAmount('');
     setSelectedBet(null);
@@ -353,13 +353,13 @@ export default function LpDashboard() {
 
   const handleWithdrawSuccess = async (txResult) => {
     const signature = txResult.signature;
-    
+
     if (pendingTx?.userBetId && pendingTx?.offerId) {
       try {
         const commitRes = await base44.functions.invoke('finalizeWithdrawal', {
           signature,
           userBetId: pendingTx.userBetId,
-          offerId: pendingTx.offerId,
+          offerId: pendingTx.offerId
         });
         if (commitRes.data.error) {
           console.error('[LpDashboard] finalizeWithdrawal error:', commitRes.data.error);
@@ -368,14 +368,14 @@ export default function LpDashboard() {
         console.error('[LpDashboard] finalizeWithdrawal threw:', err);
       }
     }
-    
+
     setWithdrawSuccessDialog({
       signature,
       amount: pendingTx?.amount || 0,
       lpFeeBonus: pendingTx?.lpFeeBonus || 0,
-      totalWithdraw: (pendingTx?.amount || 0) + (pendingTx?.lpFeeBonus || 0),
+      totalWithdraw: (pendingTx?.amount || 0) + (pendingTx?.lpFeeBonus || 0)
     });
-    
+
     setPendingTx(null);
     setError(null);
     // Invalidate queries immediately to remove withdrawn position
@@ -387,16 +387,16 @@ export default function LpDashboard() {
   // Stats - calculate from UserBet data (works for both traditional LP and parimutuel)
   const totalCommitted = myOffers.reduce((s, o) => {
     // Use UserBet amount if available (parimutuel), otherwise BetOffer amount_offered
-    return s + ((o.userBet?.amount || o.amount_offered) || 0);
+    return s + (o.userBet?.amount || o.amount_offered || 0);
   }, 0);
   const totalMatched = myOffers.reduce((s, o) => s + (o.amount_matched || 0), 0);
   const totalUnmatched = myOffers.reduce((s, o) => s + (o.amount_unmatched || 0), 0);
-  const activeOffers = myOffers.filter(o => o.status === 'open' || o.status === 'partially_matched');
-  
+  const activeOffers = myOffers.filter((o) => o.status === 'open' || o.status === 'partially_matched');
+
   const offersWithUserBet = myOffers;
 
   const getMatchTitle = (matchId) => {
-    const m = matches.find(m => m.id === matchId);
+    const m = matches.find((m) => m.id === matchId);
     return m ? `${m.team_a_flag || ''} ${m.team_a} vs ${m.team_b} ${m.team_b_flag || ''}` : 'Unknown Match';
   };
 
@@ -414,7 +414,7 @@ export default function LpDashboard() {
       alert('Please connect your wallet first');
       return;
     }
-    
+
     try {
       const res = await base44.functions.invoke('provideFuturesLiquidity', {
         walletAddress,
@@ -422,19 +422,19 @@ export default function LpDashboard() {
         outcome_label: outcome.label,
         outcome_flag: outcome.flag,
         odds: outcome.odds,
-        amount,
+        amount
       });
-      
+
       if (res.data.error) {
         alert('Error: ' + res.data.error);
         return;
       }
-      
+
       if (res.data.solana_instruction) {
         setPendingFuturesTx({
           instruction: res.data.solana_instruction,
           amount,
-          type: 'provide_futures_liquidity',
+          type: 'provide_futures_liquidity'
         });
         setPendingFuturesCommit(res.data.commit_data);
       }
@@ -445,12 +445,12 @@ export default function LpDashboard() {
 
   const handleFuturesTxSuccess = async (txResult) => {
     const signature = txResult.signature;
-    
+
     if (pendingFuturesCommit) {
       try {
         const commitRes = await base44.functions.invoke('commitFuturesLiquidity', {
           signature,
-          commit_data: pendingFuturesCommit,
+          commit_data: pendingFuturesCommit
         });
         if (commitRes.data.error) {
           console.error('[LpDashboard] commitFuturesLiquidity error:', commitRes.data.error);
@@ -460,14 +460,14 @@ export default function LpDashboard() {
       }
       setPendingFuturesCommit(null);
     }
-    
+
     setSuccessDialog({
       signature,
       amount: pendingFuturesTx?.amount || 0,
       team: pendingFuturesCommit?.outcome_label || 'Futures',
-      match: 'Tournament Market',
+      match: 'Tournament Market'
     });
-    
+
     setPendingFuturesTx(null);
     queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
     queryClient.invalidateQueries({ queryKey: ['allOffers', pendingFuturesCommit?.bet_id] });
@@ -479,19 +479,19 @@ export default function LpDashboard() {
       setError('Wallet not connected. Please connect Phantom first.');
       return;
     }
-    
+
     console.log('[handleDetailModalCommit] Triggering with:', { walletAddress, bet_id: bet.id, outcome, amount });
-    
+
     // Set modal to transaction mode (don't close yet)
     setModalTransactionMode(true);
-    
+
     // Trigger mutation directly with params
     provideLiquidityMutation.mutate({
       walletAddress,
       bet_id: bet.id,
       match_id: bet.match_id,
       outcome,
-      amount: String(amount),
+      amount: String(amount)
     });
   };
 
@@ -506,8 +506,8 @@ export default function LpDashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-8"
-        style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}
-      >
+        style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}>
+        
         <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
         <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: '#14f195' }} />
         
@@ -557,25 +557,25 @@ export default function LpDashboard() {
         </div>
       </motion.div>
 
-      {!isConnected && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-primary/20 p-8 text-center"
-          style={{ background: 'linear-gradient(145deg, #1a1040 0%, #0f0a1e 100%)' }}
-        >
+      {!isConnected &&
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-primary/20 p-8 text-center"
+        style={{ background: 'linear-gradient(145deg, #1a1040 0%, #0f0a1e 100%)' }}>
+        
           <Wallet className="w-12 h-12 text-primary mx-auto mb-4" />
           <h3 className="font-heading font-black text-xl text-white mb-2">Connect Wallet to Provide Liquidity</h3>
           <p className="text-white/50 text-sm mb-5 max-w-xs mx-auto">Connect Phantom to start providing LP liquidity.</p>
           <Button onClick={connect} className="font-heading font-bold px-8 h-11 rounded-xl text-sm"
-            style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}>
+        style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}>
             <Wallet className="w-4 h-4 mr-2" /> Connect Phantom
           </Button>
         </motion.div>
-      )}
+      }
 
-      {isConnected && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      {isConnected &&
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-6 bg-secondary/30 p-1.5 rounded-xl gap-2 h-auto">
             <TabsTrigger value="matches" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">
               <TrendingUp className="w-4 h-4 mr-2 text-primary" /> Match LP
@@ -592,29 +592,29 @@ export default function LpDashboard() {
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Committed', value: `◎${totalCommitted.toFixed(4)}`, color: 'text-primary' },
-                { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, color: 'text-accent' },
-                { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, color: 'text-yellow-400' },
-              ].map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="bg-card border border-border/50 rounded-xl p-4">
+            { label: 'Committed', value: `◎${totalCommitted.toFixed(4)}`, color: 'text-primary' },
+            { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, color: 'text-accent' },
+            { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, color: 'text-yellow-400' }].
+            map((s, i) =>
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className="bg-card border border-border/50 rounded-xl p-4">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{s.label}</p>
                   <p className={`font-heading font-bold text-lg ${s.color}`}>{s.value}</p>
                 </motion.div>
-              ))}
+            )}
             </div>
 
             {/* Provide liquidity section */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              {error && (
-                <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 mb-4">
+              {error &&
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 mb-4">
                   <AlertCircle className="w-4 h-4 text-destructive" />
                   <AlertDescription className="text-destructive text-sm">
                     {error}
                     <Button variant="link" className="p-0 h-auto text-destructive underline ml-2" onClick={() => setError(null)}>Dismiss</Button>
                   </AlertDescription>
                 </Alert>
-              )}
+            }
 
               <div className="space-y-4">
                 <h2 className="font-heading font-bold text-sm">Provide Liquidity</h2>
@@ -622,61 +622,61 @@ export default function LpDashboard() {
                 {/* Group Navigation */}
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   <button
-                    onClick={() => setActiveGroup('all')}
-                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                      activeGroup === 'all'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
-                    }`}
-                  >
+                  onClick={() => setActiveGroup('all')}
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                  activeGroup === 'all' ?
+                  'bg-primary text-primary-foreground' :
+                  'bg-secondary/50 text-muted-foreground hover:bg-secondary'}`
+                  }>
+                  
                     All Groups
                   </button>
-                  {groups.filter(g => g !== 'all' && g !== 'World Cup 2026').map(group => (
-                    <button
-                      key={group}
-                      onClick={() => setActiveGroup(group)}
-                      className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                        activeGroup === group
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
-                      }`}
-                    >
+                  {groups.filter((g) => g !== 'all' && g !== 'World Cup 2026').map((group) =>
+                <button
+                  key={group}
+                  onClick={() => setActiveGroup(group)}
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+                  activeGroup === group ?
+                  'bg-primary text-primary-foreground' :
+                  'bg-secondary/50 text-muted-foreground hover:bg-secondary'}`
+                  }>
+                  
                       {group}
                     </button>
-                  ))}
+                )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   {(() => {
-                    // Deduplicate bets by match_id to prevent showing same match twice
-                    const seenMatches = new Set();
-                    const uniqueBets = filteredOpenBets.filter(bet => {
-                      if (seenMatches.has(bet.match_id)) {
-                        console.log('Removing duplicate bet for match:', bet.match_id, 'bet:', bet.id);
-                        return false;
-                      }
-                      seenMatches.add(bet.match_id);
-                      return true;
-                    });
-                    
-                    console.log('[LpDashboard] Unique bets to render:', uniqueBets.length, 'out of', filteredOpenBets.length);
-                    
-                    return uniqueBets.map(bet => {
-                      const match = matches.find(m => m.id === bet.match_id);
-                      return (
-                        <MatchLiquidityCard
-                          key={bet.id}
-                          bet={bet}
-                          match={match}
-                          isSelected={selectedBet?.id === bet.id}
-                          onClick={() => {
-                            setSelectedBetForDetail({ bet, match });
-                            setDetailModalOpen(true);
-                          }}
-                        />
-                      );
-                    });
-                  })()}
+                  // Deduplicate bets by match_id to prevent showing same match twice
+                  const seenMatches = new Set();
+                  const uniqueBets = filteredOpenBets.filter((bet) => {
+                    if (seenMatches.has(bet.match_id)) {
+                      console.log('Removing duplicate bet for match:', bet.match_id, 'bet:', bet.id);
+                      return false;
+                    }
+                    seenMatches.add(bet.match_id);
+                    return true;
+                  });
+
+                  console.log('[LpDashboard] Unique bets to render:', uniqueBets.length, 'out of', filteredOpenBets.length);
+
+                  return uniqueBets.map((bet) => {
+                    const match = matches.find((m) => m.id === bet.match_id);
+                    return (
+                      <MatchLiquidityCard
+                        key={bet.id}
+                        bet={bet}
+                        match={match}
+                        isSelected={selectedBet?.id === bet.id}
+                        onClick={() => {
+                          setSelectedBetForDetail({ bet, match });
+                          setDetailModalOpen(true);
+                        }} />);
+
+
+                  });
+                })()}
                 </div>
               </div>
             </motion.div>
@@ -685,8 +685,8 @@ export default function LpDashboard() {
           </TabsContent>
 
           <TabsContent value="futures" className="space-y-6">
-            {pendingFuturesTx && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            {pendingFuturesTx &&
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
                   <div className="space-y-4">
                     <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
@@ -694,32 +694,32 @@ export default function LpDashboard() {
                       <p className="text-xs text-muted-foreground">Sign transaction to provide LP liquidity</p>
                     </div>
                     <SolanaTransactionSigner
-                      instruction={pendingFuturesTx.instruction}
-                      amount={pendingFuturesTx.amount}
-                      onSuccess={handleFuturesTxSuccess}
-                      onError={(err) => {
-                        alert('Transaction failed: ' + err.message);
-                        setPendingFuturesTx(null);
-                      }}
-                    />
+                  instruction={pendingFuturesTx.instruction}
+                  amount={pendingFuturesTx.amount}
+                  onSuccess={handleFuturesTxSuccess}
+                  onError={(err) => {
+                    alert('Transaction failed: ' + err.message);
+                    setPendingFuturesTx(null);
+                  }} />
+                
                     <Button variant="outline" size="sm" onClick={() => setPendingFuturesTx(null)} className="w-full">
                       Cancel
                     </Button>
                   </div>
                 </div>
               </div>
-            )}
+          }
             <FuturesLpPanel
-              futuresMarkets={futuresMarkets}
-              onProvideLiquidity={handleFuturesLiquidity}
-              isConnected={isConnected}
-              connect={connect}
-            />
+            futuresMarkets={futuresMarkets}
+            onProvideLiquidity={handleFuturesLiquidity}
+            isConnected={isConnected}
+            connect={connect} />
+          
           </TabsContent>
 
           <TabsContent value="positions" className="space-y-4 sm:space-y-6">
             {/* Debug: Show raw data */}
-            <div className="bg-card border border-border/50 rounded-xl p-4 mb-4">
+            <div className="bg-card border border-border/50 rounded-xl p-4 mb-4 hidden">
               <p className="text-xs font-bold text-muted-foreground mb-2">Debug - My LP Data:</p>
               <p className="text-[10px] font-mono text-muted-foreground">
                 UserBets with role='lp': {myOffers?.length || 0}
@@ -727,36 +727,36 @@ export default function LpDashboard() {
               <p className="text-[10px] font-mono text-muted-foreground">
                 Wallet: {walletAddress}
               </p>
-              {myOffers?.length > 0 && (
-                <pre className="text-[9px] font-mono text-muted-foreground mt-2 max-h-32 overflow-auto">
-                  {JSON.stringify(myOffers.map(o => ({
-                    id: o.id,
-                    userBetId: o.userBetId,
-                    isParimutuel: o._isParimutuel,
-                    amount: o.amount_offered || o.userBet?.amount,
-                    status: o.status,
-                  })), null, 2)}
+              {myOffers?.length > 0 &&
+            <pre className="text-[9px] font-mono text-muted-foreground mt-2 max-h-32 overflow-auto">
+                  {JSON.stringify(myOffers.map((o) => ({
+                id: o.id,
+                userBetId: o.userBetId,
+                isParimutuel: o._isParimutuel,
+                amount: o.amount_offered || o.userBet?.amount,
+                status: o.status
+              })), null, 2)}
                 </pre>
-              )}
+            }
             </div>
 
             {/* My LP Positions Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {[
-                { label: 'Total Committed', value: `◎${totalCommitted.toFixed(4)}`, icon: DollarSign, color: 'text-primary' },
-                { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, icon: CheckCircle2, color: 'text-accent' },
-                { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, icon: Clock, color: 'text-yellow-400' },
-                { label: 'Active Offers', value: activeOffers.length.toString(), icon: TrendingUp, color: 'text-chart-2' },
-              ].map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="bg-card border border-border/50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+            { label: 'Total Committed', value: `◎${totalCommitted.toFixed(4)}`, icon: DollarSign, color: 'text-primary' },
+            { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, icon: CheckCircle2, color: 'text-accent' },
+            { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, icon: Clock, color: 'text-yellow-400' },
+            { label: 'Active Offers', value: activeOffers.length.toString(), icon: TrendingUp, color: 'text-chart-2' }].
+            map((s, i) =>
+            <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className="bg-card border border-border/50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
                   <div className="flex items-center gap-1.5 mb-1">
                     <s.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${s.color}`} />
                     <p className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
                   </div>
                   <p className={`font-heading font-bold text-base sm:text-lg ${s.color}`}>{s.value}</p>
                 </motion.div>
-              ))}
+            )}
             </div>
 
             {/* LP Positions List */}
@@ -764,89 +764,89 @@ export default function LpDashboard() {
               <div className="flex items-center justify-between">
                 <h2 className="font-heading font-bold text-sm text-muted-foreground">Your LP Positions</h2>
                 <button
-                  onClick={() => console.log('DEBUG: LP positions:', offersWithUserBet)}
-                  className="text-[10px] text-primary underline"
-                >
+                onClick={() => console.log('DEBUG: LP positions:', offersWithUserBet)}
+                className="text-[10px] text-primary underline">
+                
                   Debug Log ({offersWithUserBet.length})
                 </button>
               </div>
               <div className="grid gap-3 sm:gap-4">
-                {offersWithUserBet.length === 0 ? (
-                  <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
+                {offersWithUserBet.length === 0 ?
+              <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
                     <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                     <p className="font-heading font-bold text-sm text-muted-foreground mb-1">No LP positions yet</p>
                     <p className="text-xs text-muted-foreground">Check browser console for debug info</p>
-                  </div>
-                ) : (
-                  offersWithUserBet.map((offer) => {
-                      const match = matches.find(m => m.id === offer.match_id);
-                      const bet = openBets.find(b => b.id === offer.bet_id);
-                      
-                      // Use UserBet data if available (parimutuel), otherwise BetOffer data
-                      const amountDeposited = offer.userBet?.amount || offer.amount_offered || 0;
-                      const amountMatched = offer.amount_matched || 0;
-                      const amountUnmatched = offer.amount_unmatched || 0;
-                      const potentialEarnings = amountMatched * 0.02; // 2% fee
-                      const matchPct = amountDeposited > 0 ? (amountMatched / amountDeposited * 100) : 0;
-                      const isFullyMatched = offer.status === 'fully_matched';
-                      const isPartiallyMatched = offer.status === 'partially_matched';
-                      const hasUnmatched = amountUnmatched > 0;
+                  </div> :
 
-                      const getOutcomeLabel = () => {
-                        if (offer.outcome === 'a') return offer.outcome_label || bet?.outcome_a || match?.team_a || 'Team A';
-                        if (offer.outcome === 'b') return offer.outcome_label || bet?.outcome_b || match?.team_b || 'Team B';
-                        return 'Draw';
-                      };
+              offersWithUserBet.map((offer) => {
+                const match = matches.find((m) => m.id === offer.match_id);
+                const bet = openBets.find((b) => b.id === offer.bet_id);
 
-                      // For parimutuel: use UserBet liquidity fields
-                      const canWithdraw = amountUnmatched > 0 && !isFullyMatched;
-                      
-                      const currentStatus = {
-                        open: { bg: 'bg-primary/10', border: 'border-primary/30', color: 'text-primary' },
-                        partially_matched: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', color: 'text-yellow-400' },
-                        fully_matched: { bg: 'bg-accent/10', border: 'border-accent/30', color: 'text-accent' },
-                      }[offer.status] || { bg: 'bg-muted/10', border: 'border-muted/30', color: 'text-muted-foreground' };
+                // Use UserBet data if available (parimutuel), otherwise BetOffer data
+                const amountDeposited = offer.userBet?.amount || offer.amount_offered || 0;
+                const amountMatched = offer.amount_matched || 0;
+                const amountUnmatched = offer.amount_unmatched || 0;
+                const potentialEarnings = amountMatched * 0.02; // 2% fee
+                const matchPct = amountDeposited > 0 ? amountMatched / amountDeposited * 100 : 0;
+                const isFullyMatched = offer.status === 'fully_matched';
+                const isPartiallyMatched = offer.status === 'partially_matched';
+                const hasUnmatched = amountUnmatched > 0;
 
-                      return (
-                        <LpPositionCard
-                          key={offer.id || offer.userBetId}
-                          offer={offer}
-                          match={match}
-                          potentialEarnings={potentialEarnings}
-                          matchPct={matchPct}
-                          isFullyMatched={isFullyMatched}
-                          isPartiallyMatched={isPartiallyMatched}
-                          hasUnmatched={hasUnmatched}
-                          currentStatus={currentStatus}
-                          getOutcomeLabel={getOutcomeLabel}
-                          canWithdraw={canWithdraw}
-                          onWithdraw={() => {
-                            console.log('[onWithdraw] Withdrawing:', {
-                              userBetId: offer.userBetId,
-                              amount_unmatched: amountUnmatched,
-                              _isParimutuel: offer._isParimutuel,
-                            });
-                            withdrawLiquidityMutation.mutate(offer);
-                          }}
-                        />
-                      );
-                    })
-                  )}
+                const getOutcomeLabel = () => {
+                  if (offer.outcome === 'a') return offer.outcome_label || bet?.outcome_a || match?.team_a || 'Team A';
+                  if (offer.outcome === 'b') return offer.outcome_label || bet?.outcome_b || match?.team_b || 'Team B';
+                  return 'Draw';
+                };
+
+                // For parimutuel: use UserBet liquidity fields
+                const canWithdraw = amountUnmatched > 0 && !isFullyMatched;
+
+                const currentStatus = {
+                  open: { bg: 'bg-primary/10', border: 'border-primary/30', color: 'text-primary' },
+                  partially_matched: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', color: 'text-yellow-400' },
+                  fully_matched: { bg: 'bg-accent/10', border: 'border-accent/30', color: 'text-accent' }
+                }[offer.status] || { bg: 'bg-muted/10', border: 'border-muted/30', color: 'text-muted-foreground' };
+
+                return (
+                  <LpPositionCard
+                    key={offer.id || offer.userBetId}
+                    offer={offer}
+                    match={match}
+                    potentialEarnings={potentialEarnings}
+                    matchPct={matchPct}
+                    isFullyMatched={isFullyMatched}
+                    isPartiallyMatched={isPartiallyMatched}
+                    hasUnmatched={hasUnmatched}
+                    currentStatus={currentStatus}
+                    getOutcomeLabel={getOutcomeLabel}
+                    canWithdraw={canWithdraw}
+                    onWithdraw={() => {
+                      console.log('[onWithdraw] Withdrawing:', {
+                        userBetId: offer.userBetId,
+                        amount_unmatched: amountUnmatched,
+                        _isParimutuel: offer._isParimutuel
+                      });
+                      withdrawLiquidityMutation.mutate(offer);
+                    }} />);
+
+
+              })
+              }
               </div>
             </div>
 
             {/* Withdraw Transaction Signer */}
-            {pendingTx && pendingTx.type === 'withdraw_liquidity' && (
-              <SolanaTransactionSigner
-                instruction={pendingTx.instruction}
-                amount={pendingTx.amount}
-                onSuccess={handleWithdrawSuccess}
-                onError={() => setPendingTx(null)}
-              />
-            )}
+            {pendingTx && pendingTx.type === 'withdraw_liquidity' &&
+          <SolanaTransactionSigner
+            instruction={pendingTx.instruction}
+            amount={pendingTx.amount}
+            onSuccess={handleWithdrawSuccess}
+            onError={() => setPendingTx(null)} />
+
+          }
           </TabsContent>
         </Tabs>
-      )}
+      }
 
       {/* Detail Modal */}
       <LiquidityDetailModal
@@ -861,12 +861,12 @@ export default function LpDashboard() {
         onCommit={(data) => {
           console.log('[LpDashboard] onCommit called with:', data);
           handleDetailModalCommit(data);
-        }}
-      />
+        }} />
+      
 
       {/* Transaction Modal Overlay */}
-      {pendingTx && pendingTx.type === 'provide_liquidity' && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {pendingTx && pendingTx.type === 'provide_liquidity' &&
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
             <div className="space-y-4">
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
@@ -874,18 +874,18 @@ export default function LpDashboard() {
                 <p className="text-xs text-muted-foreground">Sign transaction to complete</p>
               </div>
               <SolanaTransactionSigner
-                instruction={pendingTx.instruction}
-                amount={pendingTx.amount}
-                onSuccess={handleTxSuccess}
-                onError={handleTxError}
-              />
+              instruction={pendingTx.instruction}
+              amount={pendingTx.amount}
+              onSuccess={handleTxSuccess}
+              onError={handleTxError} />
+            
               <Button variant="outline" size="sm" onClick={() => setPendingTx(null)} className="w-full">
                 Cancel
               </Button>
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
