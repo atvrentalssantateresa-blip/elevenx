@@ -210,6 +210,27 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
     
+    // Check if market has enough SOL for the claim (including potential fee)
+    const marketLamports = marketInfo?.lamports || 0;
+    const requiredLamports = Number(claimAmount);
+    
+    // Market needs to have at least the claim amount (program will deduct fee)
+    if (marketLamports < requiredLamports) {
+      console.error('[claimWinnings] Market insolvency detected:', {
+        marketLamports,
+        requiredLamports,
+        deficit: requiredLamports - marketLamports,
+      });
+      return Response.json({
+        error: 'Market PDA has insufficient SOL for this claim',
+        marketLamports,
+        requiredLamports,
+        deficit: requiredLamports - marketLamports,
+        feeVaultPda: feeVaultPda.toBase58(),
+        positionPda: positionPda.toBase58(),
+      }, { status: 400 });
+    }
+    
     // Build accounts array in the EXACT order required by ClaimWinnings struct:
     // 1. market (mutable, PDA)
     // 2. bet_position (mutable, PDA)
