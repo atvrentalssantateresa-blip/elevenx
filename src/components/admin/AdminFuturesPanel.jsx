@@ -303,8 +303,18 @@ export default function AdminFuturesPanel() {
                     size="sm"
                     variant="secondary"
                     onClick={() => setManualSettleModal({ open: true, marketId: market.id, marketName: market.country })}
-                    disabled={market.status === 'settled' || settlingWithOracle === market.id || settleWithOracleMutation.isPending}
-                    className="bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 text-xs font-bold h-7 px-2 rounded-lg"
+                    disabled={
+                      market.status === 'settled' || 
+                      settlingWithOracle === market.id || 
+                      settleWithOracleMutation.isPending ||
+                      (market.open_until && new Date(market.open_until) > new Date())
+                    }
+                    className={`${
+                      market.open_until && new Date(market.open_until) > new Date()
+                        ? 'bg-muted/30 text-muted-foreground cursor-not-allowed border border-muted/50'
+                        : 'bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20'
+                    } text-xs font-bold h-7 px-2 rounded-lg`}
+                    title={market.open_until && new Date(market.open_until) > new Date() ? 'Betting window still open' : 'Settle market'}
                   >
                     {settlingWithOracle === market.id || settleWithOracleMutation.isPending ? (
                       <Loader className="w-3 h-3 animate-spin" />
