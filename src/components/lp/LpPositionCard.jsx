@@ -31,6 +31,9 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
   // Calculate potential earnings (2% fee on matched portion)
   const potentialEarnings = liquidityMatched * 0.02;
+  
+  // Calculate total value (deposited + fees earned)
+  const totalValue = liquidityDeposited + potentialEarnings;
 
   const getOutcomeLabel = () => {
     if (offer.outcome === 'a') return offer.outcome_label || matchData.team_a;
@@ -135,29 +138,39 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2.5 border border-white/10">
+        {/* Stats Grid - 2x2 with Fees */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-2.5 border border-primary/20">
             <div className="flex items-center gap-1 mb-1">
-              <DollarSign className="w-2.5 h-2.5 text-muted-foreground" />
+              <DollarSign className="w-2.5 h-2.5 text-primary" />
               <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Deposited</span>
             </div>
-            <p className="font-heading font-bold text-white text-xs sm:text-sm">
+            <p className="font-heading font-bold text-primary text-xs sm:text-sm">
               ◎{liquidityDeposited.toFixed(4)}
             </p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2.5 border border-white/10">
+          <div className="bg-gradient-to-br from-accent/10 to-accent/5 backdrop-blur-sm rounded-xl p-2.5 border border-accent/20">
             <div className="flex items-center gap-1 mb-1">
-              <CheckCircle className="w-2.5 h-2.5 text-accent" />
-              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Matched</span>
+              <TrendingUp className="w-2.5 h-2.5 text-accent" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Fees Earned</span>
             </div>
             <p className="font-heading font-bold text-accent text-xs sm:text-sm">
+              ◎{potentialEarnings.toFixed(4)}
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-500/20">
+            <div className="flex items-center gap-1 mb-1">
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+              <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Matched</span>
+            </div>
+            <p className="font-heading font-bold text-emerald-400 text-xs sm:text-sm">
               ◎{liquidityMatched.toFixed(4)}
             </p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2.5 border border-white/10">
+          <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 backdrop-blur-sm rounded-xl p-2.5 border border-yellow-500/20">
             <div className="flex items-center gap-1 mb-1">
               <Wallet className="w-2.5 h-2.5 text-yellow-400" />
               <span className="text-[8px] sm:text-[9px] text-white/40 uppercase tracking-wider">Available</span>
@@ -168,33 +181,22 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
           </div>
         </div>
 
-        {/* Earnings & Progress */}
-        <div className="space-y-2 pt-2 border-t border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Percent className="w-3 h-3 text-primary" />
-              <span className="text-[9px] sm:text-[10px] text-white/50">Fees Earned</span>
-            </div>
-            <p className="font-heading font-bold text-primary text-xs sm:text-sm">
-              ◎{potentialEarnings.toFixed(4)}
-            </p>
-          </div>
+        {/* Progress Bar */}
+        <div className="pt-2 border-t border-white/10">
 
-          <div>
-            <div className="flex items-center justify-between text-[8px] sm:text-[10px] text-white/40 mb-1.5">
-              <span>Match Rate</span>
-              <span className="font-bold text-white/60">{matchPct}%</span>
-            </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isFullyMatched ? 'bg-gradient-to-r from-accent to-emerald-400' : 
-                  isPartiallyMatched ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' : 
-                  'bg-gradient-to-r from-primary/50 to-primary'
-                }`}
-                style={{ width: `${matchPct}%` }}
-              />
-            </div>
+          <div className="flex items-center justify-between text-[8px] sm:text-[10px] text-white/40 mb-1.5">
+            <span>Match Rate</span>
+            <span className="font-bold text-white/60">{matchPct}%</span>
+          </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                isFullyMatched ? 'bg-gradient-to-r from-accent to-emerald-400' : 
+                isPartiallyMatched ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' : 
+                'bg-gradient-to-r from-primary/50 to-primary'
+              }`}
+              style={{ width: `${matchPct}%` }}
+            />
           </div>
         </div>
 

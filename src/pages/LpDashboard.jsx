@@ -397,11 +397,11 @@ export default function LpDashboard() {
 
   // Stats - calculate from UserBet data (works for both traditional LP and parimutuel)
   const totalCommitted = myOffers.reduce((s, o) => {
-    // Use UserBet amount if available (parimutuel), otherwise BetOffer amount_offered
     return s + (o.userBet?.amount || o.amount_offered || 0);
   }, 0);
   const totalMatched = myOffers.reduce((s, o) => s + (o.amount_matched || 0), 0);
   const totalUnmatched = myOffers.reduce((s, o) => s + (o.amount_unmatched || 0), 0);
+  const totalFeesEarned = totalMatched * 0.02; // 2% fee on matched portion
   const activeOffers = myOffers.filter((o) => o.status === 'open' || o.status === 'partially_matched');
 
   const offersWithUserBet = myOffers;
@@ -762,12 +762,13 @@ export default function LpDashboard() {
           
 
             {/* My LP Positions Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
               {[
-            { label: 'Total Committed', value: `◎${totalCommitted.toFixed(4)}`, icon: DollarSign, color: 'text-primary' },
+            { label: 'Committed', value: `◎${totalCommitted.toFixed(4)}`, icon: DollarSign, color: 'text-primary' },
             { label: 'Matched', value: `◎${totalMatched.toFixed(4)}`, icon: CheckCircle2, color: 'text-accent' },
             { label: 'Unmatched', value: `◎${totalUnmatched.toFixed(4)}`, icon: Clock, color: 'text-yellow-400' },
-            { label: 'Active Offers', value: activeOffers.length.toString(), icon: TrendingUp, color: 'text-chart-2' }].
+            { label: 'Fees Earned', value: `◎${totalFeesEarned.toFixed(4)}`, icon: TrendingUp, color: 'text-accent' },
+            { label: 'Active', value: activeOffers.length.toString(), icon: TrendingUp, color: 'text-chart-2' }].
             map((s, i) =>
             <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="bg-card border border-border/50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
@@ -782,16 +783,8 @@ export default function LpDashboard() {
 
             {/* LP Positions List */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-muted-foreground">Your LP Positions</h2>
-                <button
-                onClick={() => console.log('DEBUG: LP positions:', offersWithUserBet)}
-                className="text-[10px] text-primary underline">
-                
-                  Debug Log ({offersWithUserBet.length})
-                </button>
-              </div>
-              <div className="grid gap-3 sm:gap-4">
+              <h2 className="font-heading font-bold text-sm text-muted-foreground">Your LP Positions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {(() => {
                 console.log('=== RENDER DEBUG ===');
                 console.log('offersWithUserBet:', offersWithUserBet);
