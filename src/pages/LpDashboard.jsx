@@ -730,16 +730,16 @@ export default function LpDashboard() {
 
           <TabsContent value="positions" className="space-y-4 sm:space-y-6">
             {/* Debug: Show raw data */}
-            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 hidden">
-              <p className="font-bold text-destructive text-sm mb-2">🐛 LP Query Debug</p>
-              <p className="text-xs text-destructive">walletAddress: {walletAddress || 'undefined'}</p>
-              <p className="text-xs text-destructive">Query enabled: {!!walletAddress}</p>
-              <p className="text-xs text-destructive">myOffers.length: {myOffers.length}</p>
-              <p className="text-xs text-destructive">offersWithUserBet.length: {offersWithUserBet.length}</p>
-              <Button size="sm" onClick={() => refetchOffers()} className="mt-2">
-                ↻ Refresh LP Data
-              </Button>
-            </div>
+            
+
+
+
+
+
+
+
+
+          
             
 
 
