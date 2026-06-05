@@ -453,23 +453,28 @@ export default function MyBets() {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {myLpPositions.map((lp, i) => (
-                <LpPositionCard
-                  key={lp.id}
-                  position={lp}
-                  index={i}
-                  walletAddress={walletAddress}
-                  onWithdrawRequest={(data) => {
-                    // Handle LP withdraw dialog
-                    setPendingWithdrawTx({
-                      instruction: data.solanaInstruction,
-                      amount: data.withdrawAmount,
-                      userBetId: data.positionId,
-                      offerId: data.offerId
-                    });
-                  }}
-                />
-              ))}
+              {myLpPositions.map((lp, i) => {
+                // Find match data for this position
+                const lpMatch = matches.find(m => m.id === lp.match_id);
+                return (
+                  <LpPositionCard
+                    key={lp.id}
+                    position={lp}
+                    match={lpMatch}
+                    index={i}
+                    walletAddress={walletAddress}
+                    onWithdrawRequest={(data) => {
+                      // Handle LP withdraw dialog
+                      setPendingWithdrawTx({
+                        instruction: data.solanaInstruction,
+                        amount: data.withdrawAmount,
+                        userBetId: data.positionId,
+                        offerId: data.offerId
+                      });
+                    }}
+                  />
+                );
+              })}
             </div>
           </div> :
 

@@ -37,16 +37,25 @@ Deno.serve(async (req) => {
     if (userBet.role !== 'lp') return Response.json({ error: 'Not an LP bet' }, { status: 400 });
     // Allow withdrawal for any LP position - on-chain check will verify if unmatched funds exist
 
-    // Fetch BetOffer to get the unmatched amount
-    if (!userBet.offer_id) return Response.json({ error: 'No offer linked' }, { status: 400 });
-    const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
-    const offer = offers[0];
-    if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
+    // Fetch BetOffer to get the unmatched amount (if offer_id exists)
+    let offer = null;
+    let withdrawAmount = 0;
     
-    console.log('Withdraw check - Offer status:', offer.status, 'amount_unmatched:', offer.amount_unmatched, 'userBet.status:', userBet.status);
+    if (userBet.offer_id) {
+      const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
+      offer = offers[0];
+      if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
+      
+      console.log('Withdraw check - Offer status:', offer.status, 'amount_unmatched:', offer.amount_unmatched, 'userBet.status:', userBet.status);
+      
+      // Use offer's unmatched amount
+      withdrawAmount = offer.amount_unmatched || 0;
+    } else {
+      // No offer_id - use UserBet's liquidity_unmatched directly (parimutuel LP)
+      withdrawAmount = userBet.liquidity_unmatched || 0;
+      console.log('Withdraw check - UserBet (no offer):', 'liquidity_unmatched:', withdrawAmount, 'userBet.status:', userBet.status);
+    }
     
-    // Check if there's unmatched liquidity in DB
-    const withdrawAmount = offer.amount_unmatched || 0;
     if (withdrawAmount <= 0) {
       return Response.json({ error: 'No unmatched liquidity remaining' }, { status: 400 });
     }
