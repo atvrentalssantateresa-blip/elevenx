@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket, RefreshCcw, TrendingUp } from 'lucide-react';
+import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket, RefreshCcw, TrendingUp, Wand2 } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminFuturesPanel() {
@@ -16,6 +16,7 @@ export default function AdminFuturesPanel() {
   const [fixingTimestampsId, setFixingTimestampsId] = useState(null);
   const [pendingTimestampFix, setPendingTimestampFix] = useState(null);
   const [oddsStatus, setOddsStatus] = useState(null);
+  const [settlingWithOracle, setSettlingWithOracle] = useState(null);
 
   // Fetch existing futures markets (country-by-country)
   const { data: futuresMarkets = [], refetch } = useQuery({
@@ -136,6 +137,25 @@ export default function AdminFuturesPanel() {
     alert('✓ Futures market timestamps fixed! You can now place bets and LP.');
   };
 
+  const settleWithOracleMutation = useMutation({
+    mutationFn: async (marketId) => {
+      const res = await base44.functions.invoke('settleFuturesWithOracle', {
+        futures_market_id: marketId,
+      });
+      if (res.data.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    onSuccess: (data, marketId) => {
+      setSettlingWithOracle(null);
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+      alert(`✓ ${data.message}\n\nWinning position: ${data.winning_position}\nSource: ${data.source}`);
+    },
+    onError: (error) => {
+      setSettlingWithOracle(null);
+      alert('Settlement failed: ' + error.message);
+    },
+  });
+
   const deployMutation = useMutation({
     mutationFn: async (marketId) => {
       const res = await base44.functions.invoke('createFuturesMarketOnChain', {
@@ -240,6 +260,21 @@ export default function AdminFuturesPanel() {
                   <Badge className="bg-accent/20 text-accent text-xs py-1 px-3 rounded-lg">
                     <CheckCircle className="w-3 h-3 mr-1" /> On-Chain
                   </Badge>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => settleWithOracleMutation.mutate(market.id)}
+                    disabled={market.status === 'settled' || settlingWithOracle === market.id || settleWithOracleMutation.isPending}
+                    className="bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 text-xs font-bold h-7 px-2 rounded-lg"
+                  >
+                    {settlingWithOracle === market.id || settleWithOracleMutation.isPending ? (
+                      <Loader className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Wand2 className="w-3 h-3 mr-1" /> Settle (Oracle)
+                      </>
+                    )}
+                  </Button>
                   <Button
                     size="sm"
                     onClick={() => {
