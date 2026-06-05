@@ -53,6 +53,12 @@ pub enum BettingError {
     #[msg("Arithmetic overflow")]
     Overflow,
 
+    #[msg("No liquidity available for this outcome")]
+    NoLiquidity,
+
+    #[msg("Stake exceeds available LP pool liquidity")]
+    StakeExceedsLiquidity,
+
     #[msg("Unauthorized")]
     Unauthorized,
 }

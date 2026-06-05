@@ -4,9 +4,10 @@ import { Buffer } from 'node:buffer';
 
 /**
  * Fixed-odds betting — LP liquidity REQUIRED.
- * Finds an open LP offer for the chosen outcome, derives the real lp_offer PDA,
- * and returns the Solana instruction for the bettor to sign.
- * DB writes happen AFTER the transaction succeeds via commitBet.
+ * HYBRID MODEL: 
+ *   1. LPs MUST seed liquidity FIRST (betting locked if pool = 0)
+ *   2. Bettor stake CANNOT exceed LP pool size (guaranteed solvency)
+ *   3. Bettor matches against existing LP offer at fixed odds
  */
 Deno.serve(async (req) => {
   try {
@@ -53,11 +54,48 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid outcome. Must be "a", "b", or "draw"' }, { status: 400 });
     }
 
-    // ── PARIMUTUEL MODE: Auto-create LP offer for the bettor (self-backed bet) ──────────────────
+    // ── HYBRID MODEL: LP-FIRST ENFORCEMENT ─────────────────────────────────────
     const outcomeIndex = outcome === 'a' ? 0 : outcome === 'b' ? 1 : 2;
     const outcomeLabel = outcome === 'a' ? bet.outcome_a : outcome === 'b' ? bet.outcome_b : 'Draw';
     const matches = await base44.entities.Match.filter({ id: match_id });
     const match = matches[0];
+
+    // Check if LP offers already exist for this outcome
+    const existingOffers = await base44.entities.BetOffer.filter({
+      bet_id,
+      match_id,
+      outcome,
+      status: { $in: ['open', 'partially_matched'] }
+    });
+
+    const totalLiquidity = existingOffers.reduce((sum, offer) => sum + (offer.amount_unmatched || 0), 0);
+
+    console.log('[placeBet] Hybrid model check:', {
+      outcome,
+      existingOffersCount: existingOffers.length,
+      totalLiquidity,
+      amount,
+    });
+
+    // ENFORCE LP-FIRST RULE: Bettor cannot bet if no LP liquidity exists
+    if (totalLiquidity <= 0) {
+      return Response.json({
+        error: 'No liquidity available for this outcome',
+        hint: 'LPs must provide liquidity first before bets can be placed',
+        requiresLiquidity: true,
+        outcome: outcomeLabel,
+      }, { status: 400 });
+    }
+
+    // ENFORCE STAKE LIMIT: Bettor stake cannot exceed available LP pool
+    if (amount > totalLiquidity) {
+      return Response.json({
+        error: `Stake exceeds available liquidity (max: ◎${totalLiquidity.toFixed(4)} SOL)`,
+        hint: 'Your stake cannot exceed the LP pool size',
+        maxAllowed: totalLiquidity,
+        requested: amount,
+      }, { status: 400 });
+    }
 
     const bettorPubkey = new PublicKey(walletAddress);
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
@@ -68,59 +106,59 @@ Deno.serve(async (req) => {
       [Buffer.from('market'), matchIdBytes],
       programId
     );
-    // Parimutuel: Bettor IS the LP - create LP offer PDA using bettor's own address
+    
+    // Find the best matching LP offer (highest unmatched amount)
+    const bestOffer = existingOffers.reduce((best, current) => 
+      (current.amount_unmatched || 0) > (best.amount_unmatched || 0) ? current : best
+    , existingOffers[0]);
+
+    // Use the LP's wallet from the best offer to derive the LP offer PDA
+    const lpPubkey = new PublicKey(bestOffer.lp_wallet_address);
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
+    
     const [bettorPositionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
       programId
     );
 
-    console.log('[placeBet] Parimutuel bet (self-backed LP):', {
+    console.log('[placeBet] Fixed-odds bet (matching LP):', {
       bettor: walletAddress,
       outcome,
       outcomeIndex,
       amount,
+      matchedAgainst: bestOffer.lp_wallet_address,
       marketPda: marketPda.toBase58(),
       lpOfferPda: lpOfferPda.toBase58(),
       bettorPositionPda: bettorPositionPda.toBase58(),
     });
 
-    // Prepare commit data — create LP offer + user bet (parimutuel: bettor IS the LP)
+    // Calculate potential payout using LP odds
+    const oddsDecimal = bestOffer.odds_at_creation || 2.0;
+    const potentialPayout = amount * oddsDecimal;
+
+    // Prepare commit data — bettor matches against existing LP
     const commit_data = {
-      lpOffer: {
-        bet_id,
-        match_id,
-        outcome,
-        outcome_label: outcomeLabel,
-        amount_offered: amount, // LP offers the same amount they're betting
-        amount_matched: 0,
-        amount_unmatched: amount,
-        status: 'open',
-        odds_at_creation: 0, // Parimutuel
-        lp_wallet_address: walletAddress,
-        solana_bet_pool_pda: marketPda.toBase58(),
-        solana_position_pda: lpOfferPda.toBase58(),
-      },
       userBet: {
         bet_id,
         match_id,
-        offer_id: null, // CRITICAL: null for parimutuel - no separate offer created
+        offer_id: bestOffer.id, // CRITICAL: Reference the LP offer being matched
         outcome,
         amount,
-        role: 'matcher', // CRITICAL: Treat as bet (UI shows in My Bets tab)
+        role: 'matcher', // CRITICAL: Bettor (not LP)
         status: 'active',
         outcome_label: outcomeLabel,
         match_title: match ? `${match.team_a} vs ${match.team_b}` : '',
-        potential_payout: 0,
+        potential_payout: potentialPayout,
         wallet_address: walletAddress,
-        // Parimutuel bet fields (self-backed)
-        liquidity_deposited: amount,
-        liquidity_matched: 0,
-        liquidity_unmatched: amount,
-        _isParimutuel: true, // CRITICAL: Flag for UI to allow withdrawal of unmatched
+      },
+      offerUpdate: {
+        offer_id: bestOffer.id,
+        amount_matched: (bestOffer.amount_matched || 0) + amount,
+        amount_unmatched: (bestOffer.amount_unmatched || 0) - amount,
+        status: ((bestOffer.amount_unmatched || 0) - amount) <= 0.0001 ? 'fully_matched' : 'partially_matched',
       },
       betUpdate: {
         bet_id,
@@ -135,20 +173,20 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       amount,
-      odds: 0, // Parimutuel - odds determined at settlement
-      potentialPayout: 0,
-      lp_offer_id: 'TEMP',
+      odds: oddsDecimal,
+      potentialPayout,
+      lp_offer_id: bestOffer.id,
       commit_data,
       solana_instruction: {
         instruction_type: 'place_bet',
         programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(), // Use bettor's own LP offer PDA
+        lpOfferPda: lpOfferPda.toBase58(),
         bettorPositionPda: bettorPositionPda.toBase58(),
         outcome: outcomeIndex,
         amountLamports: Math.round(amount * 1_000_000_000),
       },
-      message: `✓ Ready to bet ◎${amount} on ${outcomeLabel} (parimutuel) — sign to confirm`,
+      message: `✓ Ready to bet ◎${amount} on ${outcomeLabel} @ ${oddsDecimal.toFixed(2)}x — sign to confirm`,
     });
 
   } catch (error) {

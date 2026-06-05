@@ -31,6 +31,22 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
 
     let odds_bps = ctx.accounts.market.oracle_odds[outcome as usize];
 
+    // ── HYBRID MODEL: ENFORCE LP-FIRST RULE ──────────────────────────────────
+    // Bettor stake CANNOT exceed available LP pool (guaranteed solvency)
+    let available_liquidity = {
+        let offer = &ctx.accounts.lp_offer;
+        offer.available()
+    };
+    
+    require!(
+        available_liquidity > 0,
+        BettingError::NoLiquidity
+    );
+    require!(
+        amount <= available_liquidity,
+        BettingError::StakeExceedsLiquidity
+    );
+
     // Transfer SOL from bettor to market escrow.
     let cpi_ctx = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
@@ -43,30 +59,24 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
 
     let market = &mut ctx.accounts.market;
 
-    // ── Match against LP offer ────────────────────────────────────────────────
+    // ── Match against LP offer (FULLY MATCHED ONLY) ───────────────────────────
     //
-    // The LP offer covers bettors betting on the SAME outcome (the LP is
-    // providing liquidity for that side). If the bettor wins, LP pays out;
-    // if the bettor loses, LP earns the stake.
+    // In hybrid model: bettor stake is ALWAYS fully matched against LP pool.
+    // No pending state - the LP-first rule ensures full backing.
 
-    let (matched_now, pending_now) = {
+    let matched_now = {
         let offer = &mut ctx.accounts.lp_offer;
+        
+        // This should never fail due to pre-checks, but guard anyway
         let available = offer.available();
+        let matched = available.min(amount);
 
-        if available == 0 || offer.closed {
-            // No LP liquidity — entire bet is pending.
-            (0u64, amount)
-        } else {
-            let matched = available.min(amount);
-            let pending = amount.saturating_sub(matched);
+        offer.amount_matched = offer
+            .amount_matched
+            .checked_add(matched)
+            .ok_or(BettingError::Overflow)?;
 
-            offer.amount_matched = offer
-                .amount_matched
-                .checked_add(matched)
-                .ok_or(BettingError::Overflow)?;
-
-            (matched, pending)
-        }
+        matched
     };
 
     // Update market tracking.
