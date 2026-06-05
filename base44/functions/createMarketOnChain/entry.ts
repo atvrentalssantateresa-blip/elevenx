@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
     const shouldForceRecreate = (bet.solana_market_created && !marketExistsOnChain) || payload.force_recreate;
 
     // Only return platform init if NOT already initialized
+    // Return createMarketInstruction in solana_instruction field for frontend to sign
     const response = {
       success: true,
       marketPda: marketPda.toBase58(),
@@ -177,7 +178,7 @@ Deno.serve(async (req) => {
       needsPlatformInit: !platformInitialized,
       platformConfigPda: platformConfigPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
-      solana_instruction: platformInitialized ? null : {
+      solana_instruction: platformInitialized ? createMarketInstruction : {
         instruction_type: 'initialize_platform',
         programId: SOLANA_PROGRAM_ID,
         instruction_data: initInstructionData.toString('base64'),
@@ -187,8 +188,7 @@ Deno.serve(async (req) => {
           admin: 'SIGNER_WALLET', // Use placeholder - frontend will replace with actual wallet
         }
       },
-      createMarketInstruction: createMarketInstruction,
-      message: shouldForceRecreate ? 'Recreating market (DB says created but on-chain missing)' : (platformInitialized ? 'Platform already initialized, create market now' : 'Initialize platform first, then create market'),
+      message: shouldForceRecreate ? 'Recreating market (DB says created but on-chain missing)' : (platformInitialized ? 'Sign transaction to create market' : 'Initialize platform first, then create market'),
       bet_id: bet.id,
     };
     
