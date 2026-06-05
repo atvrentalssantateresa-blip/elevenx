@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
           liquidity_deposited: amount,
           liquidity_matched: 0,
           liquidity_unmatched: amount,
+          _isParimutuel: true, // CRITICAL: Flag for UI to treat as bet, not LP position
         },
         betUpdate: {
           poolKey: `pool_${outcome}`,

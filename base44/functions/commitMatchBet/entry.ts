@@ -34,9 +34,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Failed to verify transaction: ' + err.message }, { status: 400 });
     }
     
-    // Update BetOffer
-    await serviceRole.entities.BetOffer.update(userBet.offer_id, offerUpdate);
-    console.log('[commitMatchBet] Updated BetOffer:', userBet.offer_id);
+    // Update BetOffer (only if offer_id and offerUpdate are valid - parimutuel bets have null offer_id)
+    if (userBet.offer_id && offerUpdate) {
+      await serviceRole.entities.BetOffer.update(userBet.offer_id, offerUpdate);
+      console.log('[commitMatchBet] Updated BetOffer:', userBet.offer_id);
+    }
     
     // Create UserBet record
     const createdBet = await serviceRole.entities.UserBet.create(userBet);
