@@ -40,15 +40,27 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         await provider.connect();
       }
 
-      // DEBUG: Log wallet addresses
+      // CRITICAL: Force Phantom to use the correct wallet
       const connectedWallet = provider.publicKey?.toBase58?.();
-      console.log('=== SOLANA TRANSACTION DEBUG ===');
+      const storedWallet = localStorage.getItem('elevenx_wallet_session');
+      const expectedWallet = storedWallet ? JSON.parse(storedWallet).address : null;
+      
+      console.log('=== SOLANA TRANSACTION SIGNING DEBUG ===');
       console.log('Component isConnected:', isConnected);
       console.log('Phantom connected:', provider.isConnected);
       console.log('Phantom wallet:', connectedWallet);
-      console.log('Expected wallet: BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
-      console.log('Match:', connectedWallet === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
-      console.log('================================');
+      console.log('Expected wallet (from localStorage):', expectedWallet);
+      console.log('Wallets match:', connectedWallet === expectedWallet);
+      
+      // If wallets don't match, show error
+      if (expectedWallet && connectedWallet !== expectedWallet) {
+        throw new Error(
+          `Wallet mismatch! Phantom is using: ${connectedWallet?.slice(0, 8)}...${connectedWallet?.slice(-8)}\n` +
+          `But your session expects: ${expectedWallet.slice(0, 8)}...${expectedWallet.slice(-8)}\n\n` +
+          `Please disconnect Phantom and reconnect with the correct wallet.`
+        );
+      }
+      console.log('========================================');
 
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const transaction = new Transaction();
