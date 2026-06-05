@@ -38,6 +38,7 @@ const COUNTRY_FLAGS = {
   'finland': '🇫🇮',
   'iceland': '🇮🇸',
   'bosnia and herzegovina': '🇧🇦',
+  'bosnia & herzegovina': '🇧🇦',
   'bosnia': '🇧🇦',
   
   // South America
