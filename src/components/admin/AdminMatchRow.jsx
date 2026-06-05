@@ -87,16 +87,18 @@ export default function AdminMatchRow({ match, bets, index }) {
       
       console.log('[createBetMutation] createMarketOnChain response:', marketRes.data);
       
-      if (marketRes.data.needsPlatformInit && marketRes.data.solana_instruction) {
+      // Handle new response format: solana_instruction contains create_market instruction directly
+      if (marketRes.data.needsPlatformInit && marketRes.data.solana_instruction?.instruction_type === 'initialize_platform') {
         setPendingMarketInit({
           instruction: marketRes.data.solana_instruction,
-          createMarketInstruction: marketRes.data.createMarketInstruction,
+          createMarketInstruction: marketRes.data.solana_instruction,
           betId: bet.id,
           step: 'platform_init',
         });
-      } else if (marketRes.data.createMarketInstruction) {
+      } else if (marketRes.data.solana_instruction) {
+        // Direct create_market instruction ready to sign
         setPendingMarketInit({
-          instruction: marketRes.data.createMarketInstruction,
+          instruction: marketRes.data.solana_instruction,
           betId: bet.id,
           step: 'create_market',
         });
