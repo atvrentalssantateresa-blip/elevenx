@@ -130,8 +130,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const fixedOdds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
   const odds = bettingMode === 'dynamic_pool' && dynamicOdds ? dynamicOdds : fixedOdds;
 
-  // Removed max stake limit - bets can exceed LP liquidity and go pending
-  const maxMatcherStake = null;
+  // Calculate max stake based on available LP liquidity (for fixed odds mode)
+  const maxMatcherStake = bettingMode === 'fixed_lp' ? 
+    (selectedOffer ? 
+      parseFloat((selectedOffer.amount_unmatched || 0).toFixed(4)) : 
+      parseFloat(totalLiquidityForOutcome.toFixed(4))
+    ) : null;
 
   // Bettor payout: stake * odds from the Bet entity
   const matcherPayout = stakeNum * odds;
@@ -171,6 +175,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const handleReconnect = async () => {
     localStorage.removeItem('elevenx_wallet_session');
     window.location.reload();
+  };
+
+  const handleMaxBet = () => {
+    if (maxMatcherStake && maxMatcherStake > 0) {
+      // Set amount to max available liquidity (already calculated with precision)
+      setAmount(maxMatcherStake.toFixed(4));
+    }
   };
 
   const handleGetInstruction = async () => {
@@ -406,6 +417,40 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           </button>
         </div>
 
+        {/* Pool Liquidity Display - Nicely Branded */}
+        {bettingMode === 'fixed_lp' && (
+          <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/30 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-muted-foreground">Available Liquidity</p>
+              <Badge className="bg-primary/20 text-primary text-[8px] font-bold px-1.5 py-0">
+                FIXED ODDS
+              </Badge>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-heading font-bold text-primary">◎{maxMatcherStake.toFixed(4)}</span>
+              <span className="text-xs text-muted-foreground">SOL available</span>
+            </div>
+            {selectedOffer && (
+              <div className="pt-2 border-t border-primary/20">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-muted-foreground">Offer Status</span>
+                  <span className={`font-bold ${selectedOffer.status === 'open' ? 'text-accent' : 'text-primary'}`}>
+                    {selectedOffer.status === 'open' ? '● Open' : '● Partially Matched'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[10px] mt-1">
+                  <span className="text-muted-foreground">Total Offered</span>
+                  <span className="font-bold text-foreground">◎{(selectedOffer.amount_offered || 0).toFixed(4)}</span>
+                </div>
+                <div className="flex justify-between text-[10px] mt-1">
+                  <span className="text-muted-foreground">Matched</span>
+                  <span className="font-bold text-foreground">◎{(selectedOffer.amount_matched || 0).toFixed(4)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Pending pool mode indicator */}
         {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome && (
           <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 text-center">
@@ -450,7 +495,15 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className={`text-xs font-bold text-muted-foreground ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>Enter Stake Amount</label>
-
+          {bettingMode === 'fixed_lp' && maxMatcherStake && maxMatcherStake > 0 && (
+            <button
+              onClick={handleMaxBet}
+              disabled={isBettingClosed}
+              className="text-[10px] font-bold bg-accent/20 hover:bg-accent/30 text-accent px-2 py-0.5 rounded transition-colors disabled:opacity-50"
+            >
+              MAX ◎{maxMatcherStake.toFixed(4)}
+            </button>
+          )}
         </div>
         <Input
           type="number"
