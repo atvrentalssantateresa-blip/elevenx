@@ -193,14 +193,22 @@ Deno.serve(async (req) => {
     
     const claimAmount = positionData.potential_payout || positionData.claimable || BigInt(0);
     
-    console.log('[claimWinnings] Claim instruction debug:', {
-      marketPda: marketPda.toBase58(),
-      positionPda: positionPda.toBase58(),
-      feeVaultPda: feeVaultPda.toBase58(),
-      bettor: trimmedWallet,
-      claimAmount: Number(claimAmount),
-      positionData,
-    });
+    // Check fee vault and market lamports
+    const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
+    console.log('[claimWinnings] Fee vault exists:', !!feeVaultInfo, 'lamports:', feeVaultInfo?.lamports);
+    console.log('[claimWinnings] Market lamports:', marketInfo?.lamports);
+    console.log('[claimWinnings] Claim amount (lamports):', Number(claimAmount));
+    
+    // CRITICAL: fee_vault MUST exist before claiming - it's required by the program
+    if (!feeVaultInfo) {
+      console.error('[claimWinnings] Fee vault not initialized on-chain');
+      return Response.json({
+        error: 'Fee vault not initialized - platform setup incomplete',
+        feeVaultPda: feeVaultPda.toBase58(),
+        marketLamports: marketInfo?.lamports,
+        claimAmount: Number(claimAmount),
+      }, { status: 500 });
+    }
     
     // Build accounts array in the EXACT order required by ClaimWinnings struct:
     // 1. market (mutable, PDA)
@@ -208,6 +216,8 @@ Deno.serve(async (req) => {
     // 3. fee_vault (mutable, PDA)
     // 4. bettor (mutable, signer)
     // 5. system_program (readonly, not signer)
+    // claim_winnings instruction only needs the discriminator - no parameters needed
+    // The program reads position data on-chain and calculates payout internally
     const claimInstruction = {
       instruction_type: 'claim_winnings',
       programId: SOLANA_PROGRAM_ID,
@@ -218,7 +228,18 @@ Deno.serve(async (req) => {
         { pubkey: trimmedWallet, isSigner: true, isWritable: true },
         { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
       ],
-      amountLamports: Number(claimAmount),
+      debug: {
+        marketLamports: marketInfo?.lamports,
+        feeVaultExists: !!feeVaultInfo,
+        feeVaultLamports: feeVaultInfo?.lamports,
+        claimAmount: Number(claimAmount),
+        positionData: {
+          matched_stake: Number(positionData.matched_stake),
+          potential_payout: Number(positionData.potential_payout),
+          claimable: Number(positionData.claimable),
+          pending_stake: Number(positionData.pending_stake),
+        },
+      },
     };
     
     return Response.json({
