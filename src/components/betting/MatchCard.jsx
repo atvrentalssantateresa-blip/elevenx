@@ -62,7 +62,7 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
       transition={{ delay: index * 0.05, duration: 0.4 }}>
       
       <Link to={`/match/${match.id}`} className="group block">
-        <div className="relative rounded-2xl p-4 transition-all duration-300 border border-primary/20 h-full bg-[#262322]">
+        <div className="relative rounded-2xl p-4 transition-all duration-300 border border-primary/20 h-full bg-[#1c1c1c]">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] text-muted-foreground font-semibold truncate">
