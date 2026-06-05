@@ -201,12 +201,21 @@ Deno.serve(async (req) => {
     
     // CRITICAL: fee_vault MUST exist before claiming - it's required by the program
     if (!feeVaultInfo) {
-      console.error('[claimWinnings] Fee vault not initialized on-chain');
+      console.error('[claimWinnings] Fee vault not initialized on-chain:', feeVaultPda.toBase58());
+      console.error('[claimWinnings] Platform may not be initialized. Check platform config PDA.');
+      
+      // Check if platform config exists
+      const [platformPda] = PublicKey.findProgramAddressSync([Buffer.from('platform')], programId);
+      const platformInfo = await connection.getAccountInfo(platformPda);
+      
       return Response.json({
-        error: 'Fee vault not initialized - platform setup incomplete',
+        error: 'Platform not fully initialized - fee vault missing',
         feeVaultPda: feeVaultPda.toBase58(),
-        marketLamports: marketInfo?.lamports,
+        platformExists: !!platformInfo,
+        platformPda: platformPda.toBase58(),
+        marketLamports: marketLamports,
         claimAmount: Number(claimAmount),
+        debug: 'Admin must initialize platform first (creates fee_vault)',
       }, { status: 500 });
     }
     
