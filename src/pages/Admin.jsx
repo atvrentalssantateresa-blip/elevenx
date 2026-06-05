@@ -106,7 +106,13 @@ export default function Admin() {
         outcome,
       });
     } catch (err) {
-      alert('Failed to prepare settlement: ' + err.message);
+      console.error('[Admin] handleSettle error:', err);
+      const errorMsg = err.message || 'Unknown error';
+      const errorData = err.response?.data || {};
+      alert('Failed to prepare settlement: ' + errorMsg + 
+        (errorData.error_type ? `\n\nError Type: ${errorData.error_type}` : '') +
+        (errorData.stack ? `\n\nStack:\n${errorData.stack}` : '')
+      );
     }
   };
 
@@ -145,7 +151,12 @@ export default function Admin() {
         outcome,
       });
     } catch (err) {
-      alert('Failed to prepare settlement: ' + err.message);
+      console.error('[Admin] _doSettle error:', err);
+      const errorMsg = err.message || 'Unknown error';
+      const errorData = err.response?.data || {};
+      alert('Failed to prepare settlement: ' + errorMsg + 
+        (errorData.error_type ? `\n\nError Type: ${errorData.error_type}` : '')
+      );
     }
   };
 

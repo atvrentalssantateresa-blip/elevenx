@@ -180,6 +180,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Handle void outcome separately
+    if (winning_outcome === 'void') {
+      console.log('[settleMarketOnChain] Voiding market - using DB-only settlement');
+      return Response.json({
+        success: true,
+        db_only: true,
+        message: 'Market voided - all bettors will be refunded',
+        bet_id: bet_id,
+        winning_outcome: 'void',
+      });
+    }
+    
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
 
     const discriminator = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
@@ -211,7 +223,16 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('settleMarketOnChain error:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('settleMarketOnChain error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code,
+    });
+    return Response.json({ 
+      error: error.message,
+      error_type: error.name,
+      stack: error.stack,
+    }, { status: 500 });
   }
 });
