@@ -273,10 +273,11 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
+        className="h-full"
       >
-        <Card className="bg-card border border-border/50 rounded-2xl overflow-hidden">
-          <CardContent className="p-0">
-            <div className="p-5 space-y-4">
+        <Card className="bg-card border border-border/50 rounded-2xl overflow-hidden h-full flex flex-col">
+          <CardContent className="p-0 flex-1 flex flex-col">
+            <div className="p-5 space-y-4 flex-1 flex flex-col">
               {/* Header with Flag */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1">
@@ -353,8 +354,8 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
+              {/* Action Buttons - Push to bottom */}
+              <div className="flex gap-2 mt-auto pt-2">
                 {canWithdraw && (
                   <Button
                     onClick={() => withdrawMutation.mutate()}

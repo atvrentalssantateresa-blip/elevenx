@@ -422,9 +422,9 @@ export default function MyBets() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bets" className="space-y-3">
+        <TabsContent value="bets">
           {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
               {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
             <BetCard
               key={bet.id}
@@ -440,7 +440,7 @@ export default function MyBets() {
           }
         </TabsContent>
 
-        <TabsContent value="liquidity" className="space-y-3">
+        <TabsContent value="liquidity">
           {myLpPositions.length > 0 ?
           <div className="space-y-4">
             {/* Unmatched Liquidity Summary */}
@@ -459,7 +459,7 @@ export default function MyBets() {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
               {myLpPositions.map((lp, i) => {
                 // Find match data for this position
                 const lpMatch = matches.find(m => m.id === lp.match_id);
@@ -489,9 +489,9 @@ export default function MyBets() {
           }
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-3">
+        <TabsContent value="history">
           {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
               {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) =>
             <BetCard
               key={bet.id}
