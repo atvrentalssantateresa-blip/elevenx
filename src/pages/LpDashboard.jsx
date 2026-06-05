@@ -141,10 +141,15 @@ export default function LpDashboard() {
       const offersWithDetails = await Promise.all(lpUserBets.map(async (ub) => {
         console.log('Processing UserBet:', ub.id, 'offer_id:', ub.offer_id);
         let offer = null;
+        
         if (ub.offer_id) {
-          const offers = await base44.entities.BetOffer.filter({ id: ub.offer_id });
-          offer = offers[0];
-          console.log('Found BetOffer:', offer);
+          try {
+            const offers = await base44.entities.BetOffer.filter({ id: ub.offer_id });
+            offer = offers[0];
+            console.log('Found BetOffer:', offer);
+          } catch (err) {
+            console.log('BetOffer not found (expected), using fallback:', ub.offer_id);
+          }
         }
 
         // FALLBACK: If no matching BetOffer found, build a virtual offer from UserBet so it displays
