@@ -141,7 +141,7 @@ export default function LpDashboard() {
       const offersWithDetails = await Promise.all(lpUserBets.map(async (ub) => {
         console.log('Processing UserBet:', ub.id, 'offer_id:', ub.offer_id);
         let offer = null;
-        
+
         if (ub.offer_id) {
           try {
             const offers = await base44.entities.BetOffer.filter({ id: ub.offer_id });
@@ -156,7 +156,7 @@ export default function LpDashboard() {
         if (!offer) {
           // Detect if this is a futures LP (bet_id matches a FuturesMarket)
           const isFutures = ub.match_id && ub.match_id === ub.bet_id;
-          
+
           offer = {
             id: ub.offer_id || ub.id,
             bet_id: ub.bet_id,
@@ -167,9 +167,9 @@ export default function LpDashboard() {
             amount_matched: ub.liquidity_matched || 0,
             amount_unmatched: ub.liquidity_unmatched || ub.amount,
             status: ub.status === 'active' ? 'open' : ub.status,
-            odds_at_creation: ub.amount > 0 ? (ub.potential_payout / ub.amount) : 2.0,
+            odds_at_creation: ub.amount > 0 ? ub.potential_payout / ub.amount : 2.0,
             lp_wallet_address: ub.wallet_address,
-            _isFutures: isFutures,
+            _isFutures: isFutures
           };
           console.log('Built fallback offer from UserBet:', offer);
         }
@@ -751,16 +751,16 @@ export default function LpDashboard() {
 
           <TabsContent value="positions" className="space-y-4 sm:space-y-6">
             {/* Debug: Show raw data */}
-            <div className="bg-card border border-border/50 rounded-xl p-4 space-y-2">
+            <div className="bg-card border border-border/50 rounded-xl p-4 space-y-2 hidden">
               <p className="text-xs font-bold text-muted-foreground">Debug Info:</p>
               <p className="text-[10px] text-muted-foreground">Wallet: {walletAddress || 'Not connected'}</p>
               <p className="text-[10px] text-muted-foreground">My Offers: {myOffers.length}</p>
               <p className="text-[10px] text-muted-foreground">Offers with UserBet: {offersWithUserBet.length}</p>
-              {myOffers.length > 0 && (
-                <pre className="text-[9px] text-primary overflow-auto max-h-40 bg-black/50 p-2 rounded">
+              {myOffers.length > 0 &&
+            <pre className="text-[9px] text-primary overflow-auto max-h-40 bg-black/50 p-2 rounded">
                   {JSON.stringify(myOffers[0], null, 2)}
                 </pre>
-              )}
+            }
             </div>
             
 
@@ -836,38 +836,38 @@ export default function LpDashboard() {
                 console.log('Mapping', offersWithUserBet.length, 'offers...');
 
                 return offersWithUserBet.map((offer, idx) => {
-                console.log(`Rendering offer ${idx}:`, offer.id, offer.outcome_label, offer.status, 'userBetId:', offer.userBetId);
-                try {
-                  const match = matches.find((m) => m.id === offer.match_id);
-                  console.log(`Offer ${idx} match:`, match?.team_a, 'vs', match?.team_b, 'match_id:', offer.match_id);
+                  console.log(`Rendering offer ${idx}:`, offer.id, offer.outcome_label, offer.status, 'userBetId:', offer.userBetId);
+                  try {
+                    const match = matches.find((m) => m.id === offer.match_id);
+                    console.log(`Offer ${idx} match:`, match?.team_a, 'vs', match?.team_b, 'match_id:', offer.match_id);
 
-                  return (
-                    <LpPositionCard
-                      key={offer.id || offer.userBetId}
-                      position={{...offer, userBetId: offer.userBetId || offer.id}}
-                      match={match}
-                      walletAddress={walletAddress}
-                      onWithdrawRequest={(withdrawData) => {
-                        console.log('[onWithdrawRequest] Withdraw triggered:', withdrawData);
-                        console.log('[onWithdrawRequest] Solana instruction:', withdrawData.solanaInstruction);
-                        if (!withdrawData.solanaInstruction) {
-                          console.error('[onWithdrawRequest] Missing solanaInstruction in withdrawData:', withdrawData);
-                          alert('Error: No instruction received from backend');
-                          return;
-                        }
-                        setPendingTx({
-                          instruction: withdrawData.solanaInstruction,
-                          amount: withdrawData.withdrawAmount || 0,
-                          type: 'withdraw_liquidity',
-                          userBetId: withdrawData.positionId,
-                          offerId: withdrawData.offerId
-                        });
-                      }} />);
+                    return (
+                      <LpPositionCard
+                        key={offer.id || offer.userBetId}
+                        position={{ ...offer, userBetId: offer.userBetId || offer.id }}
+                        match={match}
+                        walletAddress={walletAddress}
+                        onWithdrawRequest={(withdrawData) => {
+                          console.log('[onWithdrawRequest] Withdraw triggered:', withdrawData);
+                          console.log('[onWithdrawRequest] Solana instruction:', withdrawData.solanaInstruction);
+                          if (!withdrawData.solanaInstruction) {
+                            console.error('[onWithdrawRequest] Missing solanaInstruction in withdrawData:', withdrawData);
+                            alert('Error: No instruction received from backend');
+                            return;
+                          }
+                          setPendingTx({
+                            instruction: withdrawData.solanaInstruction,
+                            amount: withdrawData.withdrawAmount || 0,
+                            type: 'withdraw_liquidity',
+                            userBetId: withdrawData.positionId,
+                            offerId: withdrawData.offerId
+                          });
+                        }} />);
 
-                } catch (err) {
-                  console.error(`Error rendering offer ${idx}:`, err);
-                  return null;
-                }
+                  } catch (err) {
+                    console.error(`Error rendering offer ${idx}:`, err);
+                    return null;
+                  }
                 });
               })()}
               </div>
