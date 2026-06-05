@@ -19,216 +19,126 @@ Deno.serve(async (req) => {
     console.log('[debugClaim] userBetId:', userBetId);
     console.log('[debugClaim] walletAddress:', walletAddress);
     
-    if (!userBetId) {
-      return Response.json({ error: 'Missing userBetId' }, { status: 400 });
+    // Get all user bets for this wallet
+    const allUserBets = await serviceRole.entities.UserBet.list();
+    const userBets = allUserBets.filter(ub => ub.wallet_address === walletAddress);
+    
+    console.log('[debugClaim] Found', userBets.length, 'bets for this wallet');
+    
+    if (userBets.length === 0) {
+      return Response.json({
+        error: 'No bets found for this wallet',
+        walletAddress,
+      });
     }
     
-    // Fetch user bet
-    const userBets = await serviceRole.entities.UserBet.filter({ id: userBetId });
-    const userBet = userBets[0];
-    
-    if (!userBet) {
-      return Response.json({ error: 'UserBet not found', userBetId });
-    }
-    
-    console.log('[debugClaim] UserBet:', {
-      id: userBet.id,
-      status: userBet.status,
-      outcome: userBet.outcome,
-      amount: userBet.amount,
-      potential_payout: userBet.potential_payout,
-      actual_payout: userBet.actual_payout,
-      wallet_address: userBet.wallet_address,
-    });
-    
-    // Fetch bet
-    const bets = await serviceRole.entities.Bet.filter({ id: userBet.bet_id });
-    const bet = bets[0];
-    
-    if (!bet) {
-      return Response.json({ error: 'Bet not found', bet_id: userBet.bet_id });
-    }
-    
-    console.log('[debugClaim] Bet:', {
-      id: bet.id,
-      status: bet.status,
-      winning_outcome: bet.winning_outcome,
-      match_id: bet.match_id,
-    });
-    
-    // Connect to Solana
+    // Check platform and fee vault
     const { Connection: SolanaConnection } = await import('npm:@solana/web3.js@1.98.4');
     const connection = new SolanaConnection('https://api.devnet.solana.com', 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
-    // Derive PDAs
-    const matchIdBytes = Buffer.alloc(32);
-    Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
-    
-    const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
     const [platformPda] = PublicKey.findProgramAddressSync([Buffer.from('platform')], programId);
     const [feeVaultPda] = PublicKey.findProgramAddressSync([Buffer.from('fee_vault')], programId);
-    const bettorPubkey = new PublicKey(userBet.wallet_address || walletAddress);
-    const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
-      programId
-    );
     
-    console.log('[debugClaim] PDAs:', {
-      marketPda: marketPda.toBase58(),
-      platformPda: platformPda.toBase58(),
-      feeVaultPda: feeVaultPda.toBase58(),
-      positionPda: positionPda.toBase58(),
-      bettorPubkey: bettorPubkey.toBase58(),
-    });
-    
-    // Check all accounts
-    const [marketInfo, platformInfo, feeVaultInfo, positionInfo] = await Promise.all([
-      connection.getAccountInfo(marketPda),
+    const [platformInfo, feeVaultInfo] = await Promise.all([
       connection.getAccountInfo(platformPda),
       connection.getAccountInfo(feeVaultPda),
-      connection.getAccountInfo(positionPda),
     ]);
     
-    console.log('[debugClaim] Account existence:', {
-      marketExists: !!marketInfo,
+    const result = {
+      walletAddress,
+      totalBets: userBets.length,
       platformExists: !!platformInfo,
       feeVaultExists: !!feeVaultInfo,
-      positionExists: !!positionInfo,
-    });
-    
-    const result: any = {
-      userBet: {
-        id: userBet.id,
-        status: userBet.status,
-        outcome: userBet.outcome,
-        amount: userBet.amount,
-        potential_payout: userBet.potential_payout,
-      },
-      bet: {
-        id: bet.id,
-        status: bet.status,
-        winning_outcome: bet.winning_outcome,
-      },
-      pdas: {
-        marketPda: marketPda.toBase58(),
-        platformPda: platformPda.toBase58(),
-        feeVaultPda: feeVaultPda.toBase58(),
-        positionPda: positionPda.toBase58(),
-      },
-      accounts: {
-        market: {
-          exists: !!marketInfo,
-          lamports: marketInfo?.lamports || 0,
-          owner: marketInfo?.owner.toBase58(),
-        },
-        platform: {
-          exists: !!platformInfo,
-          lamports: platformInfo?.lamports || 0,
-        },
-        feeVault: {
-          exists: !!feeVaultInfo,
-          lamports: feeVaultInfo?.lamports || 0,
-        },
-        position: {
-          exists: !!positionInfo,
-          lamports: positionInfo?.lamports || 0,
-        },
-      },
-      canClaim: true,
-      blockers: [] as string[],
+      userBets: [],
+      claimableBets: [],
+      blockingIssues: [],
+      totalClaimable: 0,
     };
     
-    // Parse market state
-    if (marketInfo) {
-      const marketData = marketInfo.data;
-      console.log('[debugClaim] Market data length:', marketData.length);
+    // Check each bet
+    for (const ub of userBets) {
+      const betInfo = {
+        id: ub.id,
+        status: ub.status,
+        outcome: ub.outcome,
+        amount: ub.amount,
+        potential_payout: ub.potential_payout,
+        match_id: ub.match_id,
+      };
       
-      if (marketData.length >= 249) {
-        result.market = {
-          settled: marketData[244] === 1,
-          voided: marketData[245] === 1,
-          paused: marketData[246] === 1,
-          outcome_count: marketData[247],
-          fee_percent: marketData.readUInt16LE(248),
+      // Check on-chain position
+      const bets = await serviceRole.entities.Bet.filter({ id: ub.bet_id });
+      const bet = bets[0];
+      
+      if (!bet) {
+        betInfo.error = 'Bet entity not found';
+        result.userBets.push(betInfo);
+        continue;
+      }
+      
+      betInfo.bet_status = bet.status;
+      betInfo.winning_outcome = bet.winning_outcome;
+      
+      // Derive market PDA
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(ub.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(ub.match_id.length, 32));
+      const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
+      const [positionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('position'), marketPda.toBuffer(), new PublicKey(ub.wallet_address).toBuffer()],
+        programId
+      );
+      
+      const [marketInfo, positionInfo] = await Promise.all([
+        connection.getAccountInfo(marketPda),
+        connection.getAccountInfo(positionPda),
+      ]);
+      
+      betInfo.marketExists = !!marketInfo;
+      betInfo.positionExists = !!positionInfo;
+      
+      if (marketInfo && marketInfo.data.length >= 249) {
+        betInfo.onChain = {
+          settled: marketInfo.data[244] === 1,
+          voided: marketInfo.data[245] === 1,
+          lamports: marketInfo.lamports,
         };
-        console.log('[debugClaim] Market state:', result.market);
+      }
+      
+      if (positionInfo && positionInfo.data.length >= 115) {
+        const posData = positionInfo.data;
+        betInfo.positionData = {
+          outcome: posData[72],
+          matched_stake: Number(posData.readBigUInt64LE(73)),
+          potential_payout: Number(posData.readBigUInt64LE(97)),
+          claimable: Number(posData.readBigUInt64LE(105)),
+          claimed: posData[113] === 1,
+        };
+      }
+      
+      result.userBets.push(betInfo);
+      
+      // Check if claimable
+      const isWon = ub.status === 'won';
+      const isSettled = betInfo.onChain?.settled;
+      const notClaimed = !betInfo.positionData?.claimed;
+      const hasPayout = (betInfo.positionData?.claimable || ub.potential_payout || 0) > 0;
+      
+      if (isWon && isSettled && notClaimed && hasPayout) {
+        result.claimableBets.push(ub.id);
+        result.totalClaimable += (betInfo.positionData?.claimable || ub.potential_payout || 0);
       }
     }
     
-    // Parse position state
-    if (positionInfo) {
-      const positionData = positionInfo.data;
-      console.log('[debugClaim] Position data length:', positionData.length);
-      
-      if (positionData.length >= 115) {
-        result.position = {
-          outcome: positionData[72],
-          matched_stake: Number(positionData.readBigUInt64LE(73)),
-          pending_stake: Number(positionData.readBigUInt64LE(81)),
-          odds_bps: Number(positionData.readBigUInt64LE(89)),
-          potential_payout: Number(positionData.readBigUInt64LE(97)),
-          claimable: Number(positionData.readBigUInt64LE(105)),
-          claimed: positionData[113] === 1,
-          bump: positionData[114],
-        };
-        console.log('[debugClaim] Position state:', result.position);
-      }
+    // Add blocking issues
+    if (!result.feeVaultExists) {
+      result.blockingIssues.push('Fee vault not initialized - platform setup incomplete');
+    }
+    if (result.claimableBets.length === 0 && result.userBets.length > 0) {
+      result.blockingIssues.push('No bets are ready to claim (either not won, not settled, or already claimed)');
     }
     
-    // Check claim eligibility
-    if (!platformInfo) {
-      result.blockers.push('❌ Platform config not initialized');
-      result.canClaim = false;
-    }
-    
-    if (!feeVaultInfo) {
-      result.blockers.push('❌ Fee vault not initialized (created with platform)');
-      result.canClaim = false;
-    }
-    
-    if (!marketInfo) {
-      result.blockers.push('❌ Market PDA does not exist on-chain');
-      result.canClaim = false;
-    }
-    
-    if (!positionInfo) {
-      result.blockers.push('❌ Position PDA does not exist on-chain');
-      result.canClaim = false;
-    }
-    
-    if (marketInfo && marketInfo.data.length >= 249 && marketData[244] !== 1) {
-      result.blockers.push('❌ Market not settled yet');
-      result.canClaim = false;
-    }
-    
-    if (positionInfo && positionData.length >= 115 && positionData[113] === 1) {
-      result.blockers.push('❌ Position already claimed');
-      result.canClaim = false;
-    }
-    
-    // Check if market has enough SOL
-    const claimAmount = result.position?.potential_payout || userBet.potential_payout || 0;
-    const claimAmountLamports = BigInt(Math.floor(claimAmount * 1e9));
-    
-    if (marketInfo && marketInfo.lamports < Number(claimAmountLamports)) {
-      result.blockers.push(`❌ Market insolvency: has ${marketInfo.lamports} lamports, needs ${claimAmountLamports}`);
-      result.canClaim = false;
-    }
-    
-    result.claimAmount = {
-      sol: claimAmount,
-      lamports: Number(claimAmountLamports),
-    };
-    
-    // Final verdict
-    if (result.canClaim) {
-      result.verdict = '✅ CAN CLAIM - All checks passed';
-    } else {
-      result.verdict = '❌ CANNOT CLAIM - ' + result.blockers.join(', ');
-    }
-    
-    console.log('[debugClaim] Final result:', result);
+    console.log('[debugClaim] Result:', result);
     
     return Response.json(result);
     
