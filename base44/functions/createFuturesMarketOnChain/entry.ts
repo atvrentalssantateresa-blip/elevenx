@@ -17,17 +17,31 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const { futures_market_id } = payload;
 
+    console.log('[createFuturesMarketOnChain] Request payload:', payload);
+
     if (!futures_market_id) {
+      console.error('[createFuturesMarketOnChain] Missing futures_market_id');
       return Response.json({ error: 'Missing futures_market_id' }, { status: 400 });
     }
 
     // Fetch futures market from database
     const futuresMarkets = await base44.entities.FuturesMarket.filter({ id: futures_market_id });
     const futuresMarket = futuresMarkets[0];
-    if (!futuresMarket) return Response.json({ error: 'Futures market not found' }, { status: 404 });
+    console.log('[createFuturesMarketOnChain] Futures market:', {
+      id: futuresMarket?.id,
+      title: futuresMarket?.title,
+      outcomes: futuresMarket?.outcomes?.length,
+      outcomes_data: futuresMarket?.outcomes,
+    });
+    
+    if (!futuresMarket) {
+      console.error('[createFuturesMarketOnChain] Futures market not found:', futures_market_id);
+      return Response.json({ error: 'Futures market not found' }, { status: 404 });
+    }
 
     // Validate: Solana program only supports exactly 3 outcomes
     if (!futuresMarket.outcomes || futuresMarket.outcomes.length < 3) {
+      console.error('[createFuturesMarketOnChain] Invalid outcomes:', futuresMarket.outcomes);
       return Response.json({ error: 'Futures market must have exactly 3 outcomes' }, { status: 400 });
     }
 
@@ -88,8 +102,8 @@ Deno.serve(async (req) => {
       // This allows test markets to settle immediately after their short betting window
       const dbOpenUntil = new Date(futuresMarket.open_until);
       openUntil = Math.floor(dbOpenUntil.getTime() / 1000);
-      // Settle immediately after betting closes (no delay for test markets)
-      settleAfter = openUntil;
+      // Settle 1 minute after betting closes (for test markets)
+      settleAfter = openUntil + 60;
       console.log('[createFuturesMarketOnChain] TEST market detected - using DB timeline:', {
         openUntil: new Date(openUntil * 1000).toISOString(),
         settleAfter: new Date(settleAfter * 1000).toISOString(),
