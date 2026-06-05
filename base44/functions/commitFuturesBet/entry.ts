@@ -32,9 +32,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Failed to verify transaction: ' + err.message }, { status: 400 });
     }
     
-    // Create UserBet record
-    const createdBet = await serviceRole.entities.UserBet.create(commit_data.userBet);
+    // Create UserBet record for the bettor (matcher)
+    const createdBet = await serviceRole.entities.UserBet.create({
+      ...commit_data.userBet,
+      status: 'active',
+      role: 'matcher',
+    });
     console.log('[commitFuturesBet] Created UserBet:', createdBet.id);
+    
+    // Update the LP's BetOffer that was matched
+    if (commit_data.offerUpdate) {
+      await serviceRole.entities.BetOffer.update(commit_data.offerUpdate.offer_id, {
+        amount_matched: commit_data.offerUpdate.amount_matched,
+        amount_unmatched: commit_data.offerUpdate.amount_unmatched,
+        status: commit_data.offerUpdate.status,
+      });
+      console.log('[commitFuturesBet] Updated BetOffer:', commit_data.offerUpdate.offer_id, 'status:', commit_data.offerUpdate.status);
+    }
     
     // Update FuturesMarket outcome pool and totals
     const market = await serviceRole.entities.FuturesMarket.get(commit_data.marketUpdate.market_id);
@@ -42,9 +56,8 @@ Deno.serve(async (req) => {
       const outcomeIdx = commit_data.marketUpdate.outcomeIdx;
       if (market.outcomes[outcomeIdx]) {
         market.outcomes[outcomeIdx].pool = (market.outcomes[outcomeIdx].pool || 0) + commit_data.marketUpdate.amount;
-        market.outcomes[outcomeIdx].lp_offers = (market.outcomes[outcomeIdx].lp_offers || 0) + 1;
+        market.total_volume = (market.total_volume || 0) + commit_data.marketUpdate.amount;
       }
-      market.total_volume = (market.total_volume || 0) + commit_data.marketUpdate.amount;
       
       await serviceRole.entities.FuturesMarket.update(commit_data.marketUpdate.market_id, {
         outcomes: market.outcomes,

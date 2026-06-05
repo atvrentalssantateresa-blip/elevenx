@@ -76,9 +76,62 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Outcome not found' }, { status: 404 });
     }
 
-    const potentialPayout = amount * selectedOutcome.odds;
     const outcomeIndex = outcome.position === '1st' ? 0 : outcome.position === '2nd' ? 1 : 2;
     const outcomeLabel = `${market.country} - ${outcome.position} Place`;
+
+    // ── LP-FIRST ENFORCEMENT (same as match bets) ─────────────────────────────
+    // Fetch existing LP offers for this outcome
+    const existingOffers = await serviceRole.entities.BetOffer.filter({
+      bet_id: marketId,
+      match_id: marketId,
+      outcome_label: outcomeLabel,
+      status: { $in: ['open', 'partially_matched'] }
+    });
+
+    // Filter to only offers with positive unmatched amounts
+    const validOffers = existingOffers.filter(offer => (offer.amount_unmatched || 0) > 0);
+    const totalLiquidity = validOffers.reduce((sum, offer) => sum + (offer.amount_unmatched || 0), 0);
+    
+    console.log('[placeFuturesBet] Liquidity check:', {
+      totalOffers: existingOffers.length,
+      validOffers: validOffers.length,
+      totalLiquidity,
+      amount,
+    });
+
+    // ENFORCE LP-FIRST RULE: Bettor cannot bet if no LP liquidity exists
+    if (totalLiquidity <= 0) {
+      return Response.json({
+        error: 'No liquidity available for this outcome',
+        hint: 'LPs must provide liquidity first before bets can be placed',
+        requiresLiquidity: true,
+        outcome: outcomeLabel,
+      }, { status: 400 });
+    }
+
+    // ENFORCE STAKE LIMIT: Bettor stake cannot exceed available LP pool
+    if (amount > totalLiquidity) {
+      return Response.json({
+        error: `Stake exceeds available liquidity (max: ◎${totalLiquidity.toFixed(4)} SOL)`,
+        hint: 'Your stake cannot exceed the LP pool size',
+        maxAllowed: totalLiquidity,
+        requested: amount,
+      }, { status: 400 });
+    }
+
+    // Find the best matching LP offer (highest unmatched amount)
+    const bestOffer = validOffers.reduce((best, current) => 
+      (current.amount_unmatched || 0) > (best.amount_unmatched || 0) ? current : best
+    , validOffers[0]);
+    
+    if (!bestOffer) {
+      return Response.json({
+        error: 'No valid liquidity available (all offers fully matched)',
+        hint: 'Please wait for LPs to add more liquidity',
+      }, { status: 400 });
+    }
+
+    const potentialPayout = amount * (bestOffer.odds_at_creation || selectedOutcome.odds);
 
     // Get program ID and derive REAL PDAs
     const PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
@@ -97,11 +150,10 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Derive LP offer PDA - for futures, we use a generic house LP
-    // In production, each outcome would have its own LP offer
-    const houseLpPubkey = programId; // Using program ID as house LP
+    // Derive LP offer PDA from the BEST matching LP's wallet address (same as match bets)
+    const lpPubkey = new PublicKey(bestOffer.lp_wallet_address);
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), houseLpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
@@ -127,8 +179,8 @@ Deno.serve(async (req) => {
     const commit_data = {
       userBet: {
         bet_id: marketId,
-        match_id: marketId, // Using market ID for futures
-        offer_id: 'futures_house_lp', // House LP for futures
+        match_id: marketId,
+        offer_id: bestOffer.id, // Reference the actual LP offer being matched
         outcome: outcome.position === '1st' ? 'a' : outcome.position === '2nd' ? 'b' : 'draw',
         amount,
         role: 'matcher',
@@ -137,6 +189,12 @@ Deno.serve(async (req) => {
         match_title: outcomeLabel,
         potential_payout: potentialPayout,
         wallet_address: walletAddress,
+      },
+      offerUpdate: {
+        offer_id: bestOffer.id,
+        amount_matched: (bestOffer.amount_matched || 0) + amount,
+        amount_unmatched: (bestOffer.amount_unmatched || 0) - amount,
+        status: ((bestOffer.amount_unmatched || 0) - amount) <= 0.0001 ? 'fully_matched' : 'partially_matched',
       },
       marketUpdate: {
         market_id: marketId,
@@ -162,7 +220,7 @@ Deno.serve(async (req) => {
       market,
       outcome: selectedOutcome,
       potentialPayout,
-      message: `✓ Ready to bet ◎${amount} on ${outcomeLabel} at ${selectedOutcome.odds.toFixed(2)}x (potential ◎${potentialPayout.toFixed(2)})`,
+      message: `✓ Ready to bet ◎${amount} on ${outcomeLabel} at ${(bestOffer.odds_at_creation || selectedOutcome.odds).toFixed(2)}x (potential ◎${potentialPayout.toFixed(2)})`,
     });
 
   } catch (error) {

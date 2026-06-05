@@ -16,36 +16,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing signature or commit_data' }, { status: 400 });
     }
 
-    // Update UserBet status to active
+    // Update UserBet status to active (LP position)
     await base44.entities.UserBet.update(commit_data.userBetId, {
       status: 'active',
+      liquidity_deposited: commit_data.amount,
+      liquidity_unmatched: commit_data.amount,
     });
 
-    // Update BetOffer if exists, or create it
-    const existingOffer = await base44.entities.BetOffer.filter({ id: commit_data.offerId }).then(offers => offers[0]);
-    
-    if (existingOffer) {
-      await base44.entities.BetOffer.update(commit_data.offerId, {
-        amount_matched: (existingOffer.amount_matched || 0) + commit_data.amount,
-        status: 'partially_matched',
-      });
-    } else {
-      await base44.entities.BetOffer.create({
-        id: commit_data.offerId,
-        bet_id: commit_data.market_id,
-        match_id: commit_data.market_id,
-        outcome: 'a',
-        outcome_label: commit_data.outcome_label,
-        amount_offered: commit_data.amount,
-        amount_matched: commit_data.amount,
-        amount_unmatched: 0,
-        status: 'partially_matched',
-        odds_at_creation: commit_data.odds,
-        lp_wallet_address: commit_data.walletAddress,
-      });
-    }
+    // Create BetOffer - starts as OPEN with full amount unmatched (bettors can match against it)
+    await base44.entities.BetOffer.create({
+      id: commit_data.offerId,
+      bet_id: commit_data.market_id,
+      match_id: commit_data.market_id,
+      outcome: 'a',
+      outcome_label: commit_data.outcome_label,
+      amount_offered: commit_data.amount,
+      amount_matched: 0,
+      amount_unmatched: commit_data.amount,
+      status: 'open',
+      odds_at_creation: commit_data.odds,
+      lp_wallet_address: commit_data.walletAddress,
+    });
 
-    // Update FuturesMarket outcome pool
+    // Update FuturesMarket outcome pool and LP offer count
     const market = await base44.entities.FuturesMarket.get(commit_data.market_id);
     if (market && market.outcomes) {
       const outcomeIdx = market.outcomes.findIndex(o => o.label === commit_data.outcome_label);
