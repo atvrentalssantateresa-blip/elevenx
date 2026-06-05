@@ -11,7 +11,7 @@ import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner
 
 export default function FixAdmin() {
   const { user } = useAuth();
-  const { walletAddress, isConnected, connect } = useWallet();
+  const { walletAddress, isConnected, connect, disconnect } = useWallet();
   const [instruction, setInstruction] = useState(null);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState(null);
@@ -81,12 +81,24 @@ export default function FixAdmin() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <AlertTriangle className="w-8 h-8 text-destructive" />
-          <div>
-            <h1 className="font-heading font-bold text-2xl">Fix Admin Error 3012</h1>
-            <p className="text-muted-foreground">Reinitialize platform with your current wallet</p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-destructive" />
+            <div>
+              <h1 className="font-heading font-bold text-2xl">Fix Admin Error 3012</h1>
+              <p className="text-muted-foreground">Platform admin: <span className="font-mono text-xs">{platformDebug?.admin?.slice(0, 8)}...{platformDebug?.admin?.slice(-8)}</span></p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              localStorage.clear();
+              window.location.reload();
+            }}
+            className="text-xs"
+          >
+            Clear Cache & Reload
+          </Button>
         </div>
 
         {/* Current Status */}
@@ -119,26 +131,48 @@ export default function FixAdmin() {
 
         {/* Wallet Comparison */}
         {platformDebug?.initialized && (
-          <Card className="bg-card border-border/50">
-            <CardContent className="p-6 space-y-4">
-              <h3 className="font-heading font-bold text-lg">Wallet Mismatch Detected</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">On-chain admin:</span>
-                  <span className="font-mono text-sm">{platformDebug.admin?.slice(0, 8)}...{platformDebug.admin?.slice(-8)}</span>
+          <>
+            <Card className="bg-card border-border/50">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="font-heading font-bold text-lg">Wallet Status</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
+                    <span className="text-sm text-muted-foreground">On-chain admin:</span>
+                    <span className="font-mono text-sm">{platformDebug.admin?.slice(0, 8)}...{platformDebug.admin?.slice(-8)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
+                    <span className="text-sm text-muted-foreground">Your wallet:</span>
+                    <span className="font-mono text-sm">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-8)}</span>
+                  </div>
+                  {walletAddress?.toLowerCase() === platformDebug.admin?.toLowerCase() ? (
+                    <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg">
+                      <p className="text-xs text-accent font-bold">
+                        ✓ Wallets MATCH! You should be able to create/settle markets.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                      <p className="text-xs text-destructive font-bold">
+                        ⚠️ Wallets DON'T match! That's why you're getting error 3012.
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Your wallet:</span>
-                  <span className="font-mono text-sm">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-8)}</span>
+              </CardContent>
+            </Card>
+
+            {/* Debug Info */}
+            <Card className="bg-secondary/30 border-border/50">
+              <CardContent className="p-4">
+                <h4 className="font-heading font-bold text-sm mb-2">Debug Info</h4>
+                <div className="text-xs text-muted-foreground space-y-1 font-mono">
+                  <p>Full on-chain admin: {platformDebug.admin}</p>
+                  <p>Full your wallet: {walletAddress}</p>
+                  <p>Match: {walletAddress?.toLowerCase() === platformDebug.admin?.toLowerCase() ? 'YES' : 'NO'}</p>
                 </div>
-                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                  <p className="text-xs text-destructive font-bold">
-                    ⚠️ These don't match! That's why you're getting error 3012.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {/* Solution */}
