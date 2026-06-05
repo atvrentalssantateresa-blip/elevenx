@@ -40,6 +40,16 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         await provider.connect();
       }
 
+      // DEBUG: Log wallet addresses
+      const connectedWallet = provider.publicKey?.toBase58?.();
+      console.log('=== SOLANA TRANSACTION DEBUG ===');
+      console.log('Component isConnected:', isConnected);
+      console.log('Phantom connected:', provider.isConnected);
+      console.log('Phantom wallet:', connectedWallet);
+      console.log('Expected wallet: BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
+      console.log('Match:', connectedWallet === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
+      console.log('================================');
+
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const transaction = new Transaction();
       

@@ -40,21 +40,20 @@ Deno.serve(async (req) => {
       console.log('Looking up user by wallet:', walletAddress?.slice(0, 8));
       // List all users and find by wallet_address (filter doesn't work reliably)
       const allUsers = await serviceRole.entities.User.list();
-      user = allUsers.find(u => u.wallet_address === walletAddress || u.data?.wallet_address === walletAddress);
+      user = allUsers.find(u => (u.wallet_address || u.data?.wallet_address) === walletAddress);
       
       if (user) {
         console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address || user.data?.wallet_address);
         
         // Ensure WalletUser record exists (create if missing for existing users)
-        const userWallet = user.wallet_address || user.data?.wallet_address;
         const allWalletUsers = await serviceRole.entities.WalletUser.list();
-        const walletUserExists = allWalletUsers.find(wu => wu.wallet_address === userWallet);
+        const walletUserExists = allWalletUsers.find(wu => wu.wallet_address === walletAddress);
         
-        if (!walletUserExists && userWallet) {
+        if (!walletUserExists) {
           try {
             await serviceRole.entities.WalletUser.create({
-              wallet_address: userWallet,
-              username: userWallet.slice(0, 8),
+              wallet_address: walletAddress,
+              username: walletAddress.slice(0, 8),
             });
             console.log('✓ Created WalletUser record for existing user:', user.id);
           } catch (wuErr) {
