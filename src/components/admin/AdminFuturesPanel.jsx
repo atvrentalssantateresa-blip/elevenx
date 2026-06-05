@@ -196,11 +196,19 @@ export default function AdminFuturesPanel() {
       return res.data;
     },
     onSuccess: (data, marketId) => {
+      console.log('[AdminFuturesPanel] Deploy response:', data);
       if (data.solana_instruction) {
-        setPendingDeploy(data.solana_instruction);
+        setPendingDeploy({
+          ...data.solana_instruction,
+          futures_market_id: marketId,
+        });
       } else if (data.alreadyExists) {
         alert('Market already exists on-chain!');
         queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+      } else if (data.needsPlatformInit) {
+        alert('⚠️ Platform not initialized! Please go to Platform tab and click "Init Platform" first.');
+      } else {
+        alert('Unexpected response: ' + JSON.stringify(data));
       }
     },
   });
