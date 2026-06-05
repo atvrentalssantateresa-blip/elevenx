@@ -89,30 +89,35 @@ Deno.serve(async (req) => {
       fee_vault: feeVaultPda.toBase58(),
     });
     
-    // Debug: Check platform config on-chain
+    // Validate admin wallet matches on-chain platform config
     const connection = new (await import('npm:@solana/web3.js@1.98.4')).Connection('https://api.devnet.solana.com', 'confirmed');
-    try {
-      const platformInfo = await connection.getAccountInfo(platformPda);
-      if (platformInfo) {
-        console.log('[settleMarketOnChain] Platform config exists, data length:', platformInfo.data.length);
-        // Parse admin from platform config (bytes 8-40 based on initialize_platform)
-        const adminBytes = platformInfo.data.slice(8, 40);
-        const adminPubkey = new PublicKey(adminBytes);
-        console.log('[settleMarketOnChain] Platform admin:', adminPubkey.toBase58());
-        console.log('[settleMarketOnChain] Signing wallet:', admin_wallet);
-        console.log('[settleMarketOnChain] Admin match:', adminPubkey.toBase58() === admin_wallet);
-      } else {
-        console.error('[settleMarketOnChain] Platform config NOT FOUND on-chain!');
-      }
-      
-      const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
-      if (!feeVaultInfo) {
-        console.error('[settleMarketOnChain] Fee vault NOT FOUND on-chain!');
-      } else {
-        console.log('[settleMarketOnChain] Fee vault exists');
-      }
-    } catch (debugErr) {
-      console.error('[settleMarketOnChain] Debug check failed:', debugErr.message);
+    const platformInfo = await connection.getAccountInfo(platformPda);
+    if (!platformInfo) {
+      return Response.json({ 
+        error: 'Platform config not found on-chain. Run "Init Platform" first.',
+        fix: 'Go to Admin > Platform tab > click "Init Platform"'
+      }, { status: 400 });
+    }
+    
+    const adminBytes = platformInfo.data.slice(8, 40);
+    const onChainAdmin = new PublicKey(adminBytes).toBase58();
+    
+    console.log('[settleMarketOnChain] On-chain admin:', onChainAdmin);
+    console.log('[settleMarketOnChain] Your wallet:', admin_wallet);
+    console.log('[settleMarketOnChain] Match:', onChainAdmin === admin_wallet);
+    
+    if (onChainAdmin !== admin_wallet) {
+      return Response.json({ 
+        error: 'Wallet mismatch! Your wallet is not the platform admin.',
+        on_chain_admin: onChainAdmin,
+        your_wallet: admin_wallet,
+        fix: 'Connect Phantom with the admin account, or run "Reinit Platform" with your current wallet'
+      }, { status: 403 });
+    }
+    
+    const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
+    if (!feeVaultInfo) {
+      return Response.json({ error: 'Fee vault not found on-chain' }, { status: 400 });
     }
 
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
