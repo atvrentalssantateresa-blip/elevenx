@@ -45,12 +45,25 @@ Deno.serve(async (req) => {
     // Prepare create_market instruction with new discriminator
     const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
 
-    // Use the ACTUAL bet.open_until from database (set by admin manually)
+    // CRITICAL: Check if this is a TEST market (title contains "Test" or "Quick Test")
+    // Test markets should use their DB timeline exactly, no World Cup overrides
+    const isTestMarket = bet.title?.toLowerCase().includes('test') || 
+                         bet.outcome_a?.toLowerCase().includes('test');
+    
+    // Use the ACTUAL bet.open_until from database
     const bettingCloseTime = new Date(bet.open_until).getTime();
     const openUntil = Math.floor(bettingCloseTime / 1000);
     
-    // Settlement enabled 5 minutes after betting closes
-    const settleAfter = openUntil + 300;
+    // For test markets: settle immediately after betting closes (no delay)
+    // For production markets: 5 minutes after betting closes
+    const settleAfter = isTestMarket ? openUntil : openUntil + 300;
+    
+    if (isTestMarket) {
+      console.log('[createMarketOnChain] TEST market detected - using DB timeline:', {
+        openUntil: new Date(openUntil * 1000).toISOString(),
+        settleAfter: new Date(settleAfter * 1000).toISOString(),
+      });
+    }
 
     const outcomeNames = [
       Buffer.alloc(32),
