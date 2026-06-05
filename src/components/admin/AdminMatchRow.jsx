@@ -17,7 +17,12 @@ export default function AdminMatchRow({ match, bets, index }) {
   const { data: marketStatus, isLoading: isLoadingStatus, error: marketStatusError } = useQuery({
     queryKey: ['marketStatus', match.id],
     queryFn: async () => {
+      if (!match.id) {
+        console.error('[AdminMatchRow] match.id is undefined!', match);
+        throw new Error('Match ID is undefined');
+      }
       try {
+        console.log('[AdminMatchRow] Checking market status for match:', match.id, match.team_a, 'vs', match.team_b);
         const res = await base44.functions.invoke('checkMarketStatus', { match_id: match.id });
         return res.data;
       } catch (err) {
@@ -25,10 +30,12 @@ export default function AdminMatchRow({ match, bets, index }) {
           console.warn('Rate limited - skipping market status check for match:', match.id);
           return null;
         }
+        console.error('[AdminMatchRow] checkMarketStatus failed:', err.message);
         throw err;
       }
     },
     staleTime: 120000, // Cache for 2 minutes to reduce API calls
+    enabled: !!match.id, // Only run if match.id exists
     retry: (failureCount, error) => {
       // Don't retry on 429 rate limit errors
       if (error.response?.status === 429 || error.message?.includes('rate limit')) return false;
@@ -41,7 +48,13 @@ export default function AdminMatchRow({ match, bets, index }) {
 
   const createBetMutation = useMutation({
     mutationFn: async () => {
-      console.log('[createBetMutation] Creating bet for match:', match.id);
+      // Validate match.id before proceeding
+      if (!match.id) {
+        console.error('[createBetMutation] CRITICAL: match.id is undefined!', match);
+        throw new Error('Match ID is undefined - cannot create market');
+      }
+      
+      console.log('[createBetMutation] Creating bet for match:', match.id, match.team_a, 'vs', match.team_b);
       const bet = await base44.entities.Bet.create({
         match_id: match.id,
         title: `${match.team_a} vs ${match.team_b}`,
@@ -60,6 +73,12 @@ export default function AdminMatchRow({ match, bets, index }) {
       
       console.log('[createBetMutation] Bet created:', bet.id);
       
+      // Validate bet.id before proceeding
+      if (!bet.id) {
+        console.error('[createBetMutation] CRITICAL: bet.id is undefined after creation!');
+        throw new Error('Failed to create bet - no ID returned');
+      }
+      
       // Retry logic for rate limits
       let marketRes;
       let retries = 0;
@@ -67,7 +86,7 @@ export default function AdminMatchRow({ match, bets, index }) {
       
       while (retries < maxRetries) {
         try {
-          console.log('[createBetMutation] Calling createMarketOnChain (attempt', retries + 1, ')');
+          console.log('[createBetMutation] Calling createMarketOnChain (attempt', retries + 1, ') with bet_id:', bet.id, 'match_id:', match.id);
           marketRes = await base44.functions.invoke('createMarketOnChain', {
             bet_id: bet.id,
             match_id: match.id,
@@ -80,6 +99,7 @@ export default function AdminMatchRow({ match, bets, index }) {
             console.log('[createBetMutation] Rate limited, waiting', delay, 'ms...');
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
+            console.error('[createBetMutation] createMarketOnChain failed:', err.message);
             throw err;
           }
         }

@@ -24,26 +24,48 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     let { match_id, bet_id } = payload;
     
-    // Check cache first
-    const cacheKey = `market:${match_id || bet_id}`;
+    // Validate inputs BEFORE cache check
+    if (!match_id && !bet_id) {
+      console.error('[checkMarketStatus] CRITICAL: No match_id or bet_id provided in payload:', payload);
+      return Response.json({ 
+        error: 'Missing match_id or bet_id',
+        received_payload: payload,
+      }, { status: 400 });
+    }
+    
+    // If bet_id is provided, use it to get the match_id
+    if (bet_id && !match_id) {
+      try {
+        const bet = await base44.entities.Bet.get(bet_id);
+        if (bet) {
+          match_id = bet.match_id;
+          console.log('[checkMarketStatus] Got match_id from bet_id:', match_id);
+        } else {
+          console.error('[checkMarketStatus] Bet not found for bet_id:', bet_id);
+        }
+      } catch (err) {
+        console.error('[checkMarketStatus] Failed to fetch bet:', err.message);
+      }
+    }
+    
+    // Final validation
+    if (!match_id) {
+      console.error('[checkMarketStatus] Still no match_id after lookup. Payload:', payload, 'bet_id:', bet_id);
+      return Response.json({ 
+        error: 'Could not determine match_id',
+        received_payload: payload,
+        bet_id_provided: bet_id,
+      }, { status: 400 });
+    }
+    
+    // Check cache first (AFTER validation)
+    const cacheKey = `market:${match_id}`;
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       console.log('[checkMarketStatus] Cache HIT:', cacheKey);
       return Response.json(cached.data);
     }
     console.log('[checkMarketStatus] Cache MISS:', cacheKey);
-    
-    // If bet_id is provided, use it to get the match_id
-    if (bet_id && !match_id) {
-      const bet = await base44.entities.Bet.get(bet_id);
-      if (bet) {
-        match_id = bet.match_id;
-      }
-    }
-    
-    if (!match_id) {
-      return Response.json({ error: 'Missing match_id or bet_id' }, { status: 400 });
-    }
     
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const matchIdBytes = Buffer.alloc(32);
