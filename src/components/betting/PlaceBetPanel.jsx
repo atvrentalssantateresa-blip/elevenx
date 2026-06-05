@@ -121,7 +121,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     return () => clearInterval(interval);
   }, [bet?.open_until]);
 
-  const isBettingClosed = bet.status !== 'open' || timeRemaining && timeRemaining.total <= 0;
+  const isBettingClosed = bet.status !== 'open' || (timeRemaining && timeRemaining.total <= 0);
 
   const stakeNum = parseFloat(amount) || 0;
 
@@ -582,7 +582,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       <Button
         onClick={handleGetInstruction}
-        disabled={stakeNum <= 0 || isPreparing || timeRemaining && timeRemaining.total <= 0}
+        disabled={stakeNum <= 0 || isPreparing || isBettingClosed}
         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">
         
         {(() => {
