@@ -104,7 +104,7 @@ export default function FuturesLPPanel({ onSuccess, onError }) {
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl border border-primary/20 p-8 text-center"
-        style={{ background: 'linear-gradient(145deg, #1a1040 0%, #0f0a1e 100%)' }}>
+        style={{ background: '#1c1c1c' }}>
         <Trophy className="w-12 h-12 text-primary mx-auto mb-4" />
         <h3 className="font-heading font-black text-xl text-white mb-2">Connect Wallet for Futures LP</h3>
         <p className="text-white/50 text-sm mb-5 max-w-xs mx-auto">Connect your Phantom wallet to provide liquidity for World Cup futures.</p>
@@ -189,7 +189,7 @@ export default function FuturesLPPanel({ onSuccess, onError }) {
               {selectedOutcome && (
                 <>
                   {/* LP explanation */}
-                  <div className="bg-secondary/40 rounded-xl p-3 text-xs space-y-1.5">
+                  <div className="bg-[#1c1c1c] rounded-xl p-3 text-xs space-y-1.5 border border-border/50">
                     <p className="font-bold text-foreground">Futures LP Explained:</p>
                     <div className="space-y-1">
                       <p className="text-muted-foreground">
