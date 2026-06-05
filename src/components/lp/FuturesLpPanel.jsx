@@ -30,11 +30,16 @@ export default function FuturesLpPanel({
         (m.status === 'open' || m.status === 'coming_soon') && m.country
       );
     }
+    // Show test markets in ALL groups for testing convenience
+    if (activeGroup === 'Test' || filteredMarkets.some(m => m.country === 'Test')) {
+      const testMarkets = filteredMarkets.filter(m => m.country === 'Test');
+      if (activeGroup === 'Test') return testMarkets;
+    }
     const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
     return filteredMarkets.filter(m => 
       (m.status === 'open' || m.status === 'coming_soon') && 
       m.country && 
-      groupTeams.includes(m.country)
+      (groupTeams.includes(m.country) || m.country === 'Test')
     );
   }, [filteredMarkets, activeGroup]);
 
@@ -88,17 +93,28 @@ export default function FuturesLpPanel({
           }
         }} 
         activeGroup={activeGroup} 
+        showTestGroup={futuresMarkets.some(m => m.country === 'Test')}
       />
 
       {/* Markets Grid */}
       {activeGroup !== 'ALL' ? (
         <section id={`lp-group-${activeGroup}`} className="scroll-mt-24">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-              <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
+            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+              activeGroup === 'Test' 
+                ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-yellow-500/30' 
+                : 'bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30'
+            }`}>
+              {activeGroup === 'Test' ? (
+                <span className="text-xl">🧪</span>
+              ) : (
+                <span className="font-heading font-black text-lg text-primary">{activeGroup}</span>
+              )}
             </div>
             <div>
-              <h2 className="font-heading font-bold text-base text-foreground">Group {activeGroup}</h2>
+              <h2 className="font-heading font-bold text-base text-foreground">
+                {activeGroup === 'Test' ? 'Test Market' : `Group ${activeGroup}`}
+              </h2>
               <p className="text-xs text-muted-foreground">{displayedMarkets.length} countries with LP markets</p>
             </div>
           </div>
@@ -121,26 +137,22 @@ export default function FuturesLpPanel({
           )}
         </section>
       ) : (
-        Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
-          const groupMarkets = displayedMarkets.filter(m => 
-            teams.some(t => t.name === m.country)
-          );
-          if (groupMarkets.length === 0) return null;
-
-          return (
-            <section key={groupName} id={`lp-group-${groupName}`} className="scroll-mt-24">
+        <>
+          {/* Test Markets Section - show first if test markets exist */}
+          {displayedMarkets.some(m => m.country === 'Test') && (
+            <section id="lp-group-Test" className="scroll-mt-24 mb-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                  <span className="font-heading font-black text-lg text-primary">{groupName}</span>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 flex items-center justify-center">
+                  <span className="text-xl">🧪</span>
                 </div>
                 <div>
-                  <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
-                  <p className="text-xs text-muted-foreground">{groupMarkets.length} countries with LP markets</p>
+                  <h2 className="font-heading font-bold text-base text-foreground">Test Market</h2>
+                  <p className="text-xs text-muted-foreground">Quick test futures markets</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                {groupMarkets.map((market, i) => (
+                {displayedMarkets.filter(m => m.country === 'Test').map((market, i) => (
                   <FuturesMarketLpCard
                     key={market.id}
                     market={market}
@@ -149,8 +161,40 @@ export default function FuturesLpPanel({
                 ))}
               </div>
             </section>
-          );
-        })
+          )}
+
+          {/* World Cup Groups */}
+          {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+            const groupMarkets = displayedMarkets.filter(m => 
+              teams.some(t => t.name === m.country)
+            );
+            if (groupMarkets.length === 0) return null;
+
+            return (
+              <section key={groupName} id={`lp-group-${groupName}`} className="scroll-mt-24">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                    <span className="font-heading font-black text-lg text-primary">{groupName}</span>
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-base text-foreground">Group {groupName}</h2>
+                    <p className="text-xs text-muted-foreground">{groupMarkets.length} countries with LP markets</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  {groupMarkets.map((market, i) => (
+                    <FuturesMarketLpCard
+                      key={market.id}
+                      market={market}
+                      onProvideLiquidity={onProvideLiquidity}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </>
       )}
     </div>
   );

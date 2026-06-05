@@ -76,7 +76,7 @@ const WORLD_CUP_GROUPS_2026 = {
   ],
 };
 
-export default function GroupNavigation({ onGroupClick, activeGroup }) {
+export default function GroupNavigation({ onGroupClick, activeGroup, showTestGroup }) {
   return (
     <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30 py-3 -mx-6 px-6 mb-6">
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
@@ -113,6 +113,23 @@ export default function GroupNavigation({ onGroupClick, activeGroup }) {
             {groupName}
           </motion.button>
         ))}
+        
+        {/* Test Group Button - only show if test markets exist */}
+        {showTestGroup && (
+          <motion.button
+            key="Test"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => onGroupClick('Test')}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+              activeGroup === 'Test'
+                ? 'bg-yellow-500 text-yellow-950 border-yellow-500'
+                : 'bg-secondary/30 text-muted-foreground border-border/30 hover:border-yellow-500/50 hover:text-yellow-400'
+            }`}
+          >
+            🧪 Test
+          </motion.button>
+        )}
       </div>
     </div>
   );
