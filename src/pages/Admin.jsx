@@ -133,6 +133,71 @@ export default function Admin() {
           </div>
         </Card>
 
+        {/* Quick Actions */}
+        <div>
+          <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <Button
+              onClick={async () => {
+                try {
+                  await base44.functions.invoke('createQuickTestMatch');
+                  alert('✓ Test match created!');
+                  queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                } catch (err) {
+                  alert('Error: ' + err.message);
+                }
+              }}
+              className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+            >
+              <span className="font-bold">Create Test Match</span>
+              <span className="text-xs text-muted-foreground">Quick match</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await base44.functions.invoke('bulkDeployMatches');
+                  alert('✓ Matches deployed!');
+                  queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                } catch (err) {
+                  alert('Error: ' + err.message);
+                }
+              }}
+              className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+            >
+              <span className="font-bold">Bulk Deploy</span>
+              <span className="text-xs text-muted-foreground">All matches</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await base44.functions.invoke('initPlatformConfig');
+                  alert('✓ Platform initialized!');
+                } catch (err) {
+                  alert('Error: ' + err.message);
+                }
+              }}
+              className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+            >
+              <span className="font-bold">Init Platform</span>
+              <span className="text-xs text-muted-foreground">Setup config</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await base44.functions.invoke('checkPlatformConfig');
+                  alert('✓ Platform config checked!');
+                } catch (err) {
+                  alert('Error: ' + err.message);
+                }
+              }}
+              className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+            >
+              <span className="font-bold">Check Config</span>
+              <span className="text-xs text-muted-foreground">Diagnostics</span>
+            </Button>
+          </div>
+        </div>
+
         {/* Bets List */}
         <div>
           <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
