@@ -326,58 +326,42 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
         className="h-full"
       >
         <Card className="bg-[#1c1c1c] border border-primary/20 rounded-2xl overflow-hidden h-full flex flex-col">
-          <CardContent className="p-0 flex-1 flex flex-col">
-            <div className="p-5 space-y-4 flex-1 flex flex-col">
+          <CardContent className="p-4 flex-1 flex flex-col">
+            <div className="space-y-3 flex-1 flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] text-muted-foreground font-semibold truncate">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] text-muted-foreground font-semibold truncate">
                   {bet.match_title || 'Match'}
                 </span>
-                <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${config.color}`}>
+                <Badge className={`text-[8px] font-semibold uppercase tracking-wider flex-shrink-0 ${config.color}`}>
                   {config.label}
                 </Badge>
               </div>
 
               {/* Outcome - VS Style */}
-              <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center justify-between gap-1">
                 {/* Your Team */}
                 <div className="flex-1 text-center">
-                  <div className="text-3xl mb-1">{outcomeFlag || '🏆'}</div>
-                  <p className="text-[10px] font-medium text-foreground truncate">{outcomeTeam || bet.outcome_label}</p>
+                  <div className="text-2xl mb-0.5">{outcomeFlag || '🏆'}</div>
+                  <p className="text-[9px] font-bold text-primary truncate">{outcomeTeam || bet.outcome_label}</p>
                 </div>
 
                 {/* VS Badge */}
-                <div className="flex flex-col items-center gap-0.5 px-2 flex-shrink-0">
-                  <span className="text-[8px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">YOU</span>
+                <div className="flex flex-col items-center px-1 flex-shrink-0">
+                  <span className="text-[7px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">VS</span>
                 </div>
 
                 {/* Opposing Team */}
                 {opposingFlag && (
                   <div className="flex-1 text-center">
-                    <div className="text-3xl mb-1">{opposingFlag}</div>
-                    <p className="text-[10px] font-medium text-muted-foreground truncate">{opposingTeam}</p>
+                    <div className="text-2xl mb-0.5">{opposingFlag}</div>
+                    <p className="text-[9px] font-medium text-muted-foreground truncate">{opposingTeam}</p>
                   </div>
                 )}
               </div>
 
-              {/* Hype Bar - Pool/Status */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-[9px] mb-1">
-                  <span className={`${bet.status === 'won' || bet.status === 'claimed' ? 'text-accent' : 'text-primary'} font-bold uppercase tracking-wider`}>
-                    {bet.status === 'won' || bet.status === 'claimed' ? '🏆 Winning Bet' : bet.status === 'active' ? '⚡ Active Bet' : '⏳ Pending'}
-                  </span>
-                  <span className="text-muted-foreground">{bet.status === 'active' ? 'Live' : bet.status}</span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden border border-border/50">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${bet.status === 'won' || bet.status === 'claimed' ? 'bg-gradient-to-r from-accent/60 to-accent' : 'bg-gradient-to-r from-primary/60 to-primary'}`}
-                    style={{ width: bet.status === 'won' || bet.status === 'claimed' ? '100%' : bet.status === 'active' ? '75%' : '50%' }}
-                  />
-                </div>
-              </div>
-
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div className={`rounded-lg px-2 py-2 text-center border ${bet.status === 'won' || bet.status === 'claimed' ? 'bg-accent/5 border-accent/10' : 'bg-primary/5 border-primary/10'}`}>
                   <p className="text-[9px] text-muted-foreground truncate">{bet.betCount && bet.betCount > 1 ? 'Total Stake' : 'Stake'}</p>
                   <p className="font-bold text-foreground text-xs">◎{(bet.totalAmount || bet.amount)?.toFixed(4)}</p>
@@ -394,43 +378,43 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
 
               {/* Pool Share / Progress */}
               {isParimutuelActive && (
-                <div className="pt-3 border-t border-border/30">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+                <div className="pt-2 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[8px] text-muted-foreground mb-1">
                     <span>Pool Share</span>
                     <span className="font-bold text-accent">{poolShare.toFixed(2)}%</span>
                   </div>
-                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-1 bg-secondary rounded-full overflow-hidden">
                     <div className="h-full bg-accent rounded-full" style={{ width: `${poolShare}%` }} />
                   </div>
                 </div>
               )}
 
               {!isParimutuelActive && (bet.status === 'pending' || bet.status === 'active') && (
-                <div className="pt-3 border-t border-border/30">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+                <div className="pt-2 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[8px] text-muted-foreground mb-1">
                     <span>{isFullyMatched ? 'Fully Matched' : 'Matching'}</span>
                     <span className="font-bold text-primary">{matchProgress}%</span>
                   </div>
-                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-1 bg-secondary rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full" style={{ width: `${matchProgress}%` }} />
                   </div>
                 </div>
               )}
 
               {/* Action Button */}
-              <div className="pt-3 border-t border-border/30">
+              <div className="pt-2 border-t border-border/30 mt-auto">
                 {canWithdraw && (
                   <Button
                     onClick={() => withdrawMutation.mutate()}
                     disabled={withdrawMutation.isPending || withdrawDialogOpen}
-                    className="w-full h-10 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-xl border border-yellow-500/20"
+                    className="w-full h-8 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-lg border border-yellow-500/20 text-xs"
                   >
                     {withdrawMutation.isPending ? (
-                      <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Withdraw ◎{unmatched.toFixed(4)}
+                        <Wallet className="w-3.5 h-3.5 mr-1.5" />
+                        Withdraw ◎{unmatched.toFixed(2)}
                       </>
                     )}
                   </Button>
@@ -439,14 +423,14 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   <Button
                     onClick={() => claimMutation.mutate()}
                     disabled={claimMutation.isPending || claimDialogOpen}
-                    className="w-full h-10 bg-accent/10 hover:bg-accent/20 text-accent font-bold rounded-xl border border-accent/20"
+                    className="w-full h-8 bg-accent/10 hover:bg-accent/20 text-accent font-bold rounded-lg border border-accent/20 text-xs"
                   >
                     {claimMutation.isPending ? (
-                      <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Trophy className="w-4 h-4 mr-2" />
-                        Claim ◎{(bet.potential_payout || 0).toFixed(4)}
+                        <Trophy className="w-3.5 h-3.5 mr-1.5" />
+                        Claim ◎{(bet.potential_payout || 0).toFixed(2)}
                       </>
                     )}
                   </Button>
@@ -455,22 +439,22 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   <Button
                     onClick={() => claimRefundMutation.mutate()}
                     disabled={claimRefundMutation.isPending}
-                    className="w-full h-10 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-xl border border-yellow-500/20"
+                    className="w-full h-8 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-lg border border-yellow-500/20 text-xs"
                   >
                     {claimRefundMutation.isPending ? (
-                      <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Wallet className="w-4 h-4 mr-2" />
+                        <Wallet className="w-3.5 h-3.5 mr-1.5" />
                         Claim Refund
                       </>
                     )}
                   </Button>
                 )}
                 {isCompleted && (
-                  <div className="text-center text-[10px] text-muted-foreground">
+                  <div className="text-center text-[9px] text-muted-foreground">
                     {bet.status === 'claimed' && (
-                      <span className="text-accent font-bold">◎{bet.actual_payout?.toFixed(4)} claimed</span>
+                      <span className="text-accent font-bold">◎{bet.actual_payout?.toFixed(2)} claimed</span>
                     )}
                     {bet.status === 'lost' && <span className="text-destructive">Bet lost</span>}
                     {bet.status === 'void' && <span>Bet voided</span>}
