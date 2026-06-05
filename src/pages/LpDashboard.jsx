@@ -110,18 +110,18 @@ export default function LpDashboard() {
   const { data: myOffers = [], refetch: refetchOffers } = useQuery({
     queryKey: ['myOffers', walletAddress],
     queryFn: async () => {
-      // Fetch all UserBets with role='lp' (includes both traditional LP and parimutuel self-backed bets)
-      const allUserBets = await base44.entities.UserBet.list('-created_date', 200);
-      const lpUserBets = allUserBets.filter(ub => ub.wallet_address === walletAddress && ub.role === 'lp');
+      // Fetch BetOffer entities where this wallet is the LP
+      const allOffers = await base44.entities.BetOffer.list('-created_date', 200);
+      const myLpOffers = allOffers.filter(o => o.lp_wallet_address === walletAddress);
       
-      // For each UserBet, fetch the associated BetOffer to display
-      const offersWithDetails = await Promise.all(lpUserBets.map(async (ub) => {
-        const offers = await base44.entities.BetOffer.filter({ id: ub.offer_id });
-        const offer = offers[0];
-        return offer ? { ...offer, userBetId: ub.id, userBet: ub } : null;
+      // For each BetOffer, fetch the associated UserBet (role='lp') for withdrawal
+      const offersWithUserBet = await Promise.all(myLpOffers.map(async (offer) => {
+        const userBets = await base44.entities.UserBet.filter({ offer_id: offer.id, role: 'lp' });
+        const userBet = userBets[0];
+        return userBet ? { ...offer, userBetId: userBet.id, userBet } : null;
       }));
       
-      return offersWithDetails.filter(Boolean);
+      return offersWithUserBet.filter(Boolean);
     },
     enabled: !!walletAddress,
     refetchOnWindowFocus: true,

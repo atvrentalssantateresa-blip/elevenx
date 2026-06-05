@@ -48,10 +48,14 @@ Deno.serve(async (req) => {
       console.log('[commitLiquidity] Created new BetOffer:', offerId);
     }
     
-    // Commit UserBet
+    // Commit UserBet (includes LP-specific fields for parimutuel)
     const newUserBet = await serviceRole.entities.UserBet.create({
       ...userBet,
       offer_id: offerId,
+      // Ensure LP fields are set
+      liquidity_deposited: userBet.liquidity_deposited || userBet.amount,
+      liquidity_matched: userBet.liquidity_matched || 0,
+      liquidity_unmatched: userBet.liquidity_unmatched || userBet.amount,
     });
     console.log('[commitLiquidity] Created UserBet:', newUserBet.id);
     

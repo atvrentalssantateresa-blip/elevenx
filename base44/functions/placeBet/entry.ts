@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       bettorPositionPda: bettorPositionPda.toBase58(),
     });
 
-    // Prepare commit data — create LP offer + user bet + update pool
+    // Prepare commit data — create LP offer + user bet (parimutuel: bettor IS the LP)
     const commit_data = {
       lpOffer: {
         bet_id,
@@ -110,12 +110,16 @@ Deno.serve(async (req) => {
         offer_id: 'TEMP_LP_OFFER_ID', // Will be replaced with actual ID after commit
         outcome,
         amount,
-        role: 'matcher',
+        role: 'lp', // CRITICAL: This is an LP position, not a matcher bet
         status: 'active',
         outcome_label: outcomeLabel,
         match_title: match ? `${match.team_a} vs ${match.team_b}` : '',
         potential_payout: 0,
         wallet_address: walletAddress,
+        // LP-specific fields
+        liquidity_deposited: amount,
+        liquidity_matched: 0,
+        liquidity_unmatched: amount,
       },
       betUpdate: {
         bet_id,
