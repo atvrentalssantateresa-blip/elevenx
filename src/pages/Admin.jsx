@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw, TestTube, RefreshCcw, Rocket, Loader, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trophy, Shield, Radio, CheckCircle2, Zap, Download, BarChart3, List, Flame, Target, RefreshCw, TestTube, RefreshCcw, Rocket, Loader, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -655,6 +655,25 @@ export default function Admin() {
               </div>
             </div>
             <Radio className={`w-5 h-5 ${oracleStatus?.provider === 'manual' ? 'text-yellow-400' : 'text-green-500'}`} />
+          </div>
+
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                <div>
+                  <p className="text-sm font-bold text-destructive">Fix Error 3012 (Admin Mismatch)</p>
+                  <p className="text-xs text-muted-foreground">Reinitialize platform with your current wallet</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => window.location.href = '/fix-admin'}
+                variant="destructive"
+                className="font-heading font-bold rounded-xl h-9"
+              >
+                Fix Now
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
