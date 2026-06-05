@@ -95,7 +95,12 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
       )}
 
       <div className="flex gap-2">
-        {!marketStatus?.settled && !marketStatus?.voided && (
+        {marketStatus?.settled || marketStatus?.voided || marketStatus?.settlement_finalized ? (
+          <Badge className="bg-accent/10 text-accent border-accent/30 px-3 py-1">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Settlement Complete - Winner: {marketStatus?.winning_outcome === 0 ? 'Team A' : marketStatus?.winning_outcome === 1 ? 'Team B' : 'Draw'}
+          </Badge>
+        ) : (
           <>
             <Button onClick={() => onSettle(bet, 'a')} disabled={!walletAddress} size="sm" className="flex-1 h-8 text-xs bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg">
               Settle A
