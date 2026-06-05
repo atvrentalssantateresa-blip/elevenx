@@ -4,12 +4,15 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminBetRow from '@/components/admin/AdminBetRow';
+import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import { AlertCircle, Loader } from 'lucide-react';
+import { AlertCircle, Loader, List, TrendingUp, Database, Settings } from 'lucide-react';
 
 export default function Admin() {
   const [walletAddress, setWalletAddress] = useState(null);
+  const [activeTab, setActiveTab] = useState('bets');
   const [settleDialog, setSettleDialog] = useState(null);
   const [voidDialog, setVoidDialog] = useState(null);
   const queryClient = useQueryClient();
@@ -133,100 +136,193 @@ export default function Admin() {
           </div>
         </Card>
 
-        {/* Quick Actions */}
-        <div>
-          <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            <Button
-              onClick={async () => {
-                try {
-                  await base44.functions.invoke('createQuickTestMatch');
-                  alert('✓ Test match created!');
-                  queryClient.invalidateQueries({ queryKey: ['allBets'] });
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
-            >
-              <span className="font-bold">Create Test Match</span>
-              <span className="text-xs text-muted-foreground">Quick match</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  await base44.functions.invoke('bulkDeployMatches');
-                  alert('✓ Matches deployed!');
-                  queryClient.invalidateQueries({ queryKey: ['allBets'] });
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
-            >
-              <span className="font-bold">Bulk Deploy</span>
-              <span className="text-xs text-muted-foreground">All matches</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  await base44.functions.invoke('initPlatformConfig');
-                  alert('✓ Platform initialized!');
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-            >
-              <span className="font-bold">Init Platform</span>
-              <span className="text-xs text-muted-foreground">Setup config</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  await base44.functions.invoke('checkPlatformConfig');
-                  alert('✓ Platform config checked!');
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
-            >
-              <span className="font-bold">Check Config</span>
-              <span className="text-xs text-muted-foreground">Diagnostics</span>
-            </Button>
-          </div>
-        </div>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-secondary/20 border border-border/50 rounded-xl p-1">
+            <TabsTrigger value="bets" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <List className="w-4 h-4 mr-2" />
+              Bets
+            </TabsTrigger>
+            <TabsTrigger value="futures" className="data-[state=active]:bg-accent data-[state=active]:text-white rounded-lg">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Futures
+            </TabsTrigger>
+            <TabsTrigger value="actions" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Database className="w-4 h-4 mr-2" />
+              Actions
+            </TabsTrigger>
+            <TabsTrigger value="platform" className="data-[state=active]:bg-secondary data-[state=active]:text-white rounded-lg">
+              <Settings className="w-4 h-4 mr-2" />
+              Platform
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Bets List */}
-        <div>
-          <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
-          
-          {isLoadingBets ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader className="w-6 h-6 animate-spin text-primary mr-2" />
-              <span className="text-muted-foreground">Loading bets...</span>
-            </div>
-          ) : allBets.length === 0 ? (
-            <Card className="bg-card/50 border-border/50 p-6 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-muted-foreground" />
-              <p className="text-muted-foreground">No bets found</p>
+          {/* Bets Tab */}
+          <TabsContent value="bets" className="mt-4">
+            <Card className="bg-card/50 border-border/50 p-4">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
+              
+              {isLoadingBets ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader className="w-6 h-6 animate-spin text-primary mr-2" />
+                  <span className="text-muted-foreground">Loading bets...</span>
+                </div>
+              ) : allBets.length === 0 ? (
+                <div className="flex items-center gap-3 py-6">
+                  <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                  <p className="text-muted-foreground">No bets found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {allBets.map((bet) => (
+                    <div key={bet.id} className="border border-border/30 rounded-lg p-3">
+                      <AdminBetRow
+                        bet={bet}
+                        match={allMatches[bet.match_id]}
+                        onSettle={handleSettle}
+                        onVoid={handleVoid}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
-          ) : (
-            <div className="space-y-4">
-              {allBets.map((bet) => (
-                <Card key={bet.id} className="bg-card/50 border-border/50 p-4">
-                  <AdminBetRow
-                    bet={bet}
-                    match={allMatches[bet.match_id]}
-                    onSettle={handleSettle}
-                    onVoid={handleVoid}
-                  />
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+          </TabsContent>
+
+          {/* Futures Tab */}
+          <TabsContent value="futures" className="mt-4">
+            <AdminFuturesPanel walletAddress={walletAddress} />
+          </TabsContent>
+
+          {/* Actions Tab */}
+          <TabsContent value="actions" className="mt-4">
+            <Card className="bg-card/50 border-border/50 p-6">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('createQuickTestMatch');
+                      alert('✓ Test match created!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+                >
+                  <span className="font-bold">Create Test</span>
+                  <span className="text-xs text-muted-foreground">Quick match</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('bulkDeployMatches');
+                      alert('✓ Matches deployed!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+                >
+                  <span className="font-bold">Bulk Deploy</span>
+                  <span className="text-xs text-muted-foreground">All matches</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('syncWorldCupMatches');
+                      alert('✓ World Cup synced!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  <span className="font-bold">Sync World Cup</span>
+                  <span className="text-xs text-muted-foreground">Fetch matches</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('bulkDeployFutures');
+                      alert('✓ Futures deployed!');
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  <span className="font-bold">Deploy Futures</span>
+                  <span className="text-xs text-muted-foreground">All futures</span>
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Platform Tab */}
+          <TabsContent value="platform" className="mt-4">
+            <Card className="bg-card/50 border-border/50 p-6">
+              <h2 className="font-heading font-bold text-xl text-white mb-4">Platform Settings</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('initPlatformConfig');
+                      alert('✓ Platform initialized!');
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  Init Platform
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('checkPlatformConfig');
+                      alert('✓ Config checked!');
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  Check Config
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('debugPlatformAdmin');
+                      alert('✓ Debug complete!');
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  Debug Admin
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('comprehensivePlatformTest');
+                      alert('✓ Test complete!');
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  Full Test
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Settlement Dialog */}
         {settleDialog && (
