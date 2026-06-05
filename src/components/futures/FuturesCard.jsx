@@ -44,10 +44,10 @@ export default function FuturesCard({ market, index, onSelect }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
-      transition={{ delay: index * 0.05, duration: 0.4 }}
-    >
+      transition={{ delay: index * 0.05, duration: 0.4 }}>
+      
       <div className="group block">
-        <div className="relative rounded-2xl p-4 transition-all duration-300 border border-primary/20 h-full bg-[#262322]">
+        <div className="relative rounded-2xl p-4 transition-all duration-300 border border-primary/20 h-full bg-[#1c1c1c]">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] text-muted-foreground font-semibold truncate">
@@ -73,13 +73,13 @@ export default function FuturesCard({ market, index, onSelect }) {
             {market.outcomes.slice(0, 3).map((outcome) => {
               const colors = positionColors[outcome.position] || positionColors['1st'];
               const hasLiquidity = (outcome.pool || 0) > 0 || (outcome.lp_offers || 0) > 0;
-              
+
               return (
                 <button
                   key={outcome.position}
                   onClick={() => onSelect && onSelect(market, outcome)}
-                  className={`flex flex-col items-center justify-center rounded-xl px-2 py-2.5 border-2 transition-all ${colors.bg} ${colors.border} ${colors.hover} hover:scale-105 active:scale-95`}
-                >
+                  className={`flex flex-col items-center justify-center rounded-xl px-2 py-2.5 border-2 transition-all ${colors.bg} ${colors.border} ${colors.hover} hover:scale-105 active:scale-95`}>
+                  
                   <div className={`flex items-center gap-1 mb-1 px-1.5 py-0.5 rounded-full ${colors.badge}`}>
                     <Target className="w-2 h-2" />
                     <span className="text-[7px] font-black uppercase tracking-wider">{outcome.position}</span>
@@ -87,18 +87,18 @@ export default function FuturesCard({ market, index, onSelect }) {
                   <p className={`font-heading font-black text-sm ${colors.text} mb-0.5`}>
                     {outcome.odds.toFixed(2)}x
                   </p>
-                  {hasLiquidity ? (
-                    <div className="flex items-center gap-0.5">
+                  {hasLiquidity ?
+                  <div className="flex items-center gap-0.5">
                       <Droplets className="w-2.5 h-2.5 text-accent" />
                       <p className="text-[9px] font-bold text-accent">
                         ◎{outcome.pool.toFixed(1)}
                       </p>
-                    </div>
-                  ) : (
-                    <p className="text-[8px] text-muted-foreground">No LP</p>
-                  )}
-                </button>
-              );
+                    </div> :
+
+                  <p className="text-[8px] text-muted-foreground">No LP</p>
+                  }
+                </button>);
+
             })}
           </div>
 
@@ -121,6 +121,6 @@ export default function FuturesCard({ market, index, onSelect }) {
           </div>
         </div>
       </div>
-    </motion.div>
-  );
+    </motion.div>);
+
 }
