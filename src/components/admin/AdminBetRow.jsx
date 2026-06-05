@@ -134,20 +134,8 @@ export default function AdminBetRow({ bet, match }) {
 
     console.log('[AdminBetRow] Commit successful:', commitRes.data);
 
-    // CRITICAL: Invalidate ALL related queries to force UI refresh
-    queryClient.invalidateQueries({ queryKey: ['marketStatus'] });
+    // CRITICAL: Invalidate ONLY market status to force UI refresh
     queryClient.invalidateQueries({ queryKey: ['marketStatus', bet.id] });
-    queryClient.invalidateQueries({ queryKey: ['bets'] });
-    queryClient.invalidateQueries({ queryKey: ['allBets'] });
-    queryClient.invalidateQueries({ queryKey: ['adminBets'] });
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    queryClient.invalidateQueries({ queryKey: ['userBets'] });
-    queryClient.invalidateQueries({ queryKey: ['openBets'] });
-    queryClient.invalidateQueries({ queryKey: ['matches'] });
-
-    // Also refetch immediately
-    await queryClient.refetchQueries({ queryKey: ['marketStatus', bet.id] });
-    await queryClient.refetchQueries({ queryKey: ['bets'] });
 
     setPendingTx(null);
     alert(commitRes.data.message);
@@ -168,15 +156,7 @@ export default function AdminBetRow({ bet, match }) {
     }
 
     // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ['marketStatus'] });
     queryClient.invalidateQueries({ queryKey: ['marketStatus', bet.id] });
-    queryClient.invalidateQueries({ queryKey: ['bets'] });
-    queryClient.invalidateQueries({ queryKey: ['allBets'] });
-    queryClient.invalidateQueries({ queryKey: ['adminBets'] });
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    queryClient.invalidateQueries({ queryKey: ['userBets'] });
-    queryClient.invalidateQueries({ queryKey: ['openBets'] });
-    queryClient.invalidateQueries({ queryKey: ['matches'] });
 
     setPendingTx(null);
     alert(commitRes.data.message);
