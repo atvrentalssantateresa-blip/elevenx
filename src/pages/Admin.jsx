@@ -7,12 +7,13 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminBetRow from '@/components/admin/AdminBetRow';
 import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
+import AdminMatchesPanel from '@/components/admin/AdminMatchesPanel';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import { AlertCircle, Loader, List, TrendingUp, Database, Settings } from 'lucide-react';
+import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy } from 'lucide-react';
 
 export default function Admin() {
   const [walletAddress, setWalletAddress] = useState(null);
-  const [activeTab, setActiveTab] = useState('bets');
+  const [activeTab, setActiveTab] = useState('matches');
   const [settleDialog, setSettleDialog] = useState(null);
   const [voidDialog, setVoidDialog] = useState(null);
   const queryClient = useQueryClient();
@@ -108,7 +109,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div>
           <h1 className="font-heading font-bold text-3xl text-white mb-2">Admin Dashboard</h1>
           <p className="text-sm text-gray-400">Manage betting markets and settlements</p>
@@ -127,7 +128,11 @@ export default function Admin() {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-900 border border-gray-800 rounded-xl p-1">
+          <TabsList className="grid w-full grid-cols-5 bg-gray-900 border border-gray-800 rounded-xl p-1">
+            <TabsTrigger value="matches" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">
+              <Trophy className="w-4 h-4 mr-2" />
+              Matches
+            </TabsTrigger>
             <TabsTrigger value="bets" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg">
               <List className="w-4 h-4 mr-2" />
               Bets
@@ -145,6 +150,10 @@ export default function Admin() {
               Platform
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="matches" className="mt-4">
+            <AdminMatchesPanel walletAddress={walletAddress} />
+          </TabsContent>
 
           <TabsContent value="bets" className="mt-4">
             <Card className="bg-gray-900 border border-gray-800 p-4">
@@ -304,21 +313,6 @@ export default function Admin() {
                   <span className="font-bold text-lg text-white">🗑️ Clear DB</span>
                   <span className="text-xs text-gray-400">Delete everything</span>
                 </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      await base44.functions.invoke('clearDatabase');
-                      alert('✓ Platform data cleared!');
-                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
-                    } catch (err) {
-                      alert('Error: ' + err.message);
-                    }
-                  }}
-                  className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
-                >
-                  <span className="font-bold text-lg text-white">🧹 Clear Platform</span>
-                  <span className="text-xs text-gray-400">Delete all platform data</span>
-                </Button>
               </div>
             </Card>
           </TabsContent>
@@ -336,7 +330,7 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Init Platform
                 </Button>
@@ -349,7 +343,7 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Check Config
                 </Button>
@@ -362,7 +356,7 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Debug Admin
                 </Button>
@@ -375,7 +369,7 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-white"
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Full Test
                 </Button>
@@ -385,47 +379,55 @@ export default function Admin() {
         </Tabs>
 
         {settleDialog && (
-          <Card className="bg-gray-900 border border-gray-800 p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
-            <div className="space-y-4">
-              <h3 className="font-heading font-bold text-lg text-white">Settle Market</h3>
-              <p className="text-sm text-gray-400">Outcome: <span className="text-purple-400 font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
-              <SolanaTransactionSigner
-                instruction={settleDialog.instruction}
-                amount={0}
-                onSuccess={handleSettleSuccess}
-                onError={(err) => console.error('[Admin] Settlement failed:', err)}
-              />
-              <Button
-                onClick={() => setSettleDialog(null)}
-                variant="outline"
-                className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
-              >
-                Cancel
-              </Button>
-            </div>
-          </Card>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Settle Market</h3>
+                  <p className="text-sm text-gray-400">Outcome: <span className="text-white font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={settleDialog.instruction}
+                  amount={0}
+                  onSuccess={handleSettleSuccess}
+                  onError={(err) => console.error('[Admin] Settlement failed:', err)}
+                />
+                <Button
+                  onClick={() => setSettleDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
         )}
 
         {voidDialog && (
-          <Card className="bg-gray-900 border border-gray-800 p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
-            <div className="space-y-4">
-              <h3 className="font-heading font-bold text-lg text-white">Void Market</h3>
-              <p className="text-sm text-gray-400">This will refund all bettors</p>
-              <SolanaTransactionSigner
-                instruction={voidDialog.instruction}
-                amount={0}
-                onSuccess={handleVoidSuccess}
-                onError={(err) => console.error('[Admin] Void failed:', err)}
-              />
-              <Button
-                onClick={() => setVoidDialog(null)}
-                variant="outline"
-                className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
-              >
-                Cancel
-              </Button>
-            </div>
-          </Card>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-red-600/20 border border-red-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-red-400 mb-1">Void Market</h3>
+                  <p className="text-sm text-gray-400">This will refund all bettors</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={voidDialog.instruction}
+                  amount={0}
+                  onSuccess={handleVoidSuccess}
+                  onError={(err) => console.error('[Admin] Void failed:', err)}
+                />
+                <Button
+                  onClick={() => setVoidDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
         )}
       </div>
     </div>
