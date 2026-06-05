@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all futures markets that are not yet deployed
+    // Get all futures markets that are not yet deployed (open OR coming_soon)
     const allMarkets = await base44.asServiceRole.entities.FuturesMarket.filter({});
-    const marketsToDeploy = allMarkets.filter(m => !m.solana_market_created && m.status === 'open');
+    const marketsToDeploy = allMarkets.filter(m => !m.solana_market_created && (m.status === 'open' || m.status === 'coming_soon'));
 
     if (marketsToDeploy.length === 0) {
       return Response.json({ 

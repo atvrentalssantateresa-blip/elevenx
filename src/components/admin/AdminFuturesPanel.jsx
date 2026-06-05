@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket, RefreshCcw } from 'lucide-react';
+import { Trophy, CheckCircle, Zap, Loader, Globe, Rocket, RefreshCcw, TrendingUp } from 'lucide-react';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 
 export default function AdminFuturesPanel() {
@@ -11,9 +11,11 @@ export default function AdminFuturesPanel() {
   const [pendingDeploy, setPendingDeploy] = useState(null);
   const [deployingMarketId, setDeployingMarketId] = useState(null);
   const [isBulkDeploying, setIsBulkDeploying] = useState(false);
+  const [isFetchingOdds, setIsFetchingOdds] = useState(false);
   const [pendingBulkDeploy, setPendingBulkDeploy] = useState(null);
   const [fixingTimestampsId, setFixingTimestampsId] = useState(null);
   const [pendingTimestampFix, setPendingTimestampFix] = useState(null);
+  const [oddsStatus, setOddsStatus] = useState(null);
 
   // Fetch existing futures markets (country-by-country)
   const { data: futuresMarkets = [], refetch } = useQuery({
@@ -21,7 +23,26 @@ export default function AdminFuturesPanel() {
     queryFn: () => base44.entities.FuturesMarket.list('-created_date', 100),
   });
 
-  // Bulk deploy all markets
+  // Step 1: Fetch odds from The Odds API (creates/updates markets)
+  const handleFetchOdds = async () => {
+    setIsFetchingOdds(true);
+    setOddsStatus(null);
+    try {
+      const res = await base44.functions.invoke('fetchAndCalculateOdds', {});
+      if (res.data.error) {
+        setOddsStatus({ error: res.data.error });
+        return;
+      }
+      setOddsStatus({ success: true, count: res.data.countriesProcessed });
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+    } catch (error) {
+      setOddsStatus({ error: error.message });
+    } finally {
+      setIsFetchingOdds(false);
+    }
+  };
+
+  // Step 2: Bulk deploy all markets
   const handleBulkDeploy = async () => {
     setIsBulkDeploying(true);
     try {
@@ -36,6 +57,7 @@ export default function AdminFuturesPanel() {
           instructions: res.data.instructions,
           marketUpdates: res.data.marketUpdates,
           marketCount: res.data.marketCount,
+          currentIndex: 0,
         });
       } else {
         alert('No markets to deploy or failed to prepare instructions');
@@ -49,21 +71,29 @@ export default function AdminFuturesPanel() {
   };
 
   const handleBulkDeploySuccess = async (result) => {
-    console.log('Bulk deploy success:', result);
+    console.log('Market deployed:', result);
     
-    // Update all deployed markets in database
-    if (pendingBulkDeploy?.marketUpdates) {
-      for (const marketUpdate of pendingBulkDeploy.marketUpdates) {
-        await base44.entities.FuturesMarket.update(marketUpdate.id, {
-          solana_market_created: true,
-          solana_market_pda: marketUpdate.solana_market_pda,
-        });
-      }
+    // Update current market in DB
+    const currentInstruction = pendingBulkDeploy?.instructions[pendingBulkDeploy.currentIndex];
+    const currentUpdate = pendingBulkDeploy?.marketUpdates[pendingBulkDeploy.currentIndex];
+    if (currentUpdate) {
+      await base44.entities.FuturesMarket.update(currentUpdate.id, {
+        solana_market_created: true,
+        solana_market_pda: currentUpdate.solana_market_pda,
+      });
     }
-    
-    setPendingBulkDeploy(null);
-    queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
-    alert(`✓ Successfully deployed ${pendingBulkDeploy?.marketCount || 0} futures markets to Solana!`);
+
+    const nextIndex = pendingBulkDeploy.currentIndex + 1;
+
+    if (nextIndex < pendingBulkDeploy.instructions.length) {
+      // Move to next market
+      setPendingBulkDeploy(prev => ({ ...prev, currentIndex: nextIndex }));
+    } else {
+      // All done
+      setPendingBulkDeploy(null);
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+      alert(`✓ Successfully deployed all ${pendingBulkDeploy.instructions.length} futures markets to Solana!`);
+    }
   };
 
   const handleDeploySuccess = async (result) => {
@@ -124,21 +154,52 @@ export default function AdminFuturesPanel() {
     },
   });
 
+  const deployedCount = futuresMarkets.filter(m => m.solana_market_created).length;
+  const undeployedCount = futuresMarkets.filter(m => !m.solana_market_created).length;
+
   return (
     <div className="space-y-4">
-      {/* Summary */}
-      <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Globe className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-sm font-bold text-foreground">Country Futures Markets</p>
-            <p className="text-xs text-muted-foreground">Each country has 1st, 2nd, 3rd place outcomes</p>
+      {/* Summary + Actions */}
+      <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5 text-primary" />
+            <div>
+              <p className="text-sm font-bold text-foreground">Country Futures Markets</p>
+              <p className="text-xs text-muted-foreground">
+                {deployedCount} on-chain · {undeployedCount} pending · {futuresMarkets.length} total
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
           <Badge className="bg-primary text-primary-foreground font-bold">
             {futuresMarkets.length} Markets
           </Badge>
+        </div>
+
+        {/* Odds Status Message */}
+        {oddsStatus && (
+          <div className={`text-xs rounded-lg px-3 py-2 ${oddsStatus.error ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-accent/10 text-accent border border-accent/20'}`}>
+            {oddsStatus.error ? `⚠️ ${oddsStatus.error}` : `✓ Fetched odds for ${oddsStatus.count} countries from The Odds API`}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          {/* Step 1: Fetch Odds from API */}
+          <Button
+            size="sm"
+            onClick={handleFetchOdds}
+            disabled={isFetchingOdds}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-8 px-3 rounded-lg"
+          >
+            {isFetchingOdds ? (
+              <><Loader className="w-3 h-3 animate-spin mr-1" /> Fetching...</>
+            ) : (
+              <><TrendingUp className="w-3 h-3 mr-1" /> 1. Fetch Odds API</>
+            )}
+          </Button>
+
+          {/* Step 2: Deploy All to Solana */}
           <Button
             size="sm"
             onClick={handleBulkDeploy}
@@ -146,14 +207,15 @@ export default function AdminFuturesPanel() {
             className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-bold h-8 px-3 rounded-lg"
           >
             {isBulkDeploying ? (
-              <Loader className="w-3 h-3 animate-spin" />
+              <><Loader className="w-3 h-3 animate-spin mr-1" /> Preparing...</>
             ) : (
-              <>
-                <Rocket className="w-3 h-3 mr-1" /> Deploy All
-              </>
+              <><Rocket className="w-3 h-3 mr-1" /> 2. Deploy All ({undeployedCount})</>
             )}
           </Button>
         </div>
+        <p className="text-[10px] text-muted-foreground">
+          Step 1 fetches live odds from The Odds API and creates/updates all 48 country markets. Step 2 deploys them to Solana for on-chain betting.
+        </p>
       </div>
 
       {/* Markets List */}
@@ -293,52 +355,36 @@ export default function AdminFuturesPanel() {
         </div>
       )}
 
-      {/* Bulk Deploy Transaction Modal */}
+      {/* Bulk Deploy Transaction Modal - signs one market at a time */}
       {pendingBulkDeploy && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-lg w-full">
             <div className="space-y-4">
               <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
-                <p className="text-sm font-bold text-primary mb-1">Bulk Deploy {pendingBulkDeploy.marketCount} Markets</p>
+                <p className="text-sm font-bold text-primary mb-1">
+                  Deploy Market {pendingBulkDeploy.currentIndex + 1} of {pendingBulkDeploy.instructions.length}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  This will deploy all {pendingBulkDeploy.marketCount} country futures markets to Solana in a single transaction.
+                  Sign each transaction to deploy markets one at a time. Remaining: {pendingBulkDeploy.instructions.length - pendingBulkDeploy.currentIndex}
                 </p>
               </div>
-              
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                <p className="text-xs font-bold text-foreground mb-2">Markets to deploy:</p>
-                {pendingBulkDeploy.instructions.map((inst, idx) => (
-                  <div key={idx} className="bg-secondary/30 rounded-lg p-2 flex items-center justify-between">
-                    <span className="text-xs font-bold">{inst.marketId?.slice(0, 8)}...{inst.marketId?.slice(-4)}</span>
-                    <Badge className="text-[9px] bg-primary/20 text-primary">Market #{idx + 1}</Badge>
-                  </div>
-                ))}
+
+              {/* Progress bar */}
+              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all"
+                  style={{ width: `${(pendingBulkDeploy.currentIndex / pendingBulkDeploy.instructions.length) * 100}%` }}
+                />
               </div>
 
               <SolanaTransactionSigner
-                instruction={pendingBulkDeploy.instructions[0]}
+                instruction={pendingBulkDeploy.instructions[pendingBulkDeploy.currentIndex]}
                 amount={0}
-                futures_market_id={pendingBulkDeploy.instructions[0]?.futures_market_id}
                 onSuccess={handleBulkDeploySuccess}
               />
-              
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPendingBulkDeploy(null)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={() => {
-                    // For bulk deploy, we'd need to batch multiple transactions
-                    // For now, deploy first market as demo
-                    alert('Note: Full bulk transaction support requires Solana transaction batching. Deploying markets one at a time is recommended for now.');
-                  }}
-                  className="flex-1 bg-accent hover:bg-accent/90"
-                  disabled
-                >
-                  Batch Deploy (Coming Soon)
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => setPendingBulkDeploy(null)} className="w-full">
+                Cancel (Deployed {pendingBulkDeploy.currentIndex} so far)
+              </Button>
             </div>
           </div>
         </div>
