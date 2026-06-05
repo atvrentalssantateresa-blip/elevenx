@@ -148,9 +148,15 @@ Deno.serve(async (req) => {
     const totalPayout = betsToClaim_validated.reduce((sum, b) => sum + (b.actual_payout || b.potential_payout || 0), 0);
     console.log(`✓ Claim: wallet=${trimmedWallet.slice(0, 8)}... | bets=${betsToClaim_validated.length} | total=${totalPayout} SOL | voided=${isVoided}`);
 
-    // If market is voided, not settled on-chain, or position doesn't exist, do DB-only claim
-    if (!marketInfo || isVoided || !isSettledOnChain || !positionExists) {
-      console.log('[claimWinnings] Market voided/not settled/position missing — doing DB-only claim');
+    // If market is voided, not settled on-chain, position doesn't exist, or positionData is missing, do DB-only claim
+    if (!marketInfo || isVoided || !isSettledOnChain || !positionExists || !positionData) {
+      console.log('[claimWinnings] Market voided/not settled/position missing — doing DB-only claim', {
+        marketInfo: !!marketInfo,
+        isVoided,
+        isSettledOnChain,
+        positionExists,
+        positionData: !!positionData,
+      });
       for (const b of betsToClaim_validated) {
         await serviceRole.entities.UserBet.update(b.id, {
           status: 'claimed',
@@ -167,7 +173,7 @@ Deno.serve(async (req) => {
     }
     
     // Check if position was already claimed on-chain
-    if (positionData?.claimed) {
+    if (positionData.claimed) {
       console.log('[claimWinnings] Position already claimed on-chain — doing DB-only update');
       for (const b of betsToClaim_validated) {
         await serviceRole.entities.UserBet.update(b.id, {
@@ -185,10 +191,6 @@ Deno.serve(async (req) => {
     }
     
     console.log('[claimWinnings] Proceeding with on-chain claim');
-    
-    if (!positionData) {
-      return Response.json({ error: 'Position data not available on-chain' }, { status: 400 });
-    }
     
     // Construct claim_winnings instruction for Solana
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
