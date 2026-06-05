@@ -137,14 +137,8 @@ Deno.serve(async (req) => {
       if (!marketInfo) {
         console.log('[settleMarketOnChain] Market not on-chain — using DB-only settlement');
         skipOnChain = true;
-      } else {
-        // Log settle_after for debugging but DO NOT block settlement based on it
-        // (corrupted timestamps like year 29179 would permanently block on-chain settlement)
-        const settleAfterBytes = marketInfo.data.slice(152, 160);
-        const settleAfterTs = Number(BigInt.asIntN(64, new DataView(settleAfterBytes.buffer, settleAfterBytes.byteOffset).getBigInt64(0, true)));
-        const nowTs = Math.floor(Date.now() / 1000);
-        console.log('[settleMarketOnChain] settle_after:', settleAfterTs, 'now:', nowTs, '— forcing on-chain settle (admin override)');
       }
+      // NOTE: We no longer check settle_after timestamp - admin can force settlement anytime
     } catch (e) {
       console.error('[settleMarketOnChain] Could not check market on-chain:', e.message);
     }
