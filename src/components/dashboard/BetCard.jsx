@@ -97,6 +97,9 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
     // Update bet status in DB
     await base44.entities.UserBet.update(bet.id, { status: 'claimed' });
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
+    
+    // Show success message
+    alert(`🎉 Congratulations! You claimed ◎${(bet.potential_payout || 0).toFixed(4)} SOL!\n\nTransaction: ${signature.slice(0, 8)}...${signature.slice(-8)}\nView on Solscan: https://solscan.io/tx/${signature}?cluster=devnet`);
   };
 
   const handleCloseClaimDialog = () => {
@@ -227,26 +230,43 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
           </DialogHeader>
           <div className="space-y-4 py-4">
             {claimSignature ? (
-              <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">Successfully Claimed!</p>
-                <p className="font-heading font-bold text-2xl text-accent">◎{(bet.potential_payout || 0).toFixed(4)} SOL</p>
-                <p className="text-xs text-muted-foreground mt-2">Funds transferred to your wallet</p>
-                <div className="mt-3 pt-3 border-t border-accent/20">
-                  <p className="text-xs text-muted-foreground mb-1">Transaction on Solana</p>
-                  <a
-                    href={`https://solscan.io/tx/${claimSignature}?cluster=devnet`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary text-xs font-bold hover:underline"
-                  >
-                    View on Solscan →
-                    <span className="font-mono text-[10px] text-muted-foreground">{claimSignature.slice(0, 8)}...{claimSignature.slice(-8)}</span>
-                  </a>
+              <div className="bg-accent/10 border border-accent/30 rounded-xl p-6 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
+                    <Trophy className="w-8 h-8 text-accent" />
+                  </div>
                 </div>
+                <div>
+                  <h3 className="font-heading font-bold text-xl text-accent mb-1">🎉 Congratulations!</h3>
+                  <p className="text-sm text-muted-foreground">Your winnings have been claimed</p>
+                </div>
+                <div className="bg-accent/20 border border-accent/40 rounded-xl p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Claim Amount</p>
+                  <p className="font-heading font-bold text-3xl text-accent">◎{(bet.potential_payout || 0).toFixed(4)} SOL</p>
+                  <p className="text-xs text-muted-foreground mt-2">Funds transferred to your wallet</p>
+                </div>
+                <div className="bg-secondary/40 rounded-xl p-3 space-y-2">
+                  <p className="text-[10px] text-muted-foreground">Transaction Signature</p>
+                  <p className="text-xs font-mono text-primary break-all">{claimSignature}</p>
+                </div>
+                <a
+                  href={`https://solscan.io/tx/${claimSignature}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 font-heading font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View on Solscan →
+                  </Button>
+                </a>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={handleCloseClaimDialog}
-                  className="w-full mt-3 h-10 text-sm rounded-xl border-border/50"
+                  className="w-full h-10 text-sm rounded-xl"
                 >
                   Close
                 </Button>
