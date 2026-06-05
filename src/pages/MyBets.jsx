@@ -147,55 +147,13 @@ export default function MyBets() {
   });
 
   // LP offers for the LP tab
-  const { data: allOffers = [] } = useQuery({
-    queryKey: ['allOffers'],
-    queryFn: () => base44.entities.BetOffer.list('-created_date', 100)
-  });
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: () => base44.entities.Match.list()
   });
-  const lpOffers = allOffers.filter((o) => o.lp_wallet_address === walletAddress);
-  const activeLpOffers = lpOffers.filter((o) => o.status === 'open' || o.status === 'partially_matched');
-  const settledLpOffers = lpOffers.filter((o) => ['fully_matched', 'settled', 'cancelled'].includes(o.status));
 
-  const getMatchTitle = (matchId) => {
-    const m = matches.find((m) => m.id === matchId);
-    return m ? `${m.team_a} vs ${m.team_b}` : 'Unknown';
-  };
-
-  const getOutcomeLabel = (offer) => {
-    if (offer.outcome === 'a') return offer.outcome_label || 'Team A';
-    if (offer.outcome === 'b') return offer.outcome_label || 'Team B';
-    return 'Draw';
-  };
-
-  // Traditional LP positions: role='lp' with offer_id AND belongs to current wallet (shows in LP tab)
-  // CRITICAL FIX: Join with live BetOffer data to get real-time match rates!
-  const myLpPositions = myBets.filter((b) => {
-    return b.role === 'lp' && b.offer_id !== null && b.wallet_address === walletAddress;
-  }).map(ub => {
-    const offer = allOffers.find(o => o.id === ub.offer_id);
-    if (offer) {
-      return {
-        ...ub,
-        liquidity_matched: offer.amount_matched,
-        liquidity_unmatched: offer.amount_unmatched,
-        status: offer.status === 'fully_matched' || offer.status === 'partially_matched' ? 'active' : 'pending'
-      };
-    }
-    return ub;
-  });
-  
-  // All other bets (matcher + parimutuel + any bets without offer_id) show in Bets tab
-  const myMatcherBets = myBets.filter((b) => {
-    return b.role !== 'lp' || b.offer_id === null;
-  });
-  
-  // DEBUG: Log filtering results
-  console.log('[MyBets] Total bets:', myBets.length);
-  console.log('[MyBets] myLpPositions (LP with offer_id):', myLpPositions.length, myLpPositions.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id })));
-  console.log('[MyBets] myMatcherBets (all other bets):', myMatcherBets.length, myMatcherBets.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id })));
+  // All bets go to Bets/History tabs - LP positions are ONLY shown in LP Dashboard "My LP" tab
+  const myMatcherBets = myBets.filter(b => b.role !== 'lp' || !b.offer_id);
   
   const totalStaked = myMatcherBets.reduce((s, b) => s + (b.amount || 0), 0);
   const totalWon = myMatcherBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
@@ -219,55 +177,6 @@ export default function MyBets() {
   const handleRefundSuccess = () => {
     setRefundDialog(null);
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
-  };
-
-  const withdrawLpMutation = useMutation({
-    mutationFn: async (offer) => {
-      const res = await base44.functions.invoke('withdrawLiquidity', {
-        walletAddress,
-        userBetId: offer.userBetId
-      });
-      if (res.data.error) throw new Error(res.data.error);
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setPendingWithdrawTx({
-        instruction: data.solana_instruction,
-        amount: data.amount,
-        userBetId: data.userBetId,
-        offerId: data.offerId
-      });
-    },
-    onError: (err) => {
-      console.error('[MyBets] Withdraw error:', err);
-    }
-  });
-
-  const handleWithdrawSuccess = async (txResult) => {
-    const signature = txResult.signature;
-    if (pendingWithdrawTx?.userBetId && pendingWithdrawTx?.offerId) {
-      try {
-        const commitRes = await base44.functions.invoke('finalizeWithdrawal', {
-          signature,
-          userBetId: pendingWithdrawTx.userBetId,
-          offerId: pendingWithdrawTx.offerId
-        });
-        if (commitRes.data.error) {
-          console.error('[MyBets] finalizeWithdrawal error:', commitRes.data.error);
-        }
-      } catch (err) {
-        console.error('[MyBets] finalizeWithdrawal threw:', err);
-      }
-    }
-    setPendingWithdrawTx(null);
-    // Invalidate both lpOffers AND myBets to refresh totals and remove withdrawn bets
-    queryClient.invalidateQueries({ queryKey: ['lpOffers', walletAddress] });
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-  };
-
-  const handleWithdrawError = (err) => {
-    console.error('[MyBets] Withdraw tx error:', err);
-    setPendingWithdrawTx(null);
   };
 
   const handleBatchClaim = async (matchId, bets) => {
@@ -368,28 +277,7 @@ export default function MyBets() {
         
       </div>
       
-      {/* LP Stats - includes both traditional and parimutuel LP */}
-      {myLpPositions.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-          <QuickStat
-            label="Liquidity Provided"
-            value={`◎${myLpPositions.reduce((s, lp) => s + (lp.liquidity_deposited || lp.amount || 0), 0).toFixed(4)}`}
-            icon={TrendingUp}
-            color="bg-primary/10 text-primary" />
-          
-          <QuickStat
-            label="LP Positions"
-            value={myLpPositions.length}
-            icon={DollarSign}
-            color="bg-primary/10 text-primary" />
-          
-          <QuickStat
-            label="Unmatched Liquidity"
-            value={`◎${myLpPositions.reduce((s, lp) => s + (lp.liquidity_unmatched || 0), 0).toFixed(4)}`}
-            icon={Wallet}
-            color="bg-yellow-500/10 text-yellow-400" />
-        </div>
-      )}
+
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
         <QuickStat
@@ -413,16 +301,11 @@ export default function MyBets() {
       </div>
 
       <Tabs defaultValue="bets" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 bg-card border border-border/50 rounded-xl">
+        <TabsList className="grid w-full grid-cols-2 bg-card border border-border/50 rounded-xl">
           <TabsTrigger value="bets" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-lg text-xs sm:text-sm">
             <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className="hidden sm:inline">My Bets ({myMatcherBets.length})</span>
             <span className="sm:hidden">Bets ({myMatcherBets.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="liquidity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg text-xs sm:text-sm">
-            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="hidden sm:inline">Liquidity ({myLpPositions.length})</span>
-            <span className="sm:hidden">LP ({myLpPositions.length})</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg text-xs sm:text-sm">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
@@ -449,54 +332,7 @@ export default function MyBets() {
           }
         </TabsContent>
 
-        <TabsContent value="liquidity">
-          {myLpPositions.length > 0 ?
-          <div className="space-y-4">
-            {/* Unmatched Liquidity Summary */}
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-yellow-400" />
-                  <h3 className="font-heading font-bold text-sm text-yellow-400">Available to Withdraw</h3>
-                </div>
-                <p className="font-heading font-bold text-xl text-yellow-400">
-                  ◎{myLpPositions.reduce((s, lp) => s + (lp.liquidity_unmatched || 0), 0).toFixed(4)} SOL
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Unmatched funds can be withdrawn anytime — no lock-up period
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {myLpPositions.map((lp, i) => {
-                // Find match data for this position
-                const lpMatch = matches.find(m => m.id === lp.match_id);
-                return (
-                  <LpPositionCard
-                    key={lp.id}
-                    position={lp}
-                    match={lpMatch}
-                    index={i}
-                    walletAddress={walletAddress}
-                    onWithdrawRequest={(data) => {
-                      // Handle LP withdraw dialog
-                      setPendingWithdrawTx({
-                        instruction: data.solanaInstruction,
-                        amount: data.withdrawAmount,
-                        userBetId: data.positionId,
-                        offerId: data.offerId
-                      });
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div> :
 
-          <EmptyState message="No liquidity positions" actionText="Provide Liquidity" link="/matches" />
-          }
-        </TabsContent>
 
         <TabsContent value="history">
           {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
@@ -517,39 +353,7 @@ export default function MyBets() {
         </TabsContent>
       </Tabs>
 
-      {/* LP Withdraw Dialog */}
-      {pendingWithdrawTx && (
-        <Dialog open={!!pendingWithdrawTx} onOpenChange={() => setPendingWithdrawTx(null)}>
-          <DialogContent className="bg-card border-border/50 max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-heading">Withdraw Unmatched Liquidity</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
-                <p className="text-sm text-muted-foreground">Withdraw Amount</p>
-                <p className="font-heading font-bold text-2xl text-yellow-400">◎{pendingWithdrawTx.amount?.toFixed(4)} SOL</p>
-                <p className="text-xs text-muted-foreground mt-2">Unmatched liquidity returned to your wallet</p>
-              </div>
-              
-              <SolanaTransactionSigner
-                instruction={pendingWithdrawTx.instruction}
-                amount={pendingWithdrawTx.amount?.toFixed(4) || '0'}
-                userBetId={pendingWithdrawTx.userBetId}
-                offerId={pendingWithdrawTx.offerId}
-                onSuccess={handleWithdrawSuccess}
-                onError={handleWithdrawError} />
-              
-              <Button
-                variant="outline"
-                onClick={() => setPendingWithdrawTx(null)}
-                className="w-full h-10 text-sm rounded-xl border-border/50">
-                
-                Cancel
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
 
       {myBets.length === 0 && !isLoading &&
       <div className="text-center py-16 sm:py-20">
