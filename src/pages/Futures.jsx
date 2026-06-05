@@ -34,7 +34,8 @@ export default function Futures() {
     }
     
     const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-    return futuresMarkets.filter(m => m.country && groupTeams.includes(m.country));
+    // Show markets that match group OR don't have a country assigned (test markets)
+    return futuresMarkets.filter(m => !m.country || groupTeams.includes(m.country));
   }, [futuresMarkets, activeGroup]);
 
   // Scroll to group section
@@ -204,7 +205,8 @@ export default function Futures() {
     ? searchFilteredMarkets 
     : searchFilteredMarkets.filter(m => {
         const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-        return m.country && groupTeams.includes(m.country);
+        // Show markets that match group OR are test markets (country='Test')
+        return m.country === 'Test' || groupTeams.includes(m.country);
       });
 
   // Auto-scroll to first matching group when search query changes
@@ -229,8 +231,10 @@ export default function Futures() {
     }
   }, [searchQuery]);
 
-  const openMarkets = filteredMarkets.filter((m) => m.status === 'open');
-  const comingMarkets = filteredMarkets.filter((m) => m.status === 'coming_soon');
+  // Separate test markets from real markets
+  const testMarkets = futuresMarkets.filter(m => m.title?.includes('Quick Test') || m.title?.includes('Future Test'));
+  const openMarkets = filteredMarkets.filter((m) => m.status === 'open' && !m.title?.includes('Quick Test') && !m.title?.includes('Future Test'));
+  const comingMarkets = filteredMarkets.filter((m) => m.status === 'coming_soon' && !m.title?.includes('Quick Test') && !m.title?.includes('Future Test'));
 
   // Calculate totals for hero
   const totalPool = openMarkets.reduce((sum, m) =>
@@ -347,6 +351,29 @@ export default function Futures() {
         />
       </motion.div>
 
+      {/* Test Markets Section (always at top when ALL groups selected) */}
+      {activeGroup === 'ALL' && testMarkets.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-600/20 to-emerald-400/10 border border-emerald-600/30 flex items-center justify-center">
+              <span className="font-heading font-black text-base sm:text-lg text-emerald-400">TEST</span>
+            </div>
+            <div>
+              <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Quick Test Markets</h2>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                {testMarkets.length} test market{testMarkets.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {testMarkets.map((m, i) => (
+              <FuturesCard key={m.id} market={m} index={i} onSelect={handleCountrySelect} />
+            ))}
+          </div>
+        </section>
+      )}
+      
+      {/* Regular Futures Markets */}
       {filteredMarkets.length > 0 ? (
         activeGroup !== 'ALL' ? (
           /* Single Group View */
