@@ -29,28 +29,24 @@ export default function Admin() {
     }
   }, []);
 
-  // Fetch all bets WITHOUT any status filter
   const { data: allBets = [], isLoading: isLoadingBets } = useQuery({
     queryKey: ['allBets'],
     queryFn: async () => {
-      console.log('[Admin] Fetching all bets...');
       const bets = await base44.entities.Bet.list();
-      console.log('[Admin] Fetched bets count:', bets.length, 'Bets:', bets);
       return bets;
-    }
+    },
   });
 
-  // Fetch all matches to map with bets
   const { data: allMatches = {} } = useQuery({
     queryKey: ['allMatches'],
     queryFn: async () => {
       const matches = await base44.entities.Match.list();
       const matchMap = {};
-      matches.forEach((m) => {
+      matches.forEach(m => {
         matchMap[m.id] = m;
       });
       return matchMap;
-    }
+    },
   });
 
   const handleSettle = async (bet, outcome) => {
@@ -59,7 +55,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: outcome,
-        admin_wallet: walletAddress
+        admin_wallet: walletAddress,
       });
 
       if (res.data.error) {
@@ -70,10 +66,9 @@ export default function Admin() {
       setSettleDialog({
         instruction: res.data.solana_instruction,
         bet,
-        outcome
+        outcome,
       });
     } catch (err) {
-      console.error('[Admin] Settlement error:', err);
       alert('Failed to prepare settlement: ' + err.message);
     }
   };
@@ -84,7 +79,7 @@ export default function Admin() {
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: 'void',
-        admin_wallet: walletAddress
+        admin_wallet: walletAddress,
       });
 
       if (res.data.error) {
@@ -94,36 +89,31 @@ export default function Admin() {
 
       setVoidDialog({
         instruction: res.data.solana_instruction,
-        bet
+        bet,
       });
     } catch (err) {
-      console.error('[Admin] Void error:', err);
       alert('Failed to prepare void: ' + err.message);
     }
   };
 
   const handleSettleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['allBets'] });
-    queryClient.invalidateQueries({ queryKey: ['marketStatus'] });
     setSettleDialog(null);
   };
 
   const handleVoidSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['allBets'] });
-    queryClient.invalidateQueries({ queryKey: ['marketStatus'] });
     setVoidDialog(null);
   };
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
         <div>
           <h1 className="font-heading font-bold text-3xl text-white mb-2">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground">Manage betting markets and settlements</p>
         </div>
 
-        {/* Wallet Status */}
         <Card className="bg-card/50 border-border/50 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -136,7 +126,6 @@ export default function Admin() {
           </div>
         </Card>
 
-        {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-secondary/20 border border-border/50 rounded-xl p-1">
             <TabsTrigger value="bets" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
@@ -157,48 +146,45 @@ export default function Admin() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Bets Tab */}
           <TabsContent value="bets" className="mt-4">
             <Card className="bg-card/50 border-border/50 p-4">
               <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
               
-              {isLoadingBets ?
-              <div className="flex items-center justify-center py-12">
+              {isLoadingBets ? (
+                <div className="flex items-center justify-center py-12">
                   <Loader className="w-6 h-6 animate-spin text-primary mr-2" />
                   <span className="text-muted-foreground">Loading bets...</span>
-                </div> :
-              allBets.length === 0 ?
-              <div className="flex items-center gap-3 py-6">
+                </div>
+              ) : allBets.length === 0 ? (
+                <div className="flex items-center gap-3 py-6">
                   <AlertCircle className="w-5 h-5 text-muted-foreground" />
                   <p className="text-muted-foreground">No bets found</p>
-                </div> :
-
-              <div className="space-y-4">
-                  {allBets.map((bet) =>
-                <div key={bet.id} className="border border-border/30 rounded-lg p-3">
-                      <AdminBetRow
-                    bet={bet}
-                    match={allMatches[bet.match_id]}
-                    onSettle={handleSettle}
-                    onVoid={handleVoid} />
-                  
-                    </div>
-                )}
                 </div>
-              }
+              ) : (
+                <div className="space-y-4">
+                  {allBets.map((bet) => (
+                    <div key={bet.id} className="border border-border/30 rounded-lg p-3">
+                      <AdminBetRow
+                        bet={bet}
+                        match={allMatches[bet.match_id]}
+                        onSettle={handleSettle}
+                        onVoid={handleVoid}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
-          {/* Futures Tab */}
           <TabsContent value="futures" className="mt-4">
             <AdminFuturesPanel walletAddress={walletAddress} />
           </TabsContent>
 
-          {/* Actions Tab */}
           <TabsContent value="actions" className="mt-4">
             <Card className="bg-card/50 border-border/50 p-6">
               <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Button
                   onClick={async () => {
                     try {
@@ -209,10 +195,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl">
-                  
-                  <span className="font-bold">Create Test</span>
-                  <span className="text-xs text-muted-foreground">Quick match</span>
+                  className="h-24 flex flex-col gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">⚡ Create Quick Test</span>
+                  <span className="text-xs text-muted-foreground">Instant match + bet</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -224,9 +210,9 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl">
-                  
-                  <span className="font-bold">Bulk Deploy</span>
+                  className="h-24 flex flex-col gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">🚀 Bulk Deploy</span>
                   <span className="text-xs text-muted-foreground">All matches</span>
                 </Button>
                 <Button
@@ -239,10 +225,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
-                  <span className="font-bold">Sync World Cup</span>
-                  <span className="text-xs text-muted-foreground">Fetch matches</span>
+                  className="h-24 flex flex-col gap-2 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  <span className="font-bold text-lg">🌍 Sync World Cup</span>
+                  <span className="text-xs text-muted-foreground">Fetch from API</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -253,16 +239,75 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-20 flex flex-col gap-1 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
-                  <span className="font-bold">Deploy Futures</span>
-                  <span className="text-xs text-muted-foreground">All futures</span>
+                  className="h-24 flex flex-col gap-2 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
+                  <span className="font-bold text-lg">📊 Deploy Futures</span>
+                  <span className="text-xs text-muted-foreground">All countries</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('createTestBetWithLiveOdds');
+                      alert('✓ Test bet with live odds created!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">📈 Live Odds Bet</span>
+                  <span className="text-xs text-muted-foreground">Real API odds</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('createTestBetWithApiMatch');
+                      alert('✓ API match bet created!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">🎯 API Match</span>
+                  <span className="text-xs text-muted-foreground">Real match data</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('resetAndSync');
+                      alert('✓ Database reset & synced!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">🔄 Reset & Sync</span>
+                  <span className="text-xs text-muted-foreground">Clear all data</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      await base44.functions.invoke('clearDatabase');
+                      alert('✓ Database cleared!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                    } catch (err) {
+                      alert('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg">🗑️ Clear DB</span>
+                  <span className="text-xs text-muted-foreground">Delete everything</span>
                 </Button>
               </div>
             </Card>
           </TabsContent>
 
-          {/* Platform Tab */}
           <TabsContent value="platform" className="mt-4">
             <Card className="bg-card/50 border-border/50 p-6">
               <h2 className="font-heading font-bold text-xl text-white mb-4">Platform Settings</h2>
@@ -276,8 +321,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl">
-                  
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
                   Init Platform
                 </Button>
                 <Button
@@ -289,8 +334,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
-                  
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
                   Check Config
                 </Button>
                 <Button
@@ -302,8 +347,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
-                  
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
                   Debug Admin
                 </Button>
                 <Button
@@ -315,8 +360,8 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl text-[hsl(var(--foreground))]">
-                  
+                  className="h-16 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                >
                   Full Test
                 </Button>
               </div>
@@ -324,52 +369,50 @@ export default function Admin() {
           </TabsContent>
         </Tabs>
 
-        {/* Settlement Dialog */}
-        {settleDialog &&
-        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {settleDialog && (
+          <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Settle Market</h3>
               <p className="text-sm text-muted-foreground">Outcome: <span className="text-primary font-bold">{settleDialog.outcome.toUpperCase()}</span></p>
               <SolanaTransactionSigner
-              instruction={settleDialog.instruction}
-              amount={0}
-              onSuccess={handleSettleSuccess}
-              onError={(err) => console.error('[Admin] Settlement failed:', err)} />
-            
+                instruction={settleDialog.instruction}
+                amount={0}
+                onSuccess={handleSettleSuccess}
+                onError={(err) => console.error('[Admin] Settlement failed:', err)}
+              />
               <Button
-              onClick={() => setSettleDialog(null)}
-              variant="outline"
-              className="w-full">
-              
+                onClick={() => setSettleDialog(null)}
+                variant="outline"
+                className="w-full"
+              >
                 Cancel
               </Button>
             </div>
           </Card>
-        }
+        )}
 
-        {/* Void Dialog */}
-        {voidDialog &&
-        <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
+        {voidDialog && (
+          <Card className="bg-card border-border p-6 fixed inset-4 z-50 max-w-lg mx-auto my-auto">
             <div className="space-y-4">
               <h3 className="font-heading font-bold text-lg text-white">Void Market</h3>
               <p className="text-sm text-muted-foreground">This will refund all bettors</p>
               <SolanaTransactionSigner
-              instruction={voidDialog.instruction}
-              amount={0}
-              onSuccess={handleVoidSuccess}
-              onError={(err) => console.error('[Admin] Void failed:', err)} />
-            
+                instruction={voidDialog.instruction}
+                amount={0}
+                onSuccess={handleVoidSuccess}
+                onError={(err) => console.error('[Admin] Void failed:', err)}
+              />
               <Button
-              onClick={() => setVoidDialog(null)}
-              variant="outline"
-              className="w-full">
-              
+                onClick={() => setVoidDialog(null)}
+                variant="outline"
+                className="w-full"
+              >
                 Cancel
               </Button>
             </div>
           </Card>
-        }
+        )}
       </div>
-    </div>);
-
+    </div>
+  );
 }
