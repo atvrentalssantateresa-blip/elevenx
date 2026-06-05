@@ -99,7 +99,7 @@ export default function FixAdmin() {
                   </h3>
                   {platformDebug?.initialized && (
                     <p className="text-sm text-muted-foreground">
-                      Current admin: <span className="font-mono">{platformDebug.adminAddressShort}</span>
+                      Current admin: <span className="font-mono">{platformDebug.admin?.slice(0, 8)}...{platformDebug.admin?.slice(-8)}</span>
                     </p>
                   )}
                 </div>
@@ -119,7 +119,7 @@ export default function FixAdmin() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">On-chain admin:</span>
-                  <span className="font-mono text-sm">{platformDebug.adminAddressShort}</span>
+                  <span className="font-mono text-sm">{platformDebug.admin?.slice(0, 8)}...{platformDebug.admin?.slice(-8)}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
                   <span className="text-sm text-muted-foreground">Your wallet:</span>

@@ -210,7 +210,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // Claim winnings - program instruction to transfer SOL from pool to user
         console.log('Creating claim_winnings program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
+        const programId = new PublicKey(instruction.programId);
         const keys = instruction.keys?.map(k => ({
           pubkey: new PublicKey(k.pubkey),
           isSigner: k.isSigner,
@@ -237,7 +237,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // provide_liquidity — call the actual program instruction
         console.log('Creating provide_liquidity program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
+        const programId = new PublicKey(instruction.programId);
         
         // Build keys in the EXACT order required by the Rust ProvideLiquidity struct:
         // market, lp_offer, lp (signer), system_program
@@ -285,7 +285,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           throw new Error('Invalid market configuration. Admin must deploy this market on-chain first.');
         }
         
-        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
+        const programId = new PublicKey(instruction.programId);
         
         // Build keys - handle parimutuel mode (no LP offer PDA)
         const keys = [];
@@ -363,7 +363,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // claim_refund — program instruction to refund user's stake (uses on-chain 'refund' instruction)
         console.log('Creating claim_refund program instruction:', instruction);
         
-        const programId = new PublicKey(instruction.programId || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm');
+        const programId = new PublicKey(instruction.programId);
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.positionPda), isSigner: false, isWritable: true },
