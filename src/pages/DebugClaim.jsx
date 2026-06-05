@@ -15,6 +15,9 @@ export default function DebugClaim() {
 
   const debugMutation = useMutation({
     mutationFn: async () => {
+      if (!walletAddress) {
+        throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
+      }
       const res = await base44.functions.invoke('debugClaim', {
         userBetId: userBetId || undefined,
         walletAddress
