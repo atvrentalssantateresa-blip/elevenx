@@ -170,11 +170,11 @@ export default function MyBets() {
     return 'Draw';
   };
 
-  // CRITICAL: Parimutuel bets (role='lp' with _isParimutuel=true) show as regular bets
-  // Only traditional LP positions (role='lp' without _isParimutuel) show in LP tab
+  // CRITICAL: Parimutuel bets (role='lp' with _isParimutuel=true or no offer_id) show as regular bets
+  // Only traditional LP positions (role='lp' WITH offer_id and NOT parimutuel) show in LP tab
   const myLpPositions = myBets.filter((b) => {
-    // Traditional LP: role='lp', NOT parimutuel, has offer_id (traditional LP created offer)
-    return b.role === 'lp' && b._isParimutuel !== true && b.offer_id !== null;
+    // Traditional LP: role='lp', has offer_id, NOT parimutuel
+    return b.role === 'lp' && b.offer_id !== null && b._isParimutuel !== true;
   });
   
   // Parimutuel bets show as regular bets (bettor IS LP on-chain but UI disguises as bet)

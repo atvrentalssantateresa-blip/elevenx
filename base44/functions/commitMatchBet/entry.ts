@@ -40,8 +40,11 @@ Deno.serve(async (req) => {
       console.log('[commitMatchBet] Updated BetOffer:', userBet.offer_id);
     }
     
-    // Create UserBet record
-    const createdBet = await serviceRole.entities.UserBet.create(userBet);
+    // Create UserBet record (preserve parimutuel flag if present)
+    const createdBet = await serviceRole.entities.UserBet.create({
+      ...userBet,
+      _isParimutuel: userBet._isParimutuel || false,
+    });
     console.log('[commitMatchBet] Created UserBet:', createdBet.id);
     
     // Update Bet pool totals and bettor count

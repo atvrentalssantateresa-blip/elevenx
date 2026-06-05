@@ -129,8 +129,8 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   const canRefund = bet.status === 'refunded';
   const isCompleted = ['lost', 'claimed', 'void'].includes(bet.status);
   
-  // Parimutuel LP bet with unmatched liquidity
-  const isParimutuelLp = bet.role === 'lp' && bet._isParimutuel === true;
+  // Parimutuel LP bet with unmatched liquidity (bettor IS LP but UI treats as bet)
+  const isParimutuelLp = bet.role === 'lp' && (bet._isParimutuel === true || !bet.offer_id);
   const unmatched = bet.liquidity_unmatched || (isParimutuelLp && bet.status !== 'claimed' ? bet.amount : 0);
   const canWithdraw = isParimutuelLp && unmatched > 0;
 

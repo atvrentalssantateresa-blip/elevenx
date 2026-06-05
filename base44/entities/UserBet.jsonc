@@ -71,6 +71,26 @@
     "wallet_address": {
       "type": "string",
       "description": "Solana wallet address of the bettor/LP"
+    },
+    "liquidity_deposited": {
+      "type": "number",
+      "default": 0,
+      "description": "For LP roles: total SOL deposited"
+    },
+    "liquidity_matched": {
+      "type": "number",
+      "default": 0,
+      "description": "For LP roles: how much has been matched by bettors"
+    },
+    "liquidity_unmatched": {
+      "type": "number",
+      "default": 0,
+      "description": "For LP roles: remaining unmatched liquidity available for withdrawal"
+    },
+    "_isParimutuel": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this is a parimutuel bet (user is LP on-chain, but UI treats as bet)"
     }
   },
   "required": [
