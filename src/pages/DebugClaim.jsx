@@ -123,9 +123,14 @@ export default function DebugClaim() {
                             <p className="text-xs mt-1">
                               Outcome: {bet.outcome} | Amount: ◎{bet.amount?.toFixed(4)} | Payout: ◎{bet.potential_payout?.toFixed(4)}
                             </p>
-                            {bet.onChain && (
+                            {bet.positionData && (
                               <p className="text-xs text-accent mt-1">
-                                ✅ Position on-chain | Claimed: {bet.onChain.claimed ? 'Yes' : 'No'} | Claimable: ◎{Number(bet.onChain.claimable || bet.onChain.potential_payout)?.toFixed(4)}
+                                ✅ Position on-chain | Claimed: {bet.positionData.claimed ? 'Yes' : 'No'} | Claimable: ◎{(bet.positionData.claimable || bet.positionData.potential_payout || bet.potential_payout || 0).toFixed(4)}
+                              </p>
+                            )}
+                            {!bet.positionData && bet.positionExists && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                ⚠️ Position exists but data couldn't be parsed
                               </p>
                             )}
                           </div>
@@ -159,7 +164,7 @@ export default function DebugClaim() {
                     <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
                       <p className="font-bold text-accent mb-2">✅ {debugResult.claimableBets.length} Bet(s) Ready to Claim!</p>
                       <p className="text-xs">
-                        Total claimable: ◎{debugResult.totalClaimable?.toFixed(4)} SOL
+                        Total claimable: ◎{(debugResult.totalClaimable || 0).toFixed(4)} SOL
                       </p>
                     </div>
                   )}
