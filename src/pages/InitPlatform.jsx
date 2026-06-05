@@ -11,6 +11,7 @@ export default function InitPlatform() {
   const { isConnected, connect } = useWallet();
   const [instruction, setInstruction] = useState(null);
   const [error, setError] = useState(null);
+  const { walletAddress } = useWallet();
 
   const { data: platformStatus } = useQuery({
     queryKey: ['platformStatus'],
@@ -19,7 +20,10 @@ export default function InitPlatform() {
 
   const handleInit = async () => {
     try {
-      const res = await base44.functions.invoke('initPlatformConfig', {});
+      if (!walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+      const res = await base44.functions.invoke('reinitPlatformWithWallet', { walletAddress });
       if (res.data.error) throw new Error(res.data.error);
       setInstruction(res.data.solana_instruction);
     } catch (err) {
@@ -87,6 +91,8 @@ export default function InitPlatform() {
           >
             {!isConnected ? (
               <>Connect Wallet First</>
+            ) : platformStatus?.data?.initialized ? (
+              <>Reinitialize Platform (Fix Admin)</>
             ) : (
               <>Initialize Platform</>
             )}
