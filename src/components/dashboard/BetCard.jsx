@@ -13,13 +13,13 @@ import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner
 import { calculatePoolShare } from '@/utils/parimutuel';
 
 const statusConfig = {
-  active:   { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock, label: 'Active' },
-  pending:  { color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', icon: Clock, label: 'Pending' },
-  won:      { color: 'bg-accent/20 text-accent border-accent/20', icon: TrendingUp, label: 'Won' },
-  lost:     { color: 'bg-destructive/10 text-destructive border-destructive/20', icon: TrendingDown, label: 'Lost' },
-  claimed:  { color: 'bg-accent/20 text-accent border-accent/20', icon: Trophy, label: 'Claimed' },
-  refunded: { color: 'bg-secondary text-secondary-foreground border-border', icon: Trophy, label: 'Refunded' },
-  void:     { color: 'bg-muted text-muted-foreground border-border', icon: Clock, label: 'Void' },
+  active:   { color: 'bg-primary/5 text-primary border-primary/10', icon: Clock, label: 'Active' },
+  pending:  { color: 'bg-yellow-500/5 text-yellow-400 border-yellow-500/10', icon: Clock, label: 'Pending' },
+  won:      { color: 'bg-accent/5 text-accent border-accent/10', icon: TrendingUp, label: 'Won' },
+  lost:     { color: 'bg-destructive/5 text-destructive border-destructive/10', icon: TrendingDown, label: 'Lost' },
+  claimed:  { color: 'bg-accent/5 text-accent border-accent/10', icon: Trophy, label: 'Claimed' },
+  refunded: { color: 'bg-secondary/50 text-secondary-foreground border-border', icon: Trophy, label: 'Refunded' },
+  void:     { color: 'bg-muted/50 text-muted-foreground border-border', icon: Clock, label: 'Void' },
 };
 
 export default function BetCard({ bet, index, walletAddress, onRefundRequest }) {
@@ -324,119 +324,78 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
         <Card className="bg-[#1c1c1c] border border-primary/20 rounded-2xl overflow-hidden h-full flex flex-col">
           <CardContent className="p-0 flex-1 flex flex-col">
             <div className="p-5 space-y-4 flex-1 flex flex-col">
-              {/* Header with Flag */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 flex-1">
-                  {/* Status Icon */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${config.color}`}>
-                    <StatusIcon className="w-6 h-6" />
-                  </div>
-                  {/* Outcome Flag & Label */}
-                  <div className="flex items-center gap-2 flex-shrink-0 bg-secondary/50 px-3 py-2 rounded-xl border border-border/50">
-                    <span className="text-2xl">{outcomeFlag || '🏆'}</span>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Backed</p>
-                      <p className="text-sm font-heading font-bold text-foreground truncate max-w-[120px]">{outcomeTeam || bet.outcome_label}</p>
-                    </div>
-                  </div>
-                  {/* Match Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-heading font-bold text-lg truncate">{bet.match_title || 'Match'}</h3>
-                      <Badge className={`text-[10px] border ${config.color}`}>{config.label}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {bet.role === 'lp' ? (
-                        <span className="text-primary font-semibold">⚡ Liquidity Provider</span>
-                      ) : (
-                        <span className="text-accent font-semibold">🎯 Bettor</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <Link to={`/match/${bet.match_id}`}>
-                  <Button variant="ghost" size="icon" className="rounded-xl">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </Link>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] text-muted-foreground font-semibold truncate">
+                  {bet.match_title || 'Match'}
+                </span>
+                <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${config.color}`}>
+                  {config.label}
+                </Badge>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 bg-[#1a1a1a] rounded-xl p-4 border border-border/30">
-                <div>
-                  <p className="text-[10px] text-muted-foreground mb-1">
-                    {bet.betCount && bet.betCount > 1 ? 'Total Stake' : 'Stake'}
-                  </p>
-                  <p className="font-heading font-bold text-foreground">◎{(bet.totalAmount || bet.amount)?.toFixed(4)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground mb-1">Potential</p>
-                  <p className="font-heading font-bold text-primary">◎{(bet.totalPayout || bet.potential_payout || 0).toFixed(4)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground mb-1">
-                    {bet.betCount && bet.betCount > 1 ? 'Bets' : 'Role'}
-                  </p>
-                  <p className="font-heading font-bold text-accent capitalize">
-                    {bet.betCount && bet.betCount > 1 ? `${bet.betCount} Bets` : (bet.role === 'lp' ? 'LP' : 'Bettor')}
+              {/* Outcome */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="text-4xl">{outcomeFlag || '🏆'}</div>
+                <div className="flex-1">
+                  <h3 className="font-heading font-bold text-sm text-foreground truncate">{outcomeTeam || bet.outcome_label}</h3>
+                  <p className="text-[10px] text-muted-foreground">
+                    {bet.role === 'lp' ? 'Liquidity Provider' : (bet.betCount > 1 ? `${bet.betCount} Bets` : 'Bettor')}
                   </p>
                 </div>
               </div>
 
-              {/* Pool Share Display - For parimutuel LP bets only */}
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className={`rounded-lg px-2 py-2 text-center border ${bet.status === 'won' || bet.status === 'claimed' ? 'bg-accent/5 border-accent/10' : 'bg-primary/5 border-primary/10'}`}>
+                  <p className="text-[9px] text-muted-foreground truncate">{bet.betCount && bet.betCount > 1 ? 'Total Stake' : 'Stake'}</p>
+                  <p className="font-bold text-foreground text-xs">◎{(bet.totalAmount || bet.amount)?.toFixed(4)}</p>
+                </div>
+                <div className={`rounded-lg px-2 py-2 text-center border ${bet.status === 'won' || bet.status === 'claimed' ? 'bg-accent/5 border-accent/10' : 'bg-primary/5 border-primary/10'}`}>
+                  <p className="text-[9px] text-muted-foreground truncate">Potential</p>
+                  <p className="font-bold text-primary text-xs">◎{(bet.totalPayout || bet.potential_payout || 0).toFixed(4)}</p>
+                </div>
+                <div className="rounded-lg px-2 py-2 text-center border bg-secondary/50 border-border/30">
+                  <p className="text-[9px] text-muted-foreground truncate">{bet.betCount && bet.betCount > 1 ? 'Bets' : 'Role'}</p>
+                  <p className="font-bold text-accent text-xs capitalize">{bet.betCount && bet.betCount > 1 ? `${bet.betCount}` : (bet.role === 'lp' ? 'LP' : 'Bettor')}</p>
+                </div>
+              </div>
+
+              {/* Pool Share / Progress */}
               {isParimutuelActive && (
-                <div className="bg-gradient-to-br from-accent/5 to-primary/5 border border-accent/20 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PieChart className="w-4 h-4 text-accent" />
-                      <span className="text-xs font-bold text-muted-foreground">
-                        Your Pool Share
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-accent animate-pulse" />
-                      <span className="text-sm font-heading font-bold text-accent">{poolShare.toFixed(2)}%</span>
-                    </div>
+                <div className="pt-3 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+                    <span>Pool Share</span>
+                    <span className="font-bold text-accent">{poolShare.toFixed(2)}%</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground text-center">
-                    You own {poolShare.toFixed(2)}% of the total pool (◎{bet.total_pool?.toFixed(4)})
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-accent rounded-full" style={{ width: `${poolShare}%` }} />
                   </div>
                 </div>
               )}
 
-              {/* Match Progress Gauge - For fixed-odds bets only */}
               {!isParimutuelActive && (bet.status === 'pending' || bet.status === 'active') && (
-                <div className="bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Target className={`w-4 h-4 ${isFullyMatched ? 'text-accent' : 'text-primary'}`} />
-                      <span className="text-xs font-bold text-muted-foreground">
-                        {isFullyMatched ? '✅ Fully Matched' : '⏳ Matching Progress'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isFullyMatched && <Zap className="w-4 h-4 text-accent animate-pulse" />}
-                      <span className="text-sm font-heading font-bold text-primary">{matchProgress}%</span>
-                    </div>
+                <div className="pt-3 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+                    <span>{isFullyMatched ? 'Fully Matched' : 'Matching'}</span>
+                    <span className="font-bold text-primary">{matchProgress}%</span>
                   </div>
-                  <Progress value={matchProgress} className="h-2 bg-secondary/50" />
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>Matched: ◎{(bet.amount - (unmatched || 0)).toFixed(4)}</span>
-                    {unmatched > 0 && <span>Unmatched: ◎{unmatched.toFixed(4)}</span>}
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${matchProgress}%` }} />
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons - Push to bottom */}
-              <div className="flex gap-2 mt-auto pt-2">
+              {/* Action Button */}
+              <div className="pt-3 border-t border-border/30">
                 {canWithdraw && (
                   <Button
                     onClick={() => withdrawMutation.mutate()}
                     disabled={withdrawMutation.isPending || withdrawDialogOpen}
-                    className="flex-1 h-11 bg-yellow-500 hover:bg-yellow-500/90 text-white font-bold rounded-xl"
+                    className="w-full h-10 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-xl border border-yellow-500/20"
                   >
                     {withdrawMutation.isPending ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
@@ -449,10 +408,10 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   <Button
                     onClick={() => claimMutation.mutate()}
                     disabled={claimMutation.isPending || claimDialogOpen}
-                    className="flex-1 h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-bold rounded-xl"
+                    className="w-full h-10 bg-accent/10 hover:bg-accent/20 text-accent font-bold rounded-xl border border-accent/20"
                   >
                     {claimMutation.isPending ? (
-                      <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                     ) : (
                       <>
                         <Trophy className="w-4 h-4 mr-2" />
@@ -465,10 +424,10 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   <Button
                     onClick={() => claimRefundMutation.mutate()}
                     disabled={claimRefundMutation.isPending}
-                    className="flex-1 h-11 bg-yellow-500 hover:bg-yellow-500/90 text-white font-bold rounded-xl"
+                    className="w-full h-10 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-bold rounded-xl border border-yellow-500/20"
                   >
                     {claimRefundMutation.isPending ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
@@ -478,11 +437,11 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                   </Button>
                 )}
                 {isCompleted && (
-                  <div className="flex-1 text-center py-2 text-sm text-muted-foreground">
+                  <div className="text-center text-[10px] text-muted-foreground">
                     {bet.status === 'claimed' && (
                       <span className="text-accent font-bold">◎{bet.actual_payout?.toFixed(4)} claimed</span>
                     )}
-                    {bet.status === 'lost' && <span>Bet lost</span>}
+                    {bet.status === 'lost' && <span className="text-destructive">Bet lost</span>}
                     {bet.status === 'void' && <span>Bet voided</span>}
                   </div>
                 )}
