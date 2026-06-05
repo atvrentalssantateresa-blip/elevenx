@@ -31,16 +31,18 @@ Deno.serve(async (req) => {
     
     let offerId;
     if (existingOffers.length > 0) {
-      // Update existing offer - preserve status if it's not 'cancelled'
+      // Update existing offer - recalculate status based on new unmatched amount
       const existingOffer = existingOffers[0];
-      const newStatus = existingOffer.status === 'cancelled' ? 'open' : existingOffer.status;
+      const newAmountUnmatched = (existingOffer.amount_unmatched || 0) + offer.amount_unmatched;
+      const newStatus = newAmountUnmatched <= 0.0001 ? 'fully_matched' : 'partially_matched';
+      
       await serviceRole.entities.BetOffer.update(existingOffer.id, {
         amount_offered: (existingOffer.amount_offered || 0) + offer.amount_offered,
-        amount_unmatched: (existingOffer.amount_unmatched || 0) + offer.amount_unmatched,
-        status: newStatus, // Reset to 'open' if it was cancelled
+        amount_unmatched: newAmountUnmatched,
+        status: newStatus,
       });
       offerId = existingOffer.id;
-      console.log('[commitLiquidity] Updated existing BetOffer:', offerId, 'status:', newStatus);
+      console.log('[commitLiquidity] Updated existing BetOffer:', offerId, 'status:', newStatus, 'unmatched:', newAmountUnmatched);
     } else {
       // Create new offer
       const newOffer = await serviceRole.entities.BetOffer.create(offer);
