@@ -170,20 +170,20 @@ export default function MyBets() {
     return 'Draw';
   };
 
-  // LP positions: role='lp' WITH offer_id (traditional LP only, not parimutuel)
+  // Traditional LP positions: role='lp' with offer_id (shows in LP tab)
   const myLpPositions = myBets.filter((b) => {
-    return b.role === 'lp' && b.offer_id !== null && !b._isParimutuel;
+    return b.role === 'lp' && b.offer_id !== null;
   });
   
-  // Matcher bets: role='matcher' OR parimutuel LP bets (role='lp' with _isParimutuel=true)
+  // All other bets (matcher + parimutuel + any bets without offer_id) show in Bets tab
   const myMatcherBets = myBets.filter((b) => {
-    return b.role === 'matcher' || (b.role === 'lp' && b._isParimutuel);
+    return b.role !== 'lp' || b.offer_id === null;
   });
   
   // DEBUG: Log filtering results
   console.log('[MyBets] Total bets:', myBets.length);
-  console.log('[MyBets] myLpPositions (all LP with offer_id):', myLpPositions.length, myLpPositions.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id, _isParimutuel: b._isParimutuel })));
-  console.log('[MyBets] myMatcherBets (matcher only):', myMatcherBets.length, myMatcherBets.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id })));
+  console.log('[MyBets] myLpPositions (LP with offer_id):', myLpPositions.length, myLpPositions.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id })));
+  console.log('[MyBets] myMatcherBets (all other bets):', myMatcherBets.length, myMatcherBets.map(b => ({ id: b.id.slice(0,8), role: b.role, offer_id: b.offer_id })));
   
   const totalStaked = myMatcherBets.reduce((s, b) => s + (b.amount || 0), 0);
   const totalWon = myMatcherBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
