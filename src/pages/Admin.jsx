@@ -197,8 +197,12 @@ export default function Admin() {
       try {
         await base44.functions.invoke('commitSettlement', {
           signature: commitPayload.signature,
-          bet_id: settleDialog.bet.id,
-          winning_outcome: settleDialog.outcome,
+          commit_data: {
+            bet_id: settleDialog.bet.id,
+            match_id: settleDialog.bet.match_id,
+            winning_outcome: settleDialog.outcome,
+            outcome_label: settleDialog.outcome === 'a' ? settleDialog.bet.outcome_a : settleDialog.outcome === 'b' ? settleDialog.bet.outcome_b : 'Draw',
+          },
         });
       } catch (err) {
         console.error('[Admin] commitSettlement failed:', err);
