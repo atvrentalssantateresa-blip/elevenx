@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     
-    // CRITICAL: Betting closes in 30 min, settlement available immediately
+    // CRITICAL: Betting closes in 30 min, settlement available 1 second later
     const bettingCloseTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 min from now
-    const settleAfterTime = bettingCloseTime; // No delay - immediate settlement
+    const settleAfterTime = new Date(bettingCloseTime.getTime() + 1000); // 1 second after betting closes (required by Solana program)
     
     // Validate timestamps (for debugging)
     console.log('Timeline:', {

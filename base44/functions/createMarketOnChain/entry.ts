@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
     const bettingCloseTime = new Date(bet.open_until).getTime();
     const openUntil = Math.floor(bettingCloseTime / 1000);
     
-    // For test markets: settle immediately after betting closes (no delay)
+    // For test markets: settle 1 second after betting closes (minimum required by Solana program)
     // For production markets: 5 minutes after betting closes
-    const settleAfter = isTestMarket ? openUntil : openUntil + 300;
+    const settleAfter = isTestMarket ? openUntil + 1 : openUntil + 300;
     
     if (isTestMarket) {
       console.log('[createMarketOnChain] TEST market detected - using DB timeline:', {
