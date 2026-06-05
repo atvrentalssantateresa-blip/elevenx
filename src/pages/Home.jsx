@@ -264,70 +264,76 @@ export default function Home() {
                   </div>
 
                   {/* Card Content */}
-                  <div className="relative p-4 space-y-3">
-                   {/* Teams Section */}
-                   <div className="flex items-center justify-between">
-                     <div className="flex flex-col items-center flex-1 min-w-0">
-                       <div className="relative">
-                         <div className="absolute inset-0 bg-blue-400/40 blur-md rounded-full" />
-                         <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/40 to-blue-600/30 flex items-center justify-center border border-blue-400/50 shadow-lg shadow-blue-500/20">
-                           <span className="text-2xl leading-none filter drop-shadow-lg">{getTeamFlag(fm.team_a)}</span>
-                         </div>
-                       </div>
-                       <p className="font-heading font-bold text-[10px] text-center truncate w-full px-1 mt-1.5 text-white">{fm.team_a}</p>
-                     </div>
+                   <div className="relative p-4 space-y-4">
+                    {/* Teams & Matchup Section */}
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      {/* Team A */}
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl mb-2">{getTeamFlag(fm.team_a)}</span>
+                        <p className="font-heading font-bold text-sm text-white">{fm.team_a}</p>
+                      </div>
 
-                     <div className="flex flex-col items-center px-2">
-                       <span className="font-heading font-black text-[9px] text-white/60 bg-white/10 px-2 py-0.5 rounded-md border border-white/20">VS</span>
-                     </div>
+                      {/* VS & Date */}
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-xs font-bold text-white/50 bg-white/10 px-3 py-1 rounded-md border border-white/20">VS</span>
+                        <span className="text-xs text-white/60 font-medium">{fm.date} · 10:00</span>
+                      </div>
 
-                     <div className="flex flex-col items-center flex-1 min-w-0">
-                       <div className="relative">
-                         <div className="absolute inset-0 bg-emerald-400/40 blur-md rounded-full" />
-                         <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 flex items-center justify-center border border-emerald-400/50 shadow-lg shadow-emerald-500/20">
-                           <span className="text-2xl leading-none filter drop-shadow-lg">{getTeamFlag(fm.team_b)}</span>
-                         </div>
-                       </div>
-                       <p className="font-heading font-bold text-[10px] text-center truncate w-full px-1 mt-1.5 text-white">{fm.team_b}</p>
-                     </div>
+                      {/* Team B */}
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl mb-2">{getTeamFlag(fm.team_b)}</span>
+                        <p className="font-heading font-bold text-sm text-white">{fm.team_b}</p>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px bg-white/10" />
+
+                    {/* Multipliers - Subtle Grid */}
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 rounded-lg border border-white/10">
+                        <span className="text-white/70">{fm.team_a}</span>
+                        <span className="font-heading font-bold text-white/90">
+                          {(fm.odds_a || bet?.odds_a) ? (fm.odds_a || bet.odds_a).toFixed(2) : '—'}x
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 rounded-lg border border-white/10">
+                        <span className="text-white/70">Draw</span>
+                        <span className="font-heading font-bold text-white/90">
+                          {(fm.odds_draw || bet?.odds_draw) ? (fm.odds_draw || bet.odds_draw).toFixed(2) : '—'}x
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 rounded-lg border border-white/10">
+                        <span className="text-white/70">{fm.team_b}</span>
+                        <span className="font-heading font-bold text-white/90">
+                          {(fm.odds_b || bet?.odds_b) ? (fm.odds_b || bet.odds_b).toFixed(2) : '—'}x
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stats Line */}
+                    <div className="flex items-center justify-between text-[11px] text-white/60 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>0 bettors · Pool ⊙0</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+
+                    {/* Action Buttons - Subtle */}
+                    <div className="flex gap-2 pt-2">
+                      <Link to={`/match/${fm.matchId}`} className="flex-1">
+                        <Button className="w-full h-8 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all">
+                          Bet Now
+                        </Button>
+                      </Link>
+                      <Link to={`/match/${fm.matchId}`} className="flex-1">
+                        <Button className="w-full h-8 text-xs font-medium rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all">
+                          + LP
+                        </Button>
+                      </Link>
+                    </div>
                    </div>
-
-                   {/* Odds Section - 2x2 Grid */}
-                   <div className="grid grid-cols-2 gap-2">
-                     <div className="bg-gradient-to-br from-blue-500/25 to-blue-600/15 backdrop-blur-sm rounded-xl p-2 border border-blue-400/40 shadow-sm shadow-blue-500/10">
-                       <p className="text-[8px] text-blue-200/70 uppercase tracking-wider mb-0.5 truncate">{fm.team_a}</p>
-                       <p className="font-heading font-bold text-blue-300 text-sm">
-                         {(fm.odds_a || bet?.odds_a) ? (fm.odds_a || bet.odds_a).toFixed(2) : '—'}x
-                       </p>
-                     </div>
-                     <div className="bg-gradient-to-br from-emerald-500/25 to-emerald-600/15 backdrop-blur-sm rounded-xl p-2 border border-emerald-400/40 shadow-sm shadow-emerald-500/10">
-                       <p className="text-[8px] text-emerald-200/70 uppercase tracking-wider mb-0.5 truncate">{fm.team_b}</p>
-                       <p className="font-heading font-bold text-emerald-300 text-sm">
-                         {(fm.odds_b || bet?.odds_b) ? (fm.odds_b || bet.odds_b).toFixed(2) : '—'}x
-                       </p>
-                     </div>
-                     <div className="bg-gradient-to-br from-yellow-500/25 to-amber-500/15 backdrop-blur-sm rounded-xl p-2 border border-yellow-400/40 shadow-sm shadow-yellow-500/10 col-span-2">
-                       <p className="text-[8px] text-yellow-200/70 uppercase tracking-wider mb-0.5">Draw</p>
-                       <p className="font-heading font-bold text-yellow-300 text-sm">
-                         {(fm.odds_draw || bet?.odds_draw) ? (fm.odds_draw || bet.odds_draw).toFixed(2) : '—'}x
-                       </p>
-                     </div>
-                   </div>
-
-                   {/* Action Buttons */}
-                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-                     <Link to={`/match/${fm.matchId}`} className="block">
-                       <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl bg-gradient-to-r from-emerald-500/40 to-emerald-600/30 text-emerald-300 border border-emerald-400/50 hover:from-emerald-500/60 hover:to-emerald-600/50 transition-all shadow-sm shadow-emerald-500/20">
-                         Bet Now
-                       </Button>
-                     </Link>
-                     <Link to={`/match/${fm.matchId}`} className="block">
-                       <Button className="w-full h-9 text-xs font-heading font-bold rounded-xl bg-gradient-to-r from-blue-500/40 to-blue-600/30 text-blue-300 border border-blue-400/50 hover:from-blue-500/60 hover:to-blue-600/50 transition-all shadow-sm shadow-blue-500/20">
-                         + LP
-                       </Button>
-                     </Link>
-                   </div>
-                  </div>
                 </motion.div>
               );
             })}
