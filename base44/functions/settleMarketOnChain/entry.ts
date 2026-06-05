@@ -122,17 +122,26 @@ Deno.serve(async (req) => {
     }
 
     // Check if market account exists and has correct discriminator
-    const marketInfo = await connection.getAccountInfo(marketPda);
-    if (!marketInfo || marketInfo.data.length < 249) {
-      console.log('[settleMarketOnChain] Market account missing or too small - doing DB-only settlement');
+    let marketInfo;
+    try {
+      marketInfo = await connection.getAccountInfo(marketPda);
+    } catch (accountErr) {
+      console.log('[settleMarketOnChain] Failed to fetch market account:', accountErr.message);
+      marketInfo = null;
+    }
+    
+    if (!marketInfo || !marketInfo.data || marketInfo.data.length < 249) {
+      console.log('[settleMarketOnChain] Market account missing or corrupted - doing DB-only settlement');
+      console.log('[settleMarketOnChain] Market PDA:', marketPda.toBase58());
+      console.log('[settleMarketOnChain] Bet solana_market_pda:', bet.solana_market_pda || 'NOT SET');
       const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
       return Response.json({
         success: true,
         db_only: true,
-        message: `Market account corrupted on-chain. DB settlement only for: ${outcomeLabel}`,
+        message: `Market not deployed on-chain or corrupted. DB settlement only for: ${outcomeLabel}`,
         bet_id: bet_id,
         winning_outcome: winning_outcome,
-        note: 'Update DB directly - on-chain market account has invalid data',
+        note: 'Market was never deployed or account data is invalid - using DB fallback',
       });
     }
     
