@@ -17,6 +17,9 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
 
   const numericAmount = parseFloat(amount) || 0;
   const potentialPayout = numericAmount * (outcome.odds || 0);
+  
+  // Max bet is the LP pool amount for this outcome
+  const maxBetAmount = outcome.pool || 0;
 
   const handlePrepareBet = async () => {
     if (!amount || numericAmount <= 0) return;
@@ -148,19 +151,41 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
           </div>
         </div>
 
-        {/* Amount Input */}
+        {/* Amount Input with Max Button */}
         <div className="mb-6">
-          <Label className="text-xs mb-2 block font-bold">Stake Amount (SOL)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            className="bg-secondary/50 text-lg font-bold h-12 rounded-xl"
-            autoFocus
-          />
+          <div className="flex items-center justify-between mb-2">
+            <Label className="text-xs font-bold">Stake Amount (SOL)</Label>
+            {maxBetAmount > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                Available: ◎{maxBetAmount.toFixed(2)} SOL
+              </span>
+            )}
+          </div>
+          <div className="relative">
+            <Input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="bg-secondary/50 text-lg font-bold h-12 rounded-xl pr-20"
+              autoFocus
+            />
+            {maxBetAmount > 0 && (
+              <button
+                onClick={() => setAmount(maxBetAmount.toFixed(2))}
+                className="absolute right-1 top-1 bottom-1 px-3 bg-accent/20 hover:bg-accent/30 border border-accent/30 rounded-lg text-xs font-bold text-accent transition-all"
+              >
+                MAX
+              </button>
+            )}
+          </div>
+          {maxBetAmount > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">
+              Maximum bet: ◎{maxBetAmount.toFixed(2)} SOL (LP pool limit)
+            </p>
+          )}
         </div>
 
         {/* Payout Summary */}

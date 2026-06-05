@@ -86,16 +86,21 @@ export default function FuturesCard({ market, index, onSelect }) {
                   <p className={`font-heading font-bold text-sm ${colors.text} mb-0.5`}>
                     {outcome.odds.toFixed(2)}x
                   </p>
-                  {hasLiquidity ?
-                  <div className="flex items-center gap-0.5">
-                      <Droplets className={`w-2 h-2 ${colors.accent}`} />
-                      <p className={`text-[8px] font-semibold ${colors.accent}`}>
-                        ◎{outcome.pool.toFixed(1)}
-                      </p>
-                    </div> :
-
-                  <p className="text-[7px] text-muted-foreground">No LP</p>
-                  }
+                  {hasLiquidity ? (
+                    <div className="flex items-center gap-1 w-full mt-1">
+                      <div className="flex items-center gap-0.5 flex-1">
+                        <Droplets className={`w-2 h-2 ${colors.accent}`} />
+                        <p className={`text-[8px] font-semibold ${colors.accent}`}>
+                          ◎{outcome.pool.toFixed(1)}
+                        </p>
+                      </div>
+                      <span className={`text-[7px] font-bold ${colors.text} px-1 py-0.5 rounded bg-${colors.text.split('-')[1]}-500/10`}>
+                        Max ◎{outcome.pool.toFixed(2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[7px] text-muted-foreground">No LP</p>
+                  )}
                 </button>);
 
             })}
