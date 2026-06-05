@@ -46,6 +46,10 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   // Determine which flag to show based on backed outcome
   const outcomeFlag = bet.outcome === 'a' ? match?.team_a_flag : bet.outcome === 'b' ? match?.team_b_flag : '🤝';
   const outcomeTeam = bet.outcome === 'a' ? match?.team_a : bet.outcome === 'b' ? match?.team_b : 'Draw';
+  
+  // Determine opposing team
+  const opposingFlag = bet.outcome === 'a' ? match?.team_b_flag : bet.outcome === 'b' ? match?.team_a_flag : null;
+  const opposingTeam = bet.outcome === 'a' ? match?.team_b : bet.outcome === 'b' ? match?.team_a : null;
 
   const claimMutation = useMutation({
     mutationFn: async () => {
@@ -334,14 +338,41 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 </Badge>
               </div>
 
-              {/* Outcome */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-4xl">{outcomeFlag || '🏆'}</div>
-                <div className="flex-1">
-                  <h3 className="font-heading font-bold text-sm text-foreground truncate">{outcomeTeam || bet.outcome_label}</h3>
-                  <p className="text-[10px] text-muted-foreground">
-                    {bet.role === 'lp' ? 'Liquidity Provider' : (bet.betCount > 1 ? `${bet.betCount} Bets` : 'Bettor')}
-                  </p>
+              {/* Outcome - VS Style */}
+              <div className="flex items-center justify-between gap-2 mb-3">
+                {/* Your Team */}
+                <div className="flex-1 text-center">
+                  <div className="text-3xl mb-1">{outcomeFlag || '🏆'}</div>
+                  <p className="text-[10px] font-medium text-foreground truncate">{outcomeTeam || bet.outcome_label}</p>
+                </div>
+
+                {/* VS Badge */}
+                <div className="flex flex-col items-center gap-0.5 px-2 flex-shrink-0">
+                  <span className="text-[8px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">YOU</span>
+                </div>
+
+                {/* Opposing Team */}
+                {opposingFlag && (
+                  <div className="flex-1 text-center">
+                    <div className="text-3xl mb-1">{opposingFlag}</div>
+                    <p className="text-[10px] font-medium text-muted-foreground truncate">{opposingTeam}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Hype Bar - Pool/Status */}
+              <div className="mb-3">
+                <div className="flex items-center justify-between text-[9px] mb-1">
+                  <span className={`${bet.status === 'won' || bet.status === 'claimed' ? 'text-accent' : 'text-primary'} font-bold uppercase tracking-wider`}>
+                    {bet.status === 'won' || bet.status === 'claimed' ? '🏆 Winning Bet' : bet.status === 'active' ? '⚡ Active Bet' : '⏳ Pending'}
+                  </span>
+                  <span className="text-muted-foreground">{bet.status === 'active' ? 'Live' : bet.status}</span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden border border-border/50">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${bet.status === 'won' || bet.status === 'claimed' ? 'bg-gradient-to-r from-accent/60 to-accent' : 'bg-gradient-to-r from-primary/60 to-primary'}`}
+                    style={{ width: bet.status === 'won' || bet.status === 'claimed' ? '100%' : bet.status === 'active' ? '75%' : '50%' }}
+                  />
                 </div>
               </div>
 
