@@ -16,9 +16,9 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const startTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
-    const endTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
-    const bettingCloseTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
+    const startTime = new Date(now.getTime()); // Starts NOW
+    const endTime = new Date(now.getTime() + 10 * 60 * 1000); // Ends in 10 minutes
+    const bettingCloseTime = new Date(now.getTime() + 10 * 60 * 1000); // Betting closes in 10 minutes
 
     console.log('[createQuickTestMatch] Creating test match with timestamps:', {
       now: now.toISOString(),
