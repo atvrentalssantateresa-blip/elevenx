@@ -171,8 +171,20 @@ export default function MyBets() {
   };
 
   // Traditional LP positions: role='lp' with offer_id AND belongs to current wallet (shows in LP tab)
+  // CRITICAL FIX: Join with live BetOffer data to get real-time match rates!
   const myLpPositions = myBets.filter((b) => {
     return b.role === 'lp' && b.offer_id !== null && b.wallet_address === walletAddress;
+  }).map(ub => {
+    const offer = allOffers.find(o => o.id === ub.offer_id);
+    if (offer) {
+      return {
+        ...ub,
+        liquidity_matched: offer.amount_matched,
+        liquidity_unmatched: offer.amount_unmatched,
+        status: offer.status === 'fully_matched' || offer.status === 'partially_matched' ? 'active' : 'pending'
+      };
+    }
+    return ub;
   });
   
   // All other bets (matcher + parimutuel + any bets without offer_id) show in Bets tab

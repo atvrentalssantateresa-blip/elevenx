@@ -51,14 +51,22 @@ Deno.serve(async (req) => {
     }
     
     // Update BetOffer if exists (for matched bets) - handle both formats
+    let newAmountMatched = 0;
+    let newAmountUnmatched = 0;
+    let newStatus = '';
+    
     if (offer) {
       // Old format
       const existingOffer = await serviceRole.entities.BetOffer.get(offer.id);
       if (existingOffer) {
+        newAmountMatched = (existingOffer.amount_matched || 0) + (offer.amount_matched || 0);
+        newAmountUnmatched = Math.max(0, (existingOffer.amount_unmatched || 0) - (offer.amount_matched || 0));
+        newStatus = (existingOffer.amount_unmatched || 0) - (offer.amount_matched || 0) <= 0.0001 ? 'fully_matched' : 'partially_matched';
+        
         await serviceRole.entities.BetOffer.update(offer.id, {
-          amount_matched: (existingOffer.amount_matched || 0) + (offer.amount_matched || 0),
-          amount_unmatched: Math.max(0, (existingOffer.amount_unmatched || 0) - (offer.amount_matched || 0)),
-          status: (existingOffer.amount_unmatched || 0) - (offer.amount_matched || 0) <= 0.0001 ? 'fully_matched' : 'partially_matched',
+          amount_matched: newAmountMatched,
+          amount_unmatched: newAmountUnmatched,
+          status: newStatus,
         });
         console.log('[commitMatchBet] Updated BetOffer (old format):', offer.id);
       }
@@ -66,8 +74,30 @@ Deno.serve(async (req) => {
       // New format - fixed odds match
       const existingOffer = await serviceRole.entities.BetOffer.get(userBet.offer_id);
       if (existingOffer) {
+        newAmountMatched = offerUpdate.amount_matched;
+        newAmountUnmatched = offerUpdate.amount_unmatched;
+        newStatus = offerUpdate.status;
+        
         await serviceRole.entities.BetOffer.update(userBet.offer_id, offerUpdate);
         console.log('[commitMatchBet] Updated BetOffer (new format):', userBet.offer_id);
+      }
+    }
+    
+    // CRITICAL FIX: Also update the LP's personal UserBet record with matched stats!
+    // This ensures the LP's "My Bets" dashboard shows real-time match progress
+    if (userBet?.offer_id && newAmountMatched > 0) {
+      const lpUserBets = await serviceRole.entities.UserBet.filter({
+        offer_id: userBet.offer_id,
+        role: 'lp'
+      });
+      if (lpUserBets.length > 0) {
+        const lpUserBet = lpUserBets[0];
+        await serviceRole.entities.UserBet.update(lpUserBet.id, {
+          liquidity_matched: newAmountMatched,
+          liquidity_unmatched: newAmountUnmatched,
+          status: newStatus === 'fully_matched' || newStatus === 'partially_matched' ? 'active' : 'pending'
+        });
+        console.log('[commitMatchBet] Synced LP UserBet record:', lpUserBet.id, 'matched:', newAmountMatched);
       }
     }
     
