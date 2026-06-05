@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ArrowLeft, Clock, Trophy, Award, CheckCircle2, Zap, RefreshCw, Wallet, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Clock, Trophy, Award, CheckCircle2, Zap, RefreshCw, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -12,7 +12,6 @@ import OddsPanel from '@/components/betting/OddsPanel';
 import PlaceBetPanel from '@/components/betting/PlaceBetPanel';
 
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import LpPositionCard from '@/components/lp/LpPositionCard';
 import { useWallet } from '@/lib/WalletContext';
 import { getTeamFlag } from '@/utils/flags';
 
@@ -31,8 +30,7 @@ export default function MatchDetail() {
   const [claimData, setClaimData] = useState(null);
   const [isBatchClaim, setIsBatchClaim] = useState(false);
   const [withdrawingId, setWithdrawingId] = useState(null);
-  const [pendingLpWithdraw, setPendingLpWithdraw] = useState(null);
-  const [lpWithdrawDialog, setLpWithdrawDialog] = useState(null);
+
 
   const { data: match } = useQuery({
     queryKey: ['match', matchId],
@@ -62,12 +60,7 @@ export default function MatchDetail() {
     enabled: !!matchId
   });
   const walletAddress = getWalletAddress();
-  // CRITICAL: Parimutuel bets (role='lp' with no offer_id) show as regular bets with withdraw button
-  // Only traditional LP positions (role='lp' WITH offer_id) show as LP
-  const myLpPositions = myUserBets.filter((ub) =>
-    (walletAddress && ub.wallet_address === walletAddress || user?.id && ub.created_by_id === user.id) &&
-    ub.role === 'lp' && ub.offer_id !== null
-  );
+  // All bets show as regular bets (no LP positions on match detail page)
   const myMatcherBets = myUserBets.filter((ub) =>
     (walletAddress && ub.wallet_address === walletAddress || user?.id && ub.created_by_id === user.id) &&
     (ub.role !== 'lp' || ub.offer_id === null)
@@ -147,25 +140,7 @@ export default function MatchDetail() {
     queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
   };
 
-  const handleLpWithdrawSuccess = async (txResult) => {
-    const signature = txResult.signature;
-    if (pendingLpWithdraw?.userBetId && pendingLpWithdraw?.offerId) {
-      try {
-        const commitRes = await base44.functions.invoke('finalizeWithdrawal', {
-          signature,
-          userBetId: pendingLpWithdraw.userBetId,
-          offerId: pendingLpWithdraw.offerId
-        });
-        if (commitRes.data.error) {
-          console.error('[MatchDetail] finalizeWithdrawal error:', commitRes.data.error);
-        }
-      } catch (err) {
-        console.error('[MatchDetail] finalizeWithdrawal threw:', err);
-      }
-    }
-    setPendingLpWithdraw(null);
-    queryClient.invalidateQueries({ queryKey: ['myUserBets', matchId, user?.id] });
-  };
+
 
   const handleSelectOffer = (offer) => {
     setSelectedOffer(offer);
@@ -224,33 +199,6 @@ export default function MatchDetail() {
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
-      {/* LP Withdraw Dialog */}
-      {lpWithdrawDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
-            <h3 className="font-heading font-bold text-lg mb-4">Remove Liquidity</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Withdrawing ◎{lpWithdrawDialog.withdrawAmount?.toFixed(4)} SOL from {lpWithdrawDialog.positionId?.slice(0, 8)}... position
-            </p>
-            <SolanaTransactionSigner
-              instruction={lpWithdrawDialog.solanaInstruction}
-              amount={lpWithdrawDialog.withdrawAmount?.toFixed(4) || '0'}
-              userBetId={lpWithdrawDialog.positionId}
-              offerId={lpWithdrawDialog.offerId}
-              onSuccess={handleLpWithdrawSuccess}
-              onError={() => setLpWithdrawDialog(null)}
-            />
-            <Button
-              variant="outline"
-              onClick={() => setLpWithdrawDialog(null)}
-              className="w-full mt-3 h-10 rounded-xl"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
       <Link to="/matches" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to matches
       </Link>
@@ -453,30 +401,7 @@ export default function MatchDetail() {
         </motion.div>
       }
 
-      {/* ── My Liquidity Positions (LP ONLY) ── */}
-      {myLpPositions.length > 0 &&
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-primary/20 rounded-2xl p-5 space-y-3">
-          <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> My Liquidity Positions
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Provided liquidity to earn fees from betting activity
-          </p>
-          
-          <div className="space-y-3">
-            {myLpPositions.map((lp, i) => (
-              <LpPositionCard
-                key={lp.id}
-                position={lp}
-                index={i}
-                walletAddress={walletAddress}
-                onWithdrawRequest={(data) => setLpWithdrawDialog(data)}
-              />
-            ))}
-          </div>
-        </motion.div>
-      }
+
 
       {/* ── My Bets (Matcher ONLY) ── */}
       {myMatcherBets.length > 0 &&
