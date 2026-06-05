@@ -113,32 +113,26 @@ Deno.serve(async (req) => {
     
     let positionData = null;
     if (positionInfo) {
-      // Parse position account data (8 byte discriminator + 87 bytes data = 95 bytes total)
-      // Layout: market(32) + bettor(32) + outcome(1) + matched_stake(8) + pending_stake(8) + odds_bps(8) + potential_payout(8) + claimable(8) + claimed(1) + bump(1) = 99 bytes + 8 discriminator = 107 total
       const data = positionInfo.data;
       console.log('[claimWinnings] Position data length:', data.length);
       console.log('[claimWinnings] Position data (hex):', data.toString('hex'));
       
-      if (data.length >= 115) {
+      // Parse based on actual BetPosition layout:
+      // 8 (disc) + 32 (market) + 32 (bettor) + 1 (outcome) + 8 (matched_stake) + 8 (pending_stake) + 8 (odds_bps) + 8 (potential_payout) + 8 (claimable) + 1 (claimed) + 1 (bump) = 107 bytes
+      if (data.length >= 107) {
         positionData = {
-          outcome: data[72], // outcome is at offset 72 (8 disc + 32 market + 32 bettor)
+          outcome: data[72],
           matched_stake: data.readBigUInt64LE(73),
           pending_stake: data.readBigUInt64LE(81),
           odds_bps: data.readBigUInt64LE(89),
           potential_payout: data.readBigUInt64LE(97),
           claimable: data.readBigUInt64LE(105),
-          claimed: data[113] === 1, // claimed is at offset 113 (8+32+32+1+8+8+8+8+8+1)
+          claimed: data[113] === 1,
           bump: data[114],
         };
-        console.log('[claimWinnings] Position account data:', {
-          outcome: positionData.outcome,
-          matched_stake: positionData.matched_stake.toString(),
-          pending_stake: positionData.pending_stake.toString(),
-          potential_payout: positionData.potential_payout.toString(),
-          claimed: positionData.claimed,
-        });
+        console.log('[claimWinnings] Position account data:', positionData);
       } else {
-        console.log('[claimWinnings] Position data too short, skipping parse');
+        console.log('[claimWinnings] Position data too short:', data.length);
       }
     }
     
@@ -192,11 +186,17 @@ Deno.serve(async (req) => {
     
     console.log('[claimWinnings] Proceeding with on-chain claim');
     
+    if (!positionData) {
+      return Response.json({ error: 'Position data not available on-chain' }, { status: 400 });
+    }
+    
     // Construct claim_winnings instruction for Solana
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('fee_vault')],
       programId
     );
+    
+    const claimAmount = positionData.potential_payout || positionData.claimable || BigInt(0);
     
     const claimInstruction = {
       instruction_type: 'claim_winnings',
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
       positionPda: positionPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
       bettorPubkey: trimmedWallet,
-      amountLamports: positionData.potential_payout.toString(),
+      amountLamports: claimAmount.toString(),
     };
     
     return Response.json({
