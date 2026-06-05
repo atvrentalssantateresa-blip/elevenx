@@ -730,7 +730,7 @@ export default function LpDashboard() {
 
           <TabsContent value="positions" className="space-y-4 sm:space-y-6">
             {/* Debug: Show raw data */}
-            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 hidden">
               <p className="font-bold text-destructive text-sm mb-2">🐛 LP Query Debug</p>
               <p className="text-xs text-destructive">walletAddress: {walletAddress || 'undefined'}</p>
               <p className="text-xs text-destructive">Query enabled: {!!walletAddress}</p>
@@ -793,52 +793,52 @@ export default function LpDashboard() {
               </div>
               <div className="grid gap-3 sm:gap-4">
                 {(() => {
-                  console.log('=== RENDER DEBUG ===');
-                  console.log('offersWithUserBet:', offersWithUserBet);
-                  console.log('Length:', offersWithUserBet.length);
-                  
-                  if (offersWithUserBet.length === 0) {
-                    console.log('No offers to render');
-                    return (
-                      <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
+                console.log('=== RENDER DEBUG ===');
+                console.log('offersWithUserBet:', offersWithUserBet);
+                console.log('Length:', offersWithUserBet.length);
+
+                if (offersWithUserBet.length === 0) {
+                  console.log('No offers to render');
+                  return (
+                    <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
                         <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                         <p className="font-heading font-bold text-sm text-muted-foreground mb-1">No LP positions yet</p>
                         <p className="text-xs text-muted-foreground">Check browser console for debug info</p>
-                      </div>
-                    );
+                      </div>);
+
+                }
+
+                console.log('Mapping', offersWithUserBet.length, 'offers...');
+
+                return offersWithUserBet.map((offer, idx) => {
+                  console.log(`Rendering offer ${idx}:`, offer.id, offer.outcome_label, offer.status);
+                  try {
+                    const match = matches.find((m) => m.id === offer.match_id);
+                    console.log(`Offer ${idx} match:`, match?.team_a, 'vs', match?.team_b, 'match_id:', offer.match_id);
+
+                    return (
+                      <LpPositionCard
+                        key={offer.id || offer.userBetId}
+                        position={offer}
+                        match={match}
+                        walletAddress={walletAddress}
+                        onWithdrawRequest={(withdrawData) => {
+                          console.log('[onWithdrawRequest] Withdraw triggered:', withdrawData);
+                          setPendingTx({
+                            instruction: withdrawData.solanaInstruction,
+                            amount: withdrawData.withdrawAmount,
+                            type: 'withdraw_liquidity',
+                            userBetId: withdrawData.positionId,
+                            offerId: withdrawData.offerId
+                          });
+                        }} />);
+
+                  } catch (err) {
+                    console.error(`Error rendering offer ${idx}:`, err);
+                    return null;
                   }
-                  
-                  console.log('Mapping', offersWithUserBet.length, 'offers...');
-                  
-                  return offersWithUserBet.map((offer, idx) => {
-                    console.log(`Rendering offer ${idx}:`, offer.id, offer.outcome_label, offer.status);
-                    try {
-                      const match = matches.find((m) => m.id === offer.match_id);
-                      console.log(`Offer ${idx} match:`, match?.team_a, 'vs', match?.team_b, 'match_id:', offer.match_id);
-                      
-                      return (
-                        <LpPositionCard
-                          key={offer.id || offer.userBetId}
-                          position={offer}
-                          match={match}
-                          walletAddress={walletAddress}
-                          onWithdrawRequest={(withdrawData) => {
-                            console.log('[onWithdrawRequest] Withdraw triggered:', withdrawData);
-                            setPendingTx({
-                              instruction: withdrawData.solanaInstruction,
-                              amount: withdrawData.withdrawAmount,
-                              type: 'withdraw_liquidity',
-                              userBetId: withdrawData.positionId,
-                              offerId: withdrawData.offerId
-                            });
-                          }} />
-                      );
-                    } catch (err) {
-                      console.error(`Error rendering offer ${idx}:`, err);
-                      return null;
-                    }
-                  });
-                })()}
+                });
+              })()}
               </div>
             </div>
 
