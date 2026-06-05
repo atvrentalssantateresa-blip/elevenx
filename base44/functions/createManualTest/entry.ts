@@ -5,8 +5,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * Timeline:
  * - NOW: Current time
  * - Match starts: NOW + 10 minutes
- * - Betting closes: Match start + 60 minutes (1 hour AFTER kickoff)
- * - Settlement: Betting close + 5 minutes
+ * - Betting closes: Exactly at kickoff (no delay)
+ * - Settlement: 15 minutes after kickoff (match end)
  */
 Deno.serve(async (req) => {
   try {
@@ -24,8 +24,8 @@ Deno.serve(async (req) => {
     
     // CRITICAL: All timestamps must be in the future for on-chain validation
     const matchStartTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
-    const bettingClosesAt = new Date(matchStartTime.getTime() + 60 * 60 * 1000); // 60 min AFTER kickoff
-    const settleAfter = new Date(bettingClosesAt.getTime() + 5 * 60 * 1000); // 5 min after betting closes
+    const bettingClosesAt = matchStartTime; // Betting closes exactly at kickoff
+    const settleAfter = new Date(matchStartTime.getTime() + 15 * 60 * 1000); // Settlement opens 15 min after kickoff (match duration)
     
     // Validate timestamps (for debugging)
     console.log('Timeline:', {
