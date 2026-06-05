@@ -107,18 +107,18 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-white p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
-          <h1 className="font-heading font-bold text-3xl text-white mb-2">Admin Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Manage betting markets and settlements</p>
+          <h1 className="font-heading font-bold text-3xl text-black mb-2">Admin Dashboard</h1>
+          <p className="text-sm text-gray-600">Manage betting markets and settlements</p>
         </div>
 
-        <Card className="bg-card/50 border-border/50 p-4">
+        <Card className="bg-gray-50 border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-muted-foreground">Connected Wallet</p>
-              <p className="font-mono text-sm text-white">{walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-8)}` : 'Not connected'}</p>
+              <p className="text-xs text-gray-500">Connected Wallet</p>
+              <p className="font-mono text-sm text-black">{walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-8)}` : 'Not connected'}</p>
             </div>
             <Badge variant={walletAddress ? 'default' : 'outline'}>
               {walletAddress ? '✓ Connected' : '✗ Disconnected'}
@@ -127,43 +127,43 @@ export default function Admin() {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-secondary/20 border border-border/50 rounded-xl p-1">
-            <TabsTrigger value="bets" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-100 border border-gray-200 rounded-xl p-1">
+            <TabsTrigger value="bets" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">
               <List className="w-4 h-4 mr-2" />
               Bets
             </TabsTrigger>
-            <TabsTrigger value="futures" className="data-[state=active]:bg-accent data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="futures" className="data-[state=active]:bg-green-600 data-[state=active]:text-white rounded-lg">
               <TrendingUp className="w-4 h-4 mr-2" />
               Futures
             </TabsTrigger>
-            <TabsTrigger value="actions" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="actions" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg">
               <Database className="w-4 h-4 mr-2" />
               Actions
             </TabsTrigger>
-            <TabsTrigger value="platform" className="data-[state=active]:bg-secondary data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="platform" className="data-[state=active]:bg-gray-600 data-[state=active]:text-white rounded-lg">
               <Settings className="w-4 h-4 mr-2" />
               Platform
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="bets" className="mt-4">
-            <Card className="bg-card/50 border-border/50 p-4">
-              <h2 className="font-heading font-bold text-xl text-white mb-4">Betting Markets ({allBets.length})</h2>
+            <Card className="bg-white border border-gray-200 p-4">
+              <h2 className="font-heading font-bold text-xl text-black mb-4">Betting Markets ({allBets.length})</h2>
               
               {isLoadingBets ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader className="w-6 h-6 animate-spin text-primary mr-2" />
-                  <span className="text-muted-foreground">Loading bets...</span>
+                  <Loader className="w-6 h-6 animate-spin text-blue-600 mr-2" />
+                  <span className="text-gray-600">Loading bets...</span>
                 </div>
               ) : allBets.length === 0 ? (
                 <div className="flex items-center gap-3 py-6">
-                  <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  <p className="text-muted-foreground">No bets found</p>
+                  <AlertCircle className="w-5 h-5 text-gray-400" />
+                  <p className="text-gray-600">No bets found</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {allBets.map((bet) => (
-                    <div key={bet.id} className="border border-border/30 rounded-lg p-3">
+                    <div key={bet.id} className="border border-gray-200 rounded-lg p-3">
                       <AdminBetRow
                         bet={bet}
                         match={allMatches[bet.match_id]}
@@ -182,8 +182,8 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="actions" className="mt-4">
-            <Card className="bg-card/50 border-border/50 p-6">
-              <h2 className="font-heading font-bold text-xl text-white mb-4">Quick Actions</h2>
+            <Card className="bg-white border border-gray-200 p-6">
+              <h2 className="font-heading font-bold text-xl text-black mb-4">Quick Actions</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Button
                   onClick={async () => {
@@ -195,10 +195,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">⚡ Create Quick Test</span>
-                  <span className="text-xs text-muted-foreground">Instant match + bet</span>
+                  <span className="font-bold text-lg text-black">⚡ Create Quick Test</span>
+                  <span className="text-xs text-gray-600">Instant match + bet</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -210,10 +210,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">🚀 Bulk Deploy</span>
-                  <span className="text-xs text-muted-foreground">All matches</span>
+                  <span className="font-bold text-lg text-black">🚀 Bulk Deploy</span>
+                  <span className="text-xs text-gray-600">All matches</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -225,10 +225,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">🌍 Sync World Cup</span>
-                  <span className="text-xs text-muted-foreground">Fetch from API</span>
+                  <span className="font-bold text-lg text-black">🌍 Sync World Cup</span>
+                  <span className="text-xs text-gray-600">Fetch from API</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -239,10 +239,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">📊 Deploy Futures</span>
-                  <span className="text-xs text-muted-foreground">All countries</span>
+                  <span className="font-bold text-lg text-black">📊 Deploy Futures</span>
+                  <span className="text-xs text-gray-600">All countries</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -254,10 +254,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">📈 Live Odds Bet</span>
-                  <span className="text-xs text-muted-foreground">Real API odds</span>
+                  <span className="font-bold text-lg text-black">📈 Live Odds Bet</span>
+                  <span className="text-xs text-gray-600">Real API odds</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -269,10 +269,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">🎯 API Match</span>
-                  <span className="text-xs text-muted-foreground">Real match data</span>
+                  <span className="font-bold text-lg text-black">🎯 API Match</span>
+                  <span className="text-xs text-gray-600">Real match data</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -284,10 +284,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">🔄 Reset & Sync</span>
-                  <span className="text-xs text-muted-foreground">Clear all data</span>
+                  <span className="font-bold text-lg text-black">🔄 Reset & Sync</span>
+                  <span className="text-xs text-gray-600">Clear all data</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -299,10 +299,10 @@ export default function Admin() {
                       alert('Error: ' + err.message);
                     }
                   }}
-                  className="h-24 flex flex-col gap-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-xl"
+                  className="h-24 flex flex-col gap-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl"
                 >
-                  <span className="font-bold text-lg">🗑️ Clear DB</span>
-                  <span className="text-xs text-muted-foreground">Delete everything</span>
+                  <span className="font-bold text-lg text-black">🗑️ Clear DB</span>
+                  <span className="text-xs text-gray-600">Delete everything</span>
                 </Button>
               </div>
             </Card>
