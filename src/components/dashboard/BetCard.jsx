@@ -364,16 +364,22 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
               {/* Stats Grid */}
               <div className="grid grid-cols-3 gap-3 bg-secondary/30 rounded-xl p-4">
                 <div>
-                  <p className="text-[10px] text-muted-foreground mb-1">Stake</p>
-                  <p className="font-heading font-bold text-foreground">◎{bet.amount?.toFixed(4)}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">
+                    {bet.betCount && bet.betCount > 1 ? 'Total Stake' : 'Stake'}
+                  </p>
+                  <p className="font-heading font-bold text-foreground">◎{(bet.totalAmount || bet.amount)?.toFixed(4)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground mb-1">Potential</p>
-                  <p className="font-heading font-bold text-primary">◎{(bet.potential_payout || 0).toFixed(4)}</p>
+                  <p className="font-heading font-bold text-primary">◎{(bet.totalPayout || bet.potential_payout || 0).toFixed(4)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground mb-1">Role</p>
-                  <p className="font-heading font-bold text-accent capitalize">{bet.role === 'lp' ? 'LP' : 'Bettor'}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1">
+                    {bet.betCount && bet.betCount > 1 ? 'Bets' : 'Role'}
+                  </p>
+                  <p className="font-heading font-bold text-accent capitalize">
+                    {bet.betCount && bet.betCount > 1 ? `${bet.betCount} Bets` : (bet.role === 'lp' ? 'LP' : 'Bettor')}
+                  </p>
                 </div>
               </div>
 

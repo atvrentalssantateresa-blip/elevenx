@@ -156,12 +156,38 @@ export default function MyBets() {
   // LP positions are identified by: role='lp'
   const myMatcherBets = myBets.filter(b => b.role !== 'lp');
   
-  const totalStaked = myMatcherBets.reduce((s, b) => s + (b.amount || 0), 0);
-  const totalWon = myMatcherBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
-  const activeBets = myMatcherBets.filter((b) => b.status === 'active' || b.status === 'pending');
-  const completedBets = myMatcherBets.filter((b) => b.status !== 'active' && b.status !== 'pending');
-  const pendingClaims = myMatcherBets.filter((b) => b.status === 'won');
-  const availableRefunds = myMatcherBets.filter((b) => b.status === 'refunded');
+  // Group bets by match_id + outcome (combine multiple bets on same outcome)
+  const groupedBets = myMatcherBets.reduce((acc, bet) => {
+    const key = `${bet.match_id}-${bet.outcome}`;
+    if (!acc[key]) {
+      acc[key] = {
+        ...bet,
+        totalAmount: bet.amount || 0,
+        totalPayout: bet.actual_payout || bet.potential_payout || 0,
+        betCount: 1,
+        betIds: [bet.id]
+      };
+    } else {
+      acc[key].totalAmount += bet.amount || 0;
+      acc[key].totalPayout += bet.actual_payout || bet.potential_payout || 0;
+      acc[key].betCount += 1;
+      acc[key].betIds.push(bet.id);
+      // Use the most recent status
+      if (new Date(bet.created_date) > new Date(acc[key].created_date)) {
+        acc[key].status = bet.status;
+      }
+    }
+    return acc;
+  }, {});
+  
+  const groupedBetsArray = Object.values(groupedBets);
+  
+  const totalStaked = groupedBetsArray.reduce((s, b) => s + (b.totalAmount || 0), 0);
+  const totalWon = groupedBetsArray.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.totalPayout || 0), 0);
+  const activeBets = groupedBetsArray.filter((b) => b.status === 'active' || b.status === 'pending');
+  const completedBets = groupedBetsArray.filter((b) => b.status !== 'active' && b.status !== 'pending');
+  const pendingClaims = groupedBetsArray.filter((b) => b.status === 'won');
+  const availableRefunds = groupedBetsArray.filter((b) => b.status === 'refunded');
   const myLpPositions = myBets.filter(b => b.role === 'lp');
 
   // Group won bets by match for batch claiming
@@ -317,11 +343,11 @@ export default function MyBets() {
         </TabsList>
 
         <TabsContent value="bets">
-          {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
+          {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {myMatcherBets.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
+              {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
             <BetCard
-              key={bet.id}
+              key={bet.betIds[0]}
               bet={bet}
               index={i}
               walletAddress={walletAddress}
@@ -337,11 +363,11 @@ export default function MyBets() {
 
 
         <TabsContent value="history">
-          {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
+          {groupedBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {myMatcherBets.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) =>
+              {groupedBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) =>
             <BetCard
-              key={bet.id}
+              key={bet.betIds[0]}
               bet={bet}
               index={i}
               walletAddress={walletAddress}
