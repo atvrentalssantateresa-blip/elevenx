@@ -192,39 +192,29 @@ Deno.serve(async (req) => {
     
     console.log('[claimWinnings] Proceeding with on-chain claim');
     
-    // Check if position has matched stake
-    if (!positionData || positionData.matched_stake === BigInt(0)) {
-      console.log('[claimWinnings] Position has no matched stake — doing DB-only claim');
-      for (const b of betsToClaim_validated) {
-        await serviceRole.entities.UserBet.update(b.id, {
-          status: 'claimed',
-          actual_payout: b.actual_payout || b.potential_payout || 0,
-        });
-      }
-      return Response.json({
-        success: true,
-        db_only: true,
-        message: `✓ ${betsToClaim_validated.length} bet(s) marked as claimed (no matched stake).`,
-        betIds: betsToClaim_validated.map(b => b.id),
-        totalPayout,
-      });
-    }
-
-    // For emergency-settled parimutuel markets, do DB-only claim
-    // On-chain claim requires proper position state which may not exist for emergency settlements
-    console.log('[claimWinnings] Emergency-settled market — doing DB-only claim (safe fallback)');
-    for (const b of betsToClaim_validated) {
-      await serviceRole.entities.UserBet.update(b.id, {
-        status: 'claimed',
-        actual_payout: b.actual_payout || b.potential_payout || 0,
-      });
-    }
+    // Construct claim_winnings instruction for Solana
+    const [feeVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('fee_vault')],
+      programId
+    );
+    
+    const claimInstruction = {
+      instruction_type: 'claim_winnings',
+      programId: SOLANA_PROGRAM_ID,
+      marketPda: marketPda.toBase58(),
+      positionPda: positionPda.toBase58(),
+      feeVaultPda: feeVaultPda.toBase58(),
+      bettorPubkey: trimmedWallet,
+      amountLamports: positionData.potential_payout.toString(),
+    };
+    
     return Response.json({
       success: true,
-      db_only: true,
-      message: `✓ ${betsToClaim_validated.length} winning bet(s) claimed (DB settlement)`,
+      on_chain: true,
+      message: `✓ ${betsToClaim_validated.length} winning bet(s) ready for on-chain claim`,
       betIds: betsToClaim_validated.map(b => b.id),
       totalPayout,
+      solana_instruction: claimInstruction,
     });
 
   } catch (error) {
