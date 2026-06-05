@@ -330,12 +330,12 @@ export default function MyBets() {
 
       <Tabs defaultValue="bets" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 bg-card border border-border/50 rounded-xl">
-          <TabsTrigger value="bets" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground rounded-lg text-xs sm:text-sm">
+          <TabsTrigger value="bets" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
             <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className="hidden sm:inline">My Bets ({myMatcherBets.length})</span>
             <span className="sm:hidden">Bets ({myMatcherBets.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground rounded-lg text-xs sm:text-sm">
+          <TabsTrigger value="history" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className="hidden sm:inline">History ({completedBets.length})</span>
             <span className="sm:hidden">History</span>
