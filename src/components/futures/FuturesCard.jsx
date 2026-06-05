@@ -107,6 +107,21 @@ export default function FuturesCard({ market, index, onSelect }) {
               <span>Total Pool</span>
               <span className="font-bold text-foreground">◎{totalPool.toFixed(1)}</span>
             </div>
+            
+            {/* Hype Bar */}
+            <div className="mb-2.5">
+              <div className="flex items-center justify-between text-[9px] mb-1">
+                <span className="text-accent font-bold uppercase tracking-wider">Liquidity Active</span>
+                <span className="text-muted-foreground">{totalLpOffers > 0 ? `${Math.min(100, totalLpOffers * 15)}% filled` : 'Waiting for LPs'}</span>
+              </div>
+              <div className="h-2 bg-secondary rounded-full overflow-hidden border border-border/50">
+                <div 
+                  className="h-full bg-gradient-to-r from-accent/60 to-accent rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, totalLpOffers * 15)}%` }}
+                />
+              </div>
+            </div>
+            
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5 bg-accent/10 px-2 py-1 rounded-lg border border-accent/20">
