@@ -88,7 +88,6 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
       });
     }
     
-    alert('✓ Bet placed successfully! Good luck! 🍀');
     onClose();
   };
 
