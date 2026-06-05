@@ -39,6 +39,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
       
       const res = await base44.functions.invoke('createMarketOnChain', {
         bet_id: bet.id,
+        match_id: matchId,
         force_recreate: true,
       });
       
