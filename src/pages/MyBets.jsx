@@ -170,9 +170,18 @@ export default function MyBets() {
     return 'Draw';
   };
 
-  // CRITICAL: Separate LP positions from matcher bets
-  const myLpPositions = myBets.filter((b) => b.role === 'lp');
-  const myMatcherBets = myBets.filter((b) => b.role !== 'lp');
+  // CRITICAL: Parimutuel bets (role='lp' but _isParimutuel or no offer_id) should show as regular bets
+  // Only traditional LP positions (with offer_id and not parimutuel) show in LP tab
+  const myLpPositions = myBets.filter((b) => {
+    // Traditional LP: has offer_id, role='lp', and NOT parimutuel
+    return b.role === 'lp' && b.offer_id && !b._isParimutuel;
+  });
+  
+  // Parimutuel bets show as regular bets (bettor IS LP but UI shows as bet)
+  const myMatcherBets = myBets.filter((b) => {
+    // Include: non-LP bets + parimutuel LP bets (no offer_id or _isParimutuel)
+    return b.role !== 'lp' || (b.role === 'lp' && (!b.offer_id || b._isParimutuel));
+  });
   
   const totalStaked = myMatcherBets.reduce((s, b) => s + (b.amount || 0), 0);
   const totalWon = myMatcherBets.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.actual_payout || 0), 0);
@@ -343,7 +352,7 @@ export default function MyBets() {
         
       </div>
       
-      {/* LP Stats */}
+      {/* LP Stats - only traditional LP positions */}
       {myLpPositions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
           <QuickStat

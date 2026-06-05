@@ -49,9 +49,13 @@ Deno.serve(async (req) => {
     }
     
     // Commit UserBet (includes LP-specific fields for parimutuel)
+    // CRITICAL: Mark parimutuel bets (no offer_id in commit_data) so they display as regular bets in UI
+    const isParimutuel = !commit_data.offer_id; // No offer_id means parimutuel (bettor IS LP)
+    
     const newUserBet = await serviceRole.entities.UserBet.create({
       ...userBet,
-      offer_id: offerId,
+      offer_id: isParimutuel ? null : offerId, // Parimutuel has no offer_id
+      _isParimutuel: isParimutuel, // Flag for UI to treat as bet, not LP position
       // Ensure LP fields are set
       liquidity_deposited: userBet.liquidity_deposited || userBet.amount,
       liquidity_matched: userBet.liquidity_matched || 0,

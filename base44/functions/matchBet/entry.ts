@@ -202,6 +202,7 @@ Deno.serve(async (req) => {
       console.log('[matchBet] Using instruction type:', instructionType, '(bettor IS LP when pool is empty)');
 
       // Prepare commit data - bettor is ALWAYS an LP in parimutuel mode
+      // CRITICAL: Don't include offer_id in userBet for parimutuel - it should display as a bet, not LP position
       const commit_data = {
         lpOffer: {
           bet_id,
@@ -220,7 +221,7 @@ Deno.serve(async (req) => {
         userBet: {
           bet_id,
           match_id,
-          offer_id: 'TEMP_LP_OFFER_ID', // Will be replaced with actual ID after commit
+          offer_id: null, // CRITICAL: null for parimutuel - displays as bet, not LP
           role: 'lp', // CRITICAL: Parimutuel bettor IS the LP
           outcome,
           outcome_label: outcomeLabel,
