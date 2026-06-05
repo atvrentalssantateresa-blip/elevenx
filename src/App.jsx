@@ -28,6 +28,7 @@ import RecreateMarket from '@/pages/RecreateMarket';
 import InitPlatform from '@/pages/InitPlatform';
 import Diagnostics from '@/pages/Diagnostics';
 import FixAdmin from '@/pages/FixAdmin';
+import DebugWallet from '@/pages/DebugWallet';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
         <Route path="/init-platform" element={<InitPlatform />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="/fix-admin" element={<FixAdmin />} />
+        <Route path="/debug-wallet" element={<DebugWallet />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
