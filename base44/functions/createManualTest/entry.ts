@@ -24,8 +24,9 @@ Deno.serve(async (req) => {
     
     // CRITICAL: All timestamps must be in the future for on-chain validation
     const matchStartTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
+    const matchEndTime = new Date(matchStartTime.getTime() + 15 * 60 * 1000); // 15 min match duration
     const bettingClosesAt = matchStartTime; // Betting closes exactly at kickoff
-    const settleAfter = new Date(matchStartTime.getTime() + 15 * 60 * 1000); // Settlement opens 15 min after kickoff (match duration)
+    const settleAfter = matchEndTime; // Settlement opens at match end (no delay)
     
     // Validate timestamps (for debugging)
     console.log('Timeline:', {
@@ -44,7 +45,7 @@ Deno.serve(async (req) => {
       team_b_flag: '🔴',
       group_stage: 'Quick Test',
       match_time: matchStartTime.toISOString(),
-      match_end_time: settleAfter.toISOString(),
+      match_end_time: matchEndTime.toISOString(),
       venue: 'Test Arena',
       status: 'upcoming',
     });
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
         betting_closes: bettingClosesAt.toISOString(),
         settlement: settleAfter.toISOString(),
       },
-      message: `✓ MATCH CREATED!\n\n⏰ Timeline:\n- Match starts: ${Math.floor((matchStartTime.getTime() - now.getTime()) / 60000)} min\n- Betting closes: ${Math.floor((bettingClosesAt.getTime() - now.getTime()) / 60000)} min\n- Settlement: ${Math.floor((settleAfter.getTime() - now.getTime()) / 60000)} min\n\n✅ Go to Matches → Click "Initialize Market"`,
+      message: `✓ MATCH CREATED!\n\n⏰ Timeline:\n- Match starts: ${Math.floor((matchStartTime.getTime() - now.getTime()) / 60000)} min\n- Betting closes: at kickoff (no delay)\n- Match ends: ${Math.floor((matchEndTime.getTime() - now.getTime()) / 60000)} min\n- Settlement: immediately at match end\n\n✅ Go to Matches → Click "Initialize Market"`,
     });
 
   } catch (error) {
