@@ -164,21 +164,9 @@ export default function LpDashboard() {
 
       const result = offersWithDetails.filter((o) => o !== null);
 
-      // Deduplicate by offer_id to prevent showing same LP position twice
-      const seen = new Set();
-      const deduplicated = result.filter((o) => {
-        const key = o.id || o.userBetId;
-        if (seen.has(key)) {
-          console.log('Removing duplicate LP position:', key);
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
-
-      console.log('Final LP positions (deduplicated):', deduplicated);
+      console.log('LP positions after filtering nulls:', result.length);
       console.log('==================');
-      return deduplicated;
+      return result;
     },
     enabled: !!walletAddress,
     refetchOnWindowFocus: true,
