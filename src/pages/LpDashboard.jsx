@@ -119,13 +119,19 @@ export default function LpDashboard() {
       console.log('walletAddress:', walletAddress);
       console.log('enabled:', !!walletAddress);
 
-      // Fetch ALL UserBets for this wallet, then filter for role='lp' client-side
+      // Step 1: Fetch ALL UserBets
+      console.log('Step 1: Fetching all UserBets...');
       const allUserBets = await base44.entities.UserBet.list('-created_date', 100);
       console.log('Total UserBets fetched:', allUserBets.length);
+      console.log('First 3 UserBets:', allUserBets.slice(0, 3));
 
+      // Step 2: Filter for LP role
+      console.log('Step 2: Filtering for role=lp...');
       const lpUserBets = allUserBets.filter((ub) => {
         const match = ub.wallet_address === walletAddress && ub.role === 'lp';
-        console.log('UserBet check:', ub.id, 'wallet:', ub.wallet_address, 'role:', ub.role, 'matches:', match);
+        if (match) {
+          console.log('✓ LP UserBet found:', ub.id, 'wallet:', ub.wallet_address, 'role:', ub.role);
+        }
         return match;
       });
 
