@@ -1,19 +1,38 @@
 import { Zap } from 'lucide-react';
+import { calculateVirtualSeed, calculateParimutuelOdds } from '@/utils/parimutuel';
 
 /**
- * Calculate dynamic parimutuel odds for a phase-shifted outcome
- * Formula: (Total Pool / Outcome Pool) * (1 - Fee)
+ * Calculate dynamic parimutuel odds with virtual seeding from API odds
+ * Uses API odds to seed fair starting liquidity, then drifts based on real bets
  */
 export const calculateDynamicOdds = (bet, outcome) => {
   if (!bet) return null;
   
-  const feePercent = (bet.fee_percent || 0) / 100;
+  // Get API odds for virtual seeding
+  const apiOddsA = bet.odds_a || bet.oracle_odds_a / 100 || 2.0;
+  const apiOddsB = bet.odds_b || bet.oracle_odds_b / 100 || 2.0;
+  const apiOddsDraw = bet.odds_draw || bet.oracle_odds_draw / 100 || 3.0;
+  
+  // Calculate virtual seeds (10 SOL virtual pool)
+  const virtualSeeds = calculateVirtualSeed(apiOddsA, apiOddsB, apiOddsDraw, 10);
+  
+  const feePercent = bet.fee_percent || 0;
   const totalPool = bet.total_pool || 0;
   const outcomePool = outcome === 'a' ? (bet.pool_a || 0) : outcome === 'b' ? (bet.pool_b || 0) : (bet.pool_draw || 0);
   
-  if (totalPool <= 0 || outcomePool <= 0) return null;
+  if (totalPool <= 0) return null;
   
-  return (totalPool / outcomePool) * (1 - feePercent);
+  // Calculate odds with virtual seeding
+  const { oddsA, oddsB, oddsDraw } = calculateParimutuelOdds(
+    bet.pool_a || 0,
+    bet.pool_b || 0,
+    bet.pool_draw || 0,
+    totalPool,
+    feePercent,
+    virtualSeeds
+  );
+  
+  return outcome === 'a' ? oddsA : outcome === 'b' ? oddsB : oddsDraw;
 };
 
 /**

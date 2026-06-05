@@ -122,6 +122,9 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
   
   const hasOdds = displayOddsA > 0 || displayOddsB > 0 || displayOddsDraw > 0;
 
+  // Check if any outcome is in parimutuel mode (no unmatched liquidity, only pool)
+  const isParimutuelMode = hasAnyPhaseShift;
+
   const outcomes = [
     {
       key: 'a',
@@ -250,14 +253,18 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
               {o.odds > 0 ? `${o.odds.toFixed(2)}x` : '—'}
             </p>
             
-            {/* Show unmatched liquidity if available, otherwise show pool only */}
+            {/* Show unmatched liquidity if available (fixed-odds), otherwise show pool (parimutuel) */}
             {o.unmatched > 0 ? (
               <p className="text-[10px] text-muted-foreground mt-1">
                 ◎{o.unmatched.toFixed(2)} available @ {o.fixedOdds.toFixed(2)}x
               </p>
-            ) : (
+            ) : o.pool > 0 ? (
               <p className="text-[10px] text-accent font-bold mt-1">
-                ◎{o.pool.toFixed(2)} pool
+                ◎{o.pool.toFixed(2)} parimutuel pool
+              </p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                No liquidity
               </p>
             )}
           </button>

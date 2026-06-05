@@ -3,13 +3,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target, PieChart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import { calculatePoolShare } from '@/utils/parimutuel';
 
 const statusConfig = {
   active:   { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock, label: 'Active' },
@@ -157,13 +158,17 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   const canRefund = bet.status === 'refunded';
   const isCompleted = ['lost', 'claimed', 'void'].includes(bet.status);
   
-  // Parimutuel LP bet: role='lp' with no offer_id - can withdraw full amount if pending/active
+  // Parimutuel LP bet: role='lp' with no offer_id - displays as pool share, not matching progress
   const isParimutuelLp = bet.role === 'lp' && !bet.offer_id;
   const unmatched = isParimutuelLp && (bet.status === 'pending' || bet.status === 'active') ? bet.amount : (bet.liquidity_unmatched || 0);
   const canWithdraw = isParimutuelLp && unmatched > 0 && (bet.status === 'pending' || bet.status === 'active');
   
-  // Calculate match progress for pending/active bets (how much of the bet is matched)
-  const matchProgress = (bet.status === 'pending' || bet.status === 'active') && bet.amount > 0
+  // For parimutuel bets: calculate pool share instead of match progress
+  const poolShare = isParimutuelLp ? calculatePoolShare(bet.amount, bet.total_pool || bet.amount) : 0;
+  const isParimutuelActive = isParimutuelLp && (bet.status === 'pending' || bet.status === 'active');
+  
+  // For fixed-odds bets: calculate match progress (how much of the bet is matched)
+  const matchProgress = !isParimutuelActive && (bet.status === 'pending' || bet.status === 'active') && bet.amount > 0
     ? Math.min(100, Math.round(((bet.amount - (unmatched || 0)) / bet.amount) * 100))
     : 100;
   const isFullyMatched = matchProgress === 100 && (bet.status === 'pending' || bet.status === 'active');
@@ -331,8 +336,29 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 </div>
               </div>
 
-              {/* Match Progress Gauge - Only for pending/active bets */}
-              {(bet.status === 'pending' || bet.status === 'active') && (
+              {/* Pool Share Display - For parimutuel LP bets only */}
+              {isParimutuelActive && (
+                <div className="bg-gradient-to-br from-accent/10 to-primary/10 border border-accent/20 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <PieChart className="w-4 h-4 text-accent" />
+                      <span className="text-xs font-bold text-muted-foreground">
+                        Your Pool Share
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-accent animate-pulse" />
+                      <span className="text-sm font-heading font-bold text-accent">{poolShare.toFixed(2)}%</span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground text-center">
+                    You own {poolShare.toFixed(2)}% of the total pool (◎{bet.total_pool?.toFixed(4)})
+                  </div>
+                </div>
+              )}
+
+              {/* Match Progress Gauge - For fixed-odds bets only */}
+              {!isParimutuelActive && (bet.status === 'pending' || bet.status === 'active') && (
                 <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
