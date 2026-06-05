@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
           bet_id,
           match_id,
           offer_id: null, // CRITICAL: null for parimutuel - displays as bet, not LP
-          role: 'lp', // CRITICAL: Parimutuel bettor IS the LP
+          role: 'matcher', // CRITICAL: Parimutuel bettors display as bets, not LP positions
           outcome,
           outcome_label: outcomeLabel,
           amount,
