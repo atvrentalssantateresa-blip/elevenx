@@ -4,7 +4,7 @@ import { Buffer } from 'node:buffer';
 import bs58 from 'npm:bs58@5.0.0';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
 
 /**
  * Settle a market on-chain by calling the Solana program's emergency_settle instruction.
