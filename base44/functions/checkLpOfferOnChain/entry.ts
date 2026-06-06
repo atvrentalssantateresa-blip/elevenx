@@ -89,26 +89,19 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      if (Number(amountMatchedOnChain) <= 0) {
-        return Response.json({ 
-          error: 'No matched liquidity on-chain',
-          canClaim: false,
-          reason: 'no_liquidity',
-          onChainState: {
-            withdrawn: false,
-            amountMatched: Number(amountMatchedOnChain) / 1e9,
-          }
-        }, { status: 200 });
-      }
-
-      // Position is claimable
+      // Check if there's ANY liquidity (matched OR the account exists)
+      // For unmatched withdrawals, we just need the account to exist and not be withdrawn
+      const hasMatched = Number(amountMatchedOnChain) > 0;
+      
+      // Position exists and not withdrawn - can attempt withdrawal
       return Response.json({
         canClaim: true,
+        hasMatched,
         onChainState: {
           withdrawn: false,
           amountMatched: Number(amountMatchedOnChain) / 1e9,
         },
-        message: 'LP position is claimable'
+        message: hasMatched ? 'LP position has winnings to claim' : 'LP position exists, can withdraw unmatched'
       });
 
     } catch (onChainErr) {
