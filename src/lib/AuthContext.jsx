@@ -159,9 +159,11 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('elevenx_auth_token');
           }
         } catch (decodeErr) {
-          console.error('Failed to decode auth token:', decodeErr.message);
+          console.error('Failed to decode auth token (old base58 format detected):', decodeErr.message);
           console.error('Token was:', authToken);
+          // Clear old base58 token - user needs to re-login to get new base64 token
           localStorage.removeItem('elevenx_auth_token');
+          console.log('Cleared old auth token - please login again');
         }
       }
       
