@@ -447,6 +447,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(refundIx);
       } else if (instruction.instruction_type === 'withdraw_lp_winnings') {
         // withdraw_lp_winnings — program instruction for LPs to withdraw from settled winning markets
+        console.log('=== WITHDRAW_LP_WINNINGS INSTRUCTION DEBUG ===');
         console.log('[withdraw_lp_winnings] Creating instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
@@ -469,6 +470,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           amount: instruction.withdrawAmountLamports,
           amountHex: data.slice(8, 16).toString('hex'),
           dataLength: data.length,
+          fullData: data.toString('hex'),
         });
         
         const withdrawIx = new TransactionInstruction({
@@ -477,7 +479,17 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           data,
         });
         
-        console.log('[withdraw_lp_winnings] Keys:', keys.map((k, i) => `  [${i}] ${k.pubkey.toBase58()} (writable=${k.isWritable}, signer=${k.isSigner})`));
+        console.log('[withdraw_lp_winnings] Keys:');
+        keys.forEach((k, i) => {
+          console.log(`  [${i}] ${k.pubkey.toBase58()}`);
+          console.log(`      isWritable=${k.isWritable}, isSigner=${k.isSigner}`);
+        });
+        
+        console.log('[withdraw_lp_winnings] Final instruction:');
+        console.log('  programId:', withdrawIx.programId.toBase58());
+        console.log('  dataLength:', withdrawIx.data.length);
+        console.log('  dataHex:', withdrawIx.data.toString('hex'));
+        console.log('===========================================');
         
         transaction.add(withdrawIx);
         
