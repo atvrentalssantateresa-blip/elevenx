@@ -84,8 +84,8 @@ export default function Home() {
 
           <div className="relative z-10 p-5 sm:p-7 pt-6">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
-                <Globe className="w-3 h-3 text-white/70" />
+              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full hidden">
+                <Globe className="w-3 h-3 text-white/70 hidden" />
                 
               </div>
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
