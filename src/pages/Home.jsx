@@ -103,19 +103,27 @@ export default function Home() {
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
               Revolutionary parimutuel model meets fixed odds. No house edge. LPs earn fees. Everyone can be the house. Built on Solana.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <div className="bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                <span className="text-lg">🇺🇸</span>
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 px-3 py-1.5 rounded-lg">
                 <span className="text-[10px] font-bold text-primary tracking-wide">0% HOUSE EDGE</span>
               </div>
-              <div className="bg-gradient-to-r from-accent/15 to-accent/5 border border-accent/30 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                <span className="text-lg">🇧🇷</span>
+              <div className="bg-gradient-to-r from-accent/15 to-accent/5 border border-accent/30 px-3 py-1.5 rounded-lg">
                 <span className="text-[10px] font-bold text-accent tracking-wide">LP FEE SHARING</span>
               </div>
-              <div className="bg-gradient-to-r from-yellow-500/15 to-yellow-500/5 border border-yellow-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2">
-                <span className="text-lg">🇦🇷</span>
+              <div className="bg-gradient-to-r from-yellow-500/15 to-yellow-500/5 border border-yellow-500/30 px-3 py-1.5 rounded-lg">
                 <span className="text-[10px] font-bold text-yellow-400 tracking-wide">P2P MARKETS</span>
               </div>
+            </div>
+            
+            {/* World Cup branding flags */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+              <span className="text-[9px] text-white/40 uppercase tracking-wider">Featuring:</span>
+              <span className="text-xl">🇺🇸</span>
+              <span className="text-xl">🇧🇷</span>
+              <span className="text-xl">🇦🇷</span>
+              <span className="text-xl">🇫🇷</span>
+              <span className="text-xl">🇩🇪</span>
+              <span className="text-xl">🇪🇸</span>
             </div>
           </div>
         </motion.div>
