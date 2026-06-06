@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { createClient } from '@base44/sdk';
-import bs58 from 'bs58';
 
 const AuthContext = createContext();
 
@@ -112,12 +111,13 @@ export const AuthProvider = ({ children }) => {
       
       if (authToken) {
         console.log('Auth token found, decoding...');
-        // Decode the token to get user info (base58 encoded, not base64)
+        // Decode the token to get user info (base64url encoded)
         try {
           const [header, payload, sig] = authToken.split('.');
-          const payloadBytes = bs58.decode(payload);
-          const decoded = new TextDecoder().decode(payloadBytes);
-          const payloadJson = JSON.parse(decoded);
+          const base64Url = payload;
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+          const payloadJson = JSON.parse(jsonPayload);
           console.log('Token decoded:', payloadJson);
           
           if (payloadJson.userId && payloadJson.exp && payloadJson.exp > Math.floor(Date.now() / 1000)) {
