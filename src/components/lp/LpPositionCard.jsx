@@ -18,13 +18,25 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // Get match from position data if not passed - ALWAYS use matchData, never match directly
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // Use UserBet status (which has correct won/lost) instead of BetOffer status (which only tracks matching)
-  // BetOffer.status tracks matching (open/partially_matched/fully_matched)
-  // UserBet.status tracks settlement (won/lost) - use this for LP result
-  const dbStatus = position.userBet?.status || offer.status || 'active';
+  // CRITICAL: Use position.status (from UserBet) as primary source for won/lost
+  // position.status comes from UserBet which tracks settlement (won/lost/claimed)
+  // offer.status is from BetOffer which only tracks matching (open/partially_matched/fully_matched)
+  const dbStatus = position.status || position.userBet?.status || offer.status || 'active';
   const isLpWon = dbStatus === 'won';
   const isLpLost = dbStatus === 'lost';
   const isSettled = dbStatus === 'won' || dbStatus === 'lost';
+  const isClaimed = dbStatus === 'claimed';
+  
+  console.log('[LpPositionCard] Win/Loss Check:', {
+    position_id: position.id,
+    userBet_status: position.userBet?.status,
+    offer_status: offer.status,
+    dbStatus,
+    isLpWon,
+    isLpLost,
+    isSettled,
+    liquidity_matched: liquidityMatched,
+  });
   
   console.log('[LpPositionCard] LP Win/Loss Check (using DB status):', {
     offer_id: offer.id,
@@ -371,8 +383,6 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
           {(() => {
-            const isClaimed = offer.status === 'claimed' || offer.userBet?.status === 'claimed';
-            
             if (isClaimed) {
               return (
                 <Button
