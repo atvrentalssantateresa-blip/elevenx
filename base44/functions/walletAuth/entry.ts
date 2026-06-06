@@ -65,41 +65,43 @@ Deno.serve(async (req) => {
         user = users[0];
         if (user) {
           console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address);
+        } else {
+          console.log('⚠️ WalletUser exists but User entity missing - will create User');
         }
       } catch (err) {
         console.log('User lookup failed:', err.message);
       }
     }
 
-    // If registering, ensure both WalletUser and User records exist
-    if (register) {
-      console.log('Registering user - wallet:', walletAddress);
-      
-      try {
-        // Create WalletUser record if it doesn't exist
-        if (!walletUser) {
-          walletUser = await serviceRole.entities.WalletUser.create({
-            wallet_address: walletAddress,
-            username: walletAddress.slice(0, 8),
-          });
-          console.log('✓ WalletUser created - wallet:', walletAddress);
-        }
-        
-        // Create User entity record for platform auth if it doesn't exist
-        if (!user) {
-          user = await serviceRole.entities.User.create({
-            email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
-            full_name: `User ${walletAddress.slice(0, 8)}`,
-            wallet_address: walletAddress,
-            username: walletAddress.slice(0, 8),
-            role: 'user',
-          });
-          console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
-        }
-      } catch (createErr) {
-        console.error('✗ User creation failed:', createErr);
-        return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
+    // Ensure both WalletUser and User records exist (auto-create if missing)
+    console.log('Ensuring User entity exists for wallet:', walletAddress?.slice(0, 8));
+    
+    try {
+      // Create WalletUser record if it doesn't exist
+      if (!walletUser) {
+        walletUser = await serviceRole.entities.WalletUser.create({
+          wallet_address: walletAddress,
+          username: walletAddress.slice(0, 8),
+        });
+        console.log('✓ WalletUser created - wallet:', walletAddress);
       }
+      
+      // Create User entity record for platform auth if it doesn't exist
+      if (!user) {
+        user = await serviceRole.entities.User.create({
+          email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
+          full_name: `User ${walletAddress.slice(0, 8)}`,
+          wallet_address: walletAddress,
+          username: walletAddress.slice(0, 8),
+          role: 'user',
+        });
+        console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
+      } else {
+        console.log('✓ User already exists - id:', user.id);
+      }
+    } catch (createErr) {
+      console.error('✗ User creation failed:', createErr);
+      return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
     }
 
     // If no user found and not registering
