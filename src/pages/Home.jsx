@@ -94,22 +94,25 @@ export default function Home() {
           <div className="relative z-10 p-5 sm:p-7">
             <div className="flex items-center gap-2 mb-2">
               <Star className="w-4 h-4 text-primary" />
-              <span className="text-xs font-bold text-primary tracking-widest uppercase">48 Teams · 104 Matches</span>
+              <span className="text-xs font-bold text-primary tracking-widest uppercase">WORLD CUP 2026</span>
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
-              One Trophy.<br />
-              <span className="text-primary">Your Prediction.</span>
+              The First Hybrid<br />
+              <span className="text-primary">Betting Protocol</span>
             </h2>
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
-              USA · Canada · Mexico hosting the biggest sporting event on Earth. Pick your winner and back it with SOL.
+              Revolutionary parimutuel model meets fixed odds. No house edge. LPs earn fees. Everyone can be the house. Built on Solana.
             </p>
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {['🇧🇷', '🇫🇷', '🇩🇪', '🇦🇷', '🏴󠁧󠁢󠁥󠁮󠁧󠁿'].map((flag, i) =>
-                <div key={i} className="w-8 h-8 rounded-full bg-card border-2 border-background flex items-center justify-center text-sm">{flag}</div>
-                )}
+            <div className="flex flex-wrap gap-2">
+              <div className="bg-primary/20 border border-primary/30 px-2.5 py-1 rounded-lg">
+                <span className="text-[10px] font-bold text-primary">0% House Edge</span>
               </div>
-              <span className="text-xs text-white/50">+43 more nations</span>
+              <div className="bg-accent/20 border border-accent/30 px-2.5 py-1 rounded-lg">
+                <span className="text-[10px] font-bold text-accent">LP Fee Sharing</span>
+              </div>
+              <div className="bg-yellow-500/20 border border-yellow-500/30 px-2.5 py-1 rounded-lg">
+                <span className="text-[10px] font-bold text-yellow-400">P2P Markets</span>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -130,46 +133,52 @@ export default function Home() {
 
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full">
-                <Zap className="w-3 h-3 text-primary" />
-                <span className="text-[10px] sm:text-[11px] font-bold text-primary tracking-widest">SOLANA POWERED</span>
+              <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/30 px-2.5 sm:px-3 py-1 rounded-full">
+                <TrendingUp className="w-3 h-3 text-accent" />
+                <span className="text-[10px] sm:text-[11px] font-bold text-accent tracking-widest">HYBRID MODEL</span>
               </div>
             </div>
             <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
-              Bet P2P.<br />
-              <span className="text-primary" style={{ textShadow: '0 0 40px rgba(166,156,242,0.6)' }}>Win On-Chain.</span>
+              Be The House.<br />
+              <span className="text-accent" style={{ textShadow: '0 0 40px rgba(20,241,147,0.6)' }}>Earn The Fees.</span>
             </h1>
             <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
-              The first fully decentralized World Cup betting pool. No house edge. No middlemen. Just pure odds between you and other fans.
+              Provide liquidity, earn 2% fees on every bet, and profit when bettors lose. No house edge — the community controls the pool.
             </p>
           </div>
 
           <div className="relative z-10 mt-5 sm:mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
-              <Link to="/matches" className="flex-1">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm" style={{ boxShadow: '0 0 24px rgba(166,156,242,0.35)' }}>
-                  <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-                  Start Betting
+              <Link to="/lp" className="flex-1">
+                <Button className="w-full font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm text-black" style={{ background: 'linear-gradient(135deg, #14f195, #00ff87)', boxShadow: '0 0 24px rgba(20,241,147,0.35)' }}>
+                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  Become an LP
                 </Button>
               </Link>
-              <Link to="/my-bets" className="flex-1">
+              <Link to="/matches" className="flex-1">
                 <Button variant="outline" className="w-full font-heading font-medium h-10 sm:h-12 rounded-xl border-white/15 text-white/80 bg-white/5 hover:bg-white/10">
-                  My Bets <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5" />
+                  Place Bet <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5" />
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Floating stat chips */}
+          {/* Key benefits */}
           <div className="relative z-10 mt-6">
-            <div className="flex flex-wrap gap-2 justify-end">
-              <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#21c45d' }} />
-                <span className="text-[11px] text-white/80 font-medium">0% platform fee</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-accent/10 backdrop-blur-md border border-accent/30 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-3 h-3 text-accent" />
+                  <span className="text-[10px] font-bold text-accent">2% Fees to LPs</span>
+                </div>
+                <p className="text-[9px] text-white/50">No house cut</p>
               </div>
-              <div className="bg-white/8 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
-                <Flame className="w-3 h-3 text-primary" />
-                <span className="text-[11px] text-white/80 font-medium">Instant settlement</span>
+              <div className="bg-primary/10 backdrop-blur-md border border-primary/30 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Users className="w-3 h-3 text-primary" />
+                  <span className="text-[10px] font-bold text-primary">Community Pool</span>
+                </div>
+                <p className="text-[9px] text-white/50">P2P betting</p>
               </div>
             </div>
           </div>
@@ -307,39 +316,39 @@ export default function Home() {
           </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
+      {/* ── WHY ELEVENX ── */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}>
         
         <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-4 h-4 text-primary" />
-          <h2 className="font-heading font-bold text-lg">How It Works</h2>
-          <span className="text-xs text-muted-foreground ml-1">P2P · No house edge</span>
+          <TrendingUp className="w-4 h-4 text-accent" />
+          <h2 className="font-heading font-bold text-lg">Why ElevenX?</h2>
+          <span className="text-xs text-muted-foreground ml-1">The Hybrid Revolution</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
           {
-            step: '01',
-            icon: '🏦',
-            title: 'LPs Back the Odds',
-            desc: 'Liquidity Providers deposit SOL to cover bettors at fixed oracle odds. If bettors lose, LPs earn the stake. No house — pure P2P.',
-            color: 'primary'
+            icon: '🚫',
+            title: 'No House Edge',
+            desc: 'Traditional bookies take 5-10%. We take ZERO. The entire pool goes to winners and LPs. Pure P2P fairness.',
+            color: 'accent',
+            highlight: true
           },
           {
-            step: '02',
-            icon: '🎯',
-            title: 'Bet at Fixed Odds',
-            desc: 'Pick an outcome and stake SOL at the oracle-fixed price. Your payout is locked in the moment you bet — no slippage.',
-            color: 'accent'
+            icon: '💰',
+            title: 'LP Fee Distribution',
+            desc: 'Every bet charges 2% fees — distributed directly to Liquidity Providers. Earn passive income just by holding liquidity.',
+            color: 'primary',
+            highlight: true
           },
           {
-            step: '03',
-            icon: '💸',
-            title: 'Win & Claim',
-            desc: 'After the match settles, winners claim their fixed payout instantly on-chain. Only a 2% fee — no hidden costs, ever.',
-            color: 'yellow'
+            icon: '👑',
+            title: 'Everyone Can Be The House',
+            desc: 'No gatekeepers. Deposit SOL, back any outcome, and collect fees when bettors match against your liquidity.',
+            color: 'yellow',
+            highlight: true
           }].
           map((item, i) =>
           <motion.div
@@ -353,7 +362,6 @@ export default function Home() {
             'bg-yellow-500/5 border-yellow-500/20'}`
             }>
             
-              <div className="absolute top-4 right-4 font-heading font-black text-4xl opacity-10 text-foreground">{item.step}</div>
               <div className="text-3xl mb-3">{item.icon}</div>
               <h3 className={`font-heading font-bold text-base mb-2 ${
             item.color === 'primary' ? 'text-primary' :
@@ -361,6 +369,21 @@ export default function Home() {
             'text-yellow-400'}`
             }>{item.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+              {item.highlight && (
+                <div className={`mt-3 pt-3 border-t ${
+                  item.color === 'primary' ? 'border-primary/20' :
+                  item.color === 'accent' ? 'border-accent/20' :
+                  'border-yellow-500/20'
+                }`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                    item.color === 'primary' ? 'text-primary' :
+                    item.color === 'accent' ? 'text-accent' :
+                    'text-yellow-400'
+                  }`}>
+                    🎯 Investor Favorite
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </div>
