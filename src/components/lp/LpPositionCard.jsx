@@ -446,6 +446,19 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
+            // Has unmatched liquidity - withdraw unmatched (ALWAYS available, priority over everything)
+            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
+              return (
+                <Button
+                  onClick={handleWithdraw}
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
+                >
+                  <Wallet className="w-3 h-3 mr-1" />
+                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
+                </Button>
+              );
+            }
+            
             // LP WON with matched liquidity - claim winnings (matched + fees)
             if (isLpWon && liquidityMatched > 0 && onWithdrawRequest) {
               return (
@@ -456,19 +469,6 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
                 >
                   <Trophy className="w-3 h-3 mr-1" />
                   Claim ◎{liquidityMatched.toFixed(4)}
-                </Button>
-              );
-            }
-            
-            // Has unmatched liquidity - withdraw unmatched (priority over win/loss)
-            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
-              return (
-                <Button
-                  onClick={handleWithdraw}
-                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
-                >
-                  <Wallet className="w-3 h-3 mr-1" />
-                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
                 </Button>
               );
             }
