@@ -483,9 +483,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           namespaced_format: discNamespaced.toString('hex'),
         });
         
-        // Use global format (standard Anchor)
-        const wlwDisc = discGlobal;
-        console.log('[withdraw_lp_winnings] Using simple format discriminator:', wlwDisc.toString('hex'));
+        // Use namespaced format (program name prefix)
+        const wlwDisc = discNamespaced;
+        console.log('[withdraw_lp_winnings] Using namespaced format discriminator:', wlwDisc.toString('hex'));
         const data = Buffer.alloc(16);
         wlwDisc.copy(data, 0);
         data.writeBigUInt64LE(BigInt(instruction.withdrawAmountLamports || 0), 8);
