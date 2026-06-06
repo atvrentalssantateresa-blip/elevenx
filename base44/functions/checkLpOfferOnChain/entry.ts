@@ -44,18 +44,31 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'BetOffer not found' }, { status: 404 });
     }
 
-    // Fetch Bet to check settlement
-    const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
-    const bet = bets[0];
-    if (!bet) {
-      return Response.json({ error: 'Bet not found' }, { status: 404 });
-    }
-
-    // Check on-chain state
+    // Check on-chain state using the stored PDA
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     
     try {
-      const lpOfferPda = new PublicKey(offer.solana_position_pda);
+      // Use stored PDA or derive it
+      let lpOfferPda;
+      if (offer.solana_position_pda) {
+        lpOfferPda = new PublicKey(offer.solana_position_pda);
+      } else {
+        // Fallback: derive from Bet's market PDA
+        const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
+        const bet = bets[0];
+        if (!bet || !bet.solana_market_pda) {
+          return Response.json({ error: 'Market PDA not found', canClaim: false, reason: 'not_found_on_chain' });
+        }
+        const marketPda = new PublicKey(bet.solana_market_pda);
+        const lpPubkey = new PublicKey(userBet.wallet_address);
+        const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
+        const [derivedPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+          new PublicKey(SOLANA_PROGRAM_ID)
+        );
+        lpOfferPda = derivedPda;
+      }
+      
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
       
       if (!lpOfferAccountInfo) {

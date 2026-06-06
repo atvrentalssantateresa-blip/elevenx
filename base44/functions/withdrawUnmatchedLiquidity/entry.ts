@@ -38,11 +38,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No unmatched liquidity to withdraw' }, { status: 400 });
     }
 
-    // Get match and bet data
-    const matches = await base44.entities.Match.filter({ id: userBet.match_id });
-    const match = matches[0];
-    if (!match) return Response.json({ error: 'Match not found' }, { status: 404 });
-
+    // Get bet data
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
     if (!bet) return Response.json({ error: 'Bet not found' }, { status: 404 });
@@ -54,13 +50,21 @@ Deno.serve(async (req) => {
     }
 
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
-    const matchIdBytes = Buffer.alloc(32);
-    Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
-
-    const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('market'), matchIdBytes],
-      programId
-    );
+    
+    // Use stored market PDA from Bet entity
+    let marketPda;
+    if (bet.solana_market_pda) {
+      marketPda = new PublicKey(bet.solana_market_pda);
+    } else {
+      // Fallback: derive from match_id
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
+      const [derivedPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('market'), matchIdBytes],
+        programId
+      );
+      marketPda = derivedPda;
+    }
 
     const lpPubkey = new PublicKey(walletAddress);
     const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
