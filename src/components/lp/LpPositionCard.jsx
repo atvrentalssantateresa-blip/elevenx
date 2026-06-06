@@ -18,9 +18,10 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // Get match from position data if not passed - ALWAYS use matchData, never match directly
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // Use the settled status from the database (already calculated correctly by announceWinner/fixLpStatus)
-  // LP status is stored in offer.status (won/lost) or position.userBet?.status
-  const dbStatus = offer.status || position.userBet?.status || 'active';
+  // Use UserBet status (which has correct won/lost) instead of BetOffer status (which only tracks matching)
+  // BetOffer.status tracks matching (open/partially_matched/fully_matched)
+  // UserBet.status tracks settlement (won/lost) - use this for LP result
+  const dbStatus = position.userBet?.status || offer.status || 'active';
   const isLpWon = dbStatus === 'won';
   const isLpLost = dbStatus === 'lost';
   const isSettled = dbStatus === 'won' || dbStatus === 'lost';
