@@ -305,7 +305,6 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             const isSettled = offer.status === 'settled' || offer.userBet?.status === 'settled';
             const isClaimed = offer.status === 'claimed' || offer.userBet?.status === 'claimed';
             const isLost = offer.status === 'lost';
-            const hasUnmatchedOrWon = isWon || isSettled || hasUnmatched;
             
             if (isClaimed) {
               return (
@@ -320,9 +319,9 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
-            // Show "No Funds" when position is settled/lost with no unmatched liquidity
-            // LP lost = backed the winning outcome, had to pay winners, nothing left
-            if ((isSettled || isLost) && !isWon && !hasUnmatched) {
+            // LP LOST = backed the winning outcome (had to pay winners, nothing left)
+            // Don't show claim button - show "No Funds" instead
+            if (isLost || (isSettled && !isWon && !hasUnmatched)) {
               return (
                 <Button
                   disabled
@@ -363,25 +362,30 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
-            if (hasUnmatchedOrWon && onWithdrawRequest) {
-              const withdrawLabel = isWon || isSettled 
-                ? `Claim Winnings`
-                : `Withdraw ◎${liquidityUnmatched.toFixed(4)}`;
-              const withdrawIcon = isWon || isSettled ? Trophy : Wallet;
-              const isWinnings = isWon || isSettled;
-              
+            // Only show "Claim Winnings" if LP actually WON (backed the losing outcome)
+            // If LP lost (backed winner), don't show claim button - already handled above
+            if (isWon && onWithdrawRequest) {
               return (
                 <Button
                   onClick={handleWithdraw}
-                  className={`flex-1 h-8 sm:h-9 text-[10px] sm:text-xs rounded-xl font-heading font-bold ${
-                    isWinnings 
-                      ? 'text-black' 
-                      : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
-                  }`}
-                  style={isWinnings ? { background: 'linear-gradient(135deg, #14f195, #00ff87)' } : {}}
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs text-black rounded-xl font-heading font-bold"
+                  style={{ background: 'linear-gradient(135deg, #14f195, #00ff87)' }}
                 >
-                  <withdrawIcon className="w-3 h-3 mr-1" />
-                  {withdrawLabel}
+                  <Trophy className="w-3 h-3 mr-1" />
+                  Claim Winnings
+                </Button>
+              );
+            }
+            
+            // Show withdraw unmatched for open markets with unmatched liquidity
+            if (hasUnmatched && onWithdrawRequest) {
+              return (
+                <Button
+                  onClick={handleWithdraw}
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
+                >
+                  <Wallet className="w-3 h-3 mr-1" />
+                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
                 </Button>
               );
             }
