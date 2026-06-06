@@ -221,23 +221,39 @@ Deno.serve(async (req) => {
     
     // Check if market has enough SOL for the claim (including potential fee)
     const marketLamports = marketInfo?.lamports || 0;
+    const feeVaultLamports = feeVaultInfo?.lamports || 0;
     const requiredLamports = Number(claimAmount);
     
+    // Market can use fee vault funds if needed (fee vault holds platform fees + unmatched LP funds)
+    const totalAvailableLamports = marketLamports + feeVaultLamports;
+    
     // Market needs to have at least the claim amount (program will deduct fee)
-    if (marketLamports < requiredLamports) {
+    if (totalAvailableLamports < requiredLamports) {
       console.error('[claimWinnings] Market insolvency detected:', {
         marketLamports,
+        feeVaultLamports,
+        totalAvailableLamports,
         requiredLamports,
-        deficit: requiredLamports - marketLamports,
+        deficit: requiredLamports - totalAvailableLamports,
       });
       return Response.json({
-        error: 'Market PDA has insufficient SOL for this claim',
+        error: 'Market PDA has insufficient SOL for this claim (even with fee vault)',
         marketLamports,
+        feeVaultLamports,
+        totalAvailableLamports,
         requiredLamports,
-        deficit: requiredLamports - marketLamports,
+        deficit: requiredLamports - totalAvailableLamports,
         feeVaultPda: feeVaultPda.toBase58(),
         positionPda: positionPda.toBase58(),
       }, { status: 400 });
+    }
+    
+    if (marketLamports < requiredLamports) {
+      console.log('[claimWinnings] Market has insufficient SOL but fee vault will cover:', {
+        marketLamports,
+        feeVaultLamports,
+        requiredLamports,
+      });
     }
     
     // Build accounts array in the EXACT order required by ClaimWinnings struct:
