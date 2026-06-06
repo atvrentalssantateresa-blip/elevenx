@@ -67,27 +67,31 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If registering, auto-create user with wallet address as identifier
-    if (register && !walletUser) {
+    // If registering, ensure both WalletUser and User records exist
+    if (register) {
       console.log('Registering user - wallet:', walletAddress);
       
       try {
-        // Create WalletUser record first (for betting authorization)
-        walletUser = await serviceRole.entities.WalletUser.create({
-          wallet_address: walletAddress,
-          username: walletAddress.slice(0, 8),
-        });
-        console.log('✓ WalletUser created - wallet:', walletAddress);
+        // Create WalletUser record if it doesn't exist
+        if (!walletUser) {
+          walletUser = await serviceRole.entities.WalletUser.create({
+            wallet_address: walletAddress,
+            username: walletAddress.slice(0, 8),
+          });
+          console.log('✓ WalletUser created - wallet:', walletAddress);
+        }
         
-        // Also create User entity record for platform auth
-        user = await serviceRole.entities.User.create({
-          email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
-          full_name: `User ${walletAddress.slice(0, 8)}`,
-          wallet_address: walletAddress,
-          username: walletAddress.slice(0, 8),
-          role: 'user',
-        });
-        console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
+        // Create User entity record for platform auth if it doesn't exist
+        if (!user) {
+          user = await serviceRole.entities.User.create({
+            email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
+            full_name: `User ${walletAddress.slice(0, 8)}`,
+            wallet_address: walletAddress,
+            username: walletAddress.slice(0, 8),
+            role: 'user',
+          });
+          console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
+        }
       } catch (createErr) {
         console.error('✗ User creation failed:', createErr);
         return Response.json({ error: 'Failed to create user: ' + createErr.message }, { status: 500 });
