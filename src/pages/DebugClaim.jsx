@@ -1,193 +1,193 @@
 import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useWallet } from '@/lib/WalletContext';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle, Loader } from 'lucide-react';
-import { useWallet } from '@/lib/WalletContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Trophy, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function DebugClaim() {
-  const { walletAddress } = useWallet();
-  const [userBetId, setUserBetId] = useState('');
-  const [debugResult, setDebugResult] = useState(null);
+  const { isConnected, walletAddress } = useWallet();
+  const [testBetId, setTestBetId] = useState('');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const debugMutation = useMutation({
-    mutationFn: async () => {
-      if (!walletAddress) {
-        throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
-      }
-      const res = await base44.functions.invoke('debugClaim', {
-        userBetId: userBetId || undefined,
-        walletAddress
-      });
-      if (res.data.error) throw new Error(res.data.error);
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setDebugResult(data);
-      setError(null);
-    },
-    onError: (err) => {
-      setError(err.message);
-      setDebugResult(null);
+  const handleTestClaim = async () => {
+    if (!walletAddress) {
+      setError('Please connect your wallet first');
+      return;
     }
-  });
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      // Fetch UserBets for this wallet
+      const allBets = await base44.entities.UserBet.list('-created_date', 100);
+      const myBets = allBets.filter(bet => bet.wallet_address === walletAddress);
+      
+      console.log('[DebugClaim] My bets:', myBets);
+      
+      // Find a won bet that hasn't been claimed
+      const claimableBet = myBets.find(bet => 
+        bet.status === 'won' && !bet.actual_payout
+      );
+
+      if (!claimableBet) {
+        setError('No claimable bets found. Place a bet and wait for the match to settle.');
+        setLoading(false);
+        return;
+      }
+
+      setResult({
+        message: 'Found claimable bet!',
+        bet: claimableBet,
+        myBetsCount: myBets.length,
+      });
+
+      setTestBetId(claimableBet.id);
+
+    } catch (err) {
+      console.error('[DebugClaim] Error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceClaim = async () => {
+    if (!testBetId) return;
+
+    try {
+      const res = await base44.functions.invoke('claimWinnings', {
+        userBetId: testBetId,
+        walletAddress: walletAddress,
+      });
+
+      setResult(prev => ({
+        ...prev,
+        claimResponse: res.data,
+        message: 'Claim executed! Check response below.',
+      }));
+
+    } catch (err) {
+      setError('Claim failed: ' + err.message);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-heading font-bold">🔍 Claim Debug Tool</h1>
-        
-        <Card className="bg-card border-border/50">
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Wallet Address</label>
-              <div className="p-3 bg-secondary/20 rounded-lg font-mono text-xs break-all">
-                {walletAddress || 'Not connected'}
-              </div>
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <Card className="bg-card border-border/50">
+        <CardHeader>
+          <CardTitle className="font-heading flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-accent" />
+            Debug Claim - Test Betting Wallet
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-secondary/50 rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-1">Current Wallet:</p>
+            <p className="font-mono text-sm font-bold">
+              {walletAddress ? walletAddress.slice(0, 8) + '...' + walletAddress.slice(-8) : 'Not connected'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status: {isConnected ? '✅ Connected' : '❌ Disconnected'}
+            </p>
+          </div>
+
+          <Button 
+            onClick={handleTestClaim} 
+            disabled={!isConnected || loading}
+            className="w-full"
+          >
+            {loading ? 'Checking...' : 'Find My Bets & Claimable'}
+          </Button>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">UserBet ID (optional)</label>
-              <Input
-                value={userBetId}
-                onChange={(e) => setUserBetId(e.target.value)}
-                placeholder="Leave empty to check all bets"
-                className="bg-secondary/10"
-              />
-            </div>
-
-            <Button
-              onClick={() => debugMutation.mutate()}
-              disabled={debugMutation.isPending}
-              className="w-full h-10"
-            >
-              {debugMutation.isPending ? (
-                <>
-                  <Loader className="w-4 h-4 mr-2 animate-spin" />
-                  Running Diagnostics...
-                </>
-              ) : (
-                'Run Claim Diagnostics'
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {error && (
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 text-destructive">
-                <AlertCircle className="w-6 h-6" />
-                <div>
-                  <h3 className="font-bold">Error</h3>
-                  <p className="text-sm mt-1">{error}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {debugResult && (
-          <div className="space-y-4">
-            <Card className="bg-accent/10 border-accent/30">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 text-accent mb-4">
-                  <CheckCircle className="w-6 h-6" />
-                  <h3 className="font-bold text-lg">Diagnostics Complete</h3>
-                </div>
+          {result && (
+            <div className="space-y-3">
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
+                <p className="text-sm font-bold text-accent mb-2">{result.message}</p>
+                <p className="text-xs text-muted-foreground">Total bets for this wallet: {result.myBetsCount}</p>
                 
-                <div className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-muted-foreground">Platform Exists</p>
-                      <p className="font-bold">{debugResult.platformExists ? '✅ Yes' : '❌ No'}</p>
+                {result.bet && (
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Bet ID:</span>
+                      <span className="font-mono">{result.bet.id}</span>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Fee Vault Exists</p>
-                      <p className="font-bold">{debugResult.feeVaultExists ? '✅ Yes' : '❌ No'}</p>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Match:</span>
+                      <span>{result.bet.match_title}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Outcome:</span>
+                      <span>{result.bet.outcome_label}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Amount:</span>
+                      <span>◎{result.bet.amount?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Potential Payout:</span>
+                      <span>◎{result.bet.potential_payout?.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge status={result.bet.status} />
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {debugResult.userBets && (
-                    <div>
-                      <p className="text-muted-foreground mb-2">Your Bets ({debugResult.userBets.length})</p>
-                      <div className="space-y-2">
-                        {debugResult.userBets.map((bet) => (
-                          <div key={bet.id} className="p-3 bg-secondary/10 rounded-lg">
-                            <div className="flex justify-between items-center">
-                              <span className="font-mono text-xs">{bet.id}</span>
-                              <span className={`text-xs font-bold ${bet.status === 'won' ? 'text-accent' : 'text-muted-foreground'}`}>
-                                {bet.status}
-                              </span>
-                            </div>
-                            <p className="text-xs mt-1">
-                              Outcome: {bet.outcome} | Amount: ◎{bet.amount?.toFixed(4)} | Payout: ◎{bet.potential_payout?.toFixed(4)}
-                            </p>
-                            {bet.positionData && (
-                              <p className="text-xs text-accent mt-1">
-                                ✅ Position on-chain | Claimed: {bet.positionData.claimed ? 'Yes' : 'No'} | Claimable: ◎{(bet.positionData.claimable || bet.positionData.potential_payout || bet.potential_payout || 0).toFixed(4)}
-                              </p>
-                            )}
-                            {!bet.positionData && bet.positionExists && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                ⚠️ Position exists but data couldn't be parsed
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {result.bet && result.bet.status === 'won' && !result.bet.actual_payout && (
+                <Button 
+                  onClick={handleForceClaim}
+                  className="w-full bg-accent hover:bg-accent/90"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Test Claim Winnings (◎{result.bet.potential_payout?.toFixed(4)})
+                </Button>
+              )}
 
-                  {debugResult.markets && (
-                    <div>
-                      <p className="text-muted-foreground mb-2">Markets Status</p>
-                      <div className="space-y-2">
-                        {debugResult.markets.map((market) => (
-                          <div key={market.id} className="p-3 bg-secondary/10 rounded-lg">
-                            <p className="text-xs font-bold">{market.title}</p>
-                            <p className="text-xs mt-1">
-                              Status: {market.status} | Winner: {market.winning_outcome || 'Not set'}
-                            </p>
-                            {market.onChain && (
-                              <p className="text-xs mt-1">
-                                ✅ Market on-chain | Settled: {market.onChain.settled ? 'Yes' : 'No'} | Lamports: {market.onChain.lamports}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {debugResult.claimableBets && debugResult.claimableBets.length > 0 && (
-                    <div className="p-4 bg-accent/20 border border-accent/30 rounded-lg">
-                      <p className="font-bold text-accent mb-2">✅ {debugResult.claimableBets.length} Bet(s) Ready to Claim!</p>
-                      <p className="text-xs">
-                        Total claimable: ◎{(debugResult.totalClaimable || 0).toFixed(4)} SOL
-                      </p>
-                    </div>
-                  )}
-
-                  {debugResult.blockingIssues && debugResult.blockingIssues.length > 0 && (
-                    <div className="p-4 bg-destructive/20 border border-destructive/30 rounded-lg">
-                      <p className="font-bold text-destructive mb-2">❌ Blocking Issues:</p>
-                      <ul className="text-xs space-y-1">
-                        {debugResult.blockingIssues.map((issue, i) => (
-                          <li key={i}>• {issue}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+              {result.claimResponse && (
+                <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                  <p className="text-sm font-bold text-primary mb-2">Claim Response:</p>
+                  <pre className="text-xs text-muted-foreground overflow-auto max-h-40">
+                    {JSON.stringify(result.claimResponse, null, 2)}
+                  </pre>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function Badge({ status }) {
+  const colors = {
+    active: 'bg-primary/10 text-primary',
+    pending: 'bg-yellow-500/10 text-yellow-400',
+    won: 'bg-accent/20 text-accent',
+    lost: 'bg-destructive/10 text-destructive',
+    claimed: 'bg-accent/20 text-accent',
+    refunded: 'bg-secondary text-secondary-foreground',
+    void: 'bg-muted text-muted-foreground',
+  };
+  
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${colors[status] || colors.void}`}>
+      {status}
+    </span>
   );
 }
