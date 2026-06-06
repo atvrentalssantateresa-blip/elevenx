@@ -447,7 +447,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(refundIx);
       } else if (instruction.instruction_type === 'withdraw_lp_winnings') {
         // withdraw_lp_winnings — program instruction for LPs to withdraw from settled winning markets
-        console.log('Creating withdraw_lp_winnings program instruction:', instruction);
+        console.log('[withdraw_lp_winnings] Creating instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
         const keys = [
@@ -459,11 +459,17 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         ];
         
         // Anchor discriminator (8 bytes) + amount (u64 LE) = 16 bytes
-        // NOTE: outcome is NOT passed as parameter - it's read from the lp_offer account
         const wlwDisc = await anchorDiscriminator('withdraw_lp_winnings');
         const data = Buffer.alloc(16);
         wlwDisc.copy(data, 0);
         data.writeBigUInt64LE(BigInt(instruction.withdrawAmountLamports || 0), 8);
+        
+        console.log('[withdraw_lp_winnings] Instruction data:', {
+          discriminator: wlwDisc.toString('hex'),
+          amount: instruction.withdrawAmountLamports,
+          amountHex: data.slice(8, 16).toString('hex'),
+          dataLength: data.length,
+        });
         
         const withdrawIx = new TransactionInstruction({
           keys,
@@ -471,12 +477,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           data,
         });
         
-        console.log('[withdraw_lp_winnings] Instruction created:', {
-          programId: programId.toBase58(),
-          keys: keys.map(k => k.pubkey.toBase58()),
-          dataLength: data.length,
-          withdrawAmountLamports: instruction.withdrawAmountLamports,
-        });
+        console.log('[withdraw_lp_winnings] Keys:', keys.map((k, i) => `  [${i}] ${k.pubkey.toBase58()} (writable=${k.isWritable}, signer=${k.isSigner})`));
         
         transaction.add(withdrawIx);
         
