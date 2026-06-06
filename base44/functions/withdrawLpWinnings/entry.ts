@@ -57,9 +57,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Market has not been settled yet' }, { status: 400 });
     }
 
-    // Check if LP's outcome won
-    if (userBet.outcome !== bet.winning_outcome) {
-      return Response.json({ error: 'This LP position did not win' }, { status: 400 });
+    // Check if LP's outcome lost (LP wins when bettors lose)
+    // LP backs outcome X — if outcome X loses, LP collects losing bettors' stakes
+    if (userBet.outcome === bet.winning_outcome) {
+      return Response.json({ error: 'This LP position did not win (LP backs the winning outcome, so LP lost)' }, { status: 400 });
     }
 
     // Get wallet address
