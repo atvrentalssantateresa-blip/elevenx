@@ -39,18 +39,40 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      if (ub.outcome === winning_outcome && ub.status === 'active') {
-        // Winner — payout is the fixed potential_payout locked at bet time
-        const payout = ub.potential_payout || 0;
-        await base44.entities.UserBet.update(ub.id, {
-          status: 'won',
-          actual_payout: payout,
-        });
-        totalPayout += payout;
-        winnersCount++;
-      } else if (ub.status === 'active') {
-        // Loser
-        await base44.entities.UserBet.update(ub.id, { status: 'lost', actual_payout: 0 });
+      // PARIMUTUEL LOGIC: LP wins when backed outcome LOSES (collects losing stakes)
+      // Bettor (matcher) wins when backed outcome WINS
+      const isLp = ub.role === 'lp';
+      const backedWinner = ub.outcome === winning_outcome;
+      
+      if (isLp) {
+        // LP: wins when backed outcome LOSES
+        if (!backedWinner && ub.status === 'active') {
+          // LP won - collect fees from losing bettors
+          const feeEarnings = ub.liquidity_matched * 0.02; // 2% fee on matched portion
+          await base44.entities.UserBet.update(ub.id, {
+            status: 'won',
+            actual_payout: feeEarnings,
+          });
+          winnersCount++;
+        } else if (ub.status === 'active') {
+          // LP lost - backed the winner, had to pay out
+          await base44.entities.UserBet.update(ub.id, { status: 'lost', actual_payout: 0 });
+        }
+      } else {
+        // Regular bettor (matcher): wins when backed outcome WINS
+        if (backedWinner && ub.status === 'active') {
+          // Winner — payout is the fixed potential_payout locked at bet time
+          const payout = ub.potential_payout || 0;
+          await base44.entities.UserBet.update(ub.id, {
+            status: 'won',
+            actual_payout: payout,
+          });
+          totalPayout += payout;
+          winnersCount++;
+        } else if (ub.status === 'active') {
+          // Loser
+          await base44.entities.UserBet.update(ub.id, { status: 'lost', actual_payout: 0 });
+        }
       }
     }
 
