@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,15 +68,13 @@ export default function Admin() {
         if (res.data.code === 6005 || res.data.error === 'TooEarlyToSettle') {
           // Offer to fix timestamps first
           const secondsUntil = res.data.seconds_until_settle || 0;
-          const fixNow = confirm(
-            `⏰ Market settle time is ${secondsUntil}s in the future.\n\n` +
-            `Click OK to fix timestamps on-chain first, then settle.\n` +
-            `Click Cancel to abort.\n\n` +
-            `Settle after: ${res.data.settle_after}\n` +
-            `Current time: ${res.data.current_time}`
+          // Show toast for timestamp fix needed
+          toast.error(
+            `⏰ Market settle time is ${secondsUntil}s in the future.\n\nAttempting to fix timestamps...`,
+            { duration: 2000 }
           );
           
-          if (fixNow) {
+          {
             // Call updateMarketTimestampsOnChain to fix timestamps
             const fixRes = await base44.functions.invoke('updateMarketTimestampsOnChain', {
               bet_id: bet.id,
@@ -83,7 +82,7 @@ export default function Admin() {
             });
             
             if (fixRes.data.error) {
-              alert('Failed to fix timestamps: ' + fixRes.data.error);
+              toast.error('Failed to fix timestamps: ' + fixRes.data.error);
               return;
             }
             
@@ -95,7 +94,7 @@ export default function Admin() {
             return;
           }
         } else {
-          alert('Error: ' + res.data.error);
+          toast.error('Error: ' + res.data.error);
         }
         return;
       }
@@ -108,11 +107,7 @@ export default function Admin() {
     } catch (err) {
       console.error('[Admin] handleSettle error:', err);
       const errorMsg = err.message || 'Unknown error';
-      const errorData = err.response?.data || {};
-      alert('Failed to prepare settlement: ' + errorMsg + 
-        (errorData.error_type ? `\n\nError Type: ${errorData.error_type}` : '') +
-        (errorData.stack ? `\n\nStack:\n${errorData.stack}` : '')
-      );
+      toast.error('Failed to prepare settlement: ' + errorMsg);
     }
   };
 
@@ -125,7 +120,7 @@ export default function Admin() {
       });
 
       if (res.data.error) {
-        alert('Error: ' + res.data.error);
+        toast.error('Error: ' + res.data.error);
         return;
       }
 
@@ -137,9 +132,9 @@ export default function Admin() {
             winning_outcome: outcome,
             db_only: true,
           });
-          alert('✓ Market settled (DB-only) — users can now claim winnings!\n\n' + res.data.message);
+          toast.success('✓ Market settled (DB-only) — users can now claim winnings!');
         } catch (err) {
-          alert('DB settlement failed: ' + err.message);
+          toast.error('DB settlement failed: ' + err.message);
         }
         queryClient.invalidateQueries({ queryKey: ['allBets'] });
         return;
@@ -153,10 +148,7 @@ export default function Admin() {
     } catch (err) {
       console.error('[Admin] _doSettle error:', err);
       const errorMsg = err.message || 'Unknown error';
-      const errorData = err.response?.data || {};
-      alert('Failed to prepare settlement: ' + errorMsg + 
-        (errorData.error_type ? `\n\nError Type: ${errorData.error_type}` : '')
-      );
+      toast.error('Failed to prepare settlement: ' + errorMsg);
     }
   };
 
@@ -178,7 +170,7 @@ export default function Admin() {
       });
 
       if (res.data.error) {
-        alert('Error: ' + res.data.error);
+        toast.error('Error: ' + res.data.error);
         return;
       }
 
@@ -187,7 +179,7 @@ export default function Admin() {
         bet,
       });
     } catch (err) {
-      alert('Failed to prepare void: ' + err.message);
+      toast.error('Failed to prepare void: ' + err.message);
     }
   };
 
@@ -320,10 +312,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('createQuickTestMatch');
-                      alert('✓ Test match created!');
+                      toast.success('✓ Test match created!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
@@ -335,10 +327,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('createQuickTestFutures');
-                      alert('✓ Future Test created! Betting ends in 10 min, no settlement delay!');
+                      toast.success('✓ Future Test created! Betting ends in 10 min, no settlement delay!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
@@ -350,10 +342,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('bulkDeployMatches');
-                      alert('✓ Matches deployed!');
+                      toast.success('✓ Matches deployed!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
@@ -365,10 +357,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('syncWorldCupMatches');
-                      alert('✓ World Cup synced!');
+                      toast.success('✓ World Cup synced!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 rounded-xl"
@@ -380,9 +372,9 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('bulkDeployFutures');
-                      alert('✓ Futures deployed!');
+                      toast.success('✓ Futures deployed!');
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600/50 rounded-xl"
@@ -394,10 +386,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('createTestBetWithLiveOdds');
-                      alert('✓ Test bet with live odds created!');
+                      toast.success('✓ Test bet with live odds created!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
@@ -409,10 +401,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('createTestBetWithApiMatch');
-                      alert('✓ API match bet created!');
+                      toast.success('✓ API match bet created!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
@@ -424,10 +416,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('resetAndSync');
-                      alert('✓ Database reset & synced!');
+                      toast.success('✓ Database reset & synced!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
@@ -439,10 +431,10 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('clearDatabase');
-                      alert('✓ Database cleared!');
+                      toast.success('✓ Database cleared!');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
@@ -462,9 +454,9 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('initPlatformConfig');
-                      alert('✓ Platform initialized!');
+                      toast.success('✓ Platform initialized!');
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
@@ -475,9 +467,9 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('checkPlatformConfig');
-                      alert('✓ Config checked!');
+                      toast.success('✓ Config checked!');
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
@@ -488,9 +480,9 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('debugPlatformAdmin');
-                      alert('✓ Debug complete!');
+                      toast.success('✓ Debug complete!');
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
@@ -501,9 +493,9 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       await base44.functions.invoke('comprehensivePlatformTest');
-                      alert('✓ Test complete!');
+                      toast.success('✓ Test complete!');
                     } catch (err) {
-                      alert('Error: ' + err.message);
+                      toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
