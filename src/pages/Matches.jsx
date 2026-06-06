@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Trophy, Search, Globe } from 'lucide-react';
+import { Trophy, Search, Globe, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -98,6 +98,7 @@ export default function Matches() {
     groupedByDate[dateKey].matches.push(m);
   });
 
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false);
   const sortedDates = Object.keys(groupedByDate).sort();
 
   return (
@@ -107,52 +108,69 @@ export default function Matches() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-8"
-        style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-border/50 bg-card"
       >
-        <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
-        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: '#14f195' }} />
-        
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full">
-              <Trophy className="w-3 h-3 text-primary" />
-              <span className="text-[10px] sm:text-[11px] font-bold text-primary tracking-widest">WORLD CUP 2026</span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">
+                <Trophy className="w-3 h-3 text-primary" />
+                <span className="text-[9px] sm:text-[10px] font-bold text-primary tracking-widest">WORLD CUP 2026</span>
+              </div>
             </div>
+            {/* Mobile Expand/Collapse Button */}
+            <button
+              onClick={() => setIsInfoExpanded(!isInfoExpanded)}
+              className="sm:hidden flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+            >
+              {isInfoExpanded ? (
+                <>
+                  <span>Hide</span>
+                  <ChevronUp className="w-3 h-3" />
+                </>
+              ) : (
+                <>
+                  <span>Info</span>
+                  <ChevronDown className="w-3 h-3" />
+                </>
+              )}
+            </button>
           </div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 text-white">
+          <h1 className="font-heading font-black text-xl sm:text-2xl md:text-3xl leading-tight mb-2">
             Match Schedule
           </h1>
-          <p className="text-white/50 text-xs sm:text-sm max-w-md mb-4">
-            Browse all 104 matches from the group stage to the final. Search by team, filter by group, and bet P2P on every match.
+          <p className="text-muted-foreground text-xs sm:text-sm mb-4">
+            Browse all matches from the group stage to the final. Search by team, filter by group, and bet on every match.
           </p>
 
-          {/* How Match Betting Works - Integrated into Hero */}
-          <div className="border-t border-white/10 pt-4">
-            <div className="inline-flex items-center gap-1.5 bg-primary/20 border border-primary/30 px-2.5 sm:px-3 py-1 rounded-full text-primary text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-3">
-              ⚽ How Match Betting Works
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-              <div className="space-y-1.5">
-                <span className="text-lg sm:text-xl">💡</span>
-                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-primary">How It Works</h3>
-                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                  <strong>Bets require LP liquidity.</strong> LPs deposit SOL to cover payouts. Your bet goes <strong>pending</strong> until matched, then <strong>locked in</strong> with fixed odds.
-                </p>
+          {/* How Match Betting Works - Expandable on mobile */}
+          <div className={`overflow-hidden transition-all duration-300 ${isInfoExpanded ? 'max-h-[800px]' : 'max-h-[0px]'} sm:max-h-none`}>
+            <div className="border-t border-border/50 pt-4">
+              <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full text-primary text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-3">
+                ⚽ How Match Betting Works
               </div>
-              <div className="space-y-1.5">
-                <span className="text-lg sm:text-xl">👑</span>
-                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-accent">Be the House (LP)</h3>
-                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                  Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing stakes! <strong>Withdraw unmatched funds anytime</strong> — only locked once matched. <strong>Claims processed instantly</strong> — winnings paid via admin withdrawal.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <span className="text-lg sm:text-xl">⚠️</span>
-                <h3 className="font-heading font-bold text-[11px] sm:text-xs text-yellow-400">Important</h3>
-                <p className="text-[10px] sm:text-[11px] text-white/60 leading-relaxed">
-                  Bets go into <strong>pending pool</strong> until LP matches them. Once matched, your bet is <strong>locked in</strong> with fixed odds. No LP = bet stays pending! <strong>Instant DB claims</strong> — no on-chain delays.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                  <span className="text-lg sm:text-xl">💡</span>
+                  <h3 className="font-heading font-bold text-[11px] sm:text-xs text-primary">How It Works</h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
+                    LPs deposit SOL first to create liquidity pools. When you bet, your stake is <strong>instantly matched</strong> against available LP funds and <strong>locked in</strong> with fixed odds.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-lg sm:text-xl">👑</span>
+                  <h3 className="font-heading font-bold text-[11px] sm:text-xs text-accent">Be the House (LP)</h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
+                    Provide liquidity for outcomes you think WON'T happen. Earn <strong>2% fees</strong> on matched bets plus keep losing bettors' stakes! <strong>Withdraw unmatched funds anytime</strong> — only locked once matched.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-lg sm:text-xl">⚠️</span>
+                  <h3 className="font-heading font-bold text-[11px] sm:text-xs text-yellow-400">Important</h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
+                    <strong>No LP liquidity = no bets possible.</strong> Bettors can only bet when LPs have provided liquidity. Once matched, bets are <strong>locked in</strong> with fixed odds. <strong>Instant claims</strong> — no on-chain delays.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
