@@ -134,7 +134,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-2 md:order-2"
-          style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}>
+          style={{ background: '#121212' }}>
           
           {/* Glow orbs */}
           <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
