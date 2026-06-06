@@ -129,10 +129,11 @@ Deno.serve(async (req) => {
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
     };
 
-    // Create a simple signed token (HMAC-SHA256)
+    // Create a simple signed token (HMAC-SHA256) with base64url encoding for frontend compatibility
     const encoder = new TextEncoder();
-    const header = bs58.encode(encoder.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
-    const payload = bs58.encode(encoder.encode(JSON.stringify(tokenPayload)));
+    // Use base64url (remove padding)
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/=+$/, '');
+    const payload = btoa(JSON.stringify(tokenPayload)).replace(/=+$/, '');
     
     // Get secret key from env or use app ID
     const secretKey = Deno.env.get('BASE44_APP_ID') || 'elevenx-secret';
@@ -152,7 +153,9 @@ Deno.serve(async (req) => {
       encoder.encode(`${header}.${payload}`)
     );
     
-    const tokenSignature = bs58.encode(new Uint8Array(signatureData));
+    // Use base64url for signature (replace + with -, / with _, remove =)
+    const tokenSignature = btoa(String.fromCharCode(...new Uint8Array(signatureData)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
     const token = `${header}.${payload}.${tokenSignature}`;
 

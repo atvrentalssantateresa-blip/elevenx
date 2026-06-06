@@ -116,7 +116,12 @@ export const AuthProvider = ({ children }) => {
           const [header, payload, sig] = authToken.split('.');
           const base64Url = payload;
           const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const jsonPayload = new TextDecoder().decode(bytes);
           const payloadJson = JSON.parse(jsonPayload);
           console.log('Token decoded:', payloadJson);
           
@@ -154,7 +159,8 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('elevenx_auth_token');
           }
         } catch (decodeErr) {
-          console.error('Failed to decode auth token:', decodeErr);
+          console.error('Failed to decode auth token:', decodeErr.message);
+          console.error('Token was:', authToken);
           localStorage.removeItem('elevenx_auth_token');
         }
       }

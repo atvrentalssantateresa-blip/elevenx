@@ -10,17 +10,26 @@ export const getWalletFromAuth = () => {
       return null;
     }
 
+    console.log('[getWalletFromAuth] Raw token:', authToken.slice(0, 50) + '...');
+
     // Decode JWT-like token (header.payload.signature)
     const parts = authToken.split('.');
     if (parts.length !== 3) {
-      console.error('[getWalletFromAuth] Invalid token format');
+      console.error('[getWalletFromAuth] Invalid token format, parts:', parts.length);
       return null;
     }
 
     // Decode payload (base64url)
     const base64Url = parts[1];
+    console.log('[getWalletFromAuth] Payload part:', base64Url.slice(0, 50));
+    
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const jsonPayload = new TextDecoder().decode(bytes);
     const payload = JSON.parse(jsonPayload);
 
     console.log('[getWalletFromAuth] Token payload:', {
@@ -32,6 +41,7 @@ export const getWalletFromAuth = () => {
     return payload.walletAddress || null;
   } catch (err) {
     console.error('[getWalletFromAuth] Failed to decode auth token:', err.message);
+    console.error('[getWalletFromAuth] Error stack:', err.stack);
     return null;
   }
 };
