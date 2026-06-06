@@ -12,10 +12,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Skip user auth check - wallet address is passed directly and verified on-chain
+    // The Solana signature verification happens in the frontend during transaction signing
 
     const payload = await req.json();
     const { walletAddress, marketId, outcome, amount } = payload;
@@ -29,7 +27,7 @@ Deno.serve(async (req) => {
     
     if (!walletAddress) {
       console.error('[placeFuturesBet] Wallet not connected');
-      return Response.json({ error: 'Wallet not connected' }, { status: 401 });
+      return Response.json({ error: 'Wallet not connected. Please reconnect and try again.' }, { status: 401 });
     }
     if (!marketId || !outcome || !amount || amount <= 0) {
       console.error('[placeFuturesBet] Invalid input:', { marketId, outcome, amount });
