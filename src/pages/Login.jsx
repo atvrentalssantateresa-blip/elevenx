@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AuthLayout from '@/components/AuthLayout';
+import bs58 from 'bs58';
 
 export default function Login() {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -27,21 +28,36 @@ export default function Login() {
       // Set wallet session marker FIRST
       localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: walletFromUrl, connectedAt: Date.now() }));
       localStorage.setItem('elevenx_authenticated', 'true');
-      // Verify with backend and redirect
-      base44.functions.invoke('walletAuth', { walletAddress: walletFromUrl })
-        .then((response) => {
-          if (response.data.success) {
-            console.log('✓ Auto-login successful, user:', response.data.full_name || response.data.username);
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 100);
-          } else {
-            console.error('Auto-login failed - user not found');
-          }
-        })
-        .catch((err) => {
-          console.error('Auto-login verification failed:', err.message);
-        });
+      // Verify with backend - signature will be generated below if Phantom is available
+      const phantom = getPhantom();
+      if (phantom) {
+        const challenge = `Sign to authenticate with ElevenX\n\nWallet: ${walletFromUrl}\nNonce: ${Date.now()}`;
+        const encoder = new TextEncoder();
+        const messageBytes = encoder.encode(challenge);
+        phantom.signMessage(messageBytes, 'utf8')
+          .then(({ signature }) => {
+            return base44.functions.invoke('walletAuth', {
+              walletAddress: walletFromUrl,
+              signature: bs58.encode(signature),
+              message: challenge,
+              register: true
+            });
+          })
+          .then((response) => {
+            if (response.data.success || response.data.authToken) {
+              console.log('✓ Auto-login successful, user:', response.data.full_name || response.data.username);
+              localStorage.setItem('elevenx_auth_token', response.data.authToken);
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 100);
+            } else {
+              console.error('Auto-login failed - user not found');
+            }
+          })
+          .catch((err) => {
+            console.error('Auto-login verification failed:', err.message);
+          });
+      }
     }
   }, []);
 
@@ -66,9 +82,21 @@ export default function Login() {
         walletAddress = resp.publicKey.toString();
       }
 
-      // Verify user exists with backend (auto-register if needed)
+      // Generate a challenge message and request signature
+      const challenge = `Sign to authenticate with ElevenX\n\nWallet: ${walletAddress}\nNonce: ${Date.now()}`;
+      const encoder = new TextEncoder();
+      const messageBytes = encoder.encode(challenge);
+      
+      // Request Phantom to sign the challenge
+      const { signature } = await phantom.signMessage(messageBytes, 'utf8');
+      
+      console.log('✓ Message signed, authenticating...');
+
+      // Verify user exists with backend (auto-register if needed) - now with mandatory signature
       const response = await base44.functions.invoke('walletAuth', {
         walletAddress,
+        signature: bs58.encode(signature),
+        message: challenge,
         register: true
       });
 

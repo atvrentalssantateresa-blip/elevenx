@@ -14,24 +14,28 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing wallet address' }, { status: 400 });
     }
 
-    console.log('walletAuth called - walletAddress:', walletAddress, 'register:', register);
+    // MANDATORY: Signature verification is now required for security
+    if (!signature || !message) {
+      console.log('walletAuth rejected - missing signature (security requirement)');
+      return Response.json({ error: 'Cryptographic signature is mandatory for authentication' }, { status: 401 });
+    }
 
-    // If signature provided, verify it
-    if (signature && message) {
-      try {
-        const publicKey = bs58.decode(walletAddress);
-        const signatureBytes = bs58.decode(signature);
-        const messageBytes = new TextEncoder().encode(message);
-        const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKey);
-        if (!isValid) {
-          console.log('Signature verification failed');
-          return Response.json({ error: 'Invalid signature' }, { status: 401 });
-        }
-        console.log('Signature verified successfully');
-      } catch (sigErr) {
-        console.log('Signature check error:', sigErr.message);
-        return Response.json({ error: 'Signature verification failed' }, { status: 401 });
+    console.log('walletAuth called - walletAddress:', walletAddress?.slice(0, 8), 'register:', register);
+
+    // Verify the cryptographic signature
+    try {
+      const publicKey = bs58.decode(walletAddress);
+      const signatureBytes = bs58.decode(signature);
+      const messageBytes = new TextEncoder().encode(message);
+      const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKey);
+      if (!isValid) {
+        console.log('Signature verification FAILED for wallet:', walletAddress?.slice(0, 8));
+        return Response.json({ error: 'Invalid cryptographic signature' }, { status: 401 });
       }
+      console.log('✓ Signature verified successfully for wallet:', walletAddress?.slice(0, 8));
+    } catch (sigErr) {
+      console.log('Signature check error:', sigErr.message);
+      return Response.json({ error: 'Signature verification failed' }, { status: 401 });
     }
 
     // Check if user exists by wallet address using WalletUser entity (avoids auth issues)

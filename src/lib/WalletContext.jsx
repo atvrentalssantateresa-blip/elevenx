@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import bs58 from 'bs58';
 
 const WalletContext = createContext(null);
 
@@ -77,10 +78,19 @@ export function WalletProvider({ children }) {
       localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
       localStorage.setItem('elevenx_auth_token', ''); // Clear old token, will be set by walletAuth
       
-      // Auto-register wallet with backend and get auth token
+      // Generate challenge and request signature for secure auth
+      const phantom = getPhantom();
+      const challenge = `Sign to authenticate with ElevenX\n\nWallet: ${address}\nNonce: ${Date.now()}`;
+      const encoder = new TextEncoder();
+      const messageBytes = encoder.encode(challenge);
+      const { signature } = await phantom.signMessage(messageBytes, 'utf8');
+      
+      // Auto-register wallet with backend and get auth token (with mandatory signature)
       const { base44 } = await import('@/api/base44Client');
       const authRes = await base44.functions.invoke('walletAuth', {
         walletAddress: address,
+        signature: bs58.encode(signature),
+        message: challenge,
         register: true,
       });
       
@@ -134,12 +144,22 @@ export function WalletProvider({ children }) {
         setWalletAddress(address);
         localStorage.setItem(WALLET_SESSION_KEY, JSON.stringify({ address, connectedAt: Date.now() }));
         
-        // Auto-register/authenticate the new wallet
+        // Auto-register/authenticate the new wallet with signature
         try {
           const { base44 } = await import('@/api/base44Client');
+          const phantom = getPhantom();
           console.log('[WalletContext] Calling walletAuth for new account...');
+          
+          // Generate challenge and request signature
+          const challenge = `Sign to authenticate with ElevenX\n\nWallet: ${address}\nNonce: ${Date.now()}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(challenge);
+          const { signature } = await phantom.signMessage(messageBytes, 'utf8');
+          
           const authRes = await base44.functions.invoke('walletAuth', {
             walletAddress: address,
+            signature: bs58.encode(signature),
+            message: challenge,
             register: true,
           });
           console.log('[WalletContext] walletAuth response:', authRes.data);
