@@ -86,7 +86,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
                 <Globe className="w-3 h-3 text-white/70" />
-                <span className="text-[10px] sm:text-[11px] font-bold text-white/80 tracking-wide hidden">FIFA WORLD CUP 2026™</span>
+                
               </div>
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
                 <Zap className="w-3 h-3 text-purple-400" />
