@@ -26,40 +26,83 @@ Deno.serve(async (req) => {
     const userBets = await base44.entities.UserBet.filter({ id: userBetId });
     const userBet = userBets[0];
     if (!userBet) {
+      console.error('[withdrawLpWinnings] UserBet not found:', userBetId);
       return Response.json({ error: 'UserBet not found' }, { status: 404 });
     }
 
+    console.log('[withdrawLpWinnings] UserBet:', {
+      id: userBet.id,
+      role: userBet.role,
+      outcome: userBet.outcome,
+      offer_id: userBet.offer_id,
+      bet_id: userBet.bet_id,
+      match_id: userBet.match_id,
+      status: userBet.status,
+      amount: userBet.amount,
+    });
+
     // Must be LP role
     if (userBet.role !== 'lp') {
+      console.error('[withdrawLpWinnings] Not LP role:', userBet.role);
       return Response.json({ error: 'Only LP positions can withdraw winnings' }, { status: 400 });
     }
 
     // Fetch BetOffer to get the PDA
     if (!userBet.offer_id) {
+      console.error('[withdrawLpWinnings] No offer_id for UserBet:', userBetId);
       return Response.json({ error: 'LP offer not found' }, { status: 400 });
     }
     
     const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
     const offer = offers[0];
     if (!offer) {
+      console.error('[withdrawLpWinnings] BetOffer not found:', userBet.offer_id);
       return Response.json({ error: 'BetOffer not found' }, { status: 404 });
     }
+
+    console.log('[withdrawLpWinnings] BetOffer:', {
+      id: offer.id,
+      outcome: offer.outcome,
+      outcome_label: offer.outcome_label,
+      amount_matched: offer.amount_matched,
+      status: offer.status,
+      solana_position_pda: offer.solana_position_pda,
+    });
 
     // Fetch Bet to check settlement
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
     if (!bet) {
+      console.error('[withdrawLpWinnings] Bet not found:', userBet.bet_id);
       return Response.json({ error: 'Bet not found' }, { status: 404 });
     }
 
+    console.log('[withdrawLpWinnings] Bet:', {
+      id: bet.id,
+      status: bet.status,
+      winning_outcome: bet.winning_outcome,
+      match_id: bet.match_id,
+    });
+
     // Market must be settled
     if (bet.status !== 'settled') {
+      console.error('[withdrawLpWinnings] Market not settled:', bet.status);
       return Response.json({ error: 'Market has not been settled yet' }, { status: 400 });
     }
 
     // Check if LP's outcome lost (LP wins when bettors lose)
     // LP backs outcome X — if outcome X loses, LP collects losing bettors' stakes
+    console.log('[withdrawLpWinnings] Checking win condition:', {
+      userBet_outcome: userBet.outcome,
+      bet_winning_outcome: bet.winning_outcome,
+      lp_wins_if_different: userBet.outcome !== bet.winning_outcome,
+    });
+    
     if (userBet.outcome === bet.winning_outcome) {
+      console.error('[withdrawLpWinnings] LP did not win - backed the winning outcome:', {
+        userBet_outcome: userBet.outcome,
+        winning_outcome: bet.winning_outcome,
+      });
       return Response.json({ error: 'This LP position did not win (LP backs the winning outcome, so LP lost)' }, { status: 400 });
     }
 

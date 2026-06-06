@@ -63,11 +63,33 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       const isSettled = offer.status === 'settled' || offer.userBet?.status === 'settled';
       const isLost = offer.status === 'lost';
       
+      console.log('[LpPositionCard] Withdraw attempt:', {
+        offer_id: offer.id,
+        userBetId: offer.userBetId || offer.id,
+        offer_status: offer.status,
+        isWon,
+        isSettled,
+        isLost,
+        hasUnmatched,
+      });
+      
       let res;
-      if (isWon || isSettled) {
+      if (isWon) {
         // LP won (backed the losing outcome) - withdraw winnings with fee bonus
-        // Or market is settled - try withdrawLpWinnings (it will check if LP actually won)
-        console.log('[LpPositionCard] Withdrawing winnings (settled) for position:', offer.id);
+        console.log('[LpPositionCard] Withdrawing winnings (LP won) for position:', offer.id);
+        res = await base44.functions.invoke('withdrawLpWinnings', {
+          userBetId: offer.userBetId || offer.id
+        });
+      } else if (isSettled && !isLost && hasUnmatched) {
+        // Market settled, LP didn't lose (has unmatched funds) - withdraw unmatched
+        console.log('[LpPositionCard] Withdrawing unmatched from settled market:', offer.id);
+        res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
+          userBetId: offer.userBetId || offer.id,
+          walletAddress
+        });
+      } else if (isSettled && !isWon && !isLost) {
+        // Market settled but status unclear - try withdrawLpWinnings
+        console.log('[LpPositionCard] Trying withdrawLpWinnings for settled position:', offer.id);
         res = await base44.functions.invoke('withdrawLpWinnings', {
           userBetId: offer.userBetId || offer.id
         });
@@ -82,22 +104,14 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       
       if (res.data.error) {
         console.error('[LpPositionCard] Withdraw error:', res.data.error);
-        // Show user-friendly error message
-        let errorMsg = res.data.error;
-        if (errorMsg.includes('No unmatched liquidity')) {
-          errorMsg = 'This position is fully matched. No liquidity available to withdraw.';
-        } else if (errorMsg.includes('Cannot withdraw from this market')) {
-          errorMsg = 'Market is closed. Wait for settlement to claim winnings.';
-        } else if (errorMsg.includes('No funds available on-chain')) {
-          errorMsg = 'No funds available. DB may be out of sync with blockchain.';
-        } else if (errorMsg.includes('did not win') || errorMsg.includes('LP position did not win')) {
-          errorMsg = 'This LP position did not win. LP wins when the backed outcome loses.';
-        }
-        alert('Withdraw failed: ' + errorMsg);
+        console.error('[LpPositionCard] Full error response:', res.data);
+        // Show detailed error for debugging
+        alert('Withdraw failed: ' + res.data.error + (res.data.hint ? '\n\n' + res.data.hint : ''));
         return;
       }
       
       console.log('[LpPositionCard] Withdraw response:', res.data);
+      console.log('[LpPositionCard] Solana instruction:', res.data.solana_instruction);
       
       onWithdrawRequest({
         solanaInstruction: res.data.solana_instruction,
