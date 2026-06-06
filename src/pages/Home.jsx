@@ -72,7 +72,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between order-1 md:order-2">
+          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between order-1 md:order-1">
           
           <img
             src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80"
@@ -133,7 +133,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-2 md:order-1"
+          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-2 md:order-2"
           style={{ background: 'linear-gradient(135deg, #1a1040 0%, #0f0a1e 50%, #12102a 100%)' }}>
           
           {/* Glow orbs */}
@@ -151,7 +151,7 @@ export default function Home() {
             </div>
             <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
               Be The House.<br />
-              <span className="text-accent" style={{ textShadow: '0 0 40px rgba(20,241,147,0.6)' }}>Earn The Fees.</span>
+              <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn The Fees.</span>
             </h1>
             <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
               Provide liquidity, earn 2% fees on every bet, and profit when bettors lose. No house edge — the community controls the pool.
@@ -161,7 +161,7 @@ export default function Home() {
           <div className="relative z-10 mt-5 sm:mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
               <Link to="/lp" className="flex-1">
-                <Button className="w-full font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm text-black" style={{ background: 'linear-gradient(135deg, #14f195, #00ff87)', boxShadow: '0 0 24px rgba(20,241,147,0.35)' }}>
+                <Button className="w-full font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm text-black" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 0 18px rgba(16,185,129,0.25)' }}>
                   <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
                   Provide Liquidity
                 </Button>
