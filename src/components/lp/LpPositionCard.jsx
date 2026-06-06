@@ -18,41 +18,24 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // Get match from position data if not passed - ALWAYS use matchData, never match directly
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // Determine if LP WON or LOST based on actual match result
-  // LP wins when their backed outcome LOSES (parimutuel model)
-  const getLpResult = () => {
-    if (!matchData.winner || matchData.winner === '') {
-      console.log('[LpPositionCard] Match not settled:', { match_id: matchData.id, winner: matchData.winner });
-      return 'unsettled';
-    }
-    
-    // Map match winner to outcome
-    const winningOutcome = matchData.winner === 'team_a' ? 'a' : matchData.winner === 'team_b' ? 'b' : 'draw';
-    const lpBackedOutcome = offer.outcome;
-    
-    console.log('[LpPositionCard] LP Win/Loss Check:', {
-      match_id: matchData.id,
-      match_winner_field: matchData.winner,
-      mapped_winning_outcome: winningOutcome,
-      lp_backed_outcome: lpBackedOutcome,
-      lp_backed_label: offer.outcome_label,
-      lp_wins_if_different: lpBackedOutcome !== winningOutcome,
-      explanation: lpBackedOutcome !== winningOutcome 
-        ? 'LP WON - backed the losing outcome (collects losing bettors stakes)' 
-        : 'LP LOST - backed the winning outcome (had to pay winners)'
-    });
-    
-    // LP WINS when backed outcome LOSES (different from winning outcome)
-    if (lpBackedOutcome !== winningOutcome) {
-      return 'won';
-    } else {
-      return 'lost';
-    }
-  };
+  // Use the settled status from the database (already calculated correctly by announceWinner/fixLpStatus)
+  // LP status is stored in offer.status (won/lost) or position.userBet?.status
+  const dbStatus = offer.status || position.userBet?.status || 'active';
+  const isLpWon = dbStatus === 'won';
+  const isLpLost = dbStatus === 'lost';
+  const isSettled = dbStatus === 'won' || dbStatus === 'lost';
   
-  const lpResult = getLpResult();
-  const isLpWon = lpResult === 'won';
-  const isLpLost = lpResult === 'lost';
+  console.log('[LpPositionCard] LP Win/Loss Check (using DB status):', {
+    offer_id: offer.id,
+    offer_status: offer.status,
+    userBet_status: position.userBet?.status,
+    dbStatus,
+    isLpWon,
+    isLpLost,
+    isSettled,
+    backed_outcome: offer.outcome,
+    backed_label: offer.outcome_label,
+  });
 
   // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
   const liquidityDeposited = offer.liquidity_deposited || offer.amount_offered || offer.amount || 0;
@@ -128,11 +111,11 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         offer_id: offer.id,
         userBetId: offer.userBetId || offer.id,
         offer_status: offer.status,
+        dbStatus,
         isWon,
         isSettled,
         isLost,
         hasUnmatched,
-        lpResult,
         isLpWon,
         isLpLost,
       });
@@ -361,7 +344,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         </div>
 
         {/* LP Result Indicator */}
-        {matchData.winner && matchData.winner !== '' &&
+        {isSettled &&
           <div className={`px-3 py-2 rounded-lg border ${
             isLpWon 
               ? (liquidityMatched > 0 ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400')
