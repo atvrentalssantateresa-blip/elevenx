@@ -458,17 +458,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // Anchor discriminator (8 bytes) + amount (u64 LE) + outcome (u8) = 17 bytes
+        // Anchor discriminator (8 bytes) + amount (u64 LE) = 16 bytes
+        // NOTE: outcome is NOT passed as parameter - it's read from the lp_offer account
         const wlwDisc = await anchorDiscriminator('withdraw_lp_winnings');
-        const data = Buffer.alloc(17);
+        const data = Buffer.alloc(16);
         wlwDisc.copy(data, 0);
         data.writeBigUInt64LE(BigInt(instruction.withdrawAmountLamports || 0), 8);
-        data.writeUInt8(instruction.outcome || 0, 16); // outcome: 0=a, 1=b, 2=draw
         
         const withdrawIx = new TransactionInstruction({
           keys,
           programId,
           data,
+        });
+        
+        console.log('[withdraw_lp_winnings] Instruction created:', {
+          programId: programId.toBase58(),
+          keys: keys.map(k => k.pubkey.toBase58()),
+          dataLength: data.length,
+          withdrawAmountLamports: instruction.withdrawAmountLamports,
         });
         
         transaction.add(withdrawIx);
