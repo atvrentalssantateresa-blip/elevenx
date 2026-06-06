@@ -511,6 +511,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('  programId:', withdrawIx.programId.toBase58());
         console.log('  dataLength:', withdrawIx.data.length);
         console.log('  dataHex:', withdrawIx.data.toString('hex'));
+        console.log('  lpWallet isSigner:', keys[3].isSigner);
         console.log('===========================================');
         
         transaction.add(withdrawIx);

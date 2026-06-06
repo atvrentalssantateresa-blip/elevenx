@@ -195,6 +195,8 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Market account not found on-chain. Market may not be deployed.' }, { status: 404 });
       }
       
+      console.log('[withdrawLpWinnings] === ON-CHAIN PRE-CHECK ===');
+      
       // Market layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + oracle_odds(24) + total_matched(24) + total_pending(24) + total_lp_committed(8) + accrued_fees(8) + settled(1) + ...
       // winning_outcome is at offset: 8+32+96+8+8+2+1 = 155
       // settled is at offset: 244 (after accrued_fees at 236)
