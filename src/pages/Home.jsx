@@ -23,7 +23,7 @@ const FEATURED_MATCHES = [
 { team_a: 'Brazil', team_b: 'Morocco', group: 'Group E', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177e', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png', odds_a: 1.85, odds_b: 4.20, odds_draw: 3.50 },
 { team_a: 'USA', team_b: 'Uruguay', group: 'Group D', date: 'Jun 13', matchId: '6a20ec5003fec97668e1177f', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/6adfc36e9_image.png' },
 { team_a: 'Netherlands', team_b: 'Japan', group: 'Group C', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/21177f821_image.png' },
-{ team_a: 'England', team_b: 'Croatia', group: 'Group D', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/78df211cc_image.png' },
+{ team_a: 'England', team_b: 'Croatia', group: 'Group D', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/a48a1d137_image.png' },
 { team_a: 'France', team_b: 'Norway', group: 'Group F', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/36223e776_image.png' },
 { team_a: 'Spain', team_b: 'Uruguay', group: 'Group H', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/2b6caa45a_image.png' }];
 
