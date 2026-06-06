@@ -18,11 +18,28 @@ Deno.serve(async (req) => {
     }
     
     // Verify user is admin by checking WalletUser entity
+    // Normalize wallet address for comparison (remove whitespace, lowercase)
+    const normalizedWallet = walletAddress.trim().toLowerCase();
     const allWalletUsers = await serviceRole.entities.WalletUser.list();
-    const walletUser = allWalletUsers.find(wu => wu.wallet_address === walletAddress);
+    const walletUser = allWalletUsers.find(wu => wu.wallet_address?.trim().toLowerCase() === normalizedWallet);
+    
+    console.log('Wallet check:', {
+      provided: walletAddress,
+      normalized: normalizedWallet,
+      found: !!walletUser,
+      role: walletUser?.role,
+      allWallets: allWalletUsers.map(w => ({ address: w.wallet_address, role: w.role })),
+    });
     
     if (!walletUser || walletUser.role !== 'admin') {
-      return Response.json({ error: 'Admin only - this wallet is not registered as admin' }, { status: 403 });
+      return Response.json({ 
+        error: 'Admin only - this wallet is not registered as admin. Please connect the correct admin wallet or register this wallet first.',
+        debug: {
+          provided: walletAddress,
+          found: !!walletUser,
+          role: walletUser?.role,
+        }
+      }, { status: 403 });
     }
 
     console.log('Reinitializing platform with admin wallet:', walletAddress);
