@@ -132,8 +132,20 @@ export default function LpDashboard() {
 
       // Step 2: Filter for LP role
       console.log('Step 2: Filtering for role=lp...');
+      console.log('Wallet address from auth:', walletAddress);
+      console.log('Wallet address length:', walletAddress?.length);
       const lpUserBets = allUserBets.filter((ub) => {
-        const match = ub.wallet_address === walletAddress && ub.role === 'lp';
+        const walletMatch = ub.wallet_address === walletAddress;
+        const roleMatch = ub.role === 'lp';
+        const match = walletMatch && roleMatch;
+        console.log('Checking UserBet:', ub.id, {
+          ub_wallet: ub.wallet_address,
+          query_wallet: walletAddress,
+          wallet_match: walletMatch,
+          role: ub.role,
+          role_match: roleMatch,
+          final_match: match
+        });
         if (match) {
           console.log('✓ LP UserBet found:', ub.id, 'wallet:', ub.wallet_address, 'role:', ub.role);
         }
@@ -347,19 +359,30 @@ export default function LpDashboard() {
     const signature = txResult.signature;
     const committedAmount = pendingTx?.amount || 0;
 
+    console.log('[LpDashboard] handleTxSuccess called with signature:', signature.slice(0, 20) + '...');
+    console.log('[LpDashboard] pendingCommitData:', pendingCommitData ? 'exists' : 'null');
+
     if (pendingCommitData) {
       try {
+        console.log('[LpDashboard] Calling commitLiquidity...');
         const commitRes = await base44.functions.invoke('commitLiquidity', {
           signature,
           commit_data: pendingCommitData
         });
+        console.log('[LpDashboard] commitLiquidity response:', commitRes.data);
         if (commitRes.data.error) {
           console.error('[LpDashboard] commitLiquidity error:', commitRes.data.error);
+          setError('Commit failed: ' + commitRes.data.error);
+        } else {
+          console.log('[LpDashboard] ✓ Liquidity committed successfully, offerId:', commitRes.data.offerId, 'userBetId:', commitRes.data.userBetId);
         }
       } catch (err) {
         console.error('[LpDashboard] commitLiquidity threw:', err);
+        setError('Commit failed: ' + err.message);
       }
       setPendingCommitData(null);
+    } else {
+      console.error('[LpDashboard] No pendingCommitData available!');
     }
 
     // Use the outcome from pendingCommitData (which has the actual selected outcome)

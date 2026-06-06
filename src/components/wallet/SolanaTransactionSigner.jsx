@@ -648,6 +648,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       // Only set signature after successful confirmation
       setSignature(sig);
       console.log('Transaction confirmed on-chain!');
+      console.log('[SolanaTransactionSigner] Calling onSuccess with signature:', sig);
       
       // Pass commit_data if available (for futures bets)
       const commitPayload = { 
@@ -663,8 +664,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       // Add commit_data for futures bets if available
       if (window.pendingFuturesCommit) {
         commitPayload.commit_data = window.pendingFuturesCommit.commit_data;
+        console.log('[SolanaTransactionSigner] Added futures commit_data from window');
       }
       
+      console.log('[SolanaTransactionSigner] Final commitPayload:', { ...commitPayload, commit_data: commitPayload.commit_data ? 'exists' : undefined });
       onSuccess(commitPayload);
     } catch (err) {
       console.error('[SolanaTransactionSigner] Transaction error:', err);
