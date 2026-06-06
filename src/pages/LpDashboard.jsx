@@ -668,7 +668,7 @@ export default function LpDashboard() {
                   <span className="text-lg sm:text-xl">🔓</span>
                   <h3 className="font-heading font-bold text-[11px] sm:text-xs text-yellow-400">Full Control</h3>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
-                    Withdraw unmatched liquidity <strong>instantly anytime</strong>. Only locked when matched. <strong>Instant DB claims</strong> — no on-chain delays.
+                    Withdraw unmatched liquidity <strong>instantly anytime</strong>. Only locked when matched. <strong>Instant on-chain claims</strong> — direct to your wallet.
                   </p>
                 </div>
               </div>
