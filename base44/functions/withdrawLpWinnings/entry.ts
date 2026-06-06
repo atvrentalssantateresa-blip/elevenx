@@ -120,71 +120,6 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Check if LP already withdrew (on-chain check via withdrawn flag in offer)
-    if (offer.withdrawn === true) {
-      console.error('[withdrawLpWinnings] LP already withdrew (DB flag):', offer.id);
-      return Response.json({ error: 'This LP position has already been withdrawn' }, { status: 400 });
-    }
-
-    // Check if there's matched liquidity to claim
-    const dbMatched = offer.amount_matched || 0;
-    if (dbMatched <= 0) {
-      console.log('[withdrawLpWinnings] No matched liquidity in DB, checking on-chain:', {
-        offer_id: offer.id,
-        amount_matched: dbMatched,
-      });
-      // Check on-chain - might have matched liquidity not reflected in DB
-      try {
-        const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
-        if (lpOfferAccountInfo) {
-          const accountData = lpOfferAccountInfo.data;
-          const amountMatchedOnChain = Number(accountData.readBigUInt64LE(9));
-          console.log('[withdrawLpWinnings] On-chain matched:', amountMatchedOnChain / 1e9);
-          if (amountMatchedOnChain <= 0) {
-            return Response.json({ error: 'No matched liquidity available. Use withdrawUnmatchedLiquidity instead.' }, { status: 400 });
-          }
-        } else {
-          return Response.json({ error: 'No matched liquidity and LP offer not found on-chain' }, { status: 400 });
-        }
-      } catch (err) {
-        return Response.json({ error: 'No matched liquidity available' }, { status: 400 });
-      }
-    }
-
-    // ON-CHAIN CHECK: Fetch the actual LP offer account from Solana to verify state
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    try {
-      const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
-      if (!lpOfferAccountInfo) {
-        console.error('[withdrawLpWinnings] LP offer PDA not found on-chain:', lpOfferPda.toBase58());
-        return Response.json({ error: 'LP position not found on-chain. The market may not be deployed.' }, { status: 400 });
-      }
-
-      // Parse the LP offer account data (simplified - just check withdrawn flag at offset)
-      // LpOffer layout: discriminator (8) + lp (32) + outcome (1) + amount_matched (8) + withdrawn (1) + bump (1) = 51 bytes
-      const accountData = lpOfferAccountInfo.data;
-      const withdrawnFlag = accountData[41]; // withdrawn is a bool at offset 41
-      const amountMatchedOnChain = accountData.readBigUInt64LE(9); // amount_matched at offset 9
-
-      console.log('[withdrawLpWinnings] On-chain LP offer state:', {
-        withdrawn: withdrawnFlag === 1,
-        amountMatchedOnChain: Number(amountMatchedOnChain) / 1e9,
-      });
-
-      if (withdrawnFlag === 1) {
-        console.error('[withdrawLpWinnings] LP already withdrew (on-chain):', offer.id);
-        return Response.json({ error: 'This LP position has already been withdrawn on-chain' }, { status: 400 });
-      }
-
-      if (Number(amountMatchedOnChain) <= 0) {
-        console.error('[withdrawLpWinnings] No matched liquidity (on-chain):', offer.id);
-        return Response.json({ error: 'No matched liquidity available on-chain' }, { status: 400 });
-      }
-    } catch (onChainErr) {
-      console.error('[withdrawLpWinnings] Failed to fetch on-chain LP offer:', onChainErr.message);
-      // Don't block - continue with DB data if on-chain fetch fails
-    }
-
     // Get wallet address
     const walletAddress = userBet.wallet_address || offer.lp_wallet_address;
     if (!walletAddress) {
@@ -207,18 +142,64 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Derive LP offer PDA correctly: [b"lp_offer", market.key(), lp, &[outcome]]
+    // Use the STORED LP offer PDA from database (this is what was created on-chain)
     const outcomeValue = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;
-    const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), userPubkey.toBuffer(), Buffer.from([outcomeValue])],
-      programId
-    );
+    const lpOfferPda = offer.solana_position_pda ? new PublicKey(offer.solana_position_pda) : null;
+    
+    if (!lpOfferPda) {
+      console.error('[withdrawLpWinnings] No stored LP offer PDA in BetOffer:', offer.id);
+      return Response.json({ error: 'LP position PDA not found. Market may not be properly initialized.' }, { status: 400 });
+    }
 
     // Fee vault PDA
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('fee_vault')],
       programId
     );
+
+    // Check if LP already withdrew (DB flag)
+    if (offer.withdrawn === true) {
+      console.error('[withdrawLpWinnings] LP already withdrew (DB flag):', offer.id);
+      return Response.json({ error: 'This LP position has already been withdrawn' }, { status: 400 });
+    }
+
+    // ON-CHAIN CHECK: Fetch the actual LP offer account from Solana to verify state
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    try {
+      const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
+      if (!lpOfferAccountInfo) {
+        console.error('[withdrawLpWinnings] LP offer PDA not found on-chain:', lpOfferPda.toBase58());
+        return Response.json({ error: 'LP position not found on-chain. The market may not be deployed.' }, { status: 400 });
+      }
+
+      // Parse the LP offer account data
+      // LpOffer layout: discriminator (8) + market (32) + lp (32) + outcome (1) + odds_bps (8) + amount_committed (8) + amount_matched (8) + closed (1) + matched_stake (8) + withdrawn (1) + bump (1) = 108 bytes
+      // Offsets: 0-7=disc, 8-39=market, 40-71=lp, 72=outcome, 73-80=odds_bps, 81-88=amount_committed, 89-96=amount_matched, 97=closed, 98-105=matched_stake, 106=withdrawn, 107=bump
+      const accountData = lpOfferAccountInfo.data;
+      const withdrawnFlag = accountData[106]; // withdrawn is a bool at offset 106
+      const amountMatchedOnChain = accountData.readBigUInt64LE(89); // amount_matched at offset 89
+
+      console.log('[withdrawLpWinnings] On-chain LP offer state:', {
+        withdrawn: withdrawnFlag === 1,
+        amountMatchedOnChain: Number(amountMatchedOnChain) / 1e9,
+        lpOfferPda: lpOfferPda.toBase58(),
+        accountDataLength: accountData.length,
+        stored_pda: offer.solana_position_pda,
+      });
+
+      if (withdrawnFlag === 1) {
+        console.error('[withdrawLpWinnings] LP already withdrew (on-chain):', offer.id);
+        return Response.json({ error: 'This LP position has already been withdrawn on-chain' }, { status: 400 });
+      }
+
+      if (Number(amountMatchedOnChain) <= 0) {
+        console.error('[withdrawLpWinnings] No matched liquidity (on-chain):', offer.id);
+        return Response.json({ error: 'No matched liquidity available on-chain' }, { status: 400 });
+      }
+    } catch (onChainErr) {
+      console.error('[withdrawLpWinnings] Failed to fetch on-chain LP offer:', onChainErr.message);
+      return Response.json({ error: 'Failed to verify on-chain LP position: ' + onChainErr.message }, { status: 500 });
+    }
 
     // Calculate LP winnings: matched stake from the offer
     // The LP earns the losing side's stakes (matched against their liquidity)
