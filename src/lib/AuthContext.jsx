@@ -168,69 +168,14 @@ export const AuthProvider = ({ children }) => {
       }
       
       if (walletSession) {
-        // Wallet-based session - fetch user from backend using wallet address
-        console.log('Wallet session detected, fetching user...');
-        let address = walletSession;
-        try {
-          // Handle both string and JSON formats
-          const parsed = JSON.parse(walletSession);
-          address = parsed.address || walletSession;
-          console.log('📍 Parsed wallet address from JSON:', address);
-        } catch (e) {
-          console.log('📍 Using wallet session as string:', address);
-        }
-        console.log('🎯 Calling walletAuth with address:', address);
-        const response = await base44.functions.invoke('walletAuth', {
-          walletAddress: address
-        });
-        console.log('📥 walletAuth response:', response.data);
-        
-        if (response.data.success) {
-          // Store auth token for future requests
-          if (response.data.authToken) {
-            localStorage.setItem('elevenx_auth_token', response.data.authToken);
-            console.log('✓ Auth token stored');
-            
-            // Initialize SDK with the new auth token
-            const axiosClient = createAxiosClient({
-              baseURL: '',
-              headers: {
-                Authorization: `Bearer ${response.data.authToken}`,
-                'X-App-Id': appParams.appId,
-              },
-            });
-            const sdkWithAuth = createClient({ 
-              axiosClient,
-              appId: appParams.appId,
-              functionsVersion: appParams.functionsVersion,
-            });
-            window.base44WithAuth = sdkWithAuth;
-            console.log('✓ SDK initialized with auth token from walletAuth');
-          }
-          // Build user object from response (handle both direct fields and nested user.*)
-          const userData = {
-            id: response.data.userId || response.data.user?.id,
-            full_name: response.data.full_name || response.data.user?.full_name,
-            username: response.data.username || response.data.user?.username,
-            wallet_address: response.data.walletAddress || response.data.user?.wallet_address,
-            role: response.data.role || response.data.user?.role,
-            email: response.data.email || response.data.user?.email
-          };
-          setUser(userData);
-          setIsAuthenticated(true);
-          setIsLoadingAuth(false);
-          setAuthChecked(true);
-          return;
-        } else {
-          // Wallet not registered
-          console.log('❌ Wallet auth failed, needs registration');
-          localStorage.removeItem('elevenx_wallet_session');
-          localStorage.removeItem('elevenx_authenticated');
-          setIsAuthenticated(false);
-          setIsLoadingAuth(false);
-          setAuthChecked(true);
-          return;
-        }
+        // Wallet-based session - wallet address is stored, but auth token should exist
+        // If no auth token, the user needs to re-login (walletAuth requires signature which can't be done without Phantom)
+        console.log('⚠️ Wallet session exists but no auth token - user needs to re-login via Login page');
+        localStorage.removeItem('elevenx_wallet_session');
+        localStorage.removeItem('elevenx_authenticated');
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return;
       }
       
       // No wallet session - try platform token auth
