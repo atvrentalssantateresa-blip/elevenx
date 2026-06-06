@@ -86,7 +86,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
                 <Globe className="w-3 h-3 text-white/70" />
-                <span className="text-[10px] sm:text-[11px] font-bold text-white/80 tracking-wide">FIFA WORLD CUP 2026™</span>
+                <span className="text-[10px] sm:text-[11px] font-bold text-white/80 tracking-wide hidden">FIFA WORLD CUP 2026™</span>
               </div>
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 px-2.5 sm:px-3 py-1 rounded-full">
                 <Zap className="w-3 h-3 text-purple-400" />
@@ -221,9 +221,9 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {FEATURED_MATCHES.map((fm, i) => {
-              const bet = betByMatch[fm.matchId];
-              return (
-                <Link to={`/match/${fm.matchId}`} className="group block">
+            const bet = betByMatch[fm.matchId];
+            return (
+              <Link to={`/match/${fm.matchId}`} className="group block">
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
@@ -278,19 +278,19 @@ export default function Home() {
                       <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-primary/5 border-primary/10">
                         <p className="text-[9px] text-muted-foreground truncate">{fm.team_a.split(' ').pop()}</p>
                         <p className="font-bold text-primary text-xs">
-                          {(fm.odds_a || bet?.odds_a) ? (fm.odds_a || bet.odds_a).toFixed(2) : '—'}x
+                          {fm.odds_a || bet?.odds_a ? (fm.odds_a || bet.odds_a).toFixed(2) : '—'}x
                         </p>
                       </div>
                       <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-yellow-500/5 border-yellow-500/10">
                         <p className="text-[9px] text-muted-foreground">Draw</p>
                         <p className="font-bold text-yellow-400 text-xs">
-                          {(fm.odds_draw || bet?.odds_draw) ? (fm.odds_draw || bet.odds_draw).toFixed(2) : '—'}x
+                          {fm.odds_draw || bet?.odds_draw ? (fm.odds_draw || bet.odds_draw).toFixed(2) : '—'}x
                         </p>
                       </div>
                       <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-accent/5 border-accent/10">
                         <p className="text-[9px] text-muted-foreground truncate">{fm.team_b.split(' ').pop()}</p>
                         <p className="font-bold text-accent text-xs">
-                          {(fm.odds_b || bet?.odds_b) ? (fm.odds_b || bet.odds_b).toFixed(2) : '—'}x
+                          {fm.odds_b || bet?.odds_b ? (fm.odds_b || bet.odds_b).toFixed(2) : '—'}x
                         </p>
                       </div>
                     </div>
@@ -300,9 +300,9 @@ export default function Home() {
                     </div>
                   </div>
                 </motion.div>
-                </Link>
-              );
-            })}
+                </Link>);
+
+          })}
           </div>
       </section>
 
@@ -353,31 +353,31 @@ export default function Home() {
             }>
             
               <item.icon className={`w-8 h-8 mb-3 ${
-                item.color === 'primary' ? 'text-primary' :
-                item.color === 'accent' ? 'text-accent' :
-                'text-yellow-400'
-              }`} />
+            item.color === 'primary' ? 'text-primary' :
+            item.color === 'accent' ? 'text-accent' :
+            'text-yellow-400'}`
+            } />
               <h3 className={`font-heading font-bold text-base mb-2 ${
             item.color === 'primary' ? 'text-primary' :
             item.color === 'accent' ? 'text-accent' :
             'text-yellow-400'}`
             }>{item.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-              {item.highlight && (
-                <div className={`mt-3 pt-3 border-t ${
-                  item.color === 'primary' ? 'border-primary/20' :
-                  item.color === 'accent' ? 'border-accent/20' :
-                  'border-yellow-500/20'
-                }`}>
+              {item.highlight &&
+            <div className={`mt-3 pt-3 border-t ${
+            item.color === 'primary' ? 'border-primary/20' :
+            item.color === 'accent' ? 'border-accent/20' :
+            'border-yellow-500/20'}`
+            }>
                   <p className={`text-[10px] font-bold uppercase tracking-wider ${
-                    item.color === 'primary' ? 'text-primary' :
-                    item.color === 'accent' ? 'text-accent' :
-                    'text-yellow-400'
-                  }`}>
+              item.color === 'primary' ? 'text-primary' :
+              item.color === 'accent' ? 'text-accent' :
+              'text-yellow-400'}`
+              }>
                     🎯 Investor Favorite
                   </p>
                 </div>
-              )}
+            }
             </motion.div>
           )}
         </div>
@@ -415,25 +415,25 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {futuresMarkets.
-           filter((m) => m.status === 'open' && m.country).
-           sort((a, b) => (b.total_volume || 0) - (a.total_volume || 0)).
-           slice(0, 6).
-           map((market, i) => {
-             const topOutcome = market.outcomes?.reduce((max, o) => o.odds > (max?.odds || 0) ? o : max, null);
-             // Map country to group for navigation
-             const countryToGroup = {
-               'Brazil': 'E', 'Argentina': 'E', 'Paraguay': 'L', 'Uruguay': 'L',
-               'USA': 'A', 'Mexico': 'A', 'Canada': 'B', 'England': 'D',
-               'France': 'F', 'Germany': 'G', 'Spain': 'H', 'Portugal': 'I'
-             };
-             const group = countryToGroup[market.country] || 'A';
-             return (
-               <motion.div
-                 key={market.id}
-                 initial={{ opacity: 0, y: 15 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 transition={{ delay: i * 0.05 }}
-                 className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group h-full">
+          filter((m) => m.status === 'open' && m.country).
+          sort((a, b) => (b.total_volume || 0) - (a.total_volume || 0)).
+          slice(0, 6).
+          map((market, i) => {
+            const topOutcome = market.outcomes?.reduce((max, o) => o.odds > (max?.odds || 0) ? o : max, null);
+            // Map country to group for navigation
+            const countryToGroup = {
+              'Brazil': 'E', 'Argentina': 'E', 'Paraguay': 'L', 'Uruguay': 'L',
+              'USA': 'A', 'Mexico': 'A', 'Canada': 'B', 'England': 'D',
+              'France': 'F', 'Germany': 'G', 'Spain': 'H', 'Portugal': 'I'
+            };
+            const group = countryToGroup[market.country] || 'A';
+            return (
+              <motion.div
+                key={market.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group h-full">
                  
                   <Link to={`/futures?group=${group}`} className="block">
                     <div className="p-5">
