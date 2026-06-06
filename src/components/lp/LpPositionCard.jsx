@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -59,14 +59,21 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
     if (!onWithdrawRequest) return;
     
     try {
-      // Always use withdrawUnmatchedLiquidity for LP positions (UserBet entities)
-      console.log('[LpPositionCard] Withdrawing for position:', offer.id, 'offer_id:', offer.offer_id);
+      const isWon = offer.status === 'won' || offer.userBet?.status === 'won';
       
-      // Call backend to prepare withdraw instruction
-      const res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
-        userBetId: offer.userBetId || offer.id,
-        walletAddress
-      });
+      let res;
+      if (isWon) {
+        console.log('[LpPositionCard] Withdrawing winnings (settled) for position:', offer.id);
+        res = await base44.functions.invoke('withdrawLpWinnings', {
+          userBetId: offer.userBetId || offer.id
+        });
+      } else {
+        console.log('[LpPositionCard] Withdrawing unmatched liquidity for position:', offer.id);
+        res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
+          userBetId: offer.userBetId || offer.id,
+          walletAddress
+        });
+      }
       
       if (res.data.error) {
         console.error('[LpPositionCard] Withdraw error:', res.data.error);
@@ -76,10 +83,11 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       
       console.log('[LpPositionCard] Withdraw response:', res.data);
       
-      // Pass withdraw data to parent
       onWithdrawRequest({
         solanaInstruction: res.data.solana_instruction,
-        withdrawAmount: res.data.amount,
+        withdrawAmount: res.data.withdrawAmount || res.data.amount,
+        lpFeeBonus: res.data.lpFeeBonus || 0,
+        totalWithdraw: res.data.totalWithdraw || res.data.amount,
         positionId: offer.userBetId || offer.id,
         offerId: offer.offer_id || null,
         match: match
@@ -239,25 +247,40 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
-          {hasUnmatched && onWithdrawRequest ? (
-            <Button
-              onClick={handleWithdraw}
-              variant="outline"
-              className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
-            >
-              <Wallet className="w-3 h-3 mr-1" />
-              Withdraw ◎{liquidityUnmatched.toFixed(4)}
-            </Button>
-          ) : (
-            <Button
-              disabled
-              variant="outline"
-              className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-accent/30 text-accent bg-accent/10 rounded-xl font-heading font-bold"
-            >
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Fully Locked
-            </Button>
-          )}
+          {(() => {
+            const isWon = offer.status === 'won' || offer.userBet?.status === 'won';
+            const isSettled = offer.status === 'settled' || offer.userBet?.status === 'settled';
+            const canWithdraw = isWon || isSettled || hasUnmatched;
+            
+            if (canWithdraw && onWithdrawRequest) {
+              const withdrawLabel = isWon || isSettled 
+                ? `Claim ◎${(liquidityMatched + (offer.lpFeeBonus || 0)).toFixed(4)}`
+                : `Withdraw ◎${liquidityUnmatched.toFixed(4)}`;
+              const withdrawIcon = isWon || isSettled ? Trophy : Wallet;
+              
+              return (
+                <Button
+                  onClick={handleWithdraw}
+                  variant="outline"
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-accent/30 text-accent hover:bg-accent/10 rounded-xl font-heading font-bold"
+                >
+                  <withdrawIcon className="w-3 h-3 mr-1" />
+                  {withdrawLabel}
+                </Button>
+              );
+            }
+            
+            return (
+              <Button
+                disabled
+                variant="outline"
+                className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-accent/30 text-accent bg-accent/10 rounded-xl font-heading font-bold"
+              >
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Fully Locked
+              </Button>
+            );
+          })()}
           
           <Link to={`/match/${offer.match_id}`} className="flex-1">
             <Button

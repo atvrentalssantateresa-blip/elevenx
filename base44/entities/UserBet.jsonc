@@ -112,18 +112,7 @@
         }
       ]
     },
-    "read": {
-      "$or": [
-        {
-          "data.wallet_address": "{{user.wallet_address}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
+    "read": {},
     "update": {
       "$or": [
         {
