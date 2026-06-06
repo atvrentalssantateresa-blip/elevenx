@@ -362,15 +362,21 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         {matchData.winner && matchData.winner !== '' &&
           <div className={`px-3 py-2 rounded-lg border ${
             isLpWon 
-              ? 'bg-accent/10 border-accent/30 text-accent' 
+              ? (liquidityMatched > 0 ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400')
               : 'bg-destructive/10 border-destructive/30 text-destructive'
           }`}>
             <div className="flex items-center justify-between text-[9px]">
               <span className="font-bold uppercase tracking-wider">
-                {isLpWon ? '🎉 LP Position Won' : '💸 LP Position Lost'}
+                {isLpWon 
+                  ? (liquidityMatched > 0 ? '🎉 LP Position Won' : '⚠️ LP Won (No Winnings)')
+                  : '💸 LP Position Lost'
+                }
               </span>
               <span className="text-white/40">
-                {isLpWon ? 'Backed loser ✓' : 'Backed winner ✗'}
+                {isLpWon 
+                  ? (liquidityMatched > 0 ? 'Backed loser ✓' : 'No matched bets')
+                  : 'Backed winner ✗'
+                }
               </span>
             </div>
           </div>
@@ -438,8 +444,9 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
-            // Only show "Claim Winnings" if LP actually WON (backed the losing outcome)
-            if (isLpWon && onWithdrawRequest) {
+            // Only show "Claim Winnings" if LP actually WON AND has matched liquidity
+            // LP wins when backed outcome loses, but only earns if there's matched liquidity
+            if (isLpWon && liquidityMatched > 0 && onWithdrawRequest) {
               return (
                 <Button
                   onClick={handleWithdraw}
@@ -447,7 +454,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
                   style={{ background: 'linear-gradient(135deg, #14f195, #00ff87)' }}
                 >
                   <Trophy className="w-3 h-3 mr-1" />
-                  Claim Winnings
+                  Claim ◎{liquidityMatched.toFixed(4)}
                 </Button>
               );
             }
