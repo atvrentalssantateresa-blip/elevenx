@@ -520,7 +520,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Left: Solana Branding */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-gradient-to-r from-[#9945FF] to-[#14F195] px-4 py-2 rounded-xl">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background: '#ab99f5' }}>
                 <span className="text-xs font-bold text-white tracking-wide">POWERED BY</span>
                 <svg className="w-20 h-6" viewBox="0 0 100 25" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <text x="5" y="18" fontFamily="Arial Black, sans-serif" fontSize="14" fontWeight="900" fill="white">SOLANA</text>
