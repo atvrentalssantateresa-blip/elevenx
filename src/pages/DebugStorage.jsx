@@ -53,12 +53,22 @@ export default function DebugStorage() {
   };
 
   const fixWalletSession = async () => {
-    // Set the correct wallet from the admin user
+    // Set the correct wallet from the admin user and fetch fresh auth token
     const correctWallet = '6Bp5RhK8hsVcpBsLq7QyiJfZxTa7jdyFqEpBka7Ut6tN';
-    localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: correctWallet, connectedAt: Date.now() }));
-    localStorage.setItem('elevenx_authenticated', 'true');
-    alert('Wallet session fixed! Reloading...');
-    window.location.reload();
+    try {
+      const res = await base44.functions.invoke('walletAuth', { walletAddress: correctWallet });
+      if (res.data.authToken) {
+        localStorage.setItem('elevenx_auth_token', res.data.authToken);
+        localStorage.setItem('elevenx_wallet_session', JSON.stringify({ address: correctWallet, connectedAt: Date.now() }));
+        localStorage.setItem('elevenx_authenticated', 'true');
+        alert('✓ Admin session loaded! Reloading...');
+        window.location.reload();
+      } else {
+        alert('Failed to get auth token');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
   };
 
   return (
