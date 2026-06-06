@@ -253,13 +253,12 @@ export default function Home() {
                   className="relative rounded-2xl p-4 transition-all duration-300 border border-primary/20 bg-card h-full">
 
                   {/* Match Image Header */}
-                  <div className="relative h-32 -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
+                  <div className="relative h-40 -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
                     <img
                       src={fm.img || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                       alt="match"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       style={{ objectPosition: 'center 15%' }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
                   </div>
 
                   {/* Header */}
