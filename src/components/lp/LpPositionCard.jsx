@@ -21,13 +21,26 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // Determine if LP WON or LOST based on actual match result
   // LP wins when their backed outcome LOSES (parimutuel model)
   const getLpResult = () => {
-    if (!matchData.winner || matchData.winner === '') return 'unsettled';
+    if (!matchData.winner || matchData.winner === '') {
+      console.log('[LpPositionCard] Match not settled:', { match_id: matchData.id, winner: matchData.winner });
+      return 'unsettled';
+    }
     
     // Map match winner to outcome
     const winningOutcome = matchData.winner === 'team_a' ? 'a' : matchData.winner === 'team_b' ? 'b' : 'draw';
-    
-    // LP backed this outcome
     const lpBackedOutcome = offer.outcome;
+    
+    console.log('[LpPositionCard] LP Win/Loss Check:', {
+      match_id: matchData.id,
+      match_winner_field: matchData.winner,
+      mapped_winning_outcome: winningOutcome,
+      lp_backed_outcome: lpBackedOutcome,
+      lp_backed_label: offer.outcome_label,
+      lp_wins_if_different: lpBackedOutcome !== winningOutcome,
+      explanation: lpBackedOutcome !== winningOutcome 
+        ? 'LP WON - backed the losing outcome (collects losing bettors stakes)' 
+        : 'LP LOST - backed the winning outcome (had to pay winners)'
+    });
     
     // LP WINS when backed outcome LOSES (different from winning outcome)
     if (lpBackedOutcome !== winningOutcome) {
@@ -320,6 +333,24 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             />
           </div>
         </div>
+
+        {/* LP Result Indicator */}
+        {matchData.winner && matchData.winner !== '' &&
+          <div className={`px-3 py-2 rounded-lg border ${
+            isLpWon 
+              ? 'bg-accent/10 border-accent/30 text-accent' 
+              : 'bg-destructive/10 border-destructive/30 text-destructive'
+          }`}>
+            <div className="flex items-center justify-between text-[9px]">
+              <span className="font-bold uppercase tracking-wider">
+                {isLpWon ? '🎉 LP Position Won' : '💸 LP Position Lost'}
+              </span>
+              <span className="text-white/40">
+                {isLpWon ? 'Backed loser ✓' : 'Backed winner ✗'}
+              </span>
+            </div>
+          </div>
+        }
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
