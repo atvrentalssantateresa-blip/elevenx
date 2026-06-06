@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, RefreshCw, Clock } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { getTeamFlag } from '@/utils/flags';
 import { base44 } from '@/api/base44Client';
-import BetCountdown from '@/components/betting/BetCountdown';
 
 const statusStyles = {
   upcoming: 'bg-secondary text-secondary-foreground',
@@ -108,19 +107,9 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
             </div>
           </div>
 
-          {/* Odds/Pool with Countdown */}
+          {/* Odds/Pool */}
           {bet ?
           <div className="pt-2.5 border-t border-border/50">
-              {/* Countdown Timer - Visible on page load */}
-              {matchTime && match.status !== 'finished' && match.status !== 'cancelled' && (
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                    <Clock className="w-2.5 h-2.5" />
-                    <span>Betting closes</span>
-                  </div>
-                  <BetCountdown openUntil={match.match_end_time || match.match_time} className="text-[9px]" />
-                </div>
-              )}
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${lpA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                   <p className="text-[9px] text-muted-foreground truncate">{match.team_a.split(' ').pop()}</p>
