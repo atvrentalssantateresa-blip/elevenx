@@ -9,20 +9,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
-    // Read the secret directly
-    const programId = Deno.env.get('SOLANA__PROGRAM_ID');
-    const programIdAlt = Deno.env.get('SOLANA_PROGRAM_ID');
+    // Read the secret directly (both naming conventions)
+    const programIdDouble = Deno.env.get('SOLANA__PROGRAM_ID');
+    const programIdSingle = Deno.env.get('SOLANA_PROGRAM_ID');
     
     console.log('Secret check:', {
-      SOLANA__PROGRAM_ID: programId ? 'exists' : 'missing',
-      SOLANA_PROGRAM_ID: programIdAlt ? 'exists' : 'missing',
-      value: programId || programIdAlt || 'none',
+      SOLANA__PROGRAM_ID: programIdDouble ? 'exists' : 'missing',
+      SOLANA_PROGRAM_ID: programIdSingle ? 'exists' : 'missing',
+      valueDouble: programIdDouble || 'none',
+      valueSingle: programIdSingle || 'none',
     });
 
     return Response.json({
-      SOLANA__PROGRAM_ID: programId || 'not found',
-      SOLANA_PROGRAM_ID: programIdAlt || 'not found',
-      message: programId || programIdAlt 
+      SOLANA__PROGRAM_ID: programIdDouble || 'not found',
+      SOLANA_PROGRAM_ID: programIdSingle || 'not found',
+      message: programIdDouble || programIdSingle 
         ? 'Secret found - try reloading the page'
         : 'Secret missing - please update in Dashboard → Code → Secrets',
     });
