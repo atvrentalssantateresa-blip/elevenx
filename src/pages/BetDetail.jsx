@@ -23,7 +23,7 @@ function getFlagEmoji(countryCode) {
 export default function BetDetail() {
   const { betId } = useParams();
   const { user } = useAuth();
-  const { isConnected, connect, shortAddress } = useWallet();
+  const { isConnected, connect, walletAddress } = useWallet();
   const queryClient = useQueryClient();
   const [selectedOutcome, setSelectedOutcome] = useState(null);
   const [selectedOffer, setSelectedOffer] = useState(null);
@@ -88,16 +88,16 @@ export default function BetDetail() {
   const myBet = myBets.find(ub => ub.created_by_id === user?.id);
 
   const placeBetMutation = useMutation({
-    mutationFn: async (amount) => {
-      const result = await base44.functions.invoke('placeBet', {
-        walletAddress: shortAddress,
-        bet_id: betId,
-        match_id: bet.match_id,
-        outcome: selectedOutcome,
-        amount,
-      });
-      return result.data;
-    },
+  mutationFn: async (amount) => {
+    const result = await base44.functions.invoke('placeBet', {
+      walletAddress: walletAddress,
+      bet_id: betId,
+      match_id: bet.match_id,
+      outcome: selectedOutcome,
+      amount,
+    });
+    return result.data;
+  },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bet', betId] });
       queryClient.invalidateQueries({ queryKey: ['myBetsForBet', betId] });
@@ -339,7 +339,7 @@ export default function BetDetail() {
           className="text-center py-6 bg-card border border-border/50 rounded-2xl"
         >
           <p className="text-muted-foreground text-sm">👆 Pick an outcome above to place your bet</p>
-          <p className="text-xs text-primary/70 mt-1 font-medium">{shortAddress}</p>
+          <p className="text-xs text-primary/70 mt-1 font-medium">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
         </motion.div>
       )}
 
