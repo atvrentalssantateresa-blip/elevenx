@@ -90,6 +90,8 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       status: 'claimed',
       actual_payout: bet.potential_payout || 0
     });
+    // Force immediate refetch
+    await queryClient.refetchQueries({ queryKey: ['myBets'], type: 'active' });
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
   };
 

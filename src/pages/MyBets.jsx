@@ -254,6 +254,8 @@ export default function MyBets() {
     }
     setClaimData(null);
     setBatchClaimMatchId(null);
+    // Force immediate refetch instead of just invalidation
+    await queryClient.refetchQueries({ queryKey: ['myBets'], type: 'active' });
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
   };
 
