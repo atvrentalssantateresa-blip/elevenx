@@ -188,6 +188,7 @@ export default function LpDashboard() {
     enabled: !!walletAddress,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchOnReconnect: true,
     staleTime: 0
   });
 
@@ -552,12 +553,20 @@ export default function LpDashboard() {
               <span className="text-[10px] sm:text-[11px] font-bold text-primary tracking-widest">LIQUIDITY PROVIDER</span>
             </div>
           </div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 text-white">
-            LP Dashboard
-          </h1>
-          <p className="text-white/50 text-xs sm:text-sm max-w-md mb-4">
-            Provide liquidity for matches & futures. Earn fees and back your team.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 text-white">
+                LP Dashboard
+              </h1>
+              <p className="text-white/50 text-xs sm:text-sm max-w-md mb-4">
+                Provide liquidity for matches & futures. Earn fees and back your team.
+                {walletAddress && <span className="ml-2 text-[10px] font-mono opacity-50">({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)})</span>}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => refetchOffers()} className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm shrink-0">
+              Refresh
+            </Button>
+          </div>
 
           {/* How LP Works - Integrated into Hero */}
           <div className="border-t border-white/10 pt-4">
