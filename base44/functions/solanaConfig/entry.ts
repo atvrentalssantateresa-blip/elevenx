@@ -9,11 +9,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
-    const currentProgramId = Deno.env.get('SOLANA__PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
+    const currentProgramId = Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
 
     return Response.json({
       currentProgramId: currentProgramId,
-      message: 'To update the program ID, go to Dashboard → Code → Secrets and update SOLANA__PROGRAM_ID',
+      message: 'To update the program ID, go to Dashboard → Code → Secrets and update SOLANA_PROGRAM_ID',
     });
 
   } catch (error) {
