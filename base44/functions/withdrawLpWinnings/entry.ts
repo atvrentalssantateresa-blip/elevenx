@@ -94,16 +94,30 @@ Deno.serve(async (req) => {
     // LP backs outcome X — if outcome X loses, LP collects losing bettors' stakes
     console.log('[withdrawLpWinnings] Checking win condition:', {
       userBet_outcome: userBet.outcome,
-      bet_winning_outcome: bet.winning_outcome,
+      bet_winning_outcome: bet.winning_outcome || '(NOT SET)',
       lp_wins_if_different: userBet.outcome !== bet.winning_outcome,
     });
+    
+    // Validate winning_outcome is actually set
+    if (!bet.winning_outcome || bet.winning_outcome === '') {
+      console.error('[withdrawLpWinnings] Market settled but winning_outcome not set:', bet.id);
+      return Response.json({ error: 'Market is settled but winning outcome not set. Admin must announce winner first.' }, { status: 400 });
+    }
     
     if (userBet.outcome === bet.winning_outcome) {
       console.error('[withdrawLpWinnings] LP did not win - backed the winning outcome:', {
         userBet_outcome: userBet.outcome,
         winning_outcome: bet.winning_outcome,
+        explanation: 'In parimutuel betting, LPs profit when bettors lose. Since you backed the WINNING outcome, you had to pay winners and your position lost value.',
       });
-      return Response.json({ error: 'This LP position did not win (LP backs the winning outcome, so LP lost)' }, { status: 400 });
+      return Response.json({ 
+        error: 'This LP position did not win',
+        hint: 'LPs win when their backed outcome LOSES (they collect losing bettors stakes).\n\nYou backed the WINNING outcome, so your LP position lost value.',
+        details: {
+          your_outcome: userBet.outcome,
+          winning_outcome: bet.winning_outcome,
+        }
+      }, { status: 400 });
     }
 
     // Get wallet address
