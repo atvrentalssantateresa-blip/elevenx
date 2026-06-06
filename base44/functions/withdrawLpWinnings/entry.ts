@@ -127,12 +127,28 @@ Deno.serve(async (req) => {
     }
 
     // Check if there's matched liquidity to claim
-    if (!offer.amount_matched || offer.amount_matched <= 0) {
-      console.error('[withdrawLpWinnings] No matched liquidity (DB):', {
+    const dbMatched = offer.amount_matched || 0;
+    if (dbMatched <= 0) {
+      console.log('[withdrawLpWinnings] No matched liquidity in DB, checking on-chain:', {
         offer_id: offer.id,
-        amount_matched: offer.amount_matched,
+        amount_matched: dbMatched,
       });
-      return Response.json({ error: 'No matched liquidity available to claim. The LP position has no winnings.' }, { status: 400 });
+      // Check on-chain - might have matched liquidity not reflected in DB
+      try {
+        const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
+        if (lpOfferAccountInfo) {
+          const accountData = lpOfferAccountInfo.data;
+          const amountMatchedOnChain = Number(accountData.readBigUInt64LE(9));
+          console.log('[withdrawLpWinnings] On-chain matched:', amountMatchedOnChain / 1e9);
+          if (amountMatchedOnChain <= 0) {
+            return Response.json({ error: 'No matched liquidity available. Use withdrawUnmatchedLiquidity instead.' }, { status: 400 });
+          }
+        } else {
+          return Response.json({ error: 'No matched liquidity and LP offer not found on-chain' }, { status: 400 });
+        }
+      } catch (err) {
+        return Response.json({ error: 'No matched liquidity available' }, { status: 400 });
+      }
     }
 
     // ON-CHAIN CHECK: Fetch the actual LP offer account from Solana to verify state

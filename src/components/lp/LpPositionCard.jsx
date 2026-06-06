@@ -116,10 +116,12 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       
       // If no matched liquidity, force withdrawUnmatchedLiquidity path
       const hasMatchedOnChain = checkRes.data.hasMatched || checkRes.data.onChainState?.amountMatched > 0;
+      const hasMatchedInDb = offer.amount_matched > 0 || offer.liquidity_matched > 0;
       console.log('[LpPositionCard] On-chain matched:', hasMatchedOnChain, checkRes.data.onChainState);
+      console.log('[LpPositionCard] DB matched:', hasMatchedInDb, { offer_amount_matched: offer.amount_matched, offer_liquidity_matched: offer.liquidity_matched });
       
-      const isWon = offer.status === 'won' || offer.userBet?.status === 'won';
-      const isSettled = offer.status === 'settled' || offer.userBet?.status === 'settled';
+      const isWon = offer.status === 'won';
+      const isSettled = offer.status === 'settled';
       const isLost = offer.status === 'lost';
       
       console.log('[LpPositionCard] Withdraw attempt:', {
@@ -136,32 +138,30 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       });
       
       let res;
-      // Decide which withdrawal path based on on-chain state
-      if (hasMatchedOnChain && isLpWon) {
-        // LP won with matched liquidity - withdraw winnings
+      // Decide which withdrawal path based on matched liquidity (not win/loss)
+      if ((hasMatchedOnChain || hasMatchedInDb) && isLpWon) {
+        // LP won WITH matched liquidity - withdraw winnings (matched stake + fees)
         console.log('[LpPositionCard] Withdrawing winnings (LP won + matched) for position:', offer.id);
         res = await base44.functions.invoke('withdrawLpWinnings', {
           userBetId: offer.userBetId || offer.id
         });
-      } else if (hasUnmatched) {
-        // Has unmatched liquidity - withdraw unmatched (regardless of win/loss)
+      } else if (hasUnmatched || offer.liquidity_unmatched > 0) {
+        // Has unmatched liquidity - withdraw unmatched (regardless of win/loss/settlement)
         console.log('[LpPositionCard] Withdrawing unmatched liquidity for position:', offer.id);
         res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
           userBetId: offer.userBetId || offer.id,
           walletAddress
         });
-      } else if (isSettled && !isLpLost) {
-        // Market settled, no unmatched, but didn't lose - try withdraw winnings
-        console.log('[LpPositionCard] Trying withdrawLpWinnings for settled position:', offer.id);
+      } else if (isSettled && isLpWon) {
+        // Market settled, LP won, no unmatched - try withdraw winnings (might have on-chain matched)
+        console.log('[LpPositionCard] Trying withdrawLpWinnings for settled won position:', offer.id);
         res = await base44.functions.invoke('withdrawLpWinnings', {
           userBetId: offer.userBetId || offer.id
         });
       } else {
-        // Fallback - try withdraw winnings
-        console.log('[LpPositionCard] Withdrawing winnings for position:', offer.id);
-        res = await base44.functions.invoke('withdrawLpWinnings', {
-          userBetId: offer.userBetId || offer.id
-        });
+        // No unmatched, not won, or not settled - nothing to withdraw
+        console.log('[LpPositionCard] Nothing to withdraw:', { hasUnmatched, isLpWon, isSettled });
+        throw new Error('No withdrawable funds. LP position lost or has no unmatched liquidity.');
       }
       
       // Handle HTTP errors (400, 404, 500, etc.)
@@ -460,8 +460,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
-            // LP WON but no matched bets - withdraw unmatched liquidity
-            if (isLpWon && hasUnmatched && onWithdrawRequest) {
+            // Has unmatched liquidity - withdraw unmatched (priority over win/loss)
+            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
               return (
                 <Button
                   onClick={handleWithdraw}
@@ -473,15 +473,16 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               );
             }
             
-            // Show withdraw unmatched for open markets with unmatched liquidity (not won/lost)
-            if (hasUnmatched && onWithdrawRequest) {
+            // LP WON but no matched/unmatched - show disabled (already handled by No Funds)
+            if (isLpWon && liquidityMatched === 0 && liquidityUnmatched === 0) {
               return (
                 <Button
-                  onClick={handleWithdraw}
-                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold"
+                  disabled
+                  variant="outline"
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-accent/30 text-accent bg-accent/10 rounded-xl font-heading font-bold"
                 >
-                  <Wallet className="w-3 h-3 mr-1" />
-                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Fully Locked
                 </Button>
               );
             }
