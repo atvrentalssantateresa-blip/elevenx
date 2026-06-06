@@ -228,6 +228,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Save the market PDA to the database BEFORE signing (so provideLiquidity can use it)
+    await serviceRole.entities.FuturesMarket.update(futures_market_id, {
+      solana_market_pda: marketPda.toBase58(),
+      solana_market_created: true,
+    });
+    console.log('[createFuturesMarketOnChain] Saved solana_market_pda to DB:', marketPda.toBase58());
+
     return Response.json({
       success: true,
       marketPda: marketPda.toBase58(),

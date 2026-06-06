@@ -205,6 +205,9 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
   const [amount, setAmount] = useState('');
 
   const activeOutcome = market.outcomes[selectedIndex];
+  
+  // Check if market is ready for LP (must be created on-chain first)
+  const isMarketReady = market.solana_market_created && market.solana_market_pda;
 
   return (
     <motion.div
@@ -266,11 +269,20 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
         </div>
 
         {/* Info Banner */}
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4">
-          <p className="text-[10px] text-emerald-400/80 leading-relaxed">
-            <span className="font-bold">Bet against</span> {market.country} finishing {activeOutcome.position.toLowerCase()}. Profit if they don't reach it.
-          </p>
-        </div>
+        {!isMarketReady && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 mb-4">
+            <p className="text-[10px] text-yellow-400/80 leading-relaxed">
+              <span className="font-bold">⚠️ Not Ready:</span> Admin must deploy this market on-chain first. Check Admin Dashboard → Futures → Deploy.
+            </p>
+          </div>
+        )}
+        {isMarketReady && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4">
+            <p className="text-[10px] text-emerald-400/80 leading-relaxed">
+              <span className="font-bold">Bet against</span> {market.country} finishing {activeOutcome.position.toLowerCase()}. Profit if they don't reach it.
+            </p>
+          </div>
+        )}
 
         {/* Amount Section */}
         <div className="mt-auto space-y-3">
@@ -303,14 +315,18 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
                 market_id: market.id,
               }, parseFloat(amount));
             }}
-            disabled={!amount || parseFloat(amount) <= 0}
-            className="w-full h-12 font-heading font-bold rounded-2xl text-sm transition-all"
+            disabled={!isMarketReady || !amount || parseFloat(amount) <= 0}
+            className="w-full h-12 font-heading font-bold rounded-2xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ 
-              background: 'linear-gradient(135deg, #21c45d 0%, #1a9f4a 100%)',
-              boxShadow: '0 4px 20px rgba(33,196,93,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+              background: isMarketReady 
+                ? 'linear-gradient(135deg, #21c45d 0%, #1a9f4a 100%)'
+                : 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
+              boxShadow: isMarketReady 
+                ? '0 4px 20px rgba(33,196,93,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+                : 'none'
             }}
           >
-            Provide ◎{amount || '0'} Liquidity
+            {!isMarketReady ? '⏳ Admin Must Deploy First' : `Provide ◎${amount || '0'} Liquidity`}
           </Button>
         </div>
       </div>

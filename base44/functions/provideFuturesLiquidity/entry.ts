@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
 
     const { walletAddress, market_id, outcome_label, odds, amount } = await req.json();
 
+    console.log('[provideFuturesLiquidity] Request params:', { walletAddress, market_id, outcome_label, odds, amount });
+
     if (!walletAddress || !market_id || !outcome_label || !odds || !amount) {
       return Response.json({ error: 'Missing required parameters' }, { status: 400 });
     }
@@ -32,7 +34,15 @@ Deno.serve(async (req) => {
     }
 
     if (market.status !== 'open') {
-      return Response.json({ error: 'Market is not open for liquidity' }, { status: 400 });
+      return Response.json({ error: 'Market is not open for liquidity (status: ' + market.status + ')' }, { status: 400 });
+    }
+
+    // Check if market is created on-chain
+    if (!market.solana_market_pda) {
+      return Response.json({ 
+        error: 'Market not initialized on-chain yet. Admin must create market first.',
+        hint: 'Admin needs to call createFuturesMarketOnChain for this market'
+      }, { status: 400 });
     }
 
     // Find the outcome in the market to get the correct index (0, 1, or 2)
@@ -46,14 +56,17 @@ Deno.serve(async (req) => {
 
     // Derive REAL on-chain Solana PDAs
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
-    const lpPubkey = new PublicKey(walletAddress);
     
-    // Derive market PDA
-    const marketIdBytes = Buffer.from(market_id.padEnd(32, '\0').slice(0, 32));
-    const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('market'), marketIdBytes],
-      programId
-    );
+    // Validate wallet address format
+    let lpPubkey;
+    try {
+      lpPubkey = new PublicKey(walletAddress);
+    } catch (err) {
+      return Response.json({ error: 'Invalid wallet address format' }, { status: 400 });
+    }
+    
+    // Use the pre-computed market PDA from the database (ensures consistency)
+    const marketPda = new PublicKey(market.solana_market_pda);
     
     // Derive LP offer PDA
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
@@ -66,6 +79,12 @@ Deno.serve(async (req) => {
       [Buffer.from('platform')],
       programId
     );
+
+    console.log('[provideFuturesLiquidity] PDA derivation:', {
+      marketPda: marketPda.toBase58(),
+      lpOfferPda: lpOfferPda.toBase58(),
+      platformConfigPda: platformConfigPda.toBase58(),
+    });
 
     // Create UserBet record for LP using standard hex id (auto-generated)
     const userBet = await base44.entities.UserBet.create({
@@ -80,6 +99,7 @@ Deno.serve(async (req) => {
       outcome_label: outcome_label,
       match_title: market.title,
       wallet_address: walletAddress,
+      _isFutures: true,
     });
 
     // Build valid Solana provide_liquidity instruction
@@ -94,6 +114,8 @@ Deno.serve(async (req) => {
       outcome: outcomeIndex,
       amountLamports: amountLamports,
     };
+
+    console.log('[provideFuturesLiquidity] Success, returning instruction');
 
     return Response.json({
       success: true,
@@ -110,6 +132,7 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
+    console.error('[provideFuturesLiquidity] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
