@@ -23,6 +23,20 @@ export default function InitPlatform() {
     queryFn: () => base44.functions.invoke('solanaConfig', {}),
   });
 
+  const handleRegisterAdmin = async () => {
+    try {
+      if (!walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+      const res = await base44.functions.invoke('registerAdminWallet', { walletAddress });
+      if (res.data.error) throw new Error(res.data.error);
+      setError(null);
+      alert(res.data.message || 'Wallet registered as admin!');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleInit = async () => {
     try {
       if (!walletAddress) {
@@ -114,19 +128,33 @@ export default function InitPlatform() {
             onError={() => setError('Transaction failed')}
           />
         ) : (
-          <Button
-            onClick={handleInit}
-            disabled={!isConnected}
-            className="w-full h-12"
-          >
-            {!isConnected ? (
-              <>Connect Wallet First</>
-            ) : platformStatus?.data?.initialized ? (
-              <>Reinitialize Platform (Fix Admin)</>
-            ) : (
-              <>Initialize Platform</>
-            )}
-          </Button>
+          <div className="space-y-3">
+            <Button
+              onClick={handleRegisterAdmin}
+              disabled={!isConnected}
+              className="w-full h-12"
+              variant="outline"
+            >
+              {!isConnected ? (
+                <>Connect Wallet First</>
+              ) : (
+                <>🔑 Register This Wallet as Admin</>
+              )}
+            </Button>
+            <Button
+              onClick={handleInit}
+              disabled={!isConnected}
+              className="w-full h-12"
+            >
+              {!isConnected ? (
+                <>Connect Wallet First</>
+              ) : platformStatus?.data?.initialized ? (
+                <>Reinitialize Platform (Fix Admin)</>
+              ) : (
+                <>Initialize Platform</>
+              )}
+            </Button>
+          </div>
         )}
       </div>
     </div>
