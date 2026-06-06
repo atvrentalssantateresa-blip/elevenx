@@ -479,7 +479,7 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="relative overflow-hidden rounded-3xl min-h-[400px] flex flex-col justify-between p-5 sm:p-7"
+        className="relative overflow-hidden rounded-3xl min-h-[200px] flex flex-col justify-between p-5 sm:p-7"
         style={{ background: '#121212' }}>
         
         {/* Glow orbs */}
