@@ -136,14 +136,23 @@ export default function MyBets() {
   const { data: myBets = [], isLoading, refetch } = useQuery({
     queryKey: ['myBets', walletAddress, user?.id],
     queryFn: async () => {
+      console.log('[MyBets] Query executing, wallet:', walletAddress?.slice(0, 8));
       const all = await base44.entities.UserBet.list('-created_date', 100);
-      if (walletAddress) return all.filter((ub) => ub.wallet_address === walletAddress);
+      console.log('[MyBets] Total bets in DB:', all.length);
+      const filtered = walletAddress ? all.filter((ub) => {
+        const match = ub.wallet_address === walletAddress;
+        if (match) console.log('[MyBets] Found matching bet:', ub.id, ub.amount, ub.status);
+        return match;
+      }) : [];
+      console.log('[MyBets] Filtered to my bets:', filtered.length);
+      if (walletAddress) return filtered;
       if (user?.id) return all.filter((ub) => ub.created_by_id === user.id);
       return [];
     },
     enabled: !!walletAddress || !!user,
     refetchOnWindowFocus: true,
-    refetchOnMount: true
+    refetchOnMount: true,
+    refetchOnReconnect: true
   });
 
   // LP offers for the LP tab
@@ -257,15 +266,24 @@ export default function MyBets() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="font-heading font-black text-2xl sm:text-3xl mb-1">My Bets Dashboard</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Track your World Cup betting performance</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Track your World Cup betting performance
+            {walletAddress && <span className="ml-2 text-[10px] font-mono opacity-50">({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)})</span>}
+          </p>
         </div>
-        <Link to="/matches">
-          <Button variant="outline" className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()} className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm">
             <Activity className="w-4 h-4" />
-            <span className="hidden sm:inline">Browse Matches</span>
-            <span className="sm:hidden">Matches</span>
+            Refresh
           </Button>
-        </Link>
+          <Link to="/matches">
+            <Button variant="outline" className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm">
+              <Activity className="w-4 h-4" />
+              <span className="hidden sm:inline">Browse Matches</span>
+              <span className="sm:hidden">Matches</span>
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
