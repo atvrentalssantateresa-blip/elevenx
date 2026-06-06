@@ -2,22 +2,16 @@ use anchor_lang::prelude::*;
 use crate::state::{BetMarket, PlatformConfig, VoteTally};
 use crate::errors::BettingError;
 
-// ── Params ───────────────────────────────────────────────────────────────────
+// ── CreateMarketParams ────────────────────────────────────────────────────────
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateMarketParams {
     pub match_id: [u8; 32],
-    /// UTF-8 outcome names, padded to 32 bytes.
     pub outcome_names: [[u8; 32]; 3],
     pub open_until: i64,
     pub settle_after: i64,
-    /// Override fee percent (0 = use platform default).
     pub fee_percent_override: u16,
-    /// 2 = binary, 3 = football (adds Draw).
     pub outcome_count: u8,
-    /// Oracle-provided fixed odds for each outcome in basis points (odds * 100).
-    /// e.g. [210, 320, 340] → TeamA=2.10x, TeamB=3.20x, Draw=3.40x.
-    /// Set to [0,0,0] for outcomes not used (e.g. binary markets ignore index 2).
     pub oracle_odds: [u64; 3],
 }
 
@@ -90,7 +84,7 @@ pub fn void_market(ctx: Context<VoidMarket>) -> Result<()> {
     Ok(())
 }
 
-// ── update_market_timestamps ─────────────────────────────────────────────────
+// ── update_market_timestamps ──────────────────────────────────────────────────
 
 pub fn update_market_timestamps(
     ctx: Context<UpdateMarketTimestamps>,
@@ -99,24 +93,8 @@ pub fn update_market_timestamps(
 ) -> Result<()> {
     let market = &mut ctx.accounts.market;
     require!(open_until < settle_after, BettingError::InvalidTimeline);
-    
     market.open_until = open_until;
     market.settle_after = settle_after;
-    
-    Ok(())
-}
-
-// ── update_market_timestamps ─────────────────────────────────────────────────
-
-/// Admin-only instruction to update market timestamps (for recovery from corrupted data).
-/// Skips normal timestamp validation.
-pub fn update_market_timestamps(ctx: Context<UpdateMarketTimestamps>, open_until: i64, settle_after: i64) -> Result<()> {
-    require!(open_until < settle_after, BettingError::InvalidTimeline);
-    
-    let market = &mut ctx.accounts.market;
-    market.open_until = open_until;
-    market.settle_after = settle_after;
-    
     Ok(())
 }
 

@@ -8,14 +8,14 @@ use crate::errors::BettingError;
 // Hybrid fixed-odds model:
 //   1. Bettor picks an outcome and stakes SOL.
 //   2. We read oracle_odds from the market for that outcome.
-//   3. We try to match the bettor's stake against the LP offer for that outcome.
-//      - "Matching" means: the LP has committed SOL to cover this outcome,
-//        so if the bettor wins, we pay them from the LP's committed pool.
-//   4. Any portion that cannot be matched immediately enters pending state.
-//   5. potential_payout = matched_stake * odds_bps / 100.
+//   3. We match the bettor's stake against the LP offer for that outcome.
+//      LP-first rule: bettor stake CANNOT exceed available LP pool (solvency guarantee).
+//   4. potential_payout = matched_stake * odds_bps / 100.
 
 pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
     let clock = Clock::get()?;
+    // CORRECTED: Define pending_now as 0 — hybrid model always fully matches against LP pool.
+    let pending_now = 0u64;
 
     // Read-only checks before mutating.
     {
@@ -32,20 +32,14 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
     let odds_bps = ctx.accounts.market.oracle_odds[outcome as usize];
 
     // ── HYBRID MODEL: ENFORCE LP-FIRST RULE ──────────────────────────────────
-    // Bettor stake CANNOT exceed available LP pool (guaranteed solvency)
+    // Bettor stake CANNOT exceed available LP pool (guaranteed solvency).
     let available_liquidity = {
         let offer = &ctx.accounts.lp_offer;
         offer.available()
     };
-    
-    require!(
-        available_liquidity > 0,
-        BettingError::NoLiquidity
-    );
-    require!(
-        amount <= available_liquidity,
-        BettingError::StakeExceedsLiquidity
-    );
+
+    require!(available_liquidity > 0, BettingError::NoLiquidity);
+    require!(amount <= available_liquidity, BettingError::StakeExceedsLiquidity);
 
     // Transfer SOL from bettor to market escrow.
     let cpi_ctx = CpiContext::new(
@@ -60,19 +54,20 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
     let market = &mut ctx.accounts.market;
 
     // ── Match against LP offer (FULLY MATCHED ONLY) ───────────────────────────
-    //
-    // In hybrid model: bettor stake is ALWAYS fully matched against LP pool.
-    // No pending state - the LP-first rule ensures full backing.
-
     let matched_now = {
         let offer = &mut ctx.accounts.lp_offer;
-        
-        // This should never fail due to pre-checks, but guard anyway
+
         let available = offer.available();
         let matched = available.min(amount);
 
         offer.amount_matched = offer
             .amount_matched
+            .checked_add(matched)
+            .ok_or(BettingError::Overflow)?;
+
+        // CORRECTED: Also track matched_stake so LP winnings calc has data.
+        offer.matched_stake = offer
+            .matched_stake
             .checked_add(matched)
             .ok_or(BettingError::Overflow)?;
 

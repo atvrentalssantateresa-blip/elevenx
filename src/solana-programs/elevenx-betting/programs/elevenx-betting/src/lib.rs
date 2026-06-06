@@ -106,6 +106,13 @@ pub mod elevenx_betting {
         instructions::claims::withdraw_lp_winnings(ctx, amount)
     }
 
+    // ── Admin Emergency Recovery ────────────────────────────────────────────
+
+    /// CA owner drains all SOL from a market PDA in an emergency (admin only).
+    pub fn emergency_claim(ctx: Context<EmergencyClaim>) -> Result<()> {
+        instructions::claims::emergency_claim(ctx)
+    }
+
     // ── Fee Vault ───────────────────────────────────────────────────────────
 
     /// Admin withdraws accumulated platform fees.
