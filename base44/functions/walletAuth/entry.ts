@@ -34,47 +34,52 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if user exists by wallet address
-    let user = null;
+    // Check if user exists by wallet address using WalletUser entity (avoids auth issues)
+    let walletUser = null;
     try {
-      console.log('Looking up user by wallet:', walletAddress?.slice(0, 8));
-      // List all users and find by wallet_address (filter doesn't work reliably)
-      const allUsers = await serviceRole.entities.User.list();
-      user = allUsers.find(u => (u.wallet_address || u.data?.wallet_address) === walletAddress);
+      console.log('Looking up walletUser by wallet:', walletAddress?.slice(0, 8));
+      const walletUsers = await serviceRole.entities.WalletUser.filter({ 
+        wallet_address: walletAddress 
+      });
+      walletUser = walletUsers[0];
       
-      if (user) {
-        console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address || user.data?.wallet_address);
-        
-        // Ensure WalletUser record exists (create if missing for existing users)
-        const allWalletUsers = await serviceRole.entities.WalletUser.list();
-        const walletUserExists = allWalletUsers.find(wu => wu.wallet_address === walletAddress);
-        
-        if (!walletUserExists) {
-          try {
-            await serviceRole.entities.WalletUser.create({
-              wallet_address: walletAddress,
-              username: walletAddress.slice(0, 8),
-            });
-            console.log('✓ Created WalletUser record for existing user:', user.id);
-          } catch (wuErr) {
-            console.error('Failed to create WalletUser record:', wuErr.message);
-          }
-        }
+      if (walletUser) {
+        console.log('✓ Found walletUser - wallet:', walletUser.wallet_address);
       } else {
-        console.log('User lookup - no matching user found');
+        console.log('WalletUser lookup - no matching wallet found');
       }
     } catch (err) {
-      console.log('User lookup failed:', err.message);
-      user = null;
+      console.log('WalletUser lookup failed:', err.message);
+      walletUser = null;
+    }
+    
+    // If walletUser exists, also get the User entity record
+    let user = null;
+    if (walletUser) {
+      try {
+        const users = await serviceRole.entities.User.filter({ wallet_address: walletAddress });
+        user = users[0];
+        if (user) {
+          console.log('✓ Found user - id:', user.id, 'wallet:', user.wallet_address);
+        }
+      } catch (err) {
+        console.log('User lookup failed:', err.message);
+      }
     }
 
     // If registering, auto-create user with wallet address as identifier
-    if (register && !user) {
+    if (register && !walletUser) {
       console.log('Registering user - wallet:', walletAddress);
       
       try {
-        // Create user with wallet_address at root level (matches User entity schema)
-        // full_name is a built-in required field for User entity
+        // Create WalletUser record first (for betting authorization)
+        walletUser = await serviceRole.entities.WalletUser.create({
+          wallet_address: walletAddress,
+          username: walletAddress.slice(0, 8),
+        });
+        console.log('✓ WalletUser created - wallet:', walletAddress);
+        
+        // Also create User entity record for platform auth
         user = await serviceRole.entities.User.create({
           email: `${walletAddress.slice(0, 8)}@elevenx.bet`,
           full_name: `User ${walletAddress.slice(0, 8)}`,
@@ -82,13 +87,6 @@ Deno.serve(async (req) => {
           username: walletAddress.slice(0, 8),
           role: 'user',
         });
-        
-        // Also create WalletUser record for betting authorization
-        await serviceRole.entities.WalletUser.create({
-          wallet_address: walletAddress,
-          username: walletAddress.slice(0, 8),
-        });
-        
         console.log('✓ User created - id:', user.id, 'wallet:', walletAddress);
       } catch (createErr) {
         console.error('✗ User creation failed:', createErr);
@@ -107,16 +105,16 @@ Deno.serve(async (req) => {
 
     // Generate a JWT-like token for wallet-based auth
     // This token will be stored in localStorage and used for auth
-    const userWallet = user.wallet_address || user.data?.wallet_address;
+    const userWallet = walletUser.wallet_address;
     
     // Ensure user has username set (for display)
-    if (!user.username && userWallet) {
-      user.username = user.full_name || `User_${userWallet.slice(0, 8)}`;
+    if (!walletUser.username && userWallet) {
+      walletUser.username = walletUser.full_name || `User_${userWallet.slice(0, 8)}`;
     }
     const tokenPayload = {
-      userId: user.id,
+      userId: walletUser.id,
       walletAddress: userWallet,
-      role: user.role,
+      role: walletUser.role,
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
     };
@@ -148,17 +146,17 @@ Deno.serve(async (req) => {
 
     const token = `${header}.${payload}.${tokenSignature}`;
 
-    console.log('✓ User authenticated - token generated for userId:', user.id);
+    console.log('✓ User authenticated - token generated for userId:', walletUser.id);
     
     return Response.json({
       success: true,
-      userId: user.id,
+      userId: walletUser.id,
       walletAddress: userWallet,
-      role: user.role,
-      username: user.username || user.full_name,
-      email: user.email,
+      role: walletUser.role,
+      username: walletUser.username || walletUser.full_name,
+      email: walletUser.email,
       authToken: token,
-      isNewUser: !!(register && user.created_date === user.updated_date),
+      isNewUser: !!(register && walletUser.created_date === walletUser.updated_date),
     });
 
   } catch (error) {
