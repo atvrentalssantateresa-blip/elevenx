@@ -55,11 +55,29 @@ Deno.serve(async (req) => {
         continue; // Skip already processed bets
       }
       
-      const isWinner = userBet.outcome === winning_outcome;
+      const isLp = userBet.role === 'lp';
+      const backedWinner = userBet.outcome === winning_outcome;
+      let isWinner = false;
+      let payout = 0;
+      
+      if (isLp) {
+        // LP wins when backed outcome LOSES (collects losing bettor stakes)
+        if (!backedWinner) {
+          isWinner = true;
+          // LP earns matched liquidity (losing bettor stakes) + fees
+          payout = userBet.liquidity_matched || userBet.amount || 0;
+        }
+      } else {
+        // Regular bettor wins when backed outcome WINS
+        if (backedWinner) {
+          isWinner = true;
+          payout = userBet.potential_payout || 0;
+        }
+      }
       
       await serviceRole.entities.UserBet.update(userBet.id, {
         status: isWinner ? 'won' : 'lost',
-        actual_payout: isWinner ? (userBet.potential_payout || 0) : 0,
+        actual_payout: payout,
       });
       
       if (isWinner) {
