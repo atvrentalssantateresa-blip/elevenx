@@ -102,11 +102,27 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         });
       }
       
-      if (res.data.error) {
-        console.error('[LpPositionCard] Withdraw error:', res.data.error);
-        console.error('[LpPositionCard] Full error response:', res.data);
-        // Show detailed error for debugging
-        alert('Withdraw failed: ' + res.data.error + (res.data.hint ? '\n\n' + res.data.hint : ''));
+      // Handle HTTP errors (400, 404, 500, etc.)
+      if (res.status !== 200 || res.data?.error) {
+        const errorMsg = res.data?.error || res.statusText || 'Unknown error';
+        console.error('[LpPositionCard] Withdraw failed:', {
+          status: res.status,
+          error: errorMsg,
+          data: res.data,
+        });
+        
+        let userMessage = errorMsg;
+        if (errorMsg.includes('did not win') || errorMsg.includes('LP position did not win')) {
+          userMessage = 'This LP position did not win. In parimutuel betting, LPs profit when bettors lose.\n\nYour backed outcome won, so the LP position lost value.';
+        } else if (errorMsg.includes('Market has not been settled')) {
+          userMessage = 'Market must be settled before claiming. Wait for admin to settle the market.';
+        } else if (errorMsg.includes('No unmatched liquidity')) {
+          userMessage = 'No unmatched liquidity available. All funds are locked in matched positions.';
+        } else if (errorMsg.includes('Only LP positions')) {
+          userMessage = 'Only LP positions can withdraw winnings. This appears to be a regular bet.';
+        }
+        
+        alert('Withdraw failed:\n\n' + userMessage);
         return;
       }
       
@@ -124,7 +140,14 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       });
     } catch (err) {
       console.error('[LpPositionCard] Withdraw failed:', err);
-      alert('Withdraw failed: ' + err.message);
+      console.error('[LpPositionCard] Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+      
+      const backendError = err.response?.data?.error || err.message;
+      alert('Withdraw failed:\n\n' + backendError);
     }
   };
 
