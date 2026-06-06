@@ -479,35 +479,39 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a1a2e] via-[#0f0f1a] to-[#1a1a2e] border border-primary/20 p-8">
+        className="relative overflow-hidden rounded-3xl min-h-[400px] flex flex-col justify-between p-5 sm:p-7"
+        style={{ background: '#121212' }}>
         
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-primary/10 blur-3xl rounded-full" />
-        <div className="absolute bottom-0 right-0 w-48 h-48 bg-accent/10 blur-3xl rounded-full" />
+        {/* Glow orbs */}
+        <div className="absolute top-0 right-0 w-56 h-56 rounded-full blur-3xl opacity-30" style={{ background: '#a69cf2' }} />
+        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: '#14f195' }} />
+        {/* Grid lines decoration */}
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(#a69cf2 1px, transparent 1px), linear-gradient(90deg, #a69cf2 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         
         <div className="relative z-10">
           {/* Main CTA */}
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          
+          <div className="text-center mb-8 hidden">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Trophy className="w-10 h-10 text-primary" />
+              <div className="w-10 h-10 flex items-center justify-center text-4xl">⚽</div>
+              <Earth className="w-10 h-10 text-accent" />
+            </div>
+            <h2 className="font-heading font-black text-2xl md:text-3xl mb-3 text-white">
+              48 Teams. 104 Matches. <span className="text-primary">One Champion.</span>
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+              Join thousands of bettors on the most decentralized sports betting platform — built on Solana for speed, transparency, and zero fees to the house.
+            </p>
+            <Link to="/matches">
+              <Button className="font-heading font-bold px-10 h-12 rounded-xl text-sm text-white"
+              style={{ background: 'linear-gradient(135deg, #21c45d, #10b981)', boxShadow: '0 0 28px rgba(33,196,93,0.3)' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}>
+                <Trophy className="w-4 h-4 mr-2" />
+                Start Betting Now
+              </Button>
+            </Link>
+          </div>
 
           {/* Divider */}
           <div className="border-t border-white/10 mb-8" />
@@ -522,7 +526,7 @@ export default function Home() {
                   <text x="5" y="18" fontFamily="Arial Black, sans-serif" fontSize="14" fontWeight="900" fill="white">SOLANA</text>
                 </svg>
               </div>
-              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-white/60">
                 <Zap className="w-3.5 h-3.5 text-primary" />
                 <span>Lightning Fast</span>
                 <span className="text-white/20">•</span>
@@ -532,7 +536,7 @@ export default function Home() {
 
             {/* Right: Social Links */}
             <div className="flex items-center gap-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Follow Us</span>
+              <span className="text-[10px] text-white/60 uppercase tracking-wider font-semibold">Follow Us</span>
               <a href="#" className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary/20 hover:border-primary/30 transition-all group">
                 <svg className="w-4 h-4 text-white/70 group-hover:text-primary transition-colors" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -553,6 +557,11 @@ export default function Home() {
                   <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
                 </svg>
               </a>
+              <a href="https://discord.gg" className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-all group">
+                <svg className="w-4 h-4 text-white/70 group-hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                </svg>
+              </a>
             </div>
           </div>
 
@@ -562,9 +571,9 @@ export default function Home() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <span className="text-white font-black text-sm">11</span>
               </div>
-              <span className="text-xs text-muted-foreground">© 2026 ElevenX. All rights reserved.</span>
+              <span className="text-xs text-white/60">© 2026 ElevenX. All rights reserved.</span>
             </div>
-            <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-4 text-[10px] text-white/60">
               <a href="#" className="hover:text-primary transition-colors">Terms</a>
               <a href="#" className="hover:text-primary transition-colors">Privacy</a>
               <a href="#" className="hover:text-primary transition-colors">Docs</a>
