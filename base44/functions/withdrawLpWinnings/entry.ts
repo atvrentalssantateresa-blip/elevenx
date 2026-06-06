@@ -190,17 +190,36 @@ Deno.serve(async (req) => {
     try {
       // First check the market account to see the winning_outcome stored on-chain
       const marketAccountInfo = await connection.getAccountInfo(marketPda);
-      if (marketAccountInfo) {
-        // Market layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
-        // winning_outcome is at offset: 8+32+96+8+8+2+1 = 155
-        const marketData = marketAccountInfo.data;
-        const onChainWinningOutcome = marketData[155];
-        console.log('[withdrawLpWinnings] Market on-chain winning_outcome:', {
-          onChainValue: onChainWinningOutcome,
-          lpOutcome: outcomeValue,
-          match: onChainWinningOutcome === outcomeValue,
-          db_winning_outcome: bet.winning_outcome,
-        });
+      if (!marketAccountInfo) {
+        console.error('[withdrawLpWinnings] Market account NOT FOUND on-chain:', marketPda.toBase58());
+        return Response.json({ error: 'Market account not found on-chain. Market may not be deployed.' }, { status: 404 });
+      }
+      
+      // Market layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
+      // winning_outcome is at offset: 8+32+96+8+8+2+1 = 155
+      const marketData = marketAccountInfo.data;
+      const onChainWinningOutcome = marketData[155];
+      
+      // Debug: Read more fields to verify layout
+      const outcomeCount = marketData[154];
+      const feePercent = marketData.readUInt16LE(152);
+      const settled = marketData[179]; // settled bool after all the u64 arrays
+      
+      console.log('[withdrawLpWinnings] Market on-chain state:', {
+        onChainWinningOutcome,
+        outcomeCount,
+        feePercent: feePercent / 100, // basis points to percent
+        settled,
+        lpOutcome: outcomeValue,
+        lpWinsIfDifferent: onChainWinningOutcome !== outcomeValue,
+        db_winning_outcome: bet.winning_outcome,
+        marketDataLength: marketData.length,
+      });
+      
+      // CRITICAL: Check if market is actually settled on-chain
+      if (!settled) {
+        console.error('[withdrawLpWinnings] Market not settled on-chain:', marketPda.toBase58());
+        return Response.json({ error: 'Market has not been settled on-chain yet. Admin must announce the winner first.' }, { status: 400 });
       }
       
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
