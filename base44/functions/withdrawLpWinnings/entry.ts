@@ -185,9 +185,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'This LP position has already been withdrawn' }, { status: 400 });
     }
 
-    // ON-CHAIN CHECK: Fetch the actual LP offer account from Solana to verify state
+    // ON-CHAIN CHECK: Fetch the actual LP offer account AND market from Solana to verify state
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     try {
+      // First check the market account to see the winning_outcome stored on-chain
+      const marketAccountInfo = await connection.getAccountInfo(marketPda);
+      if (marketAccountInfo) {
+        // Market layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
+        // winning_outcome is at offset: 8+32+96+8+8+2+1 = 155
+        const marketData = marketAccountInfo.data;
+        const onChainWinningOutcome = marketData[155];
+        console.log('[withdrawLpWinnings] Market on-chain winning_outcome:', {
+          onChainValue: onChainWinningOutcome,
+          lpOutcome: outcomeValue,
+          match: onChainWinningOutcome === outcomeValue,
+          db_winning_outcome: bet.winning_outcome,
+        });
+      }
+      
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
       if (!lpOfferAccountInfo) {
         console.error('[withdrawLpWinnings] LP offer PDA not found on-chain:', lpOfferPda.toBase58());
@@ -198,8 +213,15 @@ Deno.serve(async (req) => {
       // LpOffer layout: discriminator (8) + market (32) + lp (32) + outcome (1) + odds_bps (8) + amount_committed (8) + amount_matched (8) + closed (1) + matched_stake (8) + withdrawn (1) + bump (1) = 108 bytes
       // Offsets: 0-7=disc, 8-39=market, 40-71=lp, 72=outcome, 73-80=odds_bps, 81-88=amount_committed, 89-96=amount_matched, 97=closed, 98-105=matched_stake, 106=withdrawn, 107=bump
       const accountData = lpOfferAccountInfo.data;
+      const storedOutcomeValue = accountData[72]; // CRITICAL: Read the actual stored outcome from the account!
       const withdrawnFlag = accountData[106]; // withdrawn is a bool at offset 106
       const amountMatchedOnChain = accountData.readBigUInt64LE(89); // amount_matched at offset 89
+      
+      console.log('[withdrawLpWinnings] Stored outcome vs derived:', {
+        storedOutcomeValue,
+        derivedOutcomeValue: outcomeValue,
+        match: storedOutcomeValue === outcomeValue,
+      });
 
       console.log('[withdrawLpWinnings] On-chain LP offer state:', {
         withdrawn: withdrawnFlag === 1,
@@ -239,6 +261,10 @@ Deno.serve(async (req) => {
       lpOfferPda: lpOfferPda.toBase58(),
     });
 
+    // NOTE: The outcome value for the instruction should match the Rust program's expectation
+    // Use the derived value since that's what was used to create the account
+    const onChainOutcomeValue = outcomeValue;
+    
     return Response.json({
       success: true,
       withdrawAmount: baseAmount,
@@ -254,7 +280,7 @@ Deno.serve(async (req) => {
         feeVaultPda: feeVaultPda.toBase58(),
         lpWalletPubkey: userPubkey.toBase58(),
         withdrawAmountLamports,
-        outcome: outcomeValue,
+        outcome: onChainOutcomeValue,
       },
       message: `Sign to withdraw ◎${baseAmount.toFixed(4)} from settled market`,
     });
