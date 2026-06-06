@@ -25,8 +25,10 @@ export function WalletProvider({ children }) {
   // Restore wallet session from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(WALLET_SESSION_KEY);
+    const authToken = localStorage.getItem('elevenx_auth_token');
     console.log('[WalletContext] localStorage key:', WALLET_SESSION_KEY);
     console.log('[WalletContext] Saved value:', saved);
+    console.log('[WalletContext] Auth token exists:', !!authToken);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -36,6 +38,34 @@ export function WalletProvider({ children }) {
           console.log('[WalletContext] Restored session:', address.slice(0, 8) + '...');
           setWalletAddress(address);
           setIsConnected(true);
+          
+          // RECOVERY: If wallet exists but no auth token, re-authenticate
+          if (!authToken) {
+            console.log('[WalletContext] ⚠️ Wallet session exists but no auth token - re-authenticating...');
+            const phantom = getPhantom();
+            if (phantom && phantom.isConnected) {
+              // Auto-reauthenticate with existing wallet
+              const challenge = `Sign to authenticate with ElevenX\n\nWallet: ${address}\nNonce: ${Date.now()}`;
+              const encoder = new TextEncoder();
+              const messageBytes = encoder.encode(challenge);
+              phantom.signMessage(messageBytes, 'utf8').then(async ({ signature }) => {
+                const { base44 } = await import('@/api/base44Client');
+                const authRes = await base44.functions.invoke('walletAuth', {
+                  walletAddress: address,
+                  signature: bs58.encode(signature),
+                  message: challenge,
+                  register: true,
+                });
+                if (authRes.data.authToken) {
+                  localStorage.setItem('elevenx_auth_token', authRes.data.authToken);
+                  console.log('[WalletContext] ✓ Auth token recovered');
+                  window.location.reload();
+                }
+              }).catch(err => {
+                console.error('[WalletContext] Re-auth failed:', err);
+              });
+            }
+          }
         } else {
           console.log('[WalletContext] Address normalization failed');
           localStorage.removeItem(WALLET_SESSION_KEY);
