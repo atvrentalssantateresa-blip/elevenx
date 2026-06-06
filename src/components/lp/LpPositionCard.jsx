@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -63,12 +63,21 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       const isSettled = offer.status === 'settled' || offer.userBet?.status === 'settled';
       
       let res;
-      if (isWon || isSettled) {
+      if (isWon) {
+        // LP won - withdraw winnings with fee bonus
         console.log('[LpPositionCard] Withdrawing winnings (settled) for position:', offer.id);
         res = await base44.functions.invoke('withdrawLpWinnings', {
           userBetId: offer.userBetId || offer.id
         });
+      } else if (isSettled && hasUnmatched) {
+        // Market settled but LP has unmatched funds (didn't win, but has remaining liquidity)
+        console.log('[LpPositionCard] Withdrawing unmatched from settled market:', offer.id);
+        res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
+          userBetId: offer.userBetId || offer.id,
+          walletAddress
+        });
       } else {
+        // Unmatched liquidity withdrawal (market still open)
         console.log('[LpPositionCard] Withdrawing unmatched liquidity for position:', offer.id);
         res = await base44.functions.invoke('withdrawUnmatchedLiquidity', {
           userBetId: offer.userBetId || offer.id,
@@ -273,6 +282,20 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
                 >
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Claimed
+                </Button>
+              );
+            }
+            
+            // Show "No Funds" when position is settled/lost with no unmatched liquidity
+            if (isSettled && !isWon && !hasUnmatched) {
+              return (
+                <Button
+                  disabled
+                  variant="outline"
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-destructive/20 text-destructive/50 bg-destructive/5 rounded-xl font-heading font-bold"
+                >
+                  <XCircle className="w-3 h-3 mr-1" />
+                  No Funds
                 </Button>
               );
             }
