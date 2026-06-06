@@ -254,8 +254,16 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           isWritable: k.isWritable,
         })));
         
-        // Create 8-byte Anchor discriminator for claim_winnings
-        const data = await anchorDiscriminator('claim_winnings');
+        // Try both discriminator formats to see which works
+        const discSimple = await anchorDiscriminator('claim_winnings');
+        const discGlobal = await anchorDiscriminator('global:claim_winnings');
+        console.log('[claim_winnings] Discriminators:', {
+          simple: discSimple.toString('hex'),
+          global: discGlobal.toString('hex'),
+        });
+        
+        // Use simple format
+        const data = discSimple;
         
         const claimIx = new TransactionInstruction({
           keys,
@@ -451,13 +459,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('[withdraw_lp_winnings] Creating instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
-        // WithdrawLpWinnings expects: market, lp_offer, fee_vault, lp_wallet (must be signer!), system_program
-        // lp_wallet must sign to authorize the withdrawal to their wallet
+        // WithdrawLpWinnings expects: market, lp_offer, fee_vault, lp_wallet, system_program
+        // lp_wallet is NOT a signer in the Rust struct (just UncheckedAccount)
         const keys = [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.feeVaultPda), isSigner: false, isWritable: true },
-          { pubkey: new PublicKey(instruction.lpWalletPubkey), isSigner: true, isWritable: true }, // LP must sign
+          { pubkey: new PublicKey(instruction.lpWalletPubkey), isSigner: false, isWritable: true }, // NOT a signer
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
