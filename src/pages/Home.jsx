@@ -113,11 +113,12 @@ export default function Home() {
               <span className="text-xs font-bold text-primary tracking-widest uppercase">WORLD CUP 2026</span>
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
-              <span className="text-primary">FIRST</span> Hybrid Betting<br />
-              Protocol
+              World's First<br />
+              <span className="text-primary">Dynamic Hybrid</span><br />
+              Betting Protocol
             </h2>
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
-              Dynamic odds. Zero house edge. LPs earn fees on every bet. The revolutionary protocol where everyone can be the house. Built on Solana.
+              Revolutionary parimutuel pools meet dynamic fixed odds. Zero house edge. LPs earn fees on every bet. Pure P2P on Solana.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-black text-primary tracking-wide bg-primary/10 px-2 py-1 rounded border border-primary/20">⚡ DYNAMIC ODDS</span>
