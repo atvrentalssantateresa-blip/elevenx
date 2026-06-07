@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import MatchCard from '@/components/betting/MatchCard';
 import HottestBetCard from '@/components/betting/HottestBetCard';
 import { getTeamFlag } from '@/utils/flags';
-import { format } from 'date-fns';
 
 const WC_PHOTOS = [
 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80',
