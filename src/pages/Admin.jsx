@@ -453,9 +453,11 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       const res = await base44.functions.invoke('fixLpSync');
-                      toast.success(`✓ Fixed ${res.data.updated || 0} LP positions!`);
+                      console.log('[Admin] fixLpSync result:', res.data);
+                      toast.success(`✓ Fixed ${res.data.updated || 0} LP positions! Refresh the LP page.`);
                       queryClient.invalidateQueries({ queryKey: ['lpPositions'] });
                     } catch (err) {
+                      console.error('[Admin] fixLpSync error:', err);
                       toast.error('Error: ' + err.message);
                     }
                   }}
