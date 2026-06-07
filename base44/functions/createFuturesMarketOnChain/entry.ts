@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
           market: marketPda.toBase58(),
           voteTally: voteTallyPda.toBase58(),
           platformConfig: platformConfigPda.toBase58(),
-          admin: 'SIGNER_WALLET', // Will be replaced with actual wallet address by frontend
+          admin: 'SIGNER_WALLET',
         },
         futures_market_id: futures_market_id,
       },

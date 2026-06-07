@@ -151,20 +151,31 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // Build keys in the EXACT order required by the Rust CreateMarket struct:
         // market, vote_tally, platform_config, admin (payer/signer), system_program
         const keys = [];
+        console.log('[SolanaTransactionSigner] create_market instruction:', {
+          hasAccounts: !!instruction.accounts,
+          accounts: instruction.accounts,
+          adminValue: instruction.accounts?.admin,
+          adminType: typeof instruction.accounts?.admin,
+        });
+        
         if (instruction.accounts) {
           const accounts = instruction.accounts;
           
           // Validate all required accounts are present
           if (!accounts.market) {
+            console.error('[SolanaTransactionSigner] Missing market:', accounts);
             throw new Error('Missing market account in instruction');
           }
           if (!accounts.voteTally) {
+            console.error('[SolanaTransactionSigner] Missing voteTally:', accounts);
             throw new Error('Missing voteTally account in instruction');
           }
           if (!accounts.platformConfig) {
+            console.error('[SolanaTransactionSigner] Missing platformConfig:', accounts);
             throw new Error('Missing platformConfig account in instruction');
           }
           if (!accounts.admin) {
+            console.error('[SolanaTransactionSigner] Missing admin:', accounts);
             throw new Error('Missing admin account in instruction');
           }
           
