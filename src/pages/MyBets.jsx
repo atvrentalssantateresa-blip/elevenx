@@ -247,6 +247,13 @@ export default function MyBets() {
   })));
   
   // Debug: Check which futures bets pass the filter
+  console.log('[MyBets] Futures statuses (raw):', groupedFuturesBetsArray.map(b => ({
+    betIds: b.betIds,
+    status: JSON.stringify(b.status),
+    statusLength: b.status?.length,
+    statusTrimmed: b.status?.trim(),
+    outcome: b.outcome_label
+  })));
   const futuresForMyBets = groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status));
   console.log('[MyBets] Futures for My Bets tab:', futuresForMyBets.length, futuresForMyBets.map(b => ({
     betIds: b.betIds,
