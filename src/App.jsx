@@ -34,6 +34,8 @@ import DebugStorage from '@/pages/DebugStorage';
 import TestLosingLp from '@/pages/TestLosingLp';
 import UpdateSecret from '@/pages/UpdateSecret';
 import Docs from '@/pages/Docs';
+import Privacy from '@/pages/Privacy';
+import Terms from '@/pages/Terms';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -84,6 +86,8 @@ const AuthenticatedApp = () => {
         <Route path="/test-losing-lp" element={<TestLosingLp />} />
         <Route path="/update-secret" element={<UpdateSecret />} />
         <Route path="/docs" element={<Docs />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

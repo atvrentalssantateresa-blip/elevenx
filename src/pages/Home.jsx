@@ -576,8 +576,8 @@ export default function Home() {
               <span className="text-xs text-white/50">© 2026 ElevenX. All rights reserved.</span>
             </div>
             <div className="flex items-center gap-4 text-[10px] text-white/50">
-              <a href="#" className="hover:text-primary transition-colors">Terms</a>
-              <a href="#" className="hover:text-primary transition-colors">Privacy</a>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms</Link>
+              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
               <Link to="/docs" className="hover:text-primary transition-colors">Docs</Link>
             </div>
           </div>
