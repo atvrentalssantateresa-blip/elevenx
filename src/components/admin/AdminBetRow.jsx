@@ -23,12 +23,12 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
   const { data: marketStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['marketStatus', bet.id],
     queryFn: async () => {
-      if (!bet.solana_market_pda) return null;
-      const res = await base44.functions.invoke('checkMarketStatus', { marketPda: bet.solana_market_pda });
+      if (!bet.match_id) return null;
+      const res = await base44.functions.invoke('checkMarketStatus', { match_id: bet.match_id });
       if (res.data.error) throw new Error(res.data.error);
       return res.data;
     },
-    enabled: !!bet.solana_market_pda,
+    enabled: !!bet.match_id,
     refetchInterval: 5000,
   });
 
