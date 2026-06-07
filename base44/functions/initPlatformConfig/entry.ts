@@ -77,18 +77,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build instruction data: 8-byte discriminator + admin + fee_percent + consensus_threshold
+    // Build instruction data: 8-byte discriminator + admin (32 bytes) + fee_percent (u16) = 42 bytes
     const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
     
-    const data = Buffer.alloc(41);
+    const data = Buffer.alloc(42);
     discriminator.copy(data, 0);
     
     // Use actual admin wallet address (decode base58 to 32 bytes)
     const adminPubkey = new PublicKey(walletAddress);
     Buffer.from(adminPubkey.toBytes()).copy(data, 8);
     
-    // fee_percent: 0 (u16 LE)
+    // fee_percent: 0 (u16 LE) at offset 40
     data.writeUInt16LE(0, 40);
 
     console.log('[initPlatformConfig] Instruction data (hex):', data.toString('hex'));
