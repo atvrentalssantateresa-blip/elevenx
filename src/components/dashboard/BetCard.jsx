@@ -131,18 +131,17 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
     setLocalActualPayout(bet.potential_payout || 0);
     setHasClaimedLocally(true);
 
-    // Update ALL bet IDs in the group to claimed in DB
+    // Call backend to update DB using service role (bypasses RLS)
     const idsToUpdate = bet.betIds || [bet.id];
     try {
-      for (const id of idsToUpdate) {
-        await base44.entities.UserBet.update(id, { 
-          status: 'claimed',
-          actual_payout: (bet.potential_payout || 0) / idsToUpdate.length
-        });
-      }
-      console.log('[BetCard] ✓ Updated all bets to claimed:', idsToUpdate);
+      const res = await base44.functions.invoke('finalizeClaim', {
+        userBetId: bet.id,
+        batchBetIds: idsToUpdate,
+        signature
+      });
+      console.log('[BetCard] ✓ Backend finalized claim:', res.data);
     } catch (err) {
-      console.error('[BetCard] Failed to update bet status:', err);
+      console.error('[BetCard] Failed to finalize claim:', err);
     }
 
     // Close the claim dialog after a short delay so user can see success

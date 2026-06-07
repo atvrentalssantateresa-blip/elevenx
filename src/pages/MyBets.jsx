@@ -318,13 +318,16 @@ export default function MyBets() {
 
   const handleClaimSignSuccess = async () => {
     if (claimData?.betIds) {
-      console.log('[MyBets] Updating bets to claimed:', claimData.betIds);
-      for (const betId of claimData.betIds) {
-        await base44.entities.UserBet.update(betId, { 
-          status: 'claimed',
-          actual_payout: claimData.totalPayout / claimData.betIds.length
+      console.log('[MyBets] Finalizing claim via backend:', claimData.betIds);
+      try {
+        await base44.functions.invoke('finalizeClaim', {
+          userBetId: claimData.betIds[0],
+          batchBetIds: claimData.betIds,
+          signature: claimData.signature
         });
-        console.log('[MyBets] ✓ Updated bet to claimed:', betId);
+        console.log('[MyBets] ✓ Backend finalized claim');
+      } catch (err) {
+        console.error('[MyBets] Failed to finalize claim:', err);
       }
     }
     setClaimData(null);
