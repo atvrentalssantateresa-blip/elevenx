@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target, PieChart, CheckCircle } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Trophy, Wallet, ExternalLink, Zap, Target, PieChart, CheckCircle, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import { calculatePoolShare } from '@/utils/parimutuel';
+import ShareBetModal from '@/components/dashboard/ShareBetModal';
 
 const statusConfig = {
   active: { color: 'bg-primary/5 text-primary border-primary/10', icon: Clock, label: 'Active' },
@@ -55,6 +56,7 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   const [claimSignature, setClaimSignature] = useState(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [withdrawData, setWithdrawData] = useState(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Fetch match data OR futures market data
   const { data: match } = useQuery({
@@ -366,9 +368,19 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 <span className="text-[9px] text-muted-foreground font-semibold truncate">
                   {bet.match_title || 'Match'}
                 </span>
-                <Badge className={`text-[8px] font-semibold uppercase tracking-wider flex-shrink-0 ${statusConfig[localBetStatus]?.color || statusConfig.active.color}`}>
-                  {statusConfig[localBetStatus]?.label || 'Active'}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShareDialogOpen(true)}
+                    className="h-6 w-6 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <Badge className={`text-[8px] font-semibold uppercase tracking-wider flex-shrink-0 ${statusConfig[localBetStatus]?.color || statusConfig.active.color}`}>
+                    {statusConfig[localBetStatus]?.label || 'Active'}
+                  </Badge>
+                </div>
               </div>
 
               {/* Outcome - VS Style for matches, Position badge for futures */}
@@ -510,6 +522,15 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Share Bet Modal */}
+      <ShareBetModal
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        bet={bet}
+        match={match}
+        futuresMarket={futuresMarket}
+      />
     </>);
 
 }
