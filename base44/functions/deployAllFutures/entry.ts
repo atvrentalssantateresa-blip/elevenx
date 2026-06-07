@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
  * Deploy ALL futures markets from database to Solana
- * Creates on-chain markets for all futures in the database
+ * Returns first transaction instruction for user to sign
  */
 Deno.serve(async (req) => {
   try {
@@ -30,48 +30,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Deploy each market
-    let deployed = 0;
-    let failed = 0;
-    const errors = [];
+    // Deploy first market and return instruction for signing
+    const firstMarket = marketsToDeploy[0];
+    const remaining = marketsToDeploy.length - 1;
 
-    for (const market of marketsToDeploy) {
-      try {
-        const res = await base44.functions.invoke('createFuturesMarketOnChain', {
-          market_id: market.id,
-        });
+    try {
+      const res = await base44.functions.invoke('createFuturesMarketOnChain', {
+        futures_market_id: firstMarket.id,
+      });
 
-        if (res.data.error) {
-          failed++;
-          errors.push(`${market.id}: ${res.data.error}`);
-          continue;
-        }
-
-        // Update market record
-        await base44.asServiceRole.entities.FuturesMarket.update(market.id, {
-          solana_market_created: true,
-          solana_market_pda: res.data.marketPda || market.solana_market_pda,
-        });
-
-        deployed++;
-        console.log(`[deployAllFutures] ✓ Deployed: ${market.country}`);
-      } catch (err) {
-        failed++;
-        errors.push(`${market.id}: ${err.message}`);
-        console.error(`[deployAllFutures] ✗ Failed ${market.id}:`, err);
+      if (res.data.error) {
+        throw new Error(res.data.error);
       }
+
+      // If already exists, skip to next
+      if (res.data.alreadyExists) {
+        await base44.asServiceRole.entities.FuturesMarket.update(firstMarket.id, {
+          solana_market_created: true,
+          solana_market_pda: res.data.marketPda || firstMarket.solana_market_pda,
+        });
+        console.log(`[deployAllFutures] ✓ Already exists: ${firstMarket.country}`);
+        
+        // Return next market to deploy
+        return Response.json({
+          success: true,
+          message: `Market already deployed. ${remaining} remaining`,
+          remaining: remaining,
+          needsSigning: false,
+          autoContinue: true,
+        });
+      }
+
+      console.log(`[deployAllFutures] Ready to deploy: ${firstMarket.country}`);
+
+      return Response.json({
+        success: true,
+        message: `Sign to deploy ${firstMarket.country || firstMarket.title}. ${remaining} remaining after this.`,
+        remaining: remaining,
+        needsSigning: true,
+        solana_instruction: res.data.solana_instruction,
+        market_id: firstMarket.id,
+      });
+
+    } catch (err) {
+      console.error(`[deployAllFutures] ✗ Failed ${firstMarket.id}:`, err);
+      return Response.json({
+        success: false,
+        error: err.message,
+        market_id: firstMarket.id,
+      });
     }
-
-    console.log(`[deployAllFutures] Complete: ${deployed} deployed, ${failed} failed`);
-
-    return Response.json({
-      success: true,
-      message: `✓ Deployed ${deployed} futures markets (${failed} failed)`,
-      deployed,
-      failed,
-      total: marketsToDeploy.length,
-      errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
-    });
 
   } catch (error) {
     console.error('deployAllFutures error:', error);

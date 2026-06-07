@@ -20,6 +20,7 @@ export default function Admin() {
   // Two-step settle: first fix timestamps, then settle
   const [fixTimestampDialog, setFixTimestampDialog] = useState(null); // { instruction, pendingSettle: { bet, outcome } }
   const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
+  const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -228,6 +229,32 @@ export default function Admin() {
     queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
   };
 
+  const handleDeployFuturesSuccess = async () => {
+    // After signing, call deployAllFutures again to get next market
+    try {
+      const res = await base44.functions.invoke('deployAllFutures');
+      if (res.data.needsSigning) {
+        // More markets to deploy
+        setDeployFuturesDialog({
+          instruction: res.data.solana_instruction,
+          remaining: res.data.remaining,
+          marketId: res.data.market_id,
+        });
+      } else if (res.data.autoContinue) {
+        // Market already exists, continue to next
+        handleDeployFuturesSuccess(); // Recursively call to get next
+      } else {
+        // All done
+        setDeployFuturesDialog(null);
+        toast.success(res.data.message || '✓ All futures deployed!');
+        queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+      }
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+      setDeployFuturesDialog(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -319,8 +346,16 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       const res = await base44.functions.invoke('deployAllFutures');
-                      toast.success(res.data.message || '✓ All futures deployed!');
-                      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+                      if (res.data.needsSigning) {
+                        setDeployFuturesDialog({
+                          instruction: res.data.solana_instruction,
+                          remaining: res.data.remaining,
+                          marketId: res.data.market_id,
+                        });
+                      } else {
+                        toast.success(res.data.message || '✓ All futures deployed!');
+                        queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] });
+                      }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
@@ -623,6 +658,35 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setInitPlatformDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {deployFuturesDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-emerald-600/20 border border-emerald-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-emerald-400 mb-1">Deploy Market {48 - deployFuturesDialog.remaining} of 48</h3>
+                  <p className="text-sm text-gray-400">Sign each transaction to deploy markets one at a time. Remaining: {deployFuturesDialog.remaining}</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={deployFuturesDialog.instruction}
+                  amount="0"
+                  onSuccess={handleDeployFuturesSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setDeployFuturesDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setDeployFuturesDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
