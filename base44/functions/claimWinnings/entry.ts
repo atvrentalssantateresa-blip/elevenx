@@ -2,6 +2,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+// Helper function to compute SHA256 hash (returns hex string)
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
 
 /**
@@ -264,7 +272,7 @@ Deno.serve(async (req) => {
     // 4. bettor (mutable, signer)
     // 5. system_program (readonly, not signer)
     // Build instruction data: 8-byte discriminator + 1-byte outcome parameter
-    const discriminator = Buffer.from(sha256('global:claim_winnings')).slice(0, 8);
+    const discriminator = Buffer.from(await sha256('global:claim_winnings'), 'hex').slice(0, 8);
     const instructionData = Buffer.alloc(9);
     discriminator.copy(instructionData, 0);
     instructionData.writeUInt8(outcomeIndex, 8);
