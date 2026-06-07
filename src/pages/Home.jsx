@@ -236,6 +236,7 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {upcomingMatches.slice(0, 8).map((match, i) => {
             const bet = betByMatch[match.id];
+            const featuredImg = FEATURED_MATCHES[i]?.img;
             return (
               <Link to={`/match/${match.id}`} className="group block">
                 <motion.div
@@ -249,7 +250,7 @@ export default function Home() {
                   {/* Match Image Header */}
                   <div className="relative h-40 -mx-4 -mt-4 mb-3 overflow-hidden rounded-t-2xl">
                     <img
-                      src={WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
+                      src={featuredImg || WC_PHOTOS[(i + 1) % WC_PHOTOS.length]}
                       alt="match"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       style={{ objectPosition: 'center 15%' }} />
