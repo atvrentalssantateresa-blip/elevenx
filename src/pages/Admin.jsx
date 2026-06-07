@@ -449,6 +449,21 @@ export default function Admin() {
                   <span className="font-bold text-lg text-white">🗑️ Clear DB</span>
                   <span className="text-xs text-gray-400">Delete everything</span>
                 </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const res = await base44.functions.invoke('fixLpSync');
+                      toast.success(`✓ Fixed ${res.data.updated || 0} LP positions!`);
+                      queryClient.invalidateQueries({ queryKey: ['lpPositions'] });
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🔧 Fix LP Sync</span>
+                  <span className="text-xs text-gray-400">Fix progress bars</span>
+                </Button>
               </div>
             </Card>
           </TabsContent>
