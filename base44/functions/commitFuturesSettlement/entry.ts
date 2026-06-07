@@ -70,9 +70,14 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Update futures market status
+    // Update futures market status and store winning position
+    const winningPositionIndex = winning_position === '1st' ? 0 : winning_position === '2nd' ? 1 : 2;
+    const winningOutcomeLabel = futuresMarket.outcomes[winningPositionIndex]?.label || '';
+    
     await serviceRole.entities.FuturesMarket.update(futures_market_id, {
       status: 'settled',
+      winning_outcome: winning_position, // Store which position won (1st, 2nd, 3rd)
+      winning_outcome_label: winningOutcomeLabel, // Store the label (e.g. "Team Beta")
     });
     
     console.log(

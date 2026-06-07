@@ -89,11 +89,13 @@ Deno.serve(async (req) => {
       if (futuresMarkets.length > 0) {
         isFuturesMarket = true;
         const futuresMarket = futuresMarkets[0];
-        winningOutcome = futuresMarket.outcomes?.find(o => o.position === userBet.outcome)?.label;
+        // Read the stored winning_outcome field (e.g. "1st", "2nd", "3rd")
+        winningOutcome = futuresMarket.winning_outcome || null;
         console.log('[withdrawLpWinnings] Found FuturesMarket:', {
           id: futuresMarket.id,
           status: futuresMarket.status,
-          winning_position: winningOutcome,
+          winning_outcome: futuresMarket.winning_outcome,
+          winning_outcome_label: futuresMarket.winning_outcome_label,
         });
       }
     }
