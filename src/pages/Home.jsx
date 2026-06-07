@@ -109,7 +109,7 @@ export default function Home() {
 
           <div className="relative z-10 p-5 sm:p-7">
             <div className="flex items-center gap-2 mb-2">
-              <Star className="w-4 h-4 text-primary" />
+              <Star className="w-4 h-4 text-[hsl(var(--accent))]" />
               <span className="text-xs font-bold tracking-widest uppercase text-[hsl(var(--accent))]">WORLD CUP 2026</span>
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
