@@ -7,8 +7,16 @@ import { Buffer } from 'buffer';
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 
 // Compute Anchor 8-byte discriminator: SHA256("global:<name>").slice(0, 8)
+// Anchor uses "global:<instruction_name>" format by default
 async function anchorDiscriminator(name) {
   const msg = new TextEncoder().encode(`global:${name}`);
+  const hash = await crypto.subtle.digest('SHA-256', msg);
+  return Buffer.from(new Uint8Array(hash).slice(0, 8));
+}
+
+// Alternative: Simple discriminator without namespace (some programs use this)
+async function simpleDiscriminator(name) {
+  const msg = new TextEncoder().encode(name);
   const hash = await crypto.subtle.digest('SHA-256', msg);
   return Buffer.from(new Uint8Array(hash).slice(0, 8));
 }
@@ -469,23 +477,22 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // Try multiple discriminator formats to match deployed program
-        // Format 1: Anchor default "global:<name>"
-        const discGlobal = await anchorDiscriminator('global:withdraw_lp_winnings');
-        // Format 2: Just the function name
-        const discSimple = await anchorDiscriminator('withdraw_lp_winnings');
-        // Format 3: Anchor namespaced "elevenx_betting:withdraw_lp_winnings"
-        const discNamespaced = await anchorDiscriminator('elevenx_betting:withdraw_lp_winnings');
+        // Try both discriminator formats to match deployed program
+        // Format 1: Anchor default "global:<name>" - anchorDiscriminator() adds "global:" prefix
+        const discGlobal = await anchorDiscriminator('withdraw_lp_winnings');
+        // Format 2: Raw SHA256 of just the function name (for older Anchor versions)
+        const msgSimple = new TextEncoder().encode('withdraw_lp_winnings');
+        const hashSimple = await crypto.subtle.digest('SHA-256', msgSimple);
+        const discSimple = Buffer.from(new Uint8Array(hashSimple).slice(0, 8));
         
-        console.log('[withdraw_lp_winnings] Discriminator comparison:', {
+        console.log('[withdraw_lp_winnings] Discriminator formats:', {
           global_format: discGlobal.toString('hex'),
           simple_format: discSimple.toString('hex'),
-          namespaced_format: discNamespaced.toString('hex'),
         });
         
-        // Use namespaced format (program name prefix)
-        const wlwDisc = discNamespaced;
-        console.log('[withdraw_lp_winnings] Using namespaced format discriminator:', wlwDisc.toString('hex'));
+        // Use simple format (no namespace) - matches programs compiled with older Anchor
+        const wlwDisc = discSimple;
+        console.log('[withdraw_lp_winnings] Using SIMPLE discriminator:', wlwDisc.toString('hex'));
         const data = Buffer.alloc(16);
         wlwDisc.copy(data, 0);
         data.writeBigUInt64LE(BigInt(instruction.withdrawAmountLamports || 0), 8);
