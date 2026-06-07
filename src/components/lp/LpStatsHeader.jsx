@@ -8,7 +8,14 @@ export default function LpStatsHeader({ lpPositions }) {
   // Aggregate LP stats from all positions
   const totalDeposited = lpPositions.reduce((s, p) => s + (p.liquidity_deposited || p.amount_offered || p.amount || 0), 0);
   const totalMatched = lpPositions.reduce((s, p) => s + (p.liquidity_matched || p.amount_matched || 0), 0);
-  const totalUnmatched = lpPositions.reduce((s, p) => s + (p.liquidity_unmatched || p.amount_unmatched || 0), 0);
+  // Only count unmatched for positions that are still open/active (not withdrawn, settled, claimed, won, lost)
+  const activeStatuses = ['open', 'partially_matched', 'pending', 'active'];
+  const totalUnmatched = lpPositions
+    .filter(p => {
+      const s = p.userBet?.status || p.status;
+      return activeStatuses.includes(s);
+    })
+    .reduce((s, p) => s + (p.liquidity_unmatched || p.amount_unmatched || 0), 0);
   const totalFeesEarned = totalMatched * 0.02; // 2% fee on matched portion
 
   const wonPositions = lpPositions.filter(p => (p.userBet?.status || p.status) === 'won');
