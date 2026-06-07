@@ -168,9 +168,34 @@ export default function MyBets() {
   // LP positions are identified by: role='lp'
   const myMatcherBets = myBets.filter(b => b.role !== 'lp');
   
+  // DEBUG: Log all bet fields to understand the data structure
+  console.log('[MyBets] All bets raw data:', myMatcherBets.map(b => ({
+    id: b.id,
+    match_id: b.match_id,
+    futures_market_id: b.futures_market_id,
+    match_title: b.match_title,
+    outcome: b.outcome,
+    amount: b.amount,
+    status: b.status,
+    role: b.role,
+    allKeys: Object.keys(b)
+  })));
+  
   // Separate futures bets from match bets
-  const myFuturesBets = myMatcherBets.filter(b => b.futures_market_id);
-  const myMatchBets = myMatcherBets.filter(b => b.match_id && !b.futures_market_id);
+  // Futures bets have futures_market_id OR match_title containing "Finish" or "Winner"
+  const myFuturesBets = myMatcherBets.filter(b => {
+    const isFutures = b.futures_market_id || 
+                      (b.match_title && (b.match_title.includes('Finish') || b.match_title.includes('Winner') || b.match_title.includes('Place')));
+    console.log('[MyBets] Bet classification:', { 
+      id: b.id, 
+      match_id: b.match_id, 
+      futures_market_id: b.futures_market_id,
+      match_title: b.match_title,
+      isFutures 
+    });
+    return isFutures;
+  });
+  const myMatchBets = myMatcherBets.filter(b => b.match_id && !b.futures_market_id && !(b.match_title && (b.match_title.includes('Finish') || b.match_title.includes('Winner') || b.match_title.includes('Place'))));
   
   // Group match bets by match_id + outcome
   const groupedMatchBets = myMatchBets.reduce((acc, bet) => {
