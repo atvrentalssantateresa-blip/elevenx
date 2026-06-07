@@ -156,9 +156,9 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Derive bettor position PDA
+    // Derive bettor position PDA (include outcomeIndex to allow multiple bets per wallet on different outcomes)
     const [bettorPositionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
