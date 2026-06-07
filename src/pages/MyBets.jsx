@@ -256,13 +256,18 @@ export default function MyBets() {
     }
     setClaimData(null);
     setBatchClaimMatchId(null);
-    // Longer delay to ensure DB update completes
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Clear ALL queries aggressively
+    
+    // Aggressive cache clear and refetch
     await queryClient.cancelQueries({ queryKey: ['myBets'] });
     await queryClient.cancelQueries({ queryKey: ['myBets', walletAddress] });
-    queryClient.clear();
+    queryClient.removeQueries({ queryKey: ['myBets'] });
+    queryClient.removeQueries({ queryKey: ['myBets', walletAddress] });
+    
+    // Force a complete refetch from the database
+    await queryClient.refetchQueries({ queryKey: ['myBets', walletAddress], type: 'all' });
     await queryClient.refetchQueries({ queryKey: ['myBets'], type: 'all' });
+    
+    console.log('[MyBets] Cache cleared and refetched');
   };
 
   return (

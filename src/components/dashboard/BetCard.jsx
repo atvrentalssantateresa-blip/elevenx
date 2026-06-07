@@ -104,17 +104,25 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       // Update local state immediately to reflect claimed status
       setLocalBetStatus('claimed');
       setLocalActualPayout(bet.potential_payout || 0);
+      
+      // Force close the claim dialog
+      setClaimDialogOpen(false);
+      setClaimInstruction(null);
+      
+      // Aggressive cache clear and refetch
+      await queryClient.cancelQueries({ queryKey: ['myBets'] });
+      await queryClient.cancelQueries({ queryKey: ['myBets', walletAddress] });
+      queryClient.removeQueries({ queryKey: ['myBets'] });
+      queryClient.removeQueries({ queryKey: ['myBets', walletAddress] });
+      
+      // Force a complete refetch from the database
+      await queryClient.refetchQueries({ queryKey: ['myBets', walletAddress], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['myBets'], type: 'all' });
+      
+      console.log('[BetCard] Cache cleared and refetched');
     } catch (err) {
       console.error('[BetCard] Failed to update bet status:', err);
     }
-    
-    // Small delay to ensure DB update completes, then clear cache completely
-    await new Promise(resolve => setTimeout(resolve, 300));
-    await queryClient.cancelQueries({ queryKey: ['myBets'] });
-    await queryClient.cancelQueries({ queryKey: ['myBets', walletAddress] });
-    queryClient.removeQueries({ queryKey: ['myBets'] });
-    queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    await queryClient.refetchQueries({ queryKey: ['myBets', walletAddress], type: 'active' });
   };
 
   const handleCloseClaimDialog = () => {
