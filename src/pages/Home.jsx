@@ -202,7 +202,7 @@ export default function Home() {
         { icon: Globe, label: 'Matches', value: matches.length.toString(), color: 'text-blue-400', bg: 'bg-blue-400/10' }].
         map((stat, i) =>
         <motion.div
-          key={i}
+          key={stat.label}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 + i * 0.05 }}
@@ -354,7 +354,7 @@ export default function Home() {
           }].
           map((item, i) =>
           <motion.div
-            key={i}
+            key={item.title}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 + i * 0.08 }}
