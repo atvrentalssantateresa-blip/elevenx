@@ -275,7 +275,8 @@ Deno.serve(async (req) => {
         settled,
         lpOutcome: outcomeValue,
         lpWinsIfDifferent: onChainWinningOutcome !== outcomeValue,
-        db_winning_outcome: bet.winning_outcome,
+        db_winning_outcome: winningOutcome,
+        isFuturesMarket,
         marketDataLength: marketData.length,
       });
       
