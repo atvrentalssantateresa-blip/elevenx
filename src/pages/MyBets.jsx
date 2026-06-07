@@ -422,16 +422,6 @@ export default function MyBets() {
 
         <TabsContent value="bets">
           <div className="space-y-4">
-            {/* Debug info */}
-            <div className="bg-card border border-border rounded-lg p-3 text-xs space-y-1">
-              <p><strong>Total Match Bets:</strong> {groupedMatchBetsArray.length}</p>
-              <p><strong>Total Futures Bets:</strong> {groupedFuturesBetsArray.length}</p>
-              <p><strong>Match Bets (active/pending/won):</strong> {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
-              <p><strong>Futures (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
-              <p><strong>Match Statuses:</strong> {groupedMatchBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ') || 'none'}</p>
-              <p><strong>Futures Statuses:</strong> {groupedFuturesBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ') || 'none'}</p>
-            </div>
-            
             {/* Match Bets */}
             <div>
               <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets ({groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length})</h3>
@@ -573,12 +563,6 @@ export default function MyBets() {
 
         <TabsContent value="history">
           <div className="space-y-4">
-            {/* Debug info */}
-            <div className="bg-card border border-border rounded-lg p-3 text-xs">
-              <p><strong>Futures History:</strong> {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length}</p>
-              <p><strong>Statuses:</strong> {groupedFuturesBetsArray.map(b => b.status).join(', ')}</p>
-            </div>
-            
             {/* Match History */}
             {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
               <div>
