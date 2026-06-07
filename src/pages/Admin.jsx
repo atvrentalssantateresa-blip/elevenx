@@ -21,6 +21,7 @@ export default function Admin() {
   const [fixTimestampDialog, setFixTimestampDialog] = useState(null); // { instruction, pendingSettle: { bet, outcome } }
   const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
+  const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -255,6 +256,32 @@ export default function Admin() {
     }
   };
 
+  const handleDeployMatchesSuccess = async () => {
+    // After signing, call deployAllMatches again to get next match
+    try {
+      const res = await base44.functions.invoke('deployAllMatches');
+      if (res.data.needsSigning) {
+        // More matches to deploy
+        setDeployMatchesDialog({
+          instruction: res.data.solana_instruction,
+          remaining: res.data.remaining,
+          betId: res.data.bet_id,
+        });
+      } else if (res.data.autoContinue) {
+        // Market already exists, continue to next
+        handleDeployMatchesSuccess(); // Recursively call to get next
+      } else {
+        // All done
+        setDeployMatchesDialog(null);
+        toast.success(res.data.message || '✓ All matches deployed!');
+        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+      }
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+      setDeployMatchesDialog(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -369,8 +396,16 @@ export default function Admin() {
                   onClick={async () => {
                     try {
                       const res = await base44.functions.invoke('deployAllMatches');
-                      toast.success(res.data.message || '✓ All matches deployed!');
-                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                      if (res.data.needsSigning) {
+                        setDeployMatchesDialog({
+                          instruction: res.data.solana_instruction,
+                          remaining: res.data.remaining,
+                          betId: res.data.bet_id,
+                        });
+                      } else {
+                        toast.success(res.data.message || '✓ All matches deployed!');
+                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                      }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
@@ -687,6 +722,64 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setDeployFuturesDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {deployMatchesDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {72 - deployMatchesDialog.remaining} of 72</h3>
+                  <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployMatchesDialog.remaining}</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={deployMatchesDialog.instruction}
+                  amount="0"
+                  onSuccess={handleDeployMatchesSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setDeployMatchesDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setDeployMatchesDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {deployMatchesDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {72 - deployMatchesDialog.remaining} of 72</h3>
+                  <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployMatchesDialog.remaining}</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={deployMatchesDialog.instruction}
+                  amount="0"
+                  onSuccess={handleDeployMatchesSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setDeployMatchesDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setDeployMatchesDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
