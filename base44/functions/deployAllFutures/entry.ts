@@ -17,18 +17,74 @@ Deno.serve(async (req) => {
 
     // Get all futures markets
     const allMarkets = await base44.asServiceRole.entities.FuturesMarket.filter({});
-    const marketsToDeploy = allMarkets.filter(m => !m.solana_market_created);
+    
+    // Find markets not marked as deployed
+    const marketsNotMarkedDeployed = allMarkets.filter(m => !m.solana_market_created);
 
-    console.log(`[deployAllFutures] Found ${marketsToDeploy.length} markets to deploy out of ${allMarkets.length} total`);
+    console.log(`[deployAllFutures] Found ${marketsNotMarkedDeployed.length} markets not marked as deployed out of ${allMarkets.length} total`);
 
-    if (marketsToDeploy.length === 0) {
+    // If all are marked deployed, verify on-chain status
+    if (marketsNotMarkedDeployed.length === 0) {
+      console.log('[deployAllFutures] All markets marked deployed, verifying on-chain...');
+      let needsRedeployment = false;
+      let redeployCount = 0;
+      
+      for (const market of allMarkets) {
+        if (market.solana_market_pda) {
+          try {
+            const statusRes = await base44.functions.invoke('checkFuturesMarketStatus', {
+              futures_market_id: market.id,
+            });
+            
+            if (statusRes.data.error || !statusRes.data.exists) {
+              console.log(`[deployAllFutures] Market missing on-chain: ${market.id}`);
+              needsRedeployment = true;
+              redeployCount++;
+              await base44.asServiceRole.entities.FuturesMarket.update(market.id, {
+                solana_market_created: false,
+              });
+            }
+          } catch (err) {
+            console.log(`[deployAllFutures] Failed to verify ${market.id}:`, err.message);
+            needsRedeployment = true;
+            redeployCount++;
+          }
+        }
+      }
+      
+      if (needsRedeployment) {
+        console.log(`[deployAllFutures] Found ${redeployCount} markets need redeployment`);
+        const updatedMarkets = await base44.asServiceRole.entities.FuturesMarket.filter({});
+        const marketsToDeploy = updatedMarkets.filter(m => !m.solana_market_created);
+        const firstMarket = marketsToDeploy[0];
+        const remaining = marketsToDeploy.length - 1;
+        
+        const res = await base44.functions.invoke('createFuturesMarketOnChain', {
+          futures_market_id: firstMarket.id,
+        });
+        
+        if (res.data.error) throw new Error(res.data.error);
+        
+        return Response.json({
+          success: true,
+          message: `Found ${redeployCount} markets missing on-chain. Deploying first...`,
+          remaining: remaining,
+          needsSigning: true,
+          solana_instruction: res.data.solana_instruction,
+          market_id: firstMarket.id,
+        });
+      }
+      
       return Response.json({ 
         success: true,
-        message: 'All futures already deployed',
+        message: `✓ All ${allMarkets.length} futures verified on-chain`,
         total: allMarkets.length,
-        deployed: allMarkets.filter(m => m.solana_market_created).length,
+        deployed: allMarkets.length,
+        verified: true,
       });
     }
+    
+    const marketsToDeploy = marketsNotMarkedDeployed;
 
     // Deploy first market and return instruction for signing
     const firstMarket = marketsToDeploy[0];
@@ -40,6 +96,14 @@ Deno.serve(async (req) => {
       });
 
       if (res.data.error) {
+        console.error('[deployAllFutures] createFuturesMarketOnChain error:', res.data.error);
+        // Provide helpful context for common errors
+        if (res.data.error.includes('Platform not initialized') || res.data.error.includes('platform_config')) {
+          throw new Error('Platform not initialized on Solana. Go to Platform tab and click "Init Platform" first.');
+        }
+        if (res.data.error.includes('missing') || res.data.error.includes('Account')) {
+          throw new Error(`On-chain account error: ${res.data.error}. Try fixing timestamps or reinitializing platform.`);
+        }
         throw new Error(res.data.error);
       }
 
