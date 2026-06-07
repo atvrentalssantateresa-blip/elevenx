@@ -385,6 +385,13 @@ export default function MyBets() {
 
         <TabsContent value="bets">
           <div className="space-y-4">
+            {/* Debug info */}
+            <div className="bg-card border border-border rounded-lg p-3 text-xs">
+              <p><strong>Futures Bets:</strong> {groupedFuturesBetsArray.length}</p>
+              <p><strong>Filterable (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
+              <p><strong>Statuses:</strong> {groupedFuturesBetsArray.map(b => b.status).join(', ')}</p>
+            </div>
+            
             {/* Match Bets - show active/pending/won (won bets need claim) */}
             {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 && (
               <div>
@@ -550,6 +557,12 @@ export default function MyBets() {
 
         <TabsContent value="history">
           <div className="space-y-4">
+            {/* Debug info */}
+            <div className="bg-card border border-border rounded-lg p-3 text-xs">
+              <p><strong>Futures History:</strong> {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length}</p>
+              <p><strong>Statuses:</strong> {groupedFuturesBetsArray.map(b => b.status).join(', ')}</p>
+            </div>
+            
             {/* Match History */}
             {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
               <div>
