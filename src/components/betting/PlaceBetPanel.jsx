@@ -355,23 +355,28 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <h3 className={`font-heading font-bold text-base ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>
-            {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
-          </h3>
           <div className="flex items-center gap-2">
-            {timeRemaining && timeRemaining.total > 0 &&
-            <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">
-                <Clock className="w-3.5 h-3.5" />
-                <span className="text-[9px] mr-0.5">Betting closes in</span>
-                {timeRemaining.days > 0 ?
-              `${timeRemaining.days}d ${timeRemaining.hours}h` :
-              timeRemaining.hours > 0 ?
-              `${timeRemaining.hours}h ${timeRemaining.minutes}m` :
-              `${timeRemaining.minutes}:${String(timeRemaining.seconds).padStart(2, '0')}`
-              }
-              </div>
-            }
+            <h3 className={`font-heading font-bold text-base ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>
+              {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
+            </h3>
+            {timeRemaining && timeRemaining.total > 0 && (
+              <Badge className="bg-destructive/10 text-destructive border border-destructive/20 text-[9px] font-bold px-2 py-0.5 animate-pulse">
+                OPEN
+              </Badge>
+            )}
           </div>
+          {timeRemaining && timeRemaining.total > 0 && (
+            <div className="flex items-center gap-1 text-xs font-bold text-destructive">
+              <Clock className="w-3.5 h-3.5" />
+              <span className="text-[9px]">Betting closes in</span>
+              {timeRemaining.days > 0 ?
+                `${timeRemaining.days}d ${timeRemaining.hours}h` :
+                timeRemaining.hours > 0 ?
+                `${timeRemaining.hours}h ${timeRemaining.minutes}m` :
+                `${timeRemaining.minutes}:${String(timeRemaining.seconds).padStart(2, '0')}`
+              }
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
