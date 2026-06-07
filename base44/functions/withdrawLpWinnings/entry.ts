@@ -126,25 +126,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Market is settled but winning outcome not set. Admin must announce winner first.' }, { status: 400 });
     }
     
-    // For futures: LP wins if they backed the winning position (1st, 2nd, 3rd)
-    // For matches: LP wins if their backed outcome LOSES (bettors lose)
+    // For futures: LP wins when they backed a position that LOST (they keep bettors' stakes)
+    // For matches: LP wins when their backed outcome LOSES (bettors lose)
     if (isFuturesMarket) {
-      // Futures: LP wins when they backed the correct position
+      // Futures: LP wins when their backed position did NOT win
       const userPosition = userBet.outcome === 'a' ? '1st' : userBet.outcome === 'b' ? '2nd' : '3rd';
-      if (userPosition !== winningOutcome) {
-        console.error('[withdrawLpWinnings] LP backed wrong position:', {
+      if (userPosition === winningOutcome) {
+        console.error('[withdrawLpWinnings] LP backed the winning position (must pay out):', {
           userPosition,
           winningOutcome,
         });
         return Response.json({ 
           error: 'This LP position did not win',
-          hint: `You backed ${userPosition}, but the winner was ${winningOutcome}`,
+          hint: `You backed ${userPosition}, which WON. You must pay out to bettors, so your position lost value.`,
           details: {
             your_position: userPosition,
             winning_position: winningOutcome,
           }
         }, { status: 400 });
       }
+      console.log('[withdrawLpWinnings] LP backed a loser - position is a winner!', {
+        userPosition,
+        winningOutcome,
+      });
     } else {
       // Match betting: LP wins when their backed outcome LOSES
       if (userBet.outcome === winningOutcome) {
