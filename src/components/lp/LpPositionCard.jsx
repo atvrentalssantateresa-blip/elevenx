@@ -19,9 +19,10 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
   // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
-  const liquidityDeposited = offer.liquidity_deposited || offer.amount_offered || offer.amount || 0;
-  const liquidityMatched = offer.liquidity_matched || offer.amount_matched || 0;
-  const liquidityUnmatched = offer.liquidity_unmatched || offer.amount_unmatched || 0;
+  // CRITICAL: For futures, prefer amount_offered/amount_matched over liquidity_* fields
+  const liquidityDeposited = isFutures ? (offer.amount_offered || 0) : (offer.liquidity_deposited || offer.amount_offered || offer.amount || 0);
+  const liquidityMatched = isFutures ? (offer.amount_matched || 0) : (offer.liquidity_matched || offer.amount_matched || 0);
+  const liquidityUnmatched = isFutures ? (offer.amount_unmatched || 0) : (offer.liquidity_unmatched || offer.amount_unmatched || 0);
   
   // CRITICAL: Check UserBet status FIRST (settlement info), then BetOffer status (matching info)
   // userBet.status = settlement state (won/lost/claimed)
