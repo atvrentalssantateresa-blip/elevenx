@@ -205,17 +205,17 @@ export default function MatchDetail() {
 
       {/* ── Match Header ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border/50 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <span className="text-xs text-muted-foreground font-medium">{match.group_stage || 'World Cup 2026'}</span>
+      className="bg-card border border-border/50 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] text-muted-foreground font-medium">{match.group_stage || 'World Cup 2026'}</span>
           <div className="flex items-center gap-2">
             {match.match_time &&
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {format(new Date(match.match_time), 'MMM d · h:mm a')}
               </span>
             }
-            <Badge className={`text-[10px] uppercase tracking-wider ${
+            <Badge className={`text-[9px] uppercase tracking-wider px-1.5 py-0 ${
             match.status === 'live' ? 'bg-destructive/20 text-destructive' :
             match.status === 'finished' ? 'bg-muted text-muted-foreground' :
             'bg-secondary text-secondary-foreground'}`
@@ -225,29 +225,28 @@ export default function MatchDetail() {
             </Badge>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex-1 text-center">
-            <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center text-5xl shadow-lg">
+            <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center text-3xl shadow-md">
               {getTeamFlag(match.team_a, match.team_a_flag)}
             </div>
-            <p className="font-heading font-black text-lg">{match.team_a}</p>
+            <p className="font-heading font-black text-sm">{match.team_a}</p>
           </div>
           <div className="text-center">
             {match.status === 'finished' || match.status === 'live' ?
-            <div className="flex items-center gap-3">
-                <span className="text-4xl font-heading font-bold">{match.score_a ?? 0}</span>
-                <span className="text-muted-foreground text-xl">-</span>
-                <span className="text-4xl font-heading font-bold">{match.score_b ?? 0}</span>
+            <div className="flex items-center gap-2">
+                <span className="text-2xl font-heading font-bold">{match.score_a ?? 0}</span>
+                <span className="text-muted-foreground text-base">-</span>
+                <span className="text-2xl font-heading font-bold">{match.score_b ?? 0}</span>
               </div> :
-
-            <span className="text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-full">VS</span>
+            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">VS</span>
             }
           </div>
           <div className="flex-1 text-center">
-            <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-5xl shadow-lg">
+            <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-md">
               {getTeamFlag(match.team_b, match.team_b_flag)}
             </div>
-            <p className="font-heading font-black text-lg">{match.team_b}</p>
+            <p className="font-heading font-black text-sm">{match.team_b}</p>
           </div>
         </div>
       </motion.div>

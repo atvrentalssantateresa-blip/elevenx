@@ -95,34 +95,33 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
   ];
 
   return (
-    <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
+    <div className="bg-card border border-border/50 rounded-xl p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <h3 className="font-heading font-bold text-sm flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-primary" />
+        <h3 className="font-heading font-bold text-xs flex items-center gap-1.5">
+          <TrendingUp className="w-3.5 h-3.5 text-primary" />
           Fixed Odds
           {loadingLiveOdds && (
-            <span className="text-[9px] text-primary animate-pulse">Fetching live...</span>
+            <span className="text-[9px] text-primary animate-pulse">fetching...</span>
           )}
           {bet?.odds_bookmaker && !loadingLiveOdds && (
-            <span className="text-[10px] text-muted-foreground font-normal">via {bet.odds_bookmaker}</span>
+            <span className="text-[9px] text-muted-foreground font-normal">via {bet.odds_bookmaker}</span>
           )}
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {(() => {
             const now = new Date().getTime();
             const closeTime = bet?.open_until ? new Date(bet.open_until).getTime() : 0;
             const isWindowClosed = closeTime > 0 && now > closeTime;
             const displayStatus = isWindowClosed ? 'closed' : (bet?.status || 'open');
             const isActuallyOpen = !isWindowClosed && bet?.status === 'open';
-            
             return (
-              <Badge className={`text-[10px] ${isActuallyOpen ? 'bg-accent/20 text-accent' : 'bg-destructive/20 text-destructive'}`}>
+              <Badge className={`text-[9px] px-1.5 py-0 ${isActuallyOpen ? 'bg-accent/20 text-accent' : 'bg-destructive/20 text-destructive'}`}>
                 {displayStatus}
               </Badge>
             );
           })()}
           {onRefreshOdds && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefreshOdds} disabled={isRefreshingOdds}>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onRefreshOdds} disabled={isRefreshingOdds}>
               <RefreshCw className={`w-3 h-3 ${isRefreshingOdds ? 'animate-spin' : ''}`} />
             </Button>
           )}
@@ -130,47 +129,45 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
       </div>
 
       {!hasOdds && (
-        <p className="text-xs text-muted-foreground text-center py-2">
-          No odds available yet. Admin must create the market to fetch odds from The Odds API.
+        <p className="text-xs text-muted-foreground text-center py-1">
+          No odds available yet.
         </p>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
-      {outcomes.map(o => (
-        <button
-          key={o.key}
-          onClick={() => onSelectOutcome && onSelectOutcome(o.key)}
-          disabled={!onSelectOutcome}
-          className={`rounded-xl p-3 text-center border-2 transition-all ${
-            selectedOutcome === o.key
-              ? o.color === 'primary' ? 'border-primary bg-primary/10'
-              : o.color === 'accent' ? 'border-accent bg-accent/10'
-              : 'border-yellow-500 bg-yellow-500/10'
-              : 'border-border/40 bg-secondary/20 hover:border-border/70'
-          } ${!onSelectOutcome ? 'cursor-default' : 'cursor-pointer'}`}
-        >
-          <p className="text-xs text-muted-foreground mb-1 truncate">{o.label}</p>
-
-          <p className={`font-heading font-black text-2xl ${
-            o.color === 'primary' ? 'text-primary'
-            : o.color === 'accent' ? 'text-accent'
-            : 'text-yellow-400'
-          }`}>
-            {o.odds > 0 ? `${o.odds.toFixed(2)}x` : '—'}
-          </p>
-
-          {o.pool > 0 && (
-            <p className="text-[10px] text-muted-foreground mt-1">
-              ◎{o.pool.toFixed(2)} pool
+      <div className="grid grid-cols-3 gap-1.5">
+        {outcomes.map(o => (
+          <button
+            key={o.key}
+            onClick={() => onSelectOutcome && onSelectOutcome(o.key)}
+            disabled={!onSelectOutcome}
+            className={`rounded-lg p-2 text-center border transition-all ${
+              selectedOutcome === o.key
+                ? o.color === 'primary' ? 'border-primary bg-primary/15'
+                : o.color === 'accent' ? 'border-accent bg-accent/15'
+                : 'border-yellow-500 bg-yellow-500/15'
+                : 'border-border/40 bg-secondary/20 hover:border-border/70 hover:bg-secondary/40'
+            } ${!onSelectOutcome ? 'cursor-default' : 'cursor-pointer'}`}
+          >
+            <p className="text-[10px] text-muted-foreground mb-0.5 truncate">{o.label}</p>
+            <p className={`font-heading font-black text-lg leading-tight ${
+              o.color === 'primary' ? 'text-primary'
+              : o.color === 'accent' ? 'text-accent'
+              : 'text-yellow-400'
+            }`}>
+              {o.odds > 0 ? `${o.odds.toFixed(2)}x` : '—'}
             </p>
-          )}
-        </button>
-      ))}
+            {o.pool > 0 && (
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                ◎{o.pool.toFixed(2)}
+              </p>
+            )}
+          </button>
+        ))}
       </div>
 
       {bet?.odds_updated_at && (
-        <p className="text-[10px] text-center text-muted-foreground">
-          Odds updated {new Date(bet.odds_updated_at).toLocaleTimeString()}
+        <p className="text-[9px] text-center text-muted-foreground/60">
+          Updated {new Date(bet.odds_updated_at).toLocaleTimeString()}
         </p>
       )}
     </div>

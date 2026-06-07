@@ -343,111 +343,67 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }
 
   return (
-    <div className="bg-card border border-primary/20 rounded-2xl p-5 space-y-4">
-      {/* Betting Closed Banner - Show at TOP when window has ended */}
+    <div className="bg-card border border-primary/20 rounded-xl p-3 space-y-3">
+      {/* Betting Closed Banner */}
       {timeRemaining && timeRemaining.total <= 0 &&
-      <div className="bg-destructive/20 border border-destructive/40 rounded-xl p-4 text-center mb-2">
-          <Clock className="w-6 h-6 text-destructive mx-auto mb-1" />
-          <p className="font-heading font-bold text-sm text-destructive">⏰ Betting Has Closed</p>
-          <p className="text-[10px] text-muted-foreground mt-1">This match is no longer accepting bets</p>
+      <div className="bg-destructive/15 border border-destructive/30 rounded-lg p-2.5 text-center">
+          <p className="font-heading font-bold text-xs text-destructive">⏰ Betting Has Closed</p>
         </div>
       }
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <div className="flex items-center gap-2">
-            <h3 className={`font-heading font-bold text-base ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>
+      <div className="space-y-2">
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <h3 className={`font-heading font-bold text-sm ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>
               {selectedOffer ? `Bet Against ${selectedOffer.outcome_label}` : `Bet on ${outcomeLabel}`}
             </h3>
             {timeRemaining && timeRemaining.total > 0 &&
-            <Badge className="border border-destructive/20 text-[9px] font-bold px-2 py-0.5 animate-pulse text-[hsl(var(--accent))]">
+            <Badge className="border border-accent/30 text-[9px] font-bold px-1.5 py-0 text-accent bg-accent/10">
                 OPEN
               </Badge>
             }
           </div>
           {timeRemaining && timeRemaining.total > 0 &&
-          <div className="flex items-center gap-1 text-xs font-bold text-destructive">
-              <Clock className="w-3.5 h-3.5" />
-              <span className="text-[9px]">Betting closes in</span>
+          <div className="flex items-center gap-1 text-[10px] font-bold text-destructive/80">
+              <Clock className="w-3 h-3" />
               {timeRemaining.days > 0 ?
-            `${timeRemaining.days}d ${timeRemaining.hours}h` :
+            `${timeRemaining.days}d ${timeRemaining.hours}h left` :
             timeRemaining.hours > 0 ?
-            `${timeRemaining.hours}h ${timeRemaining.minutes}m` :
-            `${timeRemaining.minutes}:${String(timeRemaining.seconds).padStart(2, '0')}`
+            `${timeRemaining.hours}h ${timeRemaining.minutes}m left` :
+            `${timeRemaining.minutes}:${String(timeRemaining.seconds).padStart(2, '0')} left`
             }
             </div>
           }
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">
-            {selectedOffer ?
-            `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x` :
-            hasLiquidityForOutcome ?
-            `Max stake: ◎${Number(maxMatcherStake || 0).toFixed(4)} @ ${odds.toFixed(2)}x` :
 
-            <span className="text-accent font-bold">⏳ No liquidity — LP must seed this outcome first</span>
-            }
-          </p>
-          <button
-            onClick={() => refetchOffers()}
-            className="text-[10px] text-primary hover:text-primary/80 font-medium flex items-center gap-1">
-            
-            <Clock className="w-3 h-3" />
-            Refresh
-          </button>
-        </div>
-
-        {/* Pool Liquidity Display - Nicely Branded */}
+        {/* Liquidity info row */}
         {bettingMode === 'fixed_lp' &&
-        <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/30 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-muted-foreground">Available Liquidity</p>
-              <Badge className="bg-primary/20 text-primary text-[8px] font-bold px-1.5 py-0">
-                FIXED ODDS
-              </Badge>
+        <div className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2 border border-border/30">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground">Available</span>
+              <span className="font-heading font-bold text-sm text-primary">◎{maxMatcherStake.toFixed(4)}</span>
+              <Badge className="bg-primary/15 text-primary text-[8px] font-bold px-1 py-0">FIXED {odds.toFixed(2)}x</Badge>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-heading font-bold text-primary">◎{maxMatcherStake.toFixed(4)}</span>
-              <span className="text-xs text-muted-foreground">SOL available</span>
-            </div>
-            {selectedOffer &&
-          <div className="pt-2 border-t border-primary/20">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">Offer Status</span>
-                  <span className={`font-bold ${selectedOffer.status === 'open' ? 'text-accent' : 'text-primary'}`}>
-                    {selectedOffer.status === 'open' ? '● Open' : '● Partially Matched'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[10px] mt-1">
-                  <span className="text-muted-foreground">Total Offered</span>
-                  <span className="font-bold text-foreground">◎{(selectedOffer.amount_offered || 0).toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between text-[10px] mt-1">
-                  <span className="text-muted-foreground">Matched</span>
-                  <span className="font-bold text-foreground">◎{(selectedOffer.amount_matched || 0).toFixed(4)}</span>
-                </div>
-              </div>
-          }
+            <button onClick={() => refetchOffers()} className="text-[9px] text-primary/70 hover:text-primary font-medium">↻ refresh</button>
           </div>
         }
 
-        {/* No liquidity indicator - block betting until LP seeds */}
+        {/* No liquidity */}
         {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
-        <div className="bg-secondary/30 border border-border/30 rounded-xl p-3 text-center">
-            <p className="text-xs text-muted-foreground font-bold mb-2">⏳ No LP Liquidity Available</p>
-            <p className="text-[10px] text-muted-foreground mb-2">Cannot place bets until LP provides liquidity for this outcome</p>
-            <a href={`/lp?matchId=${matchId}`} className="inline-block bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-xs py-1.5 px-4 rounded-lg transition-colors">
+        <div className="bg-secondary/30 border border-border/30 rounded-lg p-2.5 flex items-center justify-between">
+            <p className="text-[10px] text-muted-foreground">⏳ No LP liquidity yet</p>
+            <a href={`/lp?matchId=${matchId}`} className="bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-[10px] py-1 px-2.5 rounded-lg transition-colors">
               Add Liquidity
             </a>
           </div>
         }
         
-        {/* Block betting when mode='match' and selectedOffer but no unmatched liquidity */}
         {mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 &&
-        <div className="bg-secondary/30 border border-border/30 rounded-xl p-3 text-center">
-          <p className="text-xs text-muted-foreground mb-2">Offer fully matched</p>
-          <a href={`/lp?matchId=${matchId}`} className="inline-block bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-xs py-1.5 px-4 rounded-lg transition-colors">
-            Add Liquidity Instead
+        <div className="bg-secondary/30 border border-border/30 rounded-lg p-2.5 flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground">Offer fully matched</p>
+          <a href={`/lp?matchId=${matchId}`} className="bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-[10px] py-1 px-2.5 rounded-lg transition-colors">
+            Add Liquidity
           </a>
         </div>
         }
@@ -475,72 +431,65 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         
       </div>
 
-      <div className="space-y-2">
+      {/* Stake input */}
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className={`text-xs font-bold text-muted-foreground ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>Enter Stake Amount</label>
+          <label className={`text-[10px] font-bold text-muted-foreground uppercase tracking-wider ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>Stake (SOL)</label>
           {bettingMode === 'fixed_lp' && maxMatcherStake && maxMatcherStake > 0 &&
           <button
             onClick={handleMaxBet}
             disabled={isBettingClosed}
             className="text-[10px] font-bold bg-accent/20 hover:bg-accent/30 text-accent px-2 py-0.5 rounded transition-colors disabled:opacity-50">
-            
               MAX ◎{maxMatcherStake.toFixed(4)}
             </button>
           }
         </div>
         <Input
           type="number"
-          placeholder={isBettingClosed ? "Betting Closed" : "◎0.00"}
+          placeholder={isBettingClosed ? "Betting Closed" : "0.00"}
           value={amount}
           min={0}
           max={maxMatcherStake !== null ? maxMatcherStake : undefined}
           step="any"
           onChange={(e) => setAmount(e.target.value)}
           disabled={isBettingClosed}
-          className="bg-secondary/50 border-border/50 text-lg font-heading font-bold h-12 disabled:opacity-50 disabled:cursor-not-allowed" />
+          className="bg-secondary/50 border-border/50 text-base font-heading font-bold h-10 disabled:opacity-50 disabled:cursor-not-allowed" />
         
-        <div className="flex gap-2 mt-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {QUICK_AMOUNTS.map((qa) =>
           <button
             key={qa}
             onClick={() => setAmount(String(Number(qa).toFixed(4)))}
             disabled={isBettingClosed}
-            className="px-3 py-1.5 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            
+            className="px-2.5 py-1 text-[10px] font-bold bg-secondary hover:bg-secondary/80 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-border/40">
               ◎{qa}
             </button>
           )}
         </div>
       </div>
 
+      {/* Bet summary */}
       <AnimatePresence>
       {stakeNum > 0 && mode === 'match' &&
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-        className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-2 text-xs overflow-hidden">
-          <div className="flex items-center justify-between mb-1">
-            <p className="font-bold text-foreground">Bet Summary</p>
-            <Badge className="bg-primary/20 text-primary text-[8px] font-bold px-1.5 py-0">
-              FIXED ODDS
-            </Badge>
-          </div>
+        className="bg-accent/5 border border-accent/20 rounded-lg p-3 space-y-1.5 text-xs overflow-hidden">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Backing</span>
             <span className="font-bold">{outcomeLabel}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Your stake</span>
+            <span className="text-muted-foreground">Stake</span>
             <span className="font-bold">◎{stakeNum.toFixed(4)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Odds locked at</span>
+            <span className="text-muted-foreground">Odds</span>
             <span className="font-bold">{odds.toFixed(2)}x</span>
           </div>
-          <div className="h-px bg-border/30 my-1" />
-          <div className="flex justify-between font-bold text-sm">
-            <span>Payout if you win</span>
-            <span className="text-accent text-base">◎{matcherPayout.toFixed(4)}</span>
+          <div className="h-px bg-border/30" />
+          <div className="flex justify-between font-bold">
+            <span>Payout if win</span>
+            <span className="text-accent">◎{matcherPayout.toFixed(4)}</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">Funds locked immediately — cannot be withdrawn</p>
         </motion.div>
         }
       </AnimatePresence>
