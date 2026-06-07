@@ -368,14 +368,15 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 <span className="text-[9px] text-muted-foreground font-semibold truncate">
                   {bet.match_title || 'Match'}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => setShareDialogOpen(true)}
-                    className="h-6 w-6 hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                    className="h-7 w-7 rounded-lg hover:bg-primary/20 text-primary hover:text-primary transition-all"
+                    title="Share this bet"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
+                    <Share2 className="w-4 h-4" />
                   </Button>
                   <Badge className={`text-[8px] font-semibold uppercase tracking-wider flex-shrink-0 ${statusConfig[localBetStatus]?.color || statusConfig.active.color}`}>
                     {statusConfig[localBetStatus]?.label || 'Active'}
