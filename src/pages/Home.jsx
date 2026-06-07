@@ -104,8 +104,8 @@ export default function Home() {
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
               World's First<br />
-              <span className="text-primary">Dynamic Hybrid</span><br />
-              Betting Protocol
+              <span className="text-primary">Decentralized</span><br />
+              Hybrid Betting Protocol
             </h2>
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
               Revolutionary parimutuel pools meet dynamic fixed odds. Zero house edge. LPs earn fees on every bet. Pure P2P on Solana.
