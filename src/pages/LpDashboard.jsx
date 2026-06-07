@@ -364,7 +364,14 @@ export default function LpDashboard() {
     },
     onError: (err) => {
       console.error('[withdrawLiquidityMutation] Error:', err);
-      setError(err.message || 'Failed to withdraw liquidity');
+      let errorMsg = err.message || 'Failed to withdraw liquidity';
+      
+      // Handle auto-voided market error
+      if (err.message?.includes('auto-voided') || err.message?.includes('no bets on winning outcome')) {
+        errorMsg = '⚠️ Market Auto-Voided\n\nNo one bet on the winning outcome, so the market was automatically voided.\n\nYour unmatched liquidity can still be withdrawn - use "Withdraw Unmatched" instead.';
+      }
+      
+      setError(errorMsg);
     }
   });
 

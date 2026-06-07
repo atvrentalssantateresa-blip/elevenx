@@ -174,6 +174,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
           userMessage = 'This LP position did not win. In parimutuel betting, LPs profit when bettors lose.\n\nYour backed outcome won, so the LP position lost value.';
         } else if (errorMsg.includes('Market has not been settled')) {
           userMessage = 'Market must be settled before claiming. Wait for admin to settle the market.';
+        } else if (errorMsg.includes('auto-voided') || errorMsg.includes('no bets on winning outcome')) {
+          userMessage = '⚠️ Market Auto-Voided\n\nNo one bet on the winning outcome, so the market was automatically voided.\n\nYour unmatched liquidity can still be withdrawn - use "Withdraw Unmatched" instead.';
         } else if (errorMsg.includes('No unmatched liquidity')) {
           userMessage = 'No unmatched liquidity available. All funds are locked in matched positions.';
         } else if (errorMsg.includes('Only LP positions')) {

@@ -241,6 +241,25 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Market has not been settled on-chain yet. Admin must announce the winner first.' }, { status: 400 });
       }
       
+      // Check if market was auto-voided (no bets on winning outcome)
+      // In this case, LPs cannot withdraw winnings - they should withdraw unmatched liquidity instead
+      const settledByte = marketData[244]; // settled bool at offset 244
+      const voidedByte = marketData[245]; // voided bool at offset 245
+      console.log('[withdrawLpWinnings] Market state bytes:', {
+        settled: settledByte,
+        voided: voidedByte,
+        marketPda: marketPda.toBase58(),
+      });
+      
+      if (voidedByte) {
+        console.error('[withdrawLpWinnings] Market was auto-voided (no bets on winning outcome):', marketPda.toBase58());
+        return Response.json({ 
+          error: 'Market was auto-voided (no bets on winning outcome)',
+          hint: 'When no one bet on the winning outcome, the market auto-voids and LPs should withdraw their unmatched liquidity instead of winnings.',
+          action: 'withdraw_unmatched'
+        }, { status: 400 });
+      }
+      
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
       if (!lpOfferAccountInfo) {
         console.error('[withdrawLpWinnings] LP offer PDA not found on-chain:', lpOfferPda.toBase58());
