@@ -690,19 +690,68 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       if (confirmation.value.err) {
         console.error('Transaction failed on-chain:', confirmation.value.err);
         const onChainErr = confirmation.value.err;
-        if (onChainErr.InstructionError && onChainErr.InstructionError[1]?.Custom !== undefined) {
-          const customCode = onChainErr.InstructionError[1].Custom;
-          const errorMessages = {
-            0: 'Betting window closed',
-            1: 'Market settled',
-            15: 'Market already initialized',
-            101: 'Invalid instruction data or discriminator',
-            3007: 'Platform not initialized',
-          };
-          const errorMsg = errorMessages[customCode] || `Error ${customCode}`;
-          throw new Error(`Transaction failed: ${errorMsg}`);
+        
+        // Extract custom error code from various possible locations
+        let customCode = null;
+        
+        // Try direct InstructionError
+        if (onChainErr.InstructionError && Array.isArray(onChainErr.InstructionError)) {
+          customCode = onChainErr.InstructionError[1]?.Custom;
+          console.log('[SolanaTransactionSigner] Extracted error code from InstructionError:', customCode);
         }
-        throw new Error('Transaction failed on-chain');
+        
+        // Try nested in value
+        if (customCode === null && onChainErr.value?.InstructionError) {
+          customCode = onChainErr.value.InstructionError[1]?.Custom;
+        }
+        
+        // Try nested in err
+        if (customCode === null && onChainErr.err?.InstructionError) {
+          customCode = onChainErr.err.InstructionError[1]?.Custom;
+        }
+        
+        // Try parsing from message
+        if (customCode === null && onChainErr.message) {
+          const match = onChainErr.message.match(/Custom["\s:]*(\d+)/);
+          if (match) {
+            customCode = parseInt(match[1]);
+          }
+        }
+        
+        console.log('[SolanaTransactionSigner] Final extracted error code:', customCode);
+        
+        if (customCode !== null) {
+          const errorMessages = {
+            0: 'Betting window has closed',
+            1: 'Market already settled',
+            2: 'Market voided',
+            3: 'Stake must be > 0',
+            4: 'Invalid outcome',
+            5: 'Too early to settle',
+            6: 'Market paused',
+            7: 'Fee exceeds 5%',
+            8: 'Invalid timeline',
+            9: 'Nothing to claim',
+            10: 'Nothing to refund',
+            11: 'Market not voided',
+            12: 'Oracle already voted',
+            13: 'Insufficient consensus',
+            14: 'Invalid outcome count',
+            15: 'Market already initialized',
+            16: 'Arithmetic overflow',
+            17: 'Unauthorized',
+            101: 'Invalid instruction data or discriminator',
+            3002: 'Account not found - market may not be deployed on-chain yet',
+            3007: 'Platform not initialized',
+            3012: 'Unauthorized - your wallet is not registered as admin in platform config',
+            6005: 'Constraint violation - account constraints not satisfied',
+          };
+          const errorMsg = errorMessages[customCode] || `Program error ${customCode}`;
+          console.error('[SolanaTransactionSigner] Detailed error:', { code: customCode, message: errorMsg });
+          throw new Error(`On-chain error ${customCode}: ${errorMsg}`);
+        }
+        
+        throw new Error('Transaction failed on-chain: ' + JSON.stringify(onChainErr));
       }
 
       // Only set signature after successful confirmation
