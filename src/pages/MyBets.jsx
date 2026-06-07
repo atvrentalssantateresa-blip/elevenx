@@ -14,8 +14,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import QuickStat from '@/components/dashboard/QuickStat';
 import EmptyState from '@/components/dashboard/EmptyState';
 import BetCard from '@/components/dashboard/BetCard';
-import LpPositionCard from '@/components/lp/LpPositionCard';
-import LpStatsHeader from '@/components/lp/LpStatsHeader';
+
 import { getWalletFromAuth } from '@/utils/auth';
 import { useWallet } from '@/lib/WalletContext';
 
@@ -404,21 +403,15 @@ export default function MyBets() {
       </div>
 
       <Tabs defaultValue="stats" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 bg-card border border-border/50 rounded-xl">
+        <TabsList className="grid w-full grid-cols-3 bg-card border border-border/50 rounded-xl">
           <TabsTrigger value="stats" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
             <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="hidden sm:inline">Stats</span>
-            <span className="sm:hidden">Stats</span>
+            Stats
           </TabsTrigger>
           <TabsTrigger value="bets" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
             <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className="hidden sm:inline">My Bets ({myMatcherBets.length})</span>
             <span className="sm:hidden">Bets</span>
-          </TabsTrigger>
-          <TabsTrigger value="lp" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
-            <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="hidden sm:inline">LP ({myLpPositions.length})</span>
-            <span className="sm:hidden">LP</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg text-xs sm:text-sm">
             <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
@@ -479,26 +472,7 @@ export default function MyBets() {
           </div>
         </TabsContent>
 
-        <TabsContent value="lp">
-          <div className="space-y-5">
-            <LpStatsHeader lpPositions={myLpPositions} />
-            {myLpPositions.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                {myLpPositions.map((lp, i) => (
-                  <LpPositionCard
-                    key={lp.id}
-                    offer={lp}
-                    index={i}
-                    walletAddress={walletAddress}
-                    onWithdrawRequest={(data) => setRefundDialog(data)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No LP positions" actionText="Provide Liquidity" link="/lp" />
-            )}
-          </div>
-        </TabsContent>
+
 
         <TabsContent value="stats">
           <div className="space-y-4">

@@ -18,6 +18,7 @@ import FuturesLpPanel from '@/components/lp/FuturesLpPanel';
 import MatchLiquidityCard from '@/components/lp/MatchLiquidityCard';
 import LiquidityDetailModal from '@/components/lp/LiquidityDetailModal';
 import LpPositionCard from '@/components/lp/LpPositionCard';
+import LpStatsHeader from '@/components/lp/LpStatsHeader';
 import { getWalletFromAuth } from '@/utils/auth';
 
 
@@ -36,7 +37,7 @@ export default function LpDashboard() {
     console.log('[LpDashboard] Render:', { walletAddress, isConnected, source: walletAddressFromAuth ? 'auth_token' : 'wallet_context' });
   }, [walletAddress, isConnected]);
 
-  const [activeTab, setActiveTab] = useState('matches');
+  const [activeTab, setActiveTab] = useState('stats');
   const [selectedBet, setSelectedBet] = useState(null);
   const [selectedOutcome, setSelectedOutcome] = useState('a');
   const [amount, setAmount] = useState('');
@@ -606,17 +607,29 @@ export default function LpDashboard() {
 
       {isConnected &&
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6 bg-secondary/30 p-1.5 rounded-xl gap-2 h-auto">
-            <TabsTrigger value="matches" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">
-              <TrendingUp className="w-4 h-4 mr-2 text-primary" /> Match LP
+          <TabsList className="grid grid-cols-4 mb-6 bg-secondary/30 p-1.5 rounded-xl gap-1 h-auto">
+            <TabsTrigger value="stats" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm">
+              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Stats
             </TabsTrigger>
-            <TabsTrigger value="futures" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400 data-[state=active]:border-b-2 data-[state=active]:border-yellow-400">
-              <Trophy className="w-4 h-4 mr-2 text-yellow-400" /> Futures LP
+            <TabsTrigger value="matches" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Match LP
             </TabsTrigger>
-            <TabsTrigger value="positions" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-accent/20 data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent">
-              <DollarSign className="w-4 h-4 mr-2 text-accent" /> My LP
+            <TabsTrigger value="futures" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400 data-[state=active]:border-b-2 data-[state=active]:border-yellow-400 text-xs sm:text-sm">
+              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Futures LP
+            </TabsTrigger>
+            <TabsTrigger value="positions" className="font-heading font-bold flex items-center justify-center py-2.5 rounded-lg transition-all data-[state=active]:bg-accent/20 data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent text-xs sm:text-sm">
+              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> My LP
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="stats" className="space-y-4">
+            <LpStatsHeader lpPositions={myOffers} />
+            {myOffers.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No LP positions yet. Start by providing liquidity in Match LP or Futures LP tabs.
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="matches" className="space-y-6">
             {/* Stats row */}
