@@ -246,8 +246,9 @@ Deno.serve(async (req) => {
     const bettorPubkey = new PublicKey(trimmedWallet);
     const outcomeIndex = bettor_outcome === 'a' ? 0 : bettor_outcome === 'b' ? 1 : 2;
 
+    // CRITICAL: Include outcome byte in position PDA seeds
     const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
