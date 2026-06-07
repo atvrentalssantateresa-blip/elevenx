@@ -3,6 +3,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const ODDS_API_KEY = Deno.env.get('ODDS_API_KEY');
 const ODDS_API_BASE = 'https://api.the-odds-api.com/v4';
 
+// Fallback score oracle — free public APIs (no API key required)
+const FALLBACK_ORACLES = {
+  // API-Football (RapidAPI) - most reliable free tier
+  apiFootball: {
+    baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
+    requiresKey: false, // Can work without key for basic endpoints
+  },
+  // Public football data fallback
+  publicScores: 'https://api.allsportsapi.com/football',
+};
+
 /**
  * Oracle Service — two modes:
  *
@@ -132,6 +143,7 @@ function mockOdds(match) {
 // ── Result fetching ───────────────────────────────────────────────────────────
 
 async function fetchResult(match, provider) {
+  // Try primary oracle (The Odds API) first
   if (provider === 'odds_api' && ODDS_API_KEY) {
     try {
       const sport = 'soccer_fifa_world_cup';
@@ -160,12 +172,131 @@ async function fetchResult(match, provider) {
     }
   }
 
+  // FALLBACK ORACLE #1: API-Football (free tier)
+  console.log('[Oracle] Trying fallback oracle: API-Football...');
+  const fallbackResult = await fetchFromApiFootball(match);
+  if (fallbackResult && fallbackResult.verified) {
+    return fallbackResult;
+  }
+
+  // FALLBACK ORACLE #2: Public football scores
+  console.log('[Oracle] Trying fallback oracle: PublicScores...');
+  const publicResult = await fetchFromPublicScores(match);
+  if (publicResult && publicResult.verified) {
+    return publicResult;
+  }
+
+  // Final fallback: manual verification
   return {
     winner: 'pending',
     scoreA: match.score_a || 0,
     scoreB: match.score_b || 0,
     verified: false,
     source: 'manual',
-    message: 'Manual verification required',
+    message: 'Manual verification required - all oracles failed',
   };
+}
+
+// ── Fallback Oracle #1: API-Football ──────────────────────────────────────────
+
+async function fetchFromApiFootball(match) {
+  try {
+    // Search for recent finished matches
+    const today = new Date().toISOString().split('T')[0];
+    const url = `${FALLBACK_ORACLES.apiFootball.baseUrl}/fixtures?live=all`;
+    
+    const headers = {
+      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+      // No API key required for basic public endpoints
+    };
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.log('[API-Football] HTTP error:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const fixtures = data.response || [];
+
+    // Find matching fixture by team names
+    const fixture = fixtures.find(f =>
+      f.teams?.home?.name &&
+      f.teams?.away?.name &&
+      (f.teams.home.name.toLowerCase().includes(match.team_a?.toLowerCase()) ||
+       f.teams.away.name.toLowerCase().includes(match.team_a?.toLowerCase())) &&
+      (f.teams.home.name.toLowerCase().includes(match.team_b?.toLowerCase()) ||
+       f.teams.away.name.toLowerCase().includes(match.team_b?.toLowerCase())) &&
+      f.fixture?.status?.short === 'FT' // Full time finished
+    );
+
+    if (!fixture) {
+      console.log('[API-Football] No matching fixture found');
+      return null;
+    }
+
+    const scoreA = fixture.goals?.home ?? 0;
+    const scoreB = fixture.goals?.away ?? 0;
+    const homeIsA = fixture.teams.home.name.toLowerCase().includes(match.team_a?.toLowerCase());
+    const finalScoreA = homeIsA ? scoreA : scoreB;
+    const finalScoreB = homeIsA ? scoreB : scoreA;
+    const winner = finalScoreA > finalScoreB ? 'team_a' : finalScoreB > finalScoreA ? 'team_b' : 'draw';
+
+    console.log('[API-Football] Found result:', { scoreA: finalScoreA, scoreB: finalScoreB, winner });
+    return {
+      scoreA: finalScoreA,
+      scoreB: finalScoreB,
+      winner,
+      verified: true,
+      source: 'api-football',
+    };
+  } catch (err) {
+    console.error('[API-Football] Fetch failed:', err.message);
+    return null;
+  }
+}
+
+// ── Fallback Oracle #2: Public Scores API ─────────────────────────────────────
+
+async function fetchFromPublicScores(match) {
+  try {
+    // Try alternative public football API
+    const url = 'https://api.allsportsapi.com/football/fixtures';
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const fixtures = data.fixtures || [];
+
+    // Find matching finished fixture
+    const fixture = fixtures.find(f =>
+      f.home_team?.name &&
+      f.away_team?.name &&
+      (f.home_team.name.toLowerCase().includes(match.team_a?.toLowerCase()) ||
+       f.away_team.name.toLowerCase().includes(match.team_a?.toLowerCase())) &&
+      (f.home_team.name.toLowerCase().includes(match.team_b?.toLowerCase()) ||
+       f.away_team.name.toLowerCase().includes(match.team_b?.toLowerCase())) &&
+      f.status?.short === 'FT'
+    );
+
+    if (!fixture) return null;
+
+    const scoreA = fixture.home_team?.score ?? 0;
+    const scoreB = fixture.away_team?.score ?? 0;
+    const homeIsA = fixture.home_team.name.toLowerCase().includes(match.team_a?.toLowerCase());
+    const finalScoreA = homeIsA ? scoreA : scoreB;
+    const finalScoreB = homeIsA ? scoreB : scoreA;
+    const winner = finalScoreA > finalScoreB ? 'team_a' : finalScoreB > finalScoreA ? 'team_b' : 'draw';
+
+    return {
+      scoreA: finalScoreA,
+      scoreB: finalScoreB,
+      winner,
+      verified: true,
+      source: 'public-scores',
+    };
+  } catch (err) {
+    console.error('[PublicScores] Fetch failed:', err.message);
+    return null;
+  }
 }
