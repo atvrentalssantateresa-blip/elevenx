@@ -63,35 +63,71 @@ Deno.serve(async (req) => {
 
     if (betsToClaim.length === 0) {
       const userBets = allUserBets.filter(ub => ub.wallet_address === trimmedWallet);
-      console.log('[claimWinnings] Wallet statuses:', userBets.map(b => ({ id: b.id, status: b.status, outcome: b.outcome })));
+      const requestedBets = allUserBets.filter(ub => betIdsToProcess.includes(ub.id));
+      console.log('[claimWinnings] DEBUG - Wallet bets:', userBets.map(b => ({ id: b.id, status: b.status, outcome: b.outcome, wallet: b.wallet_address?.slice(0, 8) })));
+      console.log('[claimWinnings] DEBUG - Requested bet IDs:', betIdsToProcess);
+      console.log('[claimWinnings] DEBUG - Found requested bets:', requestedBets.map(b => ({ id: b.id, status: b.status, wallet: b.wallet_address?.slice(0, 8), matches_wallet: b.wallet_address === trimmedWallet })));
       return Response.json({ 
-        error: 'No claimable bets found (need status "won" or "active" with market settled)',
-        debug: { walletBets: userBets.length, requestedBetIds: betIdsToProcess }
+        error: 'No claimable bets found',
+        debug: { 
+          walletBets: userBets.length, 
+          requestedBetIds: betIdsToProcess,
+          foundRequestedBets: requestedBets.map(b => ({ id: b.id, status: b.status, wallet_matches: b.wallet_address === trimmedWallet })),
+          walletUsed: trimmedWallet.slice(0, 16) + '...'
+        },
+        hint: 'Bet must have status "won" or "active" AND wallet address must match'
       }, { status: 404 });
     }
     
     // Verify bets actually won by checking market winning_outcome matches bet outcome
     let validBets = [];
+    const debugInfo = [];
     for (const ub of betsToClaim) {
       const bet = (await serviceRole.entities.Bet.filter({ id: ub.bet_id }))[0];
+      const betDebug = {
+        userBetId: ub.id,
+        betId: ub.bet_id,
+        userOutcome: ub.outcome,
+        userStatus: ub.status,
+        marketSettled: bet?.winning_outcome && bet.winning_outcome.length > 0,
+        winningOutcome: bet?.winning_outcome,
+        matched: false,
+        reason: ''
+      };
+      
       if (bet && bet.winning_outcome && bet.winning_outcome.length > 0) {
         // Check if user's outcome matches the winning outcome
         if (ub.outcome === bet.winning_outcome) {
           validBets.push(ub);
+          betDebug.matched = true;
+          betDebug.reason = 'outcome_matched';
         } else {
-          console.log('[claimWinnings] Bet outcome mismatch:', { userOutcome: ub.outcome, winningOutcome: bet.winning_outcome });
+          betDebug.reason = `outcome_mismatch (user: ${ub.outcome}, winning: ${bet.winning_outcome})`;
+          console.log('[claimWinnings] Bet outcome mismatch:', betDebug);
         }
       } else if (ub.status === 'won') {
-        // 'won' status already validated
+        // 'won' status already validated - but this shouldn't happen without market being settled
         validBets.push(ub);
+        betDebug.matched = true;
+        betDebug.reason = 'status_won';
+      } else {
+        betDebug.reason = 'market_not_settled_and_status_not_won';
       }
+      
+      debugInfo.push(betDebug);
     }
     
     if (validBets.length === 0) {
+      console.log('[claimWinnings] No valid bets - debug:', debugInfo);
       return Response.json({ 
-        error: 'No bets won this settlement',
-        attempted: betsToClaim.length
-      }, { status: 404 });
+        error: 'No winning bets found',
+        debug: { 
+          attempted: betsToClaim.length,
+          betDetails: debugInfo,
+          hint: 'Market must be settled (have winning_outcome) AND your outcome must match the winner'
+        },
+        status: 404
+      });
     }
     const betsToClaim_validated = validBets;
 
