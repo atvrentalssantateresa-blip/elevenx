@@ -415,13 +415,13 @@ export default function Home() {
 
       {/* ── FEATURED FUTURES (6 CARDS) ── */}
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <Trophy className="w-4 h-4 text-primary flex-shrink-0" />
             <h2 className="font-heading font-bold text-lg">Featured Futures</h2>
-            <span className="bg-accent/10 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full">Tournament Markets</span>
+            <span className="hidden sm:inline bg-accent/10 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">Tournament Markets</span>
           </div>
-          <Link to="/futures" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+          <Link to="/futures" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium flex-shrink-0">
             View all <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
