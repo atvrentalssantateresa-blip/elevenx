@@ -46,7 +46,8 @@
         "cancelled",
         "settled"
       ],
-      "default": "open"
+      "default": "open",
+      "description": "Offer status"
     },
     "odds_at_creation": {
       "type": "number",
@@ -84,7 +85,7 @@
         }
       ]
     },
-    "read": {},
+    "read": true,
     "update": {
       "$or": [
         {
