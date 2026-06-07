@@ -168,8 +168,12 @@ export default function MyBets() {
   // LP positions are identified by: role='lp'
   const myMatcherBets = myBets.filter(b => b.role !== 'lp');
   
-  // Group bets by match_id + outcome (combine multiple bets on same outcome)
-  const groupedBets = myMatcherBets.reduce((acc, bet) => {
+  // Separate futures bets from match bets
+  const myFuturesBets = myMatcherBets.filter(b => b.futures_market_id);
+  const myMatchBets = myMatcherBets.filter(b => b.match_id && !b.futures_market_id);
+  
+  // Group match bets by match_id + outcome
+  const groupedMatchBets = myMatchBets.reduce((acc, bet) => {
     const key = `${bet.match_id}-${bet.outcome}`;
     if (!acc[key]) {
       acc[key] = {
@@ -184,7 +188,6 @@ export default function MyBets() {
       acc[key].totalPayout += bet.actual_payout || bet.potential_payout || 0;
       acc[key].betCount += 1;
       acc[key].betIds.push(bet.id);
-      // Use the most recent status
       if (new Date(bet.created_date) > new Date(acc[key].created_date)) {
         acc[key].status = bet.status;
       }
@@ -192,14 +195,39 @@ export default function MyBets() {
     return acc;
   }, {});
   
-  const groupedBetsArray = Object.values(groupedBets);
+  // Group futures bets by futures_market_id + outcome
+  const groupedFuturesBets = myFuturesBets.reduce((acc, bet) => {
+    const key = `${bet.futures_market_id}-${bet.outcome}`;
+    if (!acc[key]) {
+      acc[key] = {
+        ...bet,
+        totalAmount: bet.amount || 0,
+        totalPayout: bet.actual_payout || bet.potential_payout || 0,
+        betCount: 1,
+        betIds: [bet.id],
+        _isFutures: true
+      };
+    } else {
+      acc[key].totalAmount += bet.amount || 0;
+      acc[key].totalPayout += bet.actual_payout || bet.potential_payout || 0;
+      acc[key].betCount += 1;
+      acc[key].betIds.push(bet.id);
+      if (new Date(bet.created_date) > new Date(acc[key].created_date)) {
+        acc[key].status = bet.status;
+      }
+    }
+    return acc;
+  }, {});
   
-  const totalStaked = groupedBetsArray.reduce((s, b) => s + (b.totalAmount || 0), 0);
-  const totalWon = groupedBetsArray.filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.totalPayout || 0), 0);
-  const activeBets = groupedBetsArray.filter((b) => b.status === 'active' || b.status === 'pending');
-  const completedBets = groupedBetsArray.filter((b) => b.status !== 'active' && b.status !== 'pending');
-  const pendingClaims = groupedBetsArray.filter((b) => b.status === 'won');
-  const availableRefunds = groupedBetsArray.filter((b) => b.status === 'refunded');
+  const groupedMatchBetsArray = Object.values(groupedMatchBets);
+  const groupedFuturesBetsArray = Object.values(groupedFuturesBets);
+  
+  const totalStaked = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].reduce((s, b) => s + (b.totalAmount || 0), 0);
+  const totalWon = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.totalPayout || 0), 0);
+  const activeBets = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'active' || b.status === 'pending');
+  const completedBets = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status !== 'active' && b.status !== 'pending');
+  const pendingClaims = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'won');
+  const availableRefunds = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'refunded');
   const myLpPositions = myBets.filter(b => b.role === 'lp');
 
   // Group won bets by match for batch claiming
@@ -329,21 +357,45 @@ export default function MyBets() {
         <TabsContent value="stats">
 
         <TabsContent value="bets">
-          {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
-            <BetCard
-              key={bet.betIds[0]}
-              bet={bet}
-              index={i}
-              walletAddress={walletAddress}
-              onRefundRequest={(data) => setRefundDialog(data)} />
-
+          <div className="space-y-4">
+            {/* Match Bets */}
+            {groupedMatchBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 && (
+              <div>
+                <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                  {groupedMatchBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) => (
+                    <BetCard
+                      key={bet.betIds[0]}
+                      bet={bet}
+                      index={i}
+                      walletAddress={walletAddress}
+                      onRefundRequest={(data) => setRefundDialog(data)} />
+                  ))}
+                </div>
+              </div>
             )}
-            </div> :
-
-          <EmptyState message="No active bets" actionText="Browse Matches" link="/matches" />
-          }
+            
+            {/* Futures Bets */}
+            {groupedFuturesBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 && (
+              <div>
+                <h3 className="font-heading font-bold text-sm mb-3 text-accent">Futures Bets</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                  {groupedFuturesBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) => (
+                    <BetCard
+                      key={bet.betIds[0]}
+                      bet={bet}
+                      index={i}
+                      walletAddress={walletAddress}
+                      onRefundRequest={(data) => setRefundDialog(data)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {groupedMatchBetsArray.length === 0 && groupedFuturesBetsArray.length === 0 && (
+              <EmptyState message="No active bets" actionText="Browse Matches" link="/matches" />
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="lp">
@@ -459,21 +511,45 @@ export default function MyBets() {
         </TabsContent>
 
         <TabsContent value="history">
-          {groupedBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {groupedBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) =>
-            <BetCard
-              key={bet.betIds[0]}
-              bet={bet}
-              index={i}
-              walletAddress={walletAddress}
-              onRefundRequest={(data) => setRefundDialog(data)} />
-
+          <div className="space-y-4">
+            {/* Match History */}
+            {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
+              <div>
+                <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                  {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
+                    <BetCard
+                      key={bet.betIds[0]}
+                      bet={bet}
+                      index={i}
+                      walletAddress={walletAddress}
+                      onRefundRequest={(data) => setRefundDialog(data)} />
+                  ))}
+                </div>
+              </div>
             )}
-            </div> :
-
-          <EmptyState message="No betting history" />
-          }
+            
+            {/* Futures History */}
+            {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
+              <div>
+                <h3 className="font-heading font-bold text-sm mb-3 text-accent">Futures Bets</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                  {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
+                    <BetCard
+                      key={bet.betIds[0]}
+                      bet={bet}
+                      index={i}
+                      walletAddress={walletAddress}
+                      onRefundRequest={(data) => setRefundDialog(data)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {groupedMatchBetsArray.length === 0 && groupedFuturesBetsArray.length === 0 && (
+              <EmptyState message="No betting history" />
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
