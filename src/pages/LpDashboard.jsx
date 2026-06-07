@@ -465,10 +465,12 @@ export default function LpDashboard() {
 
     setPendingTx(null);
     setError(null);
-    // Invalidate queries immediately to remove withdrawn position
-    queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress] });
-    queryClient.invalidateQueries({ queryKey: ['allUserBets', walletAddress] });
-    queryClient.invalidateQueries({ queryKey: ['offersWithUserBet', walletAddress] });
+    // Invalidate AND refetch queries immediately to update UI
+    await queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress], refetchType: 'all' });
+    await queryClient.invalidateQueries({ queryKey: ['allUserBets', walletAddress], refetchType: 'all' });
+    await queryClient.invalidateQueries({ queryKey: ['offersWithUserBet', walletAddress], refetchType: 'all' });
+    // Also refetch the offers query directly
+    await refetchOffers();
   };
 
   // Stats - calculate from UserBet data (works for both traditional LP and parimutuel)
