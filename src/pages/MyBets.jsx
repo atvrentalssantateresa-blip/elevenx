@@ -207,9 +207,10 @@ export default function MyBets() {
     return acc;
   }, {});
   
-  // Group futures bets by futures_market_id + outcome
+  // Group futures bets by futures_market_id (or match_id if no futures_market_id) + outcome
   const groupedFuturesBets = myFuturesBets.reduce((acc, bet) => {
-    const key = `${bet.futures_market_id}-${bet.outcome}`;
+    const marketId = bet.futures_market_id || bet.match_id || 'unknown';
+    const key = `${marketId}-${bet.outcome}`;
     if (!acc[key]) {
       acc[key] = {
         ...bet,
