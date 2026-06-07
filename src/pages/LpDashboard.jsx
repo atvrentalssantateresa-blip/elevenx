@@ -992,15 +992,35 @@ export default function LpDashboard() {
               </div>
             </div>
 
-            {/* Withdraw Transaction Signer */}
-            {pendingTx && pendingTx.type === 'withdraw_liquidity' &&
-          <SolanaTransactionSigner
-            instruction={pendingTx.instruction}
-            amount={pendingTx.amount}
-            onSuccess={handleWithdrawSuccess}
-            onError={() => setPendingTx(null)} />
-
-          }
+            {/* Withdraw Transaction Signer - Centered Modal */}
+            {pendingTx && pendingTx.type === 'withdraw_liquidity' && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-border/50 rounded-2xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto">
+                  <div className="space-y-3">
+                    <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 text-center">
+                      <p className="text-sm font-bold text-accent mb-0.5">Withdraw LP Winnings</p>
+                      <p className="text-xs text-muted-foreground">◎{pendingTx.amount.toFixed(4)} SOL</p>
+                    </div>
+                    <SolanaTransactionSigner
+                      instruction={pendingTx.instruction}
+                      amount={pendingTx.amount}
+                      onSuccess={handleWithdrawSuccess}
+                      onError={() => setPendingTx(null)}
+                      userBetId={pendingTx.userBetId}
+                      offerId={pendingTx.offerId}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingTx(null)}
+                      className="w-full h-9 text-xs rounded-xl border-border/50"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       }
@@ -1022,9 +1042,9 @@ export default function LpDashboard() {
       
 
       {/* Transaction Modal Overlay */}
-      {pendingTx && pendingTx.type === 'provide_liquidity' &&
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+      {pendingTx && pendingTx.type === 'provide_liquidity' && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border/50 rounded-2xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
                 <p className="text-sm font-bold text-accent mb-1">Provide Liquidity</p>
@@ -1042,7 +1062,7 @@ export default function LpDashboard() {
             </div>
           </div>
         </div>
-      }
+      )}
     </div>);
 
 }
