@@ -113,16 +113,16 @@ export default function Home() {
               <span className="text-xs font-bold text-primary tracking-widest uppercase">WORLD CUP 2026</span>
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
-              The First Hybrid<br />
-              <span className="text-primary">Betting Protocol</span>
+              <span className="text-primary">FIRST</span> Hybrid Betting<br />
+              Protocol
             </h2>
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
-              Revolutionary parimutuel model meets fixed odds. No house edge. LPs earn fees. Everyone can be the house. Built on Solana.
+              Dynamic odds. Zero house edge. LPs earn fees on every bet. The revolutionary protocol where everyone can be the house. Built on Solana.
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-primary tracking-wide">0% HOUSE EDGE</span>
-              <span className="text-[10px] font-bold text-accent tracking-wide">LP FEE SHARING</span>
-              <span className="text-[10px] font-bold text-yellow-400 tracking-wide">P2P MARKETS</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black text-primary tracking-wide bg-primary/10 px-2 py-1 rounded border border-primary/20">⚡ DYNAMIC ODDS</span>
+              <span className="text-[10px] font-black text-accent tracking-wide bg-accent/10 px-2 py-1 rounded border border-accent/20">💎 LP FEE SHARING</span>
+              <span className="text-[10px] font-black text-yellow-400 tracking-wide bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">👑 BE THE HOUSE</span>
             </div>
             
             {/* World Cup branding flags */}
@@ -161,10 +161,10 @@ export default function Home() {
             </div>
             <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
               Be The House.<br />
-              <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn The Fees.</span>
+              <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
             </h1>
             <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
-              Provide liquidity, earn 2% fees on every bet, and profit when bettors lose. No house edge — the community controls the pool.
+              Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
             </p>
           </div>
 
