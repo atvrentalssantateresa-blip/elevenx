@@ -371,9 +371,9 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="icon"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => setShareDialogOpen(true)}
-                    className="h-7 w-7 rounded-lg hover:bg-primary/20 text-primary hover:text-primary transition-all"
+                    className="h-7 w-7 rounded-lg border-primary/30 hover:bg-primary/20 text-primary hover:text-primary transition-all bg-primary/5"
                     title="Share this bet"
                   >
                     <Share2 className="w-4 h-4" />
