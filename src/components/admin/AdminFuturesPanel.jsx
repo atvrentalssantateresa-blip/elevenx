@@ -242,7 +242,7 @@ export default function AdminFuturesPanel({ walletAddress }) {
     <div className="space-y-4">
       {/* Summary + Actions */}
       <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <Globe className="w-5 h-5 text-primary" />
             <div>
@@ -264,7 +264,7 @@ export default function AdminFuturesPanel({ walletAddress }) {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Quick Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {/* Step 1: Fetch Odds from API */}
           <Button
@@ -276,7 +276,7 @@ export default function AdminFuturesPanel({ walletAddress }) {
             {isFetchingOdds ? (
               <><Loader className="w-3 h-3 animate-spin mr-1" /> Fetching...</>
             ) : (
-              <><TrendingUp className="w-3 h-3 mr-1" /> 1. Fetch Odds API</>
+              <><TrendingUp className="w-3 h-3 mr-1" /> Fetch Odds API</>
             )}
           </Button>
 
@@ -290,12 +290,12 @@ export default function AdminFuturesPanel({ walletAddress }) {
             {isBulkDeploying ? (
               <><Loader className="w-3 h-3 animate-spin mr-1" /> Preparing...</>
             ) : (
-              <><Rocket className="w-3 h-3 mr-1" /> 2. Deploy All ({undeployedCount})</>
+              <><Rocket className="w-3 h-3 mr-1" /> Deploy All ({undeployedCount})</>
             )}
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Step 1 fetches live odds from The Odds API and creates/updates all 48 country markets. Step 2 deploys them to Solana for on-chain betting.
+          Fetch odds from API, then deploy all markets to Solana for on-chain betting.
         </p>
       </div>
 

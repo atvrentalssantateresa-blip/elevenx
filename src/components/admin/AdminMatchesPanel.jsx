@@ -159,7 +159,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
   return (
     <div className="space-y-4">
       <Card className="bg-gray-900 border border-gray-800 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Trophy className="w-5 h-5 text-purple-400" />
             <div>
@@ -167,35 +167,35 @@ export default function AdminMatchesPanel({ walletAddress }) {
               <p className="text-xs text-gray-400">Deploy matches to Solana for on-chain betting</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={async () => {
-                try {
-                  const res = await base44.functions.invoke('deployAllMatches');
-                  if (res.data.needsSigning) {
-                    setDeployAllDialog({
-                      instruction: res.data.solana_instruction,
-                      remaining: res.data.remaining,
-                      betId: res.data.bet_id,
-                    });
-                  } else {
-                    alert(res.data.message || '✓ All matches deployed!');
-                    queryClient.invalidateQueries({ queryKey: ['adminMatches'] });
-                  }
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold h-8 px-3 rounded-lg gap-2"
-            >
-              <Rocket className="w-3.5 h-3.5" />
-              Deploy All
-            </Button>
-            <Badge className="bg-purple-600 text-white font-bold">
-              {matches.length} Matches
-            </Badge>
-          </div>
+          <Badge className="bg-purple-600 text-white font-bold">
+            {matches.length} Matches
+          </Badge>
         </div>
+        
+        {/* Deploy All On-Chain Button */}
+        <Button
+          onClick={async () => {
+            try {
+              const res = await base44.functions.invoke('deployAllMatches');
+              if (res.data.needsSigning) {
+                setDeployAllDialog({
+                  instruction: res.data.solana_instruction,
+                  remaining: res.data.remaining,
+                  betId: res.data.bet_id,
+                });
+              } else {
+                alert(res.data.message || '✓ All matches deployed!');
+                queryClient.invalidateQueries({ queryKey: ['adminMatches'] });
+              }
+            } catch (err) {
+              alert('Error: ' + err.message);
+            }
+          }}
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold h-12 rounded-xl gap-2 text-sm shadow-lg shadow-purple-900/30"
+        >
+          <Rocket className="w-5 h-5" />
+          Deploy All Matches On-Chain
+        </Button>
       </Card>
 
       <div className="space-y-2 max-h-[600px] overflow-y-auto">
