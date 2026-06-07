@@ -148,12 +148,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Use the LP's wallet from the best offer to derive the LP offer PDA
-    const lpPubkey = new PublicKey(bestOffer.lp_wallet_address);
-    const [lpOfferPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
-      programId
-    );
+    // Use the stored LP offer PDA from the database (derived when LP was created)
+    const lpOfferPda = new PublicKey(bestOffer.solana_position_pda);
     
     // CRITICAL: Include outcome byte in PDA seeds to allow multiple independent bets per wallet
     const [bettorPositionPda] = PublicKey.findProgramAddressSync(
@@ -170,6 +166,8 @@ Deno.serve(async (req) => {
       marketPda: marketPda.toBase58(),
       lpOfferPda: lpOfferPda.toBase58(),
       bettorPositionPda: bettorPositionPda.toBase58(),
+      storedLpOfferPda: bestOffer.solana_position_pda,
+      pdas_match: lpOfferPda.toBase58() === bestOffer.solana_position_pda,
     });
 
     // Calculate potential payout using LP odds
