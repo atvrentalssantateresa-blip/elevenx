@@ -115,6 +115,7 @@ export default function Home() {
               <span className="text-[10px] font-black text-primary tracking-wide bg-primary/10 px-2 py-1 rounded border border-primary/20">⚡ DYNAMIC ODDS</span>
               <span className="text-[10px] font-black text-accent tracking-wide bg-accent/10 px-2 py-1 rounded border border-accent/20">💎 LP FEE SHARING</span>
               <span className="text-[10px] font-black text-yellow-400 tracking-wide bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">👑 BE THE HOUSE</span>
+              <Link to="/docs" className="text-[10px] font-black text-white tracking-wide bg-white/10 px-2 py-1 rounded border border-white/20 hover:bg-white/20 transition-all">📖 PLATFORM INFO</Link>
             </div>
             
             {/* World Cup branding flags */}

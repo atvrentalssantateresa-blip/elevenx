@@ -22,7 +22,6 @@ const navItems = [
   { path: '/futures', icon: Flame, label: 'Futures' },
   { path: '/lp', icon: TrendingUp, label: 'LP' },
   { path: '/my-bets', icon: BarChart3, label: 'My Bets' },
-  { path: '/docs', icon: BookOpen, label: 'Docs' },
 ];
 
 export default function AppLayout() {
