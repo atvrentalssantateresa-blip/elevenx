@@ -172,19 +172,21 @@ export default function LpDashboard() {
 
         // FALLBACK: If no matching BetOffer found, build a virtual offer from UserBet so it displays
         if (!offer) {
+          const isFutures = ub._isFutures || (ub.match_id && ub.match_id === ub.bet_id);
           offer = {
             id: ub.offer_id || ub.id,
             bet_id: ub.bet_id,
             match_id: ub.match_id,
             outcome: ub.outcome,
             outcome_label: ub.outcome_label,
-            amount_offered: ub.amount,
-            amount_matched: ub.liquidity_matched || 0,
-            amount_unmatched: ub.liquidity_unmatched || ub.amount,
+            // CRITICAL: For futures, use liquidity_* fields; for matches, use amount
+            amount_offered: isFutures ? (ub.liquidity_deposited || ub.amount) : (ub.amount_offered || ub.amount),
+            amount_matched: isFutures ? (ub.liquidity_matched || 0) : (ub.amount_matched || ub.liquidity_matched || 0),
+            amount_unmatched: isFutures ? (ub.liquidity_unmatched || ub.amount) : (ub.amount_unmatched || ub.liquidity_unmatched || ub.amount),
             status: ub.status === 'active' ? 'open' : ub.status,
             odds_at_creation: ub.amount > 0 ? ub.potential_payout / ub.amount : 2.0,
             lp_wallet_address: ub.wallet_address,
-            _isFutures: ub._isFutures || (ub.match_id && ub.match_id === ub.bet_id)
+            _isFutures: isFutures
           };
           console.log('Built fallback offer from UserBet:', offer);
         }
