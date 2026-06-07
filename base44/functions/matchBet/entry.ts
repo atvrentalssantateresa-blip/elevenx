@@ -253,26 +253,25 @@ Deno.serve(async (req) => {
 
     const amountLamports = Math.round(amount * 1_000_000_000);
 
-    // Derive the actual LP offer PDA using the LP's wallet from the offer
-    let lpPubkey, lpOfferPda;
+    // Use the stored LP offer PDA from the database (derived when LP was created)
+    let lpOfferPda;
     try {
-      lpPubkey = new PublicKey(offer.lp_wallet_address);
-      console.log('[matchBet] LP pubkey created:', lpPubkey.toBase58());
-      
-      [lpOfferPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
-        programId
-      );
-      console.log('[matchBet] LP offer PDA derived:', lpOfferPda.toBase58());
+      if (!offer.solana_position_pda) {
+        console.error('[matchBet] Offer missing solana_position_pda:', { offer_id: offer.id });
+        return Response.json({ 
+          error: 'Invalid offer: PDA missing',
+          hint: 'This offer was not properly created on-chain',
+        }, { status: 500 });
+      }
+      lpOfferPda = new PublicKey(offer.solana_position_pda);
+      console.log('[matchBet] Using stored LP offer PDA:', lpOfferPda.toBase58());
     } catch (e) {
-      console.error('[matchBet] Failed to derive LP offer PDA:', {
-        marketPda: marketPda?.toBase58(),
-        lp_wallet_address: offer.lp_wallet_address,
-        outcomeIndex,
+      console.error('[matchBet] Failed to use stored LP offer PDA:', {
+        solana_position_pda: offer.solana_position_pda,
         error: e.message,
       });
       return Response.json({ 
-        error: 'Failed to process offer - invalid LP data',
+        error: 'Failed to process offer - invalid PDA',
         hint: e.message,
       }, { status: 500 });
     }
