@@ -2,12 +2,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, SystemProgram, TransactionInstruction } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
-
 /**
  * Initialize platform config on Solana (one-time setup).
  */
 Deno.serve(async (req) => {
+  const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
+  if (!SOLANA_PROGRAM_ID) {
+    return Response.json({ error: 'SOLANA_PROGRAM_ID secret not configured' }, { status: 500 });
+  }
   try {
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;

@@ -469,9 +469,17 @@ export default function Admin() {
                 </Button>
                 <Button
                   onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
                     try {
-                      await base44.functions.invoke('initPlatformConfig');
-                      toast.success('✓ Platform initialized!');
+                      const res = await base44.functions.invoke('initPlatformConfig', { walletAddress });
+                      if (res.data.alreadyExists) {
+                        toast.success('✓ Platform already initialized');
+                      } else {
+                        toast.success('✓ Platform initialized!');
+                      }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
