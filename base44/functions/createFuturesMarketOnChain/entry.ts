@@ -13,6 +13,7 @@ const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const serviceRole = base44.asServiceRole;
     
     const payload = await req.json();
     const { futures_market_id } = payload;
