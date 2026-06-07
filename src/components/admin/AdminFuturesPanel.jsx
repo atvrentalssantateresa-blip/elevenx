@@ -505,46 +505,85 @@ export default function AdminFuturesPanel({ walletAddress }) {
             <div className="space-y-4">
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
                 <p className="text-sm font-bold text-accent mb-1">Settle Futures Market</p>
-                <p className="text-xs text-muted-foreground">Select the winning position for {manualSettleModal.marketName}</p>
+                <p className="text-xs text-muted-foreground">Choose settlement method for {manualSettleModal.marketName}</p>
               </div>
               
-              <div className="space-y-4">
-                <div className="bg-blue-600/10 border border-blue-600/30 rounded-xl p-3">
-                  <p className="text-xs font-bold text-blue-400 mb-1">⚡ Manual Settlement (Recommended)</p>
-                  <p className="text-[10px] text-blue-300/70">Instantly settle in database — no Solana transaction needed</p>
+              <div className="space-y-3">
+                {/* On-Chain Settlement */}
+                <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-xl p-3">
+                  <p className="text-xs font-bold text-accent mb-2">🔗 On-Chain Settlement</p>
+                  <p className="text-[10px] text-muted-foreground mb-3">Settle on Solana — users can claim winnings on-chain</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      onClick={() => settleWithOracleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        manual_winning_position: '1st' 
+                      })}
+                      disabled={settleWithOracleMutation.isPending}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥇 1st
+                    </Button>
+                    <Button
+                      onClick={() => settleWithOracleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        manual_winning_position: '2nd' 
+                      })}
+                      disabled={settleWithOracleMutation.isPending}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥈 2nd
+                    </Button>
+                    <Button
+                      onClick={() => settleWithOracleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        manual_winning_position: '3rd' 
+                      })}
+                      disabled={settleWithOracleMutation.isPending}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥉 3rd
+                    </Button>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">⚠️ Requires betting window to be closed</p>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    onClick={() => manualSettleMutation.mutate({ 
-                      marketId: manualSettleModal.marketId, 
-                      winningPosition: '1st' 
-                    })}
-                    disabled={manualSettleMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold h-12 rounded-xl"
-                  >
-                    🥇 1st Place
-                  </Button>
-                  <Button
-                    onClick={() => manualSettleMutation.mutate({ 
-                      marketId: manualSettleModal.marketId, 
-                      winningPosition: '2nd' 
-                    })}
-                    disabled={manualSettleMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold h-12 rounded-xl"
-                  >
-                    🥈 2nd Place
-                  </Button>
-                  <Button
-                    onClick={() => manualSettleMutation.mutate({ 
-                      marketId: manualSettleModal.marketId, 
-                      winningPosition: '3rd' 
-                    })}
-                    disabled={manualSettleMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold h-12 rounded-xl"
-                  >
-                    🥉 3rd Place
-                  </Button>
+
+                {/* Manual DB Settlement */}
+                <div className="bg-gradient-to-r from-blue-600/10 to-blue-600/5 border border-blue-600/30 rounded-xl p-3">
+                  <p className="text-xs font-bold text-blue-400 mb-2">⚡ Manual (DB Only)</p>
+                  <p className="text-[10px] text-muted-foreground mb-3">Instant settlement — no on-chain claiming</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      onClick={() => manualSettleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        winningPosition: '1st' 
+                      })}
+                      disabled={manualSettleMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥇 1st
+                    </Button>
+                    <Button
+                      onClick={() => manualSettleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        winningPosition: '2nd' 
+                      })}
+                      disabled={manualSettleMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥈 2nd
+                    </Button>
+                    <Button
+                      onClick={() => manualSettleMutation.mutate({ 
+                        marketId: manualSettleModal.marketId, 
+                        winningPosition: '3rd' 
+                      })}
+                      disabled={manualSettleMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl"
+                    >
+                      🥉 3rd
+                    </Button>
+                  </div>
                 </div>
               </div>
               

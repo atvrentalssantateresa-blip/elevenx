@@ -42,6 +42,17 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Market already settled' }, { status: 400 });
     }
 
+    // Check if betting window has closed (allow admin to settle only after open_until)
+    const now = new Date();
+    const openUntil = new Date(market.open_until);
+    if (now < openUntil) {
+      return Response.json({ 
+        error: `Cannot settle yet. Betting window closes at ${openUntil.toISOString()}`,
+        current_time: now.toISOString(),
+        open_until: openUntil.toISOString()
+      }, { status: 400 });
+    }
+
     // Convert winning_position to outcome index (0=1st, 1=2nd, 2=3rd)
     const positionToIndex = { '1st': 0, '2nd': 1, '3rd': 2 };
     const outcomeIndex = positionToIndex[winning_position];
