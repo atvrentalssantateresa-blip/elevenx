@@ -114,7 +114,7 @@ export default function Home() {
             </div>
             <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl text-white leading-tight mb-2 sm:mb-3">
               World's First<br />
-              <span className="text-[hsl(var(--accent))]">Dynamic Hybrid</span><br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#9945FF] to-[#14F195]" style={{ textShadow: '0 0 30px rgba(153,69,255,0.3)' }}>Dynamic Hybrid</span><br />
               Betting Protocol
             </h2>
             <p className="text-white/60 text-xs sm:text-sm mb-4 sm:mb-5">
