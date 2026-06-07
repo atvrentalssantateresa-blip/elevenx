@@ -19,6 +19,7 @@ export default function Admin() {
   const [voidDialog, setVoidDialog] = useState(null);
   // Two-step settle: first fix timestamps, then settle
   const [fixTimestampDialog, setFixTimestampDialog] = useState(null); // { instruction, pendingSettle: { bet, outcome } }
+  const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -219,6 +220,12 @@ export default function Admin() {
     }
     queryClient.invalidateQueries({ queryKey: ['allBets'] });
     setVoidDialog(null);
+  };
+
+  const handleInitPlatformSuccess = async () => {
+    toast.success('✓ Platform initialized on Solana!');
+    setInitPlatformDialog(null);
+    queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
   };
 
   return (
@@ -478,7 +485,7 @@ export default function Admin() {
                       if (res.data.alreadyExists) {
                         toast.success('✓ Platform already initialized');
                       } else {
-                        toast.success('✓ Platform initialized!');
+                        setInitPlatformDialog({ instruction: res.data.solana_instruction });
                       }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
@@ -583,6 +590,36 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setVoidDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {initPlatformDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Initialize Platform</h3>
+                  <p className="text-sm text-gray-400">One-time platform setup on Solana</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={initPlatformDialog.instruction}
+                  amount="0"
+                  isPlatformInit={true}
+                  onSuccess={handleInitPlatformSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setInitPlatformDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setInitPlatformDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
