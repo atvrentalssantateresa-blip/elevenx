@@ -120,11 +120,18 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Get wallet address
-    const walletAddress = userBet.wallet_address || offer.lp_wallet_address;
+    // Get wallet address - MUST match what's stored in the LP offer account
+    const walletAddress = offer.lp_wallet_address || userBet.wallet_address;
     if (!walletAddress) {
+      console.error('[withdrawLpWinnings] No wallet address found in offer or userBet');
       return Response.json({ error: 'No wallet address found' }, { status: 400 });
     }
+
+    console.log('[withdrawLpWinnings] Wallet addresses:', {
+      from_offer: offer.lp_wallet_address,
+      from_userBet: userBet.wallet_address,
+      using: walletAddress,
+    });
 
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     if (!base58Regex.test(walletAddress) || !base58Regex.test(SOLANA_PROGRAM_ID)) {
@@ -274,7 +281,14 @@ Deno.serve(async (req) => {
     // Skip LP fee bonus calculation for performance (can be added back later with caching)
     const lpBonus = 0;
     
+    // CRITICAL: On-chain amounts are stored in LAMPORTS, not SOL
+    // lp_offer.amount_matched is in SOL, so convert to lamports for the instruction
     const withdrawAmountLamports = Math.round(baseAmount * 1_000_000_000);
+    
+    console.log('[withdrawLpWinnings] Amount calculation:', {
+      baseAmount_SOL: baseAmount,
+      withdrawAmountLamports,
+    });
 
     console.log('[withdrawLpWinnings] Success response:', {
       withdrawAmount: baseAmount,
@@ -286,6 +300,15 @@ Deno.serve(async (req) => {
     // NOTE: The outcome value for the instruction should match the Rust program's expectation
     // Use the derived value since that's what was used to create the account
     const onChainOutcomeValue = outcomeValue;
+    
+    console.log('[withdrawLpWinnings] Final instruction payload:', {
+      withdrawAmount_SOL: baseAmount,
+      withdrawAmountLamports,
+      marketPda: marketPda.toBase58(),
+      lpOfferPda: lpOfferPda.toBase58(),
+      lpWalletPubkey: userPubkey.toBase58(),
+      storedLpInOffer: offer.lp_wallet_address,
+    });
     
     return Response.json({
       success: true,
