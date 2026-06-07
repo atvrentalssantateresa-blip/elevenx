@@ -452,6 +452,23 @@ export default function Admin() {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
+                    try {
+                      const res = await base44.functions.invoke('registerAdminWallet', { walletAddress });
+                      toast.success(res.data.message || '✓ Wallet registered as admin!');
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-white rounded-xl"
+                >
+                  Register Admin Wallet
+                </Button>
+                <Button
+                  onClick={async () => {
                     try {
                       await base44.functions.invoke('initPlatformConfig');
                       toast.success('✓ Platform initialized!');
@@ -488,19 +505,6 @@ export default function Admin() {
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Debug Admin
-                </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      await base44.functions.invoke('comprehensivePlatformTest');
-                      toast.success('✓ Test complete!');
-                    } catch (err) {
-                      toast.error('Error: ' + err.message);
-                    }
-                  }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
-                >
-                  Full Test
                 </Button>
               </div>
             </Card>

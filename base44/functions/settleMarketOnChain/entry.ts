@@ -25,19 +25,21 @@ Deno.serve(async (req) => {
     }
     
     // Get wallet user from database
+    console.log('[settleMarketOnChain] Looking up wallet:', admin_wallet);
     const walletUsers = await serviceRole.entities.WalletUser.filter({ wallet_address: admin_wallet });
     const walletUser = walletUsers[0];
     
-    console.log('[settleMarketOnChain] Wallet user lookup result:', walletUser ? 'found' : 'not found');
+    console.log('[settleMarketOnChain] Wallet user lookup result:', walletUser ? 'found' : 'not found', walletUser);
     
     if (!walletUser) {
       const allWalletUsers = await serviceRole.entities.WalletUser.list();
+      console.log('[settleMarketOnChain] All registered wallets:', allWalletUsers.map(w => w.wallet_address));
       return Response.json({ 
-        error: 'Wallet user not found', 
+        error: 'Wallet user not found in database', 
         received_wallet: admin_wallet,
         registered_wallets: allWalletUsers.map(w => w.wallet_address),
-        hint: 'Please connect your Phantom wallet with the admin account'
-      }, { status: 404 });
+        hint: 'Go to Profile page and connect your wallet first, or use "Register Admin Wallet"'
+      }, { status: 400 });
     }
     
     // Check admin role directly from WalletUser (no need to lookup system User table)
