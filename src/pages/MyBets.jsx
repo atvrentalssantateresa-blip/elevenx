@@ -339,6 +339,21 @@ export default function MyBets() {
               <span className="sm:hidden">Matches</span>
             </Button>
           </Link>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              alert('My Bets Debug:\n\nTotal bets: ' + myBets.length + '\nMatch bets: ' + myMatchBets.length + '\nFutures bets: ' + myFuturesBets.length + '\n\nFutures: ' + JSON.stringify(myFuturesBets.map(b => ({ 
+                id: b.id, 
+                match_title: b.match_title, 
+                status: b.status,
+                outcome_label: b.outcome_label,
+                amount: b.amount 
+              })), null, 2));
+            }} 
+            className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm"
+          >
+            Debug
+          </Button>
         </div>
       </div>
 
