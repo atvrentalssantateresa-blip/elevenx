@@ -387,15 +387,21 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         <div className="flex gap-2 pt-2 border-t border-white/10">
           {(() => {
             if (isClaimed) {
+              const claimedAmount = liquidityDeposited + potentialEarnings;
               return (
-                <Button
-                  disabled
-                  variant="outline"
-                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-accent/20 text-accent/50 bg-accent/5 rounded-xl font-heading font-bold"
-                >
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Claimed
-                </Button>
+                <div className="flex-1 flex flex-col gap-1">
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full h-8 text-[10px] sm:text-xs border-accent/20 text-accent/50 bg-accent/5 rounded-xl font-heading font-bold"
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Claimed
+                  </Button>
+                  <p className="text-[9px] text-center text-accent font-bold">
+                    ◎{claimedAmount.toFixed(4)}
+                  </p>
+                </div>
               );
             }
             
