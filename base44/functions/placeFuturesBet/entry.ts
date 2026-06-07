@@ -178,7 +178,8 @@ Deno.serve(async (req) => {
     const commit_data = {
       userBet: {
         bet_id: marketId,
-        match_id: marketId,
+        match_id: marketId,  // Keep for backwards compatibility
+        futures_market_id: marketId,  // CRITICAL: This field identifies it as a futures bet
         offer_id: bestOffer.id, // Reference the actual LP offer being matched
         outcome: outcome.position === '1st' ? 'a' : outcome.position === '2nd' ? 'b' : 'draw',
         amount,
