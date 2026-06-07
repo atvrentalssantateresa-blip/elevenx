@@ -9,10 +9,17 @@ import { getTeamFlag } from '@/utils/flags';
 import { base44 } from '@/api/base44Client';
 
 const statusStyles = {
-  upcoming: 'bg-secondary text-secondary-foreground',
+  upcoming: 'bg-primary/10 text-primary border border-primary/20',
   live: 'bg-destructive/20 text-destructive border border-destructive/30',
-  finished: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-muted text-muted-foreground line-through'
+  finished: 'bg-muted text-muted-foreground border border-border/30',
+  cancelled: 'bg-muted text-muted-foreground border border-border/30'
+};
+
+const statusLabels = {
+  upcoming: 'Upcoming',
+  live: 'Live',
+  finished: 'Closed',
+  cancelled: 'Cancelled'
 };
 
 export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
@@ -70,7 +77,7 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
             </span>
             <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${statusStyles[match.status] || statusStyles.upcoming}`}>
               {match.status === 'live' && <span className="w-1 h-1 rounded-full bg-destructive animate-pulse mr-1" />}
-              {match.status}
+              {statusLabels[match.status] || 'Upcoming'}
             </Badge>
           </div>
 
