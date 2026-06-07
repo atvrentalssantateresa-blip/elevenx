@@ -387,17 +387,18 @@ export default function MyBets() {
           <div className="space-y-4">
             {/* Debug info */}
             <div className="bg-card border border-border rounded-lg p-3 text-xs space-y-1">
-              <p><strong>Total Futures:</strong> {groupedFuturesBetsArray.length}</p>
-              <p><strong>For Bets Tab (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
-              <p><strong>For History (lost/claimed/refunded/void):</strong> {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length}</p>
-              <p><strong>All Statuses:</strong> {groupedFuturesBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ')}</p>
-              <p><strong>Sample Bet:</strong> {JSON.stringify(groupedFuturesBetsArray[0], null, 2).slice(0, 200)}</p>
+              <p><strong>Total Match Bets:</strong> {groupedMatchBetsArray.length}</p>
+              <p><strong>Total Futures Bets:</strong> {groupedFuturesBetsArray.length}</p>
+              <p><strong>Match Bets (active/pending/won):</strong> {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
+              <p><strong>Futures (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
+              <p><strong>Match Statuses:</strong> {groupedMatchBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ') || 'none'}</p>
+              <p><strong>Futures Statuses:</strong> {groupedFuturesBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ') || 'none'}</p>
             </div>
             
-            {/* Match Bets - show active/pending/won (won bets need claim) */}
-            {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 && (
-              <div>
-                <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets</h3>
+            {/* Match Bets */}
+            <div>
+              <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets ({groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length})</h3>
+              {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
@@ -408,13 +409,15 @@ export default function MyBets() {
                       onRefundRequest={(data) => setRefundDialog(data)} />
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">No match bets</p>
+              )}
+            </div>
             
-            {/* Futures Bets - show active/pending/won (won bets need claim) */}
-            {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 && (
-              <div>
-                <h3 className="font-heading font-bold text-sm mb-3 text-accent">Futures Bets</h3>
+            {/* Futures Bets */}
+            <div>
+              <h3 className="font-heading font-bold text-sm mb-3 text-accent">Futures Bets ({groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length})</h3>
+              {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
@@ -425,23 +428,10 @@ export default function MyBets() {
                       onRefundRequest={(data) => setRefundDialog(data)} />
                   ))}
                 </div>
-              </div>
-            )}
-            
-            {/* Show message if no bets at all */}
-            {groupedMatchBetsArray.length === 0 && groupedFuturesBetsArray.length === 0 && (
-              <EmptyState message="No active bets" actionText="Browse Matches" link="/matches" />
-            )}
-            
-            {/* Show message if only has claimed/lost bets */}
-            {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length === 0 && 
-             groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length === 0 &&
-             (groupedMatchBetsArray.length > 0 || groupedFuturesBetsArray.length > 0) && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground text-sm">No active or claimable bets</p>
-                <p className="text-muted-foreground text-xs mt-1">Check History for completed bets</p>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">No futures bets</p>
+              )}
+            </div>
           </div>
         </TabsContent>
 
