@@ -370,12 +370,12 @@ export default function MyBets() {
 
         <TabsContent value="bets">
           <div className="space-y-4">
-            {/* Match Bets */}
-            {groupedMatchBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 && (
+            {/* Match Bets - show active/pending/won (won bets need claim) */}
+            {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 && (
               <div>
                 <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                  {groupedMatchBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) => (
+                  {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
                       key={bet.betIds[0]}
                       bet={bet}
@@ -387,12 +387,12 @@ export default function MyBets() {
               </div>
             )}
             
-            {/* Futures Bets */}
-            {groupedFuturesBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 && (
+            {/* Futures Bets - show active/pending/won (won bets need claim) */}
+            {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length > 0 && (
               <div>
                 <h3 className="font-heading font-bold text-sm mb-3 text-accent">Futures Bets</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                  {groupedFuturesBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) => (
+                  {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
                       key={bet.betIds[0]}
                       bet={bet}
@@ -404,8 +404,19 @@ export default function MyBets() {
               </div>
             )}
             
+            {/* Show message if no bets at all */}
             {groupedMatchBetsArray.length === 0 && groupedFuturesBetsArray.length === 0 && (
               <EmptyState message="No active bets" actionText="Browse Matches" link="/matches" />
+            )}
+            
+            {/* Show message if only has claimed/lost bets */}
+            {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length === 0 && 
+             groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length === 0 &&
+             (groupedMatchBetsArray.length > 0 || groupedFuturesBetsArray.length > 0) && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground text-sm">No active or claimable bets</p>
+                <p className="text-muted-foreground text-xs mt-1">Check History for completed bets</p>
+              </div>
             )}
           </div>
         </TabsContent>
