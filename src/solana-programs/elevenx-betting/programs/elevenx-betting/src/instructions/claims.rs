@@ -133,6 +133,7 @@ pub fn emergency_claim(ctx: Context<EmergencyClaim>) -> Result<()> {
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 #[derive(Accounts)]
+#[instruction(outcome: u8)]
 pub struct ClaimWinnings<'info> {
     #[account(
         mut,
@@ -143,7 +144,7 @@ pub struct ClaimWinnings<'info> {
 
     #[account(
         mut,
-        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref()],
+        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref(), &[outcome]],
         bump = bet_position.bump,
     )]
     pub bet_position: Account<'info, BetPosition>,
@@ -159,6 +160,7 @@ pub struct ClaimWinnings<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(outcome: u8)]
 pub struct Refund<'info> {
     #[account(
         mut,
@@ -169,7 +171,7 @@ pub struct Refund<'info> {
 
     #[account(
         mut,
-        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref()],
+        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref(), &[outcome]],
         bump = bet_position.bump,
     )]
     pub bet_position: Account<'info, BetPosition>,

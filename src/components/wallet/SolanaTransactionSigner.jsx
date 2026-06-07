@@ -262,16 +262,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           isWritable: k.isWritable,
         })));
         
-        // Try both discriminator formats to see which works
-        const discSimple = await anchorDiscriminator('claim_winnings');
-        const discGlobal = await anchorDiscriminator('global:claim_winnings');
-        console.log('[claim_winnings] Discriminators:', {
-          simple: discSimple.toString('hex'),
-          global: discGlobal.toString('hex'),
-        });
-        
-        // Use simple format
-        const data = discSimple;
+        // Use instruction_data from backend (8-byte discriminator + 1-byte outcome)
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        console.log('[SolanaTransactionSigner] claim_winnings instruction_data (hex):', data.toString('hex'));
         
         const claimIx = new TransactionInstruction({
           keys,
@@ -452,7 +445,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        const data = await anchorDiscriminator('refund');
+        // Use instruction_data from backend (8-byte discriminator + 1-byte outcome)
+        const data = instruction.instruction_data ? Buffer.from(instruction.instruction_data, 'base64') : await anchorDiscriminator('refund');
+        console.log('[SolanaTransactionSigner] claim_refund instruction_data (hex):', data.toString('hex'));
         
         const refundIx = new TransactionInstruction({
           keys,

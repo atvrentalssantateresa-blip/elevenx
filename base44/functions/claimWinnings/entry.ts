@@ -111,10 +111,11 @@ Deno.serve(async (req) => {
     const marketInfo = await connection.getAccountInfo(marketPda);
     const isSettledOnChain = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[244] === 1;
     
-    // Check if position exists on-chain and read its state
+    // Check if position exists on-chain and read its state - include outcome byte in PDA
     const bettorPubkey = new PublicKey(trimmedWallet);
+    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
     const [positionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
     const positionInfo = await connection.getAccountInfo(positionPda);
@@ -262,8 +263,12 @@ Deno.serve(async (req) => {
     // 3. fee_vault (mutable, PDA)
     // 4. bettor (mutable, signer)
     // 5. system_program (readonly, not signer)
-    // claim_winnings instruction only needs the discriminator - no parameters needed
-    // The program reads position data on-chain and calculates payout internally
+    // Build instruction data: 8-byte discriminator + 1-byte outcome parameter
+    const discriminator = Buffer.from(sha256('global:claim_winnings')).slice(0, 8);
+    const instructionData = Buffer.alloc(9);
+    discriminator.copy(instructionData, 0);
+    instructionData.writeUInt8(outcomeIndex, 8);
+    
     const claimInstruction = {
       instruction_type: 'claim_winnings',
       programId: SOLANA_PROGRAM_ID,
@@ -274,6 +279,7 @@ Deno.serve(async (req) => {
         { pubkey: trimmedWallet, isSigner: true, isWritable: true },
         { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
       ],
+      instruction_data: instructionData.toString('base64'),
       debug: {
         marketLamports: marketInfo?.lamports,
         feeVaultExists: !!feeVaultInfo,

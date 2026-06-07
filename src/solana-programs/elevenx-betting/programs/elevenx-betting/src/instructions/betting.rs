@@ -144,7 +144,7 @@ pub struct PlaceBet<'info> {
         init_if_needed,
         payer = bettor,
         space = BetPosition::LEN,
-        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref()],
+        seeds = [b"position", market.key().as_ref(), bettor.key().as_ref(), &[outcome]],
         bump,
     )]
     pub bet_position: Account<'info, BetPosition>,

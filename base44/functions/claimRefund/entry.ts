@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
+    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
     if (!SOLANA_PROGRAM_ID) {
       return Response.json({ error: 'Solana program ID not configured. Please contact support.' }, { status: 500 });
     }
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
     );
 
     let positionPda;
+    let outcomeIndex;
     
     // For LP offers, use the stored solana_position_pda from BetOffer
     if (userBet.role === 'lp' && userBet.offer_id) {
@@ -88,9 +89,10 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'LP offer not found or missing PDA' }, { status: 400 });
       }
       positionPda = new PublicKey(offer.solana_position_pda);
+      outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
     } else {
-      // For regular bettors, derive position PDA
-      const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'draw' ? 1 : 2;
+      // For regular bettors, derive position PDA with outcome byte
+      outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
       const [derivedPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('position'), marketPda.toBuffer(), userPubkey.toBuffer(), Buffer.from([outcomeIndex])],
         programId
@@ -104,6 +106,13 @@ Deno.serve(async (req) => {
       programId
     );
 
+    // Build instruction data: 8-byte discriminator + 1-byte outcome
+    const { sha256 } = await import('npm:@noble/hashes@1.4.0/sha256');
+    const discriminator = Buffer.from(sha256('global:refund')).slice(0, 8);
+    const instructionData = Buffer.alloc(9);
+    discriminator.copy(instructionData, 0);
+    instructionData.writeUInt8(outcomeIndex, 8);
+    
     return Response.json({
       success: true,
       refundAmount: userBet.amount,
@@ -115,6 +124,7 @@ Deno.serve(async (req) => {
         positionPda: positionPda.toBase58(),
         bettorPubkey: userPubkey.toBase58(),
         refundAmountLamports: Math.round(userBet.amount * 1_000_000_000),
+        instruction_data: instructionData.toString('base64'),
       },
       message: `Sign to claim your refund of ◎${userBet.amount}`,
     });

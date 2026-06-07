@@ -136,8 +136,9 @@ Deno.serve(async (req) => {
       programId
     );
     
+    // CRITICAL: Include outcome byte in PDA seeds to allow multiple independent bets per wallet
     const [bettorPositionPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer()],
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
