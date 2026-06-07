@@ -239,6 +239,14 @@ export default function MyBets() {
   const groupedMatchBetsArray = Object.values(groupedMatchBets);
   const groupedFuturesBetsArray = Object.values(groupedFuturesBets);
   
+  console.log('[MyBets] GROUPED FUTURES:', groupedFuturesBetsArray.map(b => ({
+    key: `${b.futures_market_id || b.match_id}-${b.outcome}`,
+    betIds: b.betIds,
+    status: b.status,
+    outcome: b.outcome_label,
+    totalAmount: b.totalAmount
+  })));
+  
   const totalStaked = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].reduce((s, b) => s + (b.totalAmount || 0), 0);
   const totalWon = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'won' || b.status === 'claimed').reduce((s, b) => s + (b.totalPayout || 0), 0);
   const activeBets = [...groupedMatchBetsArray, ...groupedFuturesBetsArray].filter((b) => b.status === 'active' || b.status === 'pending');
