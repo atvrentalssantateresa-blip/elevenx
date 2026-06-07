@@ -95,7 +95,7 @@ export default function LpDashboard() {
   // Get wallet from auth token (permanent source of truth - not localStorage)
   const walletAddressFromAuth = getWalletFromAuth();
   const walletAddress = walletAddressFromAuth;
-  
+
   // Debug: Log wallet address and query state
   React.useEffect(() => {
     console.log('[LpDashboard] Render:', { walletAddress, isConnected, source: walletAddressFromAuth ? 'auth_token' : 'wallet_context' });
@@ -174,7 +174,7 @@ export default function LpDashboard() {
 
         // FALLBACK: If no matching BetOffer found, build a virtual offer from UserBet so it displays
         if (!offer) {
-          const isFutures = ub._isFutures || (ub.match_id && ub.match_id === ub.bet_id);
+          const isFutures = ub._isFutures || ub.match_id && ub.match_id === ub.bet_id;
           offer = {
             id: ub.offer_id || ub.id,
             bet_id: ub.bet_id,
@@ -182,9 +182,9 @@ export default function LpDashboard() {
             outcome: ub.outcome,
             outcome_label: ub.outcome_label,
             // CRITICAL: For futures, use liquidity_* fields; for matches, use amount
-            amount_offered: isFutures ? (ub.liquidity_deposited || ub.amount) : (ub.amount_offered || ub.amount),
-            amount_matched: isFutures ? (ub.liquidity_matched || 0) : (ub.amount_matched || ub.liquidity_matched || 0),
-            amount_unmatched: isFutures ? (ub.liquidity_unmatched || ub.amount) : (ub.amount_unmatched || ub.liquidity_unmatched || ub.amount),
+            amount_offered: isFutures ? ub.liquidity_deposited || ub.amount : ub.amount_offered || ub.amount,
+            amount_matched: isFutures ? ub.liquidity_matched || 0 : ub.amount_matched || ub.liquidity_matched || 0,
+            amount_unmatched: isFutures ? ub.liquidity_unmatched || ub.amount : ub.amount_unmatched || ub.liquidity_unmatched || ub.amount,
             status: ub.status === 'active' ? 'open' : ub.status,
             odds_at_creation: ub.amount > 0 ? ub.potential_payout / ub.amount : 2.0,
             lp_wallet_address: ub.wallet_address,
@@ -369,12 +369,12 @@ export default function LpDashboard() {
     onError: (err) => {
       console.error('[withdrawLiquidityMutation] Error:', err);
       let errorMsg = err.message || 'Failed to withdraw liquidity';
-      
+
       // Handle auto-voided market error
       if (err.message?.includes('auto-voided') || err.message?.includes('no bets on winning outcome')) {
         errorMsg = '⚠️ Market Auto-Voided\n\nNo one bet on the winning outcome, so the market was automatically voided.\n\nYour unmatched liquidity can still be withdrawn - use "Withdraw Unmatched" instead.';
       }
-      
+
       setError(errorMsg);
     }
   });
@@ -613,8 +613,8 @@ export default function LpDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-border/50 bg-card"
-      >
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-border/50 bg-card">
+        
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -626,19 +626,19 @@ export default function LpDashboard() {
             {/* Mobile Expand/Collapse Button */}
             <button
               onClick={() => setIsInfoExpanded(!isInfoExpanded)}
-              className="sm:hidden flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isInfoExpanded ? (
-                <>
+              className="sm:hidden flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+              
+              {isInfoExpanded ?
+              <>
                   <span>Hide</span>
                   <ChevronUp className="w-3 h-3" />
-                </>
-              ) : (
-                <>
+                </> :
+
+              <>
                   <span>Info</span>
                   <ChevronDown className="w-3 h-3" />
                 </>
-              )}
+              }
             </button>
           </div>
           <div className="flex items-center justify-between gap-3">
@@ -651,7 +651,7 @@ export default function LpDashboard() {
                 {walletAddress && <span className="ml-2 text-[10px] font-mono text-muted-foreground/50">({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)})</span>}
               </p>
             </div>
-            <Button variant="outline" onClick={() => refetchOffers()} className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm shrink-0 border-border/50">
+            <Button variant="outline" onClick={() => refetchOffers()} className="gap-2 rounded-xl h-10 px-4 text-xs sm:text-sm shrink-0 border-border/50 hidden">
               Refresh
             </Button>
           </div>
@@ -695,8 +695,8 @@ export default function LpDashboard() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-border/50 p-8 text-center bg-card"
-      >
+        className="rounded-2xl border border-border/50 p-8 text-center bg-card">
+        
           <Wallet className="w-12 h-12 text-primary mx-auto mb-4" />
           <h3 className="font-heading font-black text-xl mb-2">Connect Wallet to Provide Liquidity</h3>
           <p className="text-muted-foreground text-sm mb-5 max-w-xs mx-auto">Connect Phantom to start providing LP liquidity.</p>
@@ -919,20 +919,20 @@ export default function LpDashboard() {
               <div className="flex items-center justify-between">
                 <h2 className="font-heading font-bold text-sm text-muted-foreground">Your LP Positions</h2>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const losingLp = offersWithUserBet.find((o) => o.userBet?.status === 'lost');
-                    if (!losingLp) {
-                      alert('No losing LP positions found. You need a settled LP where your backed outcome WON (so the LP lost).');
-                      return;
-                    }
-                    const testId = losingLp.userBetId || losingLp.id;
-                    alert(`Testing LOSING LP withdrawal (UserBet: ${testId})\n\nIf this transaction SUCCEEDS, the on-chain logic is BUGGY (inverted).\nIf it FAILS with error 6009, the on-chain logic is CORRECT.`);
-                    window.open(`/debug-claim?test=${testId}`, '_blank');
-                  }}
-                  className="gap-2 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 rounded-xl"
-                >
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const losingLp = offersWithUserBet.find((o) => o.userBet?.status === 'lost');
+                  if (!losingLp) {
+                    alert('No losing LP positions found. You need a settled LP where your backed outcome WON (so the LP lost).');
+                    return;
+                  }
+                  const testId = losingLp.userBetId || losingLp.id;
+                  alert(`Testing LOSING LP withdrawal (UserBet: ${testId})\n\nIf this transaction SUCCEEDS, the on-chain logic is BUGGY (inverted).\nIf it FAILS with error 6009, the on-chain logic is CORRECT.`);
+                  window.open(`/debug-claim?test=${testId}`, '_blank');
+                }}
+                className="gap-2 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 rounded-xl">
+                
                   <Bug className="w-3 h-3" />
                   Test Losing LP
                 </Button>
@@ -995,8 +995,8 @@ export default function LpDashboard() {
             </div>
 
             {/* Withdraw Transaction Signer - Centered Modal */}
-            {pendingTx && pendingTx.type === 'withdraw_liquidity' && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            {pendingTx && pendingTx.type === 'withdraw_liquidity' &&
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-card border border-border/50 rounded-2xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto">
                   <div className="space-y-3">
                     <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 text-center">
@@ -1004,25 +1004,25 @@ export default function LpDashboard() {
                       <p className="text-xs text-muted-foreground">◎{pendingTx.amount.toFixed(4)} SOL</p>
                     </div>
                     <SolanaTransactionSigner
-                      instruction={pendingTx.instruction}
-                      amount={pendingTx.amount}
-                      onSuccess={handleWithdrawSuccess}
-                      onError={() => setPendingTx(null)}
-                      userBetId={pendingTx.userBetId}
-                      offerId={pendingTx.offerId}
-                    />
+                  instruction={pendingTx.instruction}
+                  amount={pendingTx.amount}
+                  onSuccess={handleWithdrawSuccess}
+                  onError={() => setPendingTx(null)}
+                  userBetId={pendingTx.userBetId}
+                  offerId={pendingTx.offerId} />
+                
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPendingTx(null)}
-                      className="w-full h-9 text-xs rounded-xl border-border/50"
-                    >
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPendingTx(null)}
+                  className="w-full h-9 text-xs rounded-xl border-border/50">
+                  
                       Cancel
                     </Button>
                   </div>
                 </div>
               </div>
-            )}
+          }
           </TabsContent>
         </Tabs>
       }
@@ -1044,8 +1044,8 @@ export default function LpDashboard() {
       
 
       {/* Transaction Modal Overlay */}
-      {pendingTx && pendingTx.type === 'provide_liquidity' && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {pendingTx && pendingTx.type === 'provide_liquidity' &&
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-card border border-border/50 rounded-2xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
@@ -1064,7 +1064,7 @@ export default function LpDashboard() {
             </div>
           </div>
         </div>
-      )}
+      }
     </div>);
 
 }
