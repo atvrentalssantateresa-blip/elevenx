@@ -16,6 +16,7 @@ import EmptyState from '@/components/dashboard/EmptyState';
 import BetCard from '@/components/dashboard/BetCard';
 import LpPositionCard from '@/components/lp/LpPositionCard';
 import { getWalletFromAuth } from '@/utils/auth';
+import { useWallet } from '@/lib/WalletContext';
 
 const statusConfig = {
   active: { color: 'bg-primary/10 text-primary border-primary/20', icon: Clock, label: 'Active' },
@@ -123,11 +124,16 @@ export default function MyBets() {
   const [pendingWithdrawTx, setPendingWithdrawTx] = useState(null);
   const [showAllBets, setShowAllBets] = useState(false);
 
-  // Get wallet from auth token (permanent source of truth - not localStorage)
-  const walletAddress = getWalletFromAuth();
+  // Get wallet from auth token + currently connected Phantom wallet
+  const { walletAddress: phantomWallet } = useWallet();
+  const authWallet = getWalletFromAuth();
+  // Use auth wallet as primary, but also match against connected Phantom wallet
+  const walletAddress = authWallet || phantomWallet;
+  // Collect all wallet addresses to show bets from (current session + connected wallet)
+  const allMyWallets = [...new Set([authWallet, phantomWallet].filter(Boolean))];
 
   const { data: myBets = [], isLoading, refetch } = useQuery({
-    queryKey: ['myBets', walletAddress, user?.id],
+    queryKey: ['myBets', authWallet, phantomWallet, user?.id],
     queryFn: async () => {
       console.log('[MyBets] Query executing, wallet from auth:', walletAddress);
       console.log('[MyBets] Wallet length:', walletAddress?.length);
@@ -135,25 +141,15 @@ export default function MyBets() {
       const all = await base44.entities.UserBet.list('-created_date', 100);
       console.log('[MyBets] Total bets in DB:', all.length);
       console.log('[MyBets] All bets:', all.map(b => ({ id: b.id, wallet: b.wallet_address, amount: b.amount, status: b.status })));
-      const filtered = walletAddress ? all.filter((ub) => {
-        const match = ub.wallet_address === walletAddress;
-        const trimmedMatch = ub.wallet_address?.trim() === walletAddress?.trim();
-        console.log('[MyBets] Checking bet:', {
-          bet_wallet: ub.wallet_address,
-          auth_wallet: walletAddress,
-          exact_match: match,
-          trimmed_match: trimmedMatch,
-        });
-        if (match) console.log('[MyBets] ✓ Found bet:', ub.id, ub.amount, ub.status);
-        if (trimmedMatch && !match) console.log('[MyBets] ⚠️ Trimmed match (whitespace issue):', ub.id);
-        return match;
+      const filtered = allMyWallets.length > 0 ? all.filter((ub) => {
+        return allMyWallets.some(w => ub.wallet_address?.trim() === w?.trim());
       }) : [];
       console.log('[MyBets] My bets:', filtered.length);
       if (walletAddress) return filtered;
       if (user?.id) return all.filter((ub) => ub.created_by_id === user.id);
       return [];
     },
-    enabled: !!walletAddress || !!user,
+    enabled: allMyWallets.length > 0 || !!user,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true
