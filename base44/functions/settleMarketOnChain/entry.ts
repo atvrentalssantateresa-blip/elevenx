@@ -153,8 +153,9 @@ Deno.serve(async (req) => {
     
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
 
-    // Build emergency_settle instruction (includes oracle validation + 1 hour cooldown)
-    const discriminator = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
+    // Build submit_oracle_vote instruction (correct instruction name from lib.rs)
+    // The program uses submit_oracle_vote, NOT emergency_settle
+    const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
     
     const data = Buffer.alloc(9);
     discriminator.copy(data, 0);
@@ -162,24 +163,39 @@ Deno.serve(async (req) => {
 
     const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
     
-    console.log('[settleMarketOnChain] Prepared emergency_settle instruction:', {
+    // Derive oracle_vote and vote_tally PDAs (required by SubmitOracleVote instruction)
+    const [oracleVotePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('oracle_vote'), marketPda.toBuffer()],
+      programId
+    );
+    
+    const [voteTallyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote_tally'), marketPda.toBuffer()],
+      programId
+    );
+    
+    console.log('[settleMarketOnChain] Prepared submit_oracle_vote instruction:', {
       outcome: outcomeLabel,
       outcomeIndex: outcomeIndex,
       discriminator: discriminator.toString('hex'),
       data: data.toString('hex'),
+      oracleVotePda: oracleVotePda.toBase58(),
+      voteTallyPda: voteTallyPda.toBase58(),
     });
     
     return Response.json({
       success: true,
-      message: `Sign to settle market: ${outcomeLabel} (oracle validation + 1h cooldown)`,
+      message: `Sign to settle market: ${outcomeLabel}`,
       solana_instruction: {
         instruction_type: 'settle_market',
         programId: SOLANA_PROGRAM_ID,
         keys: [
           { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true }, // market
+          { pubkey: oracleVotePda.toBase58(), isSigner: false, isWritable: true }, // oracle_vote
+          { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true }, // vote_tally
           { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true }, // platform_config
           { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault
-          { pubkey: admin_wallet, isSigner: true, isWritable: true }, // admin (signer)
+          { pubkey: admin_wallet, isSigner: true, isWritable: true }, // admin/oracle (signer)
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program
         ],
         instruction_data: data.toString('base64'),

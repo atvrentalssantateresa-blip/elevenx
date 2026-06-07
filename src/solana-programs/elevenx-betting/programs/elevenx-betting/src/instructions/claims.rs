@@ -75,7 +75,6 @@ pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Re
     let lp_offer = &ctx.accounts.lp_offer;
 
     require!(market.settled && !market.voided, BettingError::AlreadySettled);
-    require!(!lp_offer.withdrawn, BettingError::ClaimNothing);
 
     // CORRECTED: LP wins when the bettors on their backed outcome LOST (LP collects losing stakes).
     // LP backs outcome X — if outcome X LOST, LP wins.
@@ -87,7 +86,13 @@ pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Re
     // Use amount_matched as source of winnings (losing bettor stakes matched to this LP)
     let available_winnings = lp_offer.amount_matched;
     require!(available_winnings > 0, BettingError::ClaimNothing);
-    require!(amount <= available_winnings, BettingError::ClaimNothing);
+    
+    // FIX: Check remaining withdrawable amount (total winnings - already withdrawn)
+    let remaining_withdrawable = available_winnings
+        .checked_sub(lp_offer.withdrawn_amount)
+        .ok_or(BettingError::Overflow)?;
+    require!(remaining_withdrawable > 0, BettingError::ClaimNothing);
+    require!(amount <= remaining_withdrawable, BettingError::ClaimNothing);
 
     let fee_percent = market.fee_percent as u64;
     let fee = amount
@@ -97,7 +102,15 @@ pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Re
     let payout = amount.saturating_sub(fee);
 
     let lp_offer_mut = &mut ctx.accounts.lp_offer;
-    lp_offer_mut.withdrawn = true;
+    
+    // FIX: Track withdrawn amount instead of boolean flag to allow partial withdrawals
+    lp_offer_mut.withdrawn_amount = lp_offer_mut
+        .withdrawn_amount
+        .checked_add(amount)
+        .ok_or(BettingError::Overflow)?;
+    
+    // Only mark as fully withdrawn if all winnings have been withdrawn
+    lp_offer_mut.fully_withdrawn = lp_offer_mut.withdrawn_amount >= lp_offer_mut.amount_matched;
 
     if fee > 0 {
         let fee_vault = &mut ctx.accounts.fee_vault;

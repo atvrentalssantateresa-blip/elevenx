@@ -30,8 +30,11 @@ pub struct LpOffer {
     /// For settled markets: the matched stake that was used (for winning calculations)
     pub matched_stake: u64,
 
-    /// True if LP has withdrawn winnings from a settled market
-    pub withdrawn: bool,
+    /// Amount of winnings the LP has withdrawn (for partial withdrawal support)
+    pub withdrawn_amount: u64,
+
+    /// True if LP has fully withdrawn all winnings (withdrawn_amount >= amount_matched)
+    pub fully_withdrawn: bool,
 
     pub bump: u8,
 }
@@ -46,7 +49,8 @@ impl LpOffer {
         + 8   // amount_matched
         + 1   // closed
         + 8   // matched_stake
-        + 1   // withdrawn
+        + 8   // withdrawn_amount
+        + 1   // fully_withdrawn
         + 1;  // bump
 
     /// Remaining unmatched liquidity.

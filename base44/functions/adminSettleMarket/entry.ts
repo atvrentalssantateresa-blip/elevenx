@@ -55,20 +55,33 @@ Deno.serve(async (req) => {
       new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
     )[0];
     
-    // Build emergency_settle instruction
-    const discriminator = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
+    // Build submit_oracle_vote instruction (correct instruction from lib.rs)
+    const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
     const data = Buffer.alloc(9);
     discriminator.copy(data, 0);
     data.writeUInt8(outcomeIndex, 8);
     
+    // Derive oracle_vote and vote_tally PDAs (required by SubmitOracleVote)
+    const [oracleVotePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('oracle_vote'), marketPda.toBuffer()],
+      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+    );
+    
+    const [voteTallyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote_tally'), marketPda.toBuffer()],
+      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+    );
+    
     const transaction = new Transaction().add({
       keys: [
-        { pubkey: marketPda, isSigner: false, isWritable: true },
-        { pubkey: platformPda, isSigner: false, isWritable: true },
-        { pubkey: feeVaultPda, isSigner: false, isWritable: true },
-        { pubkey: adminPubkey, isSigner: true, isWritable: true },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: marketPda, isSigner: false, isWritable: true }, // market
+        { pubkey: oracleVotePda, isSigner: false, isWritable: true }, // oracle_vote
+        { pubkey: voteTallyPda, isSigner: false, isWritable: true }, // vote_tally
+        { pubkey: platformPda, isSigner: false, isWritable: true }, // platform_config
+        { pubkey: feeVaultPda, isSigner: false, isWritable: true }, // fee_vault
+        { pubkey: adminPubkey, isSigner: true, isWritable: true }, // admin/oracle (signer)
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
       ],
       programId: new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm'),
       data: data,
