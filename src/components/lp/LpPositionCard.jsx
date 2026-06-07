@@ -18,6 +18,11 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // Get match from position data if not passed - ALWAYS use matchData, never match directly
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
+  // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
+  const liquidityDeposited = offer.liquidity_deposited || offer.amount_offered || offer.amount || 0;
+  const liquidityMatched = offer.liquidity_matched || offer.amount_matched || 0;
+  const liquidityUnmatched = offer.liquidity_unmatched || offer.amount_unmatched || 0;
+  
   // CRITICAL: Use position.status (from UserBet) as primary source for won/lost
   // position.status comes from UserBet which tracks settlement (won/lost/claimed)
   // offer.status is from BetOffer which only tracks matching (open/partially_matched/fully_matched)
@@ -49,11 +54,6 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
     backed_outcome: offer.outcome,
     backed_label: offer.outcome_label,
   });
-
-  // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
-  const liquidityDeposited = offer.liquidity_deposited || offer.amount_offered || offer.amount || 0;
-  const liquidityMatched = offer.liquidity_matched || offer.amount_matched || 0;
-  const liquidityUnmatched = offer.liquidity_unmatched || offer.amount_unmatched || 0;
   
   const matchPct = liquidityDeposited > 0
     ? Math.round((liquidityMatched / liquidityDeposited) * 100)
