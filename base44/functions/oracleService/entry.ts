@@ -3,15 +3,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const ODDS_API_KEY = Deno.env.get('ODDS_API_KEY');
 const ODDS_API_BASE = 'https://api.the-odds-api.com/v4';
 
-// Fallback score oracle — free public APIs (no API key required)
+// Fallback score oracle — free public APIs
 const FALLBACK_ORACLES = {
-  // API-Football (RapidAPI) - most reliable free tier
-  apiFootball: {
-    baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
-    requiresKey: false, // Can work without key for basic endpoints
-  },
-  // Public football data fallback
-  publicScores: 'https://api.allsportsapi.com/football',
+  // TheSportsDB - completely free, no API key required
+  theSportsDB: 'https://www.thesportsdb.com/api/v1/json/3',
+  // API-Football - free tier: 100 req/day (requires API key for production)
+  apiFootball: 'https://v3.football.api-sports.io/fixtures',
 };
 
 /**
@@ -179,11 +176,11 @@ async function fetchResult(match, provider) {
     return fallbackResult;
   }
 
-  // FALLBACK ORACLE #2: Public football scores
-  console.log('[Oracle] Trying fallback oracle: PublicScores...');
-  const publicResult = await fetchFromPublicScores(match);
-  if (publicResult && publicResult.verified) {
-    return publicResult;
+  // FALLBACK ORACLE #2: TheSportsDB (completely free, no key needed)
+  console.log('[Oracle] Trying fallback oracle: TheSportsDB...');
+  const theSportsDBResult = await fetchFromTheSportsDB(match);
+  if (theSportsDBResult && theSportsDBResult.verified) {
+    return theSportsDBResult;
   }
 
   // Final fallback: manual verification
@@ -256,34 +253,34 @@ async function fetchFromApiFootball(match) {
   }
 }
 
-// ── Fallback Oracle #2: Public Scores API ─────────────────────────────────────
+// ── Fallback Oracle #2: TheSportsDB (completely free) ─────────────────────────
 
-async function fetchFromPublicScores(match) {
+async function fetchFromTheSportsDB(match) {
   try {
-    // Try alternative public football API
-    const url = 'https://api.allsportsapi.com/football/fixtures';
+    // Search for events by team name
+    const url = `${FALLBACK_ORACLES.theSportsDB}/searchevents.php?e=${encodeURIComponent(match.team_a)}`;
+    
     const res = await fetch(url);
     if (!res.ok) return null;
 
     const data = await res.json();
-    const fixtures = data.fixtures || [];
+    const events = data.events || [];
 
-    // Find matching finished fixture
-    const fixture = fixtures.find(f =>
-      f.home_team?.name &&
-      f.away_team?.name &&
-      (f.home_team.name.toLowerCase().includes(match.team_a?.toLowerCase()) ||
-       f.away_team.name.toLowerCase().includes(match.team_a?.toLowerCase())) &&
-      (f.home_team.name.toLowerCase().includes(match.team_b?.toLowerCase()) ||
-       f.away_team.name.toLowerCase().includes(match.team_b?.toLowerCase())) &&
-      f.status?.short === 'FT'
+    // Find matching finished event
+    const event = events.find(e =>
+      e.strEvent &&
+      (e.strHomeTeam?.toLowerCase().includes(match.team_a?.toLowerCase()) ||
+       e.strAwayTeam?.toLowerCase().includes(match.team_a?.toLowerCase())) &&
+      (e.strHomeTeam?.toLowerCase().includes(match.team_b?.toLowerCase()) ||
+       e.strAwayTeam?.toLowerCase().includes(match.team_b?.toLowerCase())) &&
+      e.strStatus === 'FT' // Full time
     );
 
-    if (!fixture) return null;
+    if (!event) return null;
 
-    const scoreA = fixture.home_team?.score ?? 0;
-    const scoreB = fixture.away_team?.score ?? 0;
-    const homeIsA = fixture.home_team.name.toLowerCase().includes(match.team_a?.toLowerCase());
+    const scoreA = parseInt(event.intHomeScore || '0');
+    const scoreB = parseInt(event.intAwayScore || '0');
+    const homeIsA = event.strHomeTeam.toLowerCase().includes(match.team_a?.toLowerCase());
     const finalScoreA = homeIsA ? scoreA : scoreB;
     const finalScoreB = homeIsA ? scoreB : scoreA;
     const winner = finalScoreA > finalScoreB ? 'team_a' : finalScoreB > finalScoreA ? 'team_b' : 'draw';
@@ -293,10 +290,10 @@ async function fetchFromPublicScores(match) {
       scoreB: finalScoreB,
       winner,
       verified: true,
-      source: 'public-scores',
+      source: 'thesportsdb',
     };
   } catch (err) {
-    console.error('[PublicScores] Fetch failed:', err.message);
+    console.error('[TheSportsDB] Fetch failed:', err.message);
     return null;
   }
 }
