@@ -48,21 +48,22 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       const matches = await base44.entities.Match.filter({ id: bet.match_id });
       return matches[0];
     },
-    enabled: !!bet.match_id
+    enabled: !!bet.match_id && !bet._isFutures
   });
 
-  // Fetch futures market if no match found (futures bets use match_id = futures_market_id)
+  // Fetch futures market - use futures_market_id if available, otherwise match_id
+  const futuresMarketId = bet.futures_market_id || bet.match_id;
   const { data: futuresMarket } = useQuery({
-    queryKey: ['futures-market', bet.match_id],
+    queryKey: ['futures-market', futuresMarketId],
     queryFn: async () => {
-      const markets = await base44.entities.FuturesMarket.filter({ id: bet.match_id });
+      const markets = await base44.entities.FuturesMarket.filter({ id: futuresMarketId });
       return markets[0];
     },
-    enabled: !match && !!bet.match_id
+    enabled: !!futuresMarketId && (bet._isFutures || !match)
   });
 
   // Determine which flag to show based on backed outcome
-  const isFutures = !!futuresMarket;
+  const isFutures = !!futuresMarket || !!bet._isFutures;
   const outcomeFlag = isFutures 
     ? (bet.outcome === 'a' ? '🥇' : bet.outcome === 'b' ? '🥈' : '🥉')
     : (bet.outcome === 'a' ? match?.team_a_flag : bet.outcome === 'b' ? match?.team_b_flag : '🤝');
