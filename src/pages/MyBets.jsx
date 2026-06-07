@@ -327,40 +327,6 @@ export default function MyBets() {
         </TabsList>
 
         <TabsContent value="stats">
-          {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').map((bet, i) =>
-            <BetCard
-              key={bet.betIds[0]}
-              bet={bet}
-              index={i}
-              walletAddress={walletAddress}
-              onRefundRequest={(data) => setRefundDialog(data)} />
-
-            )}
-            </div> :
-
-          <EmptyState message="No active bets" actionText="Browse Matches" link="/matches" />
-          }
-        </TabsContent>
-
-        <TabsContent value="lp">
-          {myLpPositions.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {myLpPositions.map((lp, i) => (
-                <LpPositionCard
-                  key={lp.id}
-                  offer={lp}
-                  index={i}
-                  walletAddress={walletAddress}
-                  onWithdrawRequest={(data) => setRefundDialog(data)}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No LP positions" actionText="Provide Liquidity" link="/lp" />
-          )}
-        </TabsContent>
 
         <TabsContent value="bets">
           {groupedBetsArray.filter(b => b.status === 'active' || b.status === 'pending' || b.status === 'won').length > 0 ?
@@ -397,8 +363,6 @@ export default function MyBets() {
             <EmptyState message="No LP positions" actionText="Provide Liquidity" link="/lp" />
           )}
         </TabsContent>
-
-        <TabsContent value="stats">
           <div className="space-y-4">
             {/* Main Stats */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
