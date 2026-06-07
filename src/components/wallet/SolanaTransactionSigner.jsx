@@ -701,15 +701,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           console.log('[SolanaTransactionSigner] InstructionError[0]:', onChainErr.InstructionError[0]);
           console.log('[SolanaTransactionSigner] InstructionError[1]:', onChainErr.InstructionError[1]);
           
-          // The error code might be nested differently
           const errorData = onChainErr.InstructionError[1];
-          if (errorData) {
+          
+          // Check for string errors like "UnsupportedProgramId"
+          if (typeof errorData === 'string') {
+            const stringErrors = {
+              'UnsupportedProgramId': 'Program not deployed at this address on Solana',
+              'InvalidAccountData': 'Invalid account data',
+              'InsufficientLamports': 'Insufficient SOL',
+              'AccountNotFound': 'Account not found',
+            };
+            const errorMsg = stringErrors[errorData] || `Program error: ${errorData}`;
+            throw new Error(errorMsg);
+          }
+          
+          // The error code might be nested differently
+          if (errorData && typeof errorData === 'object') {
             // Try Custom field
             customCode = errorData.Custom;
-            // Try nested Custom
-            if (customCode === undefined && errorData.Custom !== undefined) {
-              customCode = errorData.Custom;
-            }
             // Try if it's a number directly
             if (customCode === undefined && typeof errorData === 'number') {
               customCode = errorData;
