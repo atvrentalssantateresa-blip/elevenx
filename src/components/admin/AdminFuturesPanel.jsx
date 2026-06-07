@@ -304,14 +304,21 @@ export default function AdminFuturesPanel({ walletAddress }) {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setManualSettleModal({ open: true, marketId: market.id, marketName: market.country })}
+                    onClick={() => {
+                      console.log('[AdminFutures] Settle clicked:', { marketId: market.id, status: market.status, country: market.country });
+                      setManualSettleModal({ open: true, marketId: market.id, marketName: market.country });
+                    }}
                     disabled={
                       market.status === 'settled' || 
                       settlingWithOracle === market.id || 
                       settleWithOracleMutation.isPending
                     }
-                    className="bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 text-xs font-bold h-7 px-2 rounded-lg"
-                    title="Settle market (admin override)"
+                    className={`${
+                      market.status === 'settled' || settlingWithOracle === market.id || settleWithOracleMutation.isPending
+                        ? 'bg-muted/30 text-muted-foreground cursor-not-allowed border border-muted/50'
+                        : 'bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20'
+                    } text-xs font-bold h-7 px-2 rounded-lg`}
+                    title={market.status === 'settled' ? 'Already settled' : 'Settle market (admin override)'}
                   >
                     {settlingWithOracle === market.id || settleWithOracleMutation.isPending ? (
                       <Loader className="w-3 h-3 animate-spin" />
