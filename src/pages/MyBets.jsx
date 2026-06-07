@@ -386,10 +386,12 @@ export default function MyBets() {
         <TabsContent value="bets">
           <div className="space-y-4">
             {/* Debug info */}
-            <div className="bg-card border border-border rounded-lg p-3 text-xs">
-              <p><strong>Futures Bets:</strong> {groupedFuturesBetsArray.length}</p>
-              <p><strong>Filterable (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
-              <p><strong>Statuses:</strong> {groupedFuturesBetsArray.map(b => b.status).join(', ')}</p>
+            <div className="bg-card border border-border rounded-lg p-3 text-xs space-y-1">
+              <p><strong>Total Futures:</strong> {groupedFuturesBetsArray.length}</p>
+              <p><strong>For Bets Tab (active/pending/won):</strong> {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).length}</p>
+              <p><strong>For History (lost/claimed/refunded/void):</strong> {groupedFuturesBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length}</p>
+              <p><strong>All Statuses:</strong> {groupedFuturesBetsArray.map(b => `${b.outcome_label}:${b.status}`).join(', ')}</p>
+              <p><strong>Sample Bet:</strong> {JSON.stringify(groupedFuturesBetsArray[0], null, 2).slice(0, 200)}</p>
             </div>
             
             {/* Match Bets - show active/pending/won (won bets need claim) */}
