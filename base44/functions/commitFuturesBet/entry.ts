@@ -48,6 +48,22 @@ Deno.serve(async (req) => {
         status: commit_data.offerUpdate.status,
       });
       console.log('[commitFuturesBet] Updated BetOffer:', commit_data.offerUpdate.offer_id, 'status:', commit_data.offerUpdate.status);
+      
+      // CRITICAL: Also update the LP's UserBet record to reflect matched liquidity
+      // Fetch the LP's UserBet using the offer_id
+      const lpUserBets = await serviceRole.entities.UserBet.filter({
+        offer_id: commit_data.offerUpdate.offer_id,
+        role: 'lp'
+      });
+      if (lpUserBets.length > 0) {
+        const lpUserBet = lpUserBets[0];
+        await serviceRole.entities.UserBet.update(lpUserBet.id, {
+          liquidity_matched: commit_data.offerUpdate.amount_matched,
+          liquidity_unmatched: commit_data.offerUpdate.amount_unmatched,
+          status: commit_data.offerUpdate.status === 'fully_matched' ? 'active' : lpUserBet.status,
+        });
+        console.log('[commitFuturesBet] Updated LP UserBet:', lpUserBet.id, 'matched:', commit_data.offerUpdate.amount_matched);
+      }
     }
     
     // Update FuturesMarket outcome pool and totals
