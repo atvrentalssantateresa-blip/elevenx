@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { getTeamFlag } from '@/utils/flags';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Wallet } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useWallet } from '@/lib/WalletContext';
+import { Button } from '@/components/ui/button';
 
 export default function LiquidityDetailModal({ 
   open, 
@@ -12,6 +14,7 @@ export default function LiquidityDetailModal({
   onCommit,
   isLoading = false,
 }) {
+  const { isConnected, connect } = useWallet();
   const [selectedOutcome, setSelectedOutcome] = useState('a');
   const [amount, setAmount] = useState('');
 
@@ -50,6 +53,11 @@ export default function LiquidityDetailModal({
   const potentialLiability = (parseFloat(amount || 0) * selectedOdds).toFixed(2);
 
   const handleCommit = async () => {
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
       console.warn('[LiquidityDetailModal] Invalid amount:', amount);
       return;
@@ -163,26 +171,43 @@ export default function LiquidityDetailModal({
           )}
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              disabled={isLoading}
-              className="flex-1 h-9 rounded-xl border border-border/50 text-xs font-medium hover:bg-secondary/50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCommit}
-              disabled={!amount || parseFloat(amount) <= 0 || isLoading}
-              className="flex-1 h-9 rounded-xl font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" />
-              ) : (
-                `Commit ◎${amount || '0'}`
-              )}
-            </button>
-          </div>
+          {!isConnected ? (
+            <div className="bg-secondary/30 border border-border/50 rounded-xl p-4 text-center space-y-3">
+              <Wallet className="w-8 h-8 text-primary mx-auto" />
+              <p className="text-xs text-muted-foreground">Connect your Phantom wallet to provide liquidity</p>
+              <Button
+                onClick={async () => {
+                  await connect();
+                }}
+                className="w-full h-10 font-heading font-bold rounded-xl text-sm"
+                style={{ background: 'linear-gradient(135deg, #a69cf2, #8b84e8)' }}
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Phantom
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                disabled={isLoading}
+                className="flex-1 h-9 rounded-xl border border-border/50 text-xs font-medium hover:bg-secondary/50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCommit}
+                disabled={!amount || parseFloat(amount) <= 0 || isLoading}
+                className="flex-1 h-9 rounded-xl font-heading font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" />
+                ) : (
+                  `Commit ◎${amount || '0'}`
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
