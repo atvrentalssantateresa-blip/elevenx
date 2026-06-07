@@ -477,7 +477,7 @@ export default function Home() {
                               <p className="text-[10px] text-muted-foreground font-medium uppercase">Top Odds</p>
                               <p className="font-heading font-bold text-sm text-primary">{topOutcome.label}</p>
                             </div>
-                            <Badge className="bg-accent/20 text-accent border border-accent/30 text-base font-bold px-3 py-1">
+                            <Badge className="bg-accent/20 text-accent border border-accent/30 text-xs sm:text-base font-bold px-2 py-0.5 sm:px-3 sm:py-1">
                               {topOutcome.odds.toFixed(1)}x
                             </Badge>
                           </div>
