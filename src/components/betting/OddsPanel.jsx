@@ -99,7 +99,7 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
       <div className="flex items-center justify-between">
         <h3 className="font-heading font-bold text-xs flex items-center gap-1.5">
           <TrendingUp className="w-3.5 h-3.5 text-primary" />
-          Fixed Odds
+          Dynamic Odds
           {loadingLiveOdds && (
             <span className="text-[9px] text-primary animate-pulse">fetching...</span>
           )}
