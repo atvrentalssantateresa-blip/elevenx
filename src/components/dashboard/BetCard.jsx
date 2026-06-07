@@ -91,15 +91,21 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
         status: 'claimed',
         actual_payout: bet.potential_payout || 0
       });
-      console.log('[BetCard] Updated bet status to claimed:', bet.id);
+      console.log('[BetCard] ✓ Updated bet status to claimed:', bet.id);
+      
+      // Update local bet object immediately to prevent stale UI
+      bet.status = 'claimed';
+      bet.actual_payout = bet.potential_payout || 0;
     } catch (err) {
       console.error('[BetCard] Failed to update bet status:', err);
     }
     
     // Force immediate refetch with cancelation of ongoing queries
     await queryClient.cancelQueries({ queryKey: ['myBets'] });
+    await queryClient.cancelQueries({ queryKey: ['myBets', walletAddress] });
+    queryClient.removeQueries({ queryKey: ['myBets'] });
     queryClient.invalidateQueries({ queryKey: ['myBets'] });
-    await queryClient.refetchQueries({ queryKey: ['myBets'] });
+    await queryClient.refetchQueries({ queryKey: ['myBets', walletAddress], type: 'active' });
   };
 
   const handleCloseClaimDialog = () => {
