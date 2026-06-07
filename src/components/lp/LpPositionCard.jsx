@@ -20,9 +20,16 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
   // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
   // CRITICAL: For futures, prefer amount_offered/amount_matched over liquidity_* fields
-  const liquidityDeposited = isFutures ? offer.amount_offered || 0 : offer.liquidity_deposited || offer.amount_offered || offer.amount || 0;
-  const liquidityMatched = isFutures ? offer.amount_matched || 0 : offer.liquidity_matched || offer.amount_matched || 0;
-  const liquidityUnmatched = isFutures ? offer.amount_unmatched || 0 : offer.liquidity_unmatched || offer.amount_unmatched || 0;
+  // Support grouped transactions - use total_* fields if available, otherwise fall back to individual fields
+  const liquidityDeposited = isFutures 
+    ? (offer.total_liquidity_deposited || offer.amount_offered || 0) 
+    : (offer.total_liquidity_deposited || offer.liquidity_deposited || offer.amount_offered || offer.amount || 0);
+  const liquidityMatched = isFutures 
+    ? (offer.total_liquidity_matched || offer.amount_matched || 0) 
+    : (offer.total_liquidity_matched || offer.liquidity_matched || offer.amount_matched || 0);
+  const liquidityUnmatched = isFutures 
+    ? (offer.total_liquidity_unmatched || offer.amount_unmatched || 0) 
+    : (offer.total_liquidity_unmatched || offer.liquidity_unmatched || offer.amount_unmatched || 0);
 
   // CRITICAL: Check UserBet status FIRST (settlement info), then BetOffer status (matching info)
   // userBet.status = settlement state (won/lost/claimed)
@@ -239,7 +246,13 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Grouped Transactions Badge */}
+              {offer._groupedTransactions && offer._groupedTransactions.length > 1 && (
+                <Badge className="bg-secondary/50 border-secondary/50 text-muted-foreground text-[8px] font-bold">
+                  {offer._groupedTransactions.length} txs
+                </Badge>
+              )}
               {/* Type Badge - FUTURES vs MATCH */}
               <div className={`${
               isFutures ?

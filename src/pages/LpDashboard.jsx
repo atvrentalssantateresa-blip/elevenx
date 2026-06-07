@@ -138,9 +138,45 @@ export default function LpDashboard() {
 
       const result = offersWithDetails.filter((o) => o !== null);
 
-      console.log('LP positions after filtering nulls:', result.length);
+      // Step 3: GROUP multiple transactions for the same position (same match_id + outcome for matches, same market_id + outcome for futures)
+      console.log('Step 3: Grouping multiple transactions for same positions...');
+      const groupedMap = new Map();
+      
+      result.forEach((offer) => {
+        // Create grouping key based on market type
+        const isFutures = offer._isFutures || offer.match_id === offer.bet_id;
+        const groupKey = isFutures 
+          ? `futures_${offer.bet_id}_${offer.outcome}` // For futures: market_id + outcome
+          : `match_${offer.match_id}_${offer.outcome}`; // For matches: match_id + outcome
+        
+        if (!groupedMap.has(groupKey)) {
+          groupedMap.set(groupKey, {
+            ...offer,
+            _isFutures: isFutures,
+            _groupedTransactions: [offer],
+            total_liquidity_deposited: offer.userBet?.liquidity_deposited || offer.amount_offered || 0,
+            total_liquidity_matched: offer.amount_matched || 0,
+            total_liquidity_unmatched: offer.amount_unmatched || 0,
+          });
+        } else {
+          // Group this transaction with existing position
+          const existing = groupedMap.get(groupKey);
+          existing._groupedTransactions.push(offer);
+          existing.total_liquidity_deposited += offer.userBet?.liquidity_deposited || offer.amount_offered || 0;
+          existing.total_liquidity_matched += offer.amount_matched || 0;
+          existing.total_liquidity_unmatched += offer.amount_unmatched || 0;
+          
+          // Use the earliest created_date for the group
+          if (offer.userBet?.created_date < existing.userBet?.created_date) {
+            existing.userBet = offer.userBet;
+          }
+        }
+      });
+      
+      const groupedResult = Array.from(groupedMap.values());
+      console.log('Grouped LP positions:', groupedResult.length, '(from', result.length, 'raw transactions)');
       console.log('==================');
-      return result;
+      return groupedResult;
     },
     enabled: !!walletAddress,
     refetchOnWindowFocus: true,
@@ -387,6 +423,10 @@ export default function LpDashboard() {
   const activeOffers = myOffers.filter((o) => o.status === 'open' || o.status === 'partially_matched');
 
   const offersWithUserBet = myOffers;
+  
+  // Separate Match LP and Futures LP
+  const matchLpPositions = myOffers.filter((o) => !o._isFutures);
+  const futuresLpPositions = myOffers.filter((o) => o._isFutures);
 
   const getMatchTitle = (matchId) => {
     const m = matches.find((m) => m.id === matchId);
@@ -824,83 +864,85 @@ export default function LpDashboard() {
             )}
             </div>
 
-            {/* LP Positions List */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-muted-foreground">Your LP Positions</h2>
-                <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const losingLp = offersWithUserBet.find((o) => o.userBet?.status === 'lost');
-                  if (!losingLp) {
-                    alert('No losing LP positions found. You need a settled LP where your backed outcome WON (so the LP lost).');
-                    return;
-                  }
-                  const testId = losingLp.userBetId || losingLp.id;
-                  alert(`Testing LOSING LP withdrawal (UserBet: ${testId})\n\nIf this transaction SUCCEEDS, the on-chain logic is BUGGY (inverted).\nIf it FAILS with error 6009, the on-chain logic is CORRECT.`);
-                  window.open(`/debug-claim?test=${testId}`, '_blank');
-                }}
-                className="gap-2 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 rounded-xl">
-                
-                  <Bug className="w-3 h-3" />
-                  Test Losing LP
-                </Button>
+            {/* LP Positions List - Separated into Match LP and Futures LP */}
+            <div className="space-y-6">
+              {/* Match LP Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <h2 className="font-heading font-bold text-base">Match LP</h2>
+                  <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold">
+                    {matchLpPositions.length}
+                  </Badge>
+                </div>
+                {matchLpPositions.length === 0 ? (
+                  <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
+                    <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="font-heading font-bold text-sm text-muted-foreground mb-1">No Match LP positions yet</p>
+                    <p className="text-xs text-muted-foreground">Provide liquidity for matches in the Match LP tab</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {matchLpPositions.map((offer, idx) => {
+                      const match = matches.find((m) => m.id === offer.match_id);
+                      return (
+                        <LpPositionCard
+                          key={`match-${offer.id || offer.userBetId}`}
+                          position={{ ...offer, userBetId: offer.userBetId || offer.id }}
+                          match={match}
+                          walletAddress={walletAddress}
+                          onWithdrawRequest={(withdrawData) => {
+                            setPendingTx({
+                              instruction: withdrawData.solanaInstruction,
+                              amount: withdrawData.withdrawAmount || 0,
+                              type: 'withdraw_liquidity',
+                              userBetId: withdrawData.positionId,
+                              offerId: withdrawData.offerId
+                            });
+                          }} />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {(() => {
-                console.log('=== RENDER DEBUG ===');
-                console.log('offersWithUserBet:', offersWithUserBet);
-                console.log('Length:', offersWithUserBet.length);
 
-                if (offersWithUserBet.length === 0) {
-                  console.log('No offers to render');
-                  return (
-                    <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
-                        <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="font-heading font-bold text-sm text-muted-foreground mb-1">No LP positions yet</p>
-                        <p className="text-xs text-muted-foreground">Check browser console for debug info</p>
-                      </div>);
-
-                }
-
-                console.log('Mapping', offersWithUserBet.length, 'offers...');
-
-                return offersWithUserBet.map((offer, idx) => {
-                  console.log(`Rendering offer ${idx}:`, offer.id, offer.outcome_label, offer.status, 'userBetId:', offer.userBetId);
-                  try {
-                    const match = matches.find((m) => m.id === offer.match_id);
-                    console.log(`Offer ${idx} match:`, match?.team_a, 'vs', match?.team_b, 'match_id:', offer.match_id);
-
-                    return (
-                      <LpPositionCard
-                        key={offer.id || offer.userBetId}
-                        position={{ ...offer, userBetId: offer.userBetId || offer.id }}
-                        match={match}
-                        walletAddress={walletAddress}
-                        onWithdrawRequest={(withdrawData) => {
-                          console.log('[onWithdrawRequest] Withdraw triggered:', withdrawData);
-                          console.log('[onWithdrawRequest] Solana instruction:', withdrawData.solanaInstruction);
-                          if (!withdrawData.solanaInstruction) {
-                            console.error('[onWithdrawRequest] Missing solanaInstruction in withdrawData:', withdrawData);
-                            alert('Error: No instruction received from backend');
-                            return;
-                          }
-                          setPendingTx({
-                            instruction: withdrawData.solanaInstruction,
-                            amount: withdrawData.withdrawAmount || 0,
-                            type: 'withdraw_liquidity',
-                            userBetId: withdrawData.positionId,
-                            offerId: withdrawData.offerId
-                          });
-                        }} />);
-
-                  } catch (err) {
-                    console.error(`Error rendering offer ${idx}:`, err);
-                    return null;
-                  }
-                });
-              })()}
+              {/* Futures LP Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  <h2 className="font-heading font-bold text-base">Futures LP</h2>
+                  <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-[10px] font-bold">
+                    {futuresLpPositions.length}
+                  </Badge>
+                </div>
+                {futuresLpPositions.length === 0 ? (
+                  <div className="bg-card border border-border/50 rounded-2xl p-8 text-center">
+                    <Trophy className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="font-heading font-bold text-sm text-muted-foreground mb-1">No Futures LP positions yet</p>
+                    <p className="text-xs text-muted-foreground">Provide liquidity for futures markets in the Futures LP tab</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {futuresLpPositions.map((offer, idx) => {
+                      return (
+                        <LpPositionCard
+                          key={`futures-${offer.id || offer.userBetId}`}
+                          position={{ ...offer, userBetId: offer.userBetId || offer.id }}
+                          match={null}
+                          walletAddress={walletAddress}
+                          onWithdrawRequest={(withdrawData) => {
+                            setPendingTx({
+                              instruction: withdrawData.solanaInstruction,
+                              amount: withdrawData.withdrawAmount || 0,
+                              type: 'withdraw_liquidity',
+                              userBetId: withdrawData.positionId,
+                              offerId: withdrawData.offerId
+                            });
+                          }} />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
