@@ -110,19 +110,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Fee vault not found on-chain' }, { status: 400 });
     }
 
-    // Build emergency_settle instruction - try BOTH discriminator formats
-    // Format 1: Anchor default "global:<name>"
-    const discGlobal = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
-    // Format 2: Simple (just the name, for older Anchor versions)
-    const discSimple = Buffer.from(sha256('emergency_settle')).slice(0, 8);
-    
-    console.log('[settleFuturesMarketOnChain] Discriminators:', {
-      global_format: discGlobal.toString('hex'),
-      simple_format: discSimple.toString('hex'),
+    // Build emergency_settle instruction - Anchor uses "global:<name>" format
+    const discriminator = Buffer.from(sha256('global:emergency_settle')).slice(0, 8);
+    console.log('[settleFuturesMarketOnChain] Discriminator:', {
+      input: 'global:emergency_settle',
+      hex: discriminator.toString('hex'),
     });
-    
-    // Use SIMPLE format (no "global:" prefix) - matches most deployed Anchor programs
-    const discriminator = discSimple;
     
     const data = Buffer.alloc(9);
     discriminator.copy(data, 0);
