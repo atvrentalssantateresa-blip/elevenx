@@ -83,9 +83,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build initialization instruction
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
+    // Build initialization instruction - try simple format first (older Anchor)
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initialize_platform'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
+    console.log('Using discriminator (simple_snake):', discriminator.toString('hex'));
     
     const initData = Buffer.alloc(10);
     discriminator.copy(initData, 0);
