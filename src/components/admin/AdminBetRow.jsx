@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, CheckCircle, AlertCircle, Clock, XCircle, TrendingUp } from 'lucide-react';
+import { ExternalLink, CheckCircle, AlertCircle, Clock, XCircle, TrendingUp, RefreshCcw } from 'lucide-react';
 
 export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
   const [walletAddress, setWalletAddress] = useState(null);
@@ -96,10 +96,15 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
 
       <div className="flex gap-2">
         {marketStatus?.settled || marketStatus?.voided || marketStatus?.settlement_finalized ? (
-          <Badge className="bg-accent/10 text-accent border-accent/30 px-3 py-1">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Settlement Complete - Winner: {marketStatus?.winning_outcome === 0 ? 'Team A' : marketStatus?.winning_outcome === 1 ? 'Team B' : 'Draw'}
-          </Badge>
+          <>
+            <Badge className="bg-accent/10 text-accent border-accent/30 px-3 py-1">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Settled: {marketStatus?.winning_outcome === 0 ? 'Team A' : marketStatus?.winning_outcome === 1 ? 'Team B' : 'Draw'}
+            </Badge>
+            <Button onClick={() => onSettle(bet, bet.winning_outcome === 'a' || bet.winning_outcome === 'team_a' ? 'a' : bet.winning_outcome === 'b' || bet.winning_outcome === 'team_b' ? 'b' : 'draw')} disabled={!walletAddress} size="sm" className="h-8 text-xs bg-accent/20 hover:bg-accent/30 text-accent border border-accent/30 rounded-lg">
+              <RefreshCcw className="w-3 h-3 mr-1" /> Re-settle On-Chain
+            </Button>
+          </>
         ) : (
           <>
             <Button onClick={() => onSettle(bet, 'a')} disabled={!walletAddress} size="sm" className="flex-1 h-8 text-xs bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg">
