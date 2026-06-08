@@ -96,6 +96,12 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
             <span className="text-muted-foreground">Status:</span>
             <span className="text-white font-bold">{marketStatus.status}</span>
           </div>
+          {marketStatus.voided && (
+            <div className="flex justify-between bg-destructive/20 border border-destructive/50 rounded px-2 py-1 -mx-2 -my-1">
+              <span className="text-destructive font-bold">⚠️ VOIDED</span>
+              <span className="text-destructive/80">Market auto-voided - bets will be refunded</span>
+            </div>
+          )}
           {marketStatus.winning_outcome !== undefined && marketStatus.winning_outcome !== 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Winner:</span>
@@ -108,7 +114,12 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
       )}
 
       <div className="flex gap-2">
-        {marketStatus?.settled || marketStatus?.voided || marketStatus?.settlement_finalized ? (
+        {marketStatus?.voided ? (
+          <Badge className="flex-1 bg-destructive/10 text-destructive border-destructive/30 px-3 py-2 justify-center">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Market Voided - Refunds in Progress
+          </Badge>
+        ) : marketStatus?.settled || marketStatus?.settlement_finalized ? (
           <>
             <Badge className="bg-accent/10 text-accent border-accent/30 px-3 py-1">
               <CheckCircle className="w-3 h-3 mr-1" />

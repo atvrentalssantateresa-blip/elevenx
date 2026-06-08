@@ -192,6 +192,20 @@ Deno.serve(async (req) => {
     });
     
     console.log('[settleMarketOnChain] All PDA validations passed - proceeding with settlement');
+    
+    // Check if market is voided on-chain - if so, cannot settle normally
+    const marketData = marketInfo.data;
+    if (marketData.length >= 246) {
+      const voidedByte = marketData[245];
+      if (voidedByte === 1) {
+        return Response.json({
+          error: 'Market is already voided on-chain',
+          hint: 'Voided markets cannot be settled normally. All bets should be refunded instead.',
+          voided: true,
+          action: 'Mark bets as refunded in DB and process refunds via claimRefund function'
+        }, { status: 400 });
+      }
+    }
 
     // Always update market timestamps before settling (ensures settle_after is in the past)
     // This is a mandatory pre-step for admin settlement to bypass TooEarlyToSettle
