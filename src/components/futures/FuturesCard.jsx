@@ -40,9 +40,9 @@ export default function FuturesCard({ market, index, onSelect }) {
   const totalPool = market.outcomes.reduce((sum, o) => sum + (o.pool || 0), 0);
   const totalLpOffers = market.outcomes.reduce((sum, o) => sum + (o.lp_offers || 0), 0);
   
-  // Calculate filled % based on matched liquidity vs total pool (actual bets vs LP deposits)
-  // If no deposits yet, show 0%
-  const filledPercentage = totalPool > 0 ? Math.round((totalPool / totalPool) * 100) : 0;
+  // Show 0% when no bets placed - bar only fills when actual betting happens
+  // totalPool = matched SOL (real bets), so use that to show activity
+  const filledPercentage = totalPool > 0 ? Math.min(100, Math.round(totalPool * 5)) : 0;
 
   return (
     <motion.div
