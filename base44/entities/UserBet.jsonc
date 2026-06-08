@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Reference to Match entity"
     },
+    "futures_market_id": {
+      "type": "string",
+      "description": "Reference to FuturesMarket entity (for futures bets)"
+    },
     "offer_id": {
       "type": "string",
       "description": "Reference to the BetOffer being matched (for matchers) or created (for LPs)"

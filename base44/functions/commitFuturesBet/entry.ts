@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
     // Create UserBet record for the bettor (matcher)
     const createdBet = await serviceRole.entities.UserBet.create({
       ...commit_data.userBet,
+      futures_market_id: commit_data.marketUpdate.market_id,
       status: 'active',
       role: 'matcher',
     });

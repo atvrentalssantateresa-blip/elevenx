@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
     const userBet = await base44.entities.UserBet.create({
       bet_id: market_id,
       match_id: market_id,
+      futures_market_id: market_id,  // CRITICAL: Identify as futures bet
       offer_id: "", // Will be linked during commit once BetOffer is created
       role: 'lp',
       outcome: outcomeIndex === 0 ? 'a' : outcomeIndex === 1 ? 'b' : 'draw',

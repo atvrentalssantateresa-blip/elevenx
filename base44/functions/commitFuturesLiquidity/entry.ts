@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
       await serviceRole.entities.UserBet.update(existingUserBetId, {
         status: 'active',
         offer_id: offerId,
+        futures_market_id: commit_data.market_id,  // Ensure futures_market_id is set
         liquidity_deposited: (existingUserBet.liquidity_deposited || 0) + commit_data.amount,
         liquidity_unmatched: (existingUserBet.liquidity_unmatched || 0) + commit_data.amount,
       });
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
       await serviceRole.entities.UserBet.update(commit_data.userBetId, {
         status: 'active',
         offer_id: offerId,
+        futures_market_id: commit_data.market_id,  // Ensure futures_market_id is set
         liquidity_deposited: commit_data.amount,
         liquidity_unmatched: commit_data.amount,
       });
