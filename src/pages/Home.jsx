@@ -186,14 +186,14 @@ export default function Home() {
                 </button>
               </div>
               
-              {/* Protocol Vault - Live Treasury Stats (integrated into same container) */}
+              {/* Protocol Vault - Live Treasury Stats */}
               <div className="w-full sm:w-auto sm:flex-shrink-0">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 sm:p-3.5 border border-emerald-500/20">
-                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/20">
+                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 sm:p-0 sm:border-0 sm:bg-transparent">
+                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/20 sm:border-0 sm:pb-0 sm:mb-1.5">
                     <Shield className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 sm:space-y-1.5">
+                  <div className="grid grid-cols-3 gap-2 sm:space-y-1">
                     <div className="flex flex-col">
                       <span className="text-[8px] sm:text-[9px] text-white/50">Fees</span>
                       <span className="text-xs sm:text-sm font-bold text-emerald-400">◎{daoBalance.toFixed(4)}</span>
@@ -208,7 +208,7 @@ export default function Home() {
                     </div>
                   </div>
                   {feeVaultPda && (
-                    <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+                    <div className="mt-2 pt-2 border-t border-emerald-500/20 sm:border-0 sm:mt-1 sm:pt-0 flex items-center justify-between sm:justify-end sm:gap-2">
                       <a
                         href={`https://solscan.io/account/${feeVaultPda}?cluster=devnet`}
                         target="_blank"
