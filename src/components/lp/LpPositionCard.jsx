@@ -191,7 +191,15 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // LP LOSES when backed outcome == winning outcome (LP backed the winner)
   let displayStatus = offer.status;
   
-  if (isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void') {
+  console.log('[STATUS CALC] isSettled:', isSettled);
+  console.log('[STATUS CALC] matchData.winner:', matchData?.winner);
+  console.log('[STATUS CALC] offer.outcome:', offer.outcome);
+  console.log('[STATUS CALC] liquidityMatched:', liquidityMatched);
+  
+  if (liquidityMatched === 0) {
+    displayStatus = 'refunded';
+    console.log('[STATUS CALC] Setting to refunded (no matched liquidity)');
+  } else if (isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void') {
     const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
     const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
     const backedIsWinner = 
@@ -199,14 +207,16 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
       (backedOutcome === 'b' && winningOutcome === 'team_b') ||
       (backedOutcome === 'draw' && winningOutcome === 'draw');
     
+    console.log('[STATUS CALC] backedOutcome:', backedOutcome, 'winningOutcome:', winningOutcome, 'backedIsWinner:', backedIsWinner);
+    
     // Override DB status with calculated result
     displayStatus = backedIsWinner ? 'lost' : 'won';
-  } else if (liquidityMatched === 0) {
-    displayStatus = 'refunded';
+    console.log('[STATUS CALC] Setting to:', displayStatus);
   }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
   const displayStatusLabel = currentStatus.label || displayStatus.replace('_', ' ');
+  console.log('[STATUS CALC] Final displayStatusLabel:', displayStatusLabel);
 
   // Handle withdraw click - fetch match data and prepare withdraw instruction
   const handleWithdraw = async () => {
