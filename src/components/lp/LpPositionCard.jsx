@@ -459,6 +459,19 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               alreadyClaimed
             });
             
+            // Priority 0: VOIDED markets - block all claims (LP loses everything)
+            if (isVoided && liquidityMatched > 0) {
+              return (
+                <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5 text-destructive" />
+                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">Market Voided</span>
+                  </div>
+                  <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
+                </div>);
+
+            }
+
             // Priority 0: Refunded/Withdrawn (unmatched positions) - CHECK THIS FIRST
             // Use aggregated userBetStatus to prevent old pending records from showing withdraw buttons
             if (liquidityMatched === 0 && (isRefunded || isWithdrawn || userBetStatus === 'refunded' || userBetStatus === 'withdrawn')) {
