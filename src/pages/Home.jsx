@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import MatchCard from '@/components/betting/MatchCard';
 import HottestBetCard from '@/components/betting/HottestBetCard';
+import ProtocolVault from '@/components/treasury/ProtocolVault';
 import { getTeamFlag } from '@/utils/flags';
 
 const WC_PHOTOS = [
@@ -62,6 +63,19 @@ export default function Home() {
 
   const totalVolume = bets.reduce((s, b) => s + (b.total_pool || 0), 0);
   const activeBettors = new Set(userBets.map((ub) => ub.created_by_id)).size;
+
+  // Protocol Vault calculations
+  const unresolvedStakes = bets
+    .filter((b) => b.status === 'open' || b.status === 'closed')
+    .reduce((acc, b) => acc + (b.total_pool || 0), 0);
+  
+  const unclaimedWinnings = userBets
+    .filter((ub) => ub.status === 'won' || ub.status === 'refunded')
+    .reduce((acc, ub) => acc + (ub.amount || 0), 0);
+  
+  // Fee vault PDA (placeholder - will be fetched from on-chain in next iteration)
+  const feeVaultPda = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+  const daoBalance = 0.0; // Will be fetched from on-chain
 
   return (
     <div className="space-y-6 -mt-2">
@@ -196,13 +210,23 @@ export default function Home() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        className="grid md:grid-cols-4 gap-3">
         
+        {/* Protocol Vault Card - Spans 2 columns on desktop */}
+        <div className="md:col-span-2">
+          <ProtocolVault
+            daoBalance={daoBalance}
+            unresolvedStakes={unresolvedStakes}
+            unclaimedWinnings={unclaimedWinnings}
+            feeVaultPda={feeVaultPda} />
+        </div>
+        
+        {/* Stats - 3 cards */}
+        <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
         {[
         { icon: DollarSign, label: 'Total Volume', value: `◎${totalVolume.toLocaleString()}`, color: 'text-primary', bg: 'bg-primary/10' },
         { icon: Users, label: 'Active Bettors', value: activeBettors.toString(), color: '', bg: '', style: { color: '#21c45d', background: 'rgba(33,196,93,0.1)' } },
-        { icon: Flame, label: 'Open Bets', value: openBets.length.toString(), color: 'text-orange-400', bg: 'bg-orange-400/10' },
-        { icon: Globe, label: 'Matches', value: matches.length.toString(), color: 'text-blue-400', bg: 'bg-blue-400/10' }].
+        { icon: Flame, label: 'Open Bets', value: openBets.length.toString(), color: 'text-orange-400', bg: 'bg-orange-400/10' }].
         map((stat, i) =>
         <motion.div
           key={stat.label}
@@ -220,6 +244,7 @@ export default function Home() {
             </div>
           </motion.div>
         )}
+        </div>
       </motion.div>
 
       {/* ── FEATURED MATCHES HORIZONTAL SCROLL ── */}
