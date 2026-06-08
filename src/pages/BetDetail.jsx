@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useWallet } from '@/lib/WalletContext';
+import { getWalletFromAuth } from '@/utils/auth';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, Trophy, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,13 +80,23 @@ export default function BetDetail() {
     enabled: !!bet?.match_id,
   });
 
+  const authWallet = getWalletFromAuth();
+  const allMyWallets = [...new Set([authWallet, walletAddress]).filter(Boolean)];
+
   const { data: myBets = [] } = useQuery({
-    queryKey: ['myBetsForBet', betId],
-    queryFn: () => base44.entities.UserBet.filter({ bet_id: betId }),
-    enabled: !!betId,
+    queryKey: ['myBetsForBet', betId, walletAddress],
+    queryFn: async () => {
+      const all = await base44.entities.UserBet.filter({ bet_id: betId });
+      return allMyWallets.length > 0 ? all.filter((ub) => {
+        return allMyWallets.some(w => ub.wallet_address?.trim() === w?.trim());
+      }) : [];
+    },
+    enabled: !!betId && allMyWallets.length > 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
-  const myBet = myBets.find(ub => ub.created_by_id === user?.id);
+  const myBet = myBets[0];
 
   const placeBetMutation = useMutation({
   mutationFn: async (amount) => {
