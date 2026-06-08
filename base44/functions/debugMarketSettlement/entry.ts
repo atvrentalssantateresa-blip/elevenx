@@ -96,14 +96,25 @@ Deno.serve(async (req) => {
     
     const now = Math.floor(Date.now() / 1000);
     
+    // Safely convert timestamps to dates
+    const safeDate = (ts) => {
+      try {
+        const num = Number(ts);
+        if (isNaN(num) || num < 0 || num > 8640000000000000) return 'Invalid timestamp';
+        return new Date(num * 1000).toISOString();
+      } catch {
+        return 'Failed to parse';
+      }
+    };
+    
     return Response.json({
       marketPda,
       owner: marketInfo.owner.toBase58(),
       dataSize: marketInfo.data.length,
       openUntil: openUntil.toString(),
-      openUntilDate: new Date(Number(openUntil) * 1000).toISOString(),
+      openUntilDate: safeDate(openUntil),
       settleAfter: settleAfter.toString(),
-      settleAfterDate: new Date(Number(settleAfter) * 1000).toISOString(),
+      settleAfterDate: safeDate(settleAfter),
       feePercent: feePercent / 100,
       outcomeCount,
       winningOutcome,
