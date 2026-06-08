@@ -165,8 +165,8 @@ export default function Home() {
                 <span className="text-[10px] sm:text-[11px] font-bold text-accent tracking-widest">HYBRID MODEL</span>
               </div>
             </div>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="flex-1 min-w-0 w-full sm:w-auto">
                 <h1 className="font-heading font-black text-xl sm:text-2xl md:text-3xl leading-tight mb-2 sm:mb-3 text-white">
                   Be The House.<br />
                   <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
@@ -187,24 +187,24 @@ export default function Home() {
               </div>
               
               {/* Protocol Vault - Live Treasury Stats (integrated into same container) */}
-              <div className="flex-shrink-0 w-[200px] sm:w-[240px] -mt-1">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 border border-emerald-500/20">
+              <div className="w-full sm:w-auto sm:flex-shrink-0 sm:-mt-1">
+                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 sm:p-3.5 border border-emerald-500/20">
                   <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/20">
                     <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9px] text-white/50">Fees</span>
-                      <span className="text-xs font-bold text-emerald-400">◎{daoBalance.toFixed(4)}</span>
+                  <div className="grid grid-cols-3 sm:grid-cols-1 gap-2 sm:space-y-1.5">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] sm:text-[9px] text-white/50">Fees</span>
+                      <span className="text-xs sm:text-sm font-bold text-emerald-400">◎{daoBalance.toFixed(4)}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9px] text-white/50">Locked</span>
-                      <span className="text-xs font-bold text-yellow-400">◎{unresolvedStakes.toFixed(4)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[8px] sm:text-[9px] text-white/50">Locked</span>
+                      <span className="text-xs sm:text-sm font-bold text-yellow-400">◎{unresolvedStakes.toFixed(4)}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[9px] text-white/50">Unclaimed</span>
-                      <span className="text-xs font-bold text-purple-400">◎{unclaimedWinnings.toFixed(4)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[8px] sm:text-[9px] text-white/50">Unclaimed</span>
+                      <span className="text-xs sm:text-sm font-bold text-purple-400">◎{unclaimedWinnings.toFixed(4)}</span>
                     </div>
                   </div>
                   {feeVaultPda && (
