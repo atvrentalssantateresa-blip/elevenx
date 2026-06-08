@@ -186,8 +186,24 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
     pending: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Pending' }
   };
 
-  // CRITICAL: Override status display when liquidityMatched is 0 - show "Refunded" not "Won"
-  const displayStatus = liquidityMatched === 0 ? 'refunded' : offer.status;
+  // CRITICAL: Calculate correct display status based on match result, not DB
+  // LP WINS when backed outcome != winning outcome (LP backed a loser)
+  // LP LOSES when backed outcome == winning outcome (LP backed the winner)
+  let displayStatus = offer.status;
+  
+  if (isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void') {
+    const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
+    const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
+    const backedIsWinner = 
+      (backedOutcome === 'a' && winningOutcome === 'team_a') ||
+      (backedOutcome === 'b' && winningOutcome === 'team_b') ||
+      (backedOutcome === 'draw' && winningOutcome === 'draw');
+    
+    // Override DB status with calculated result
+    displayStatus = backedIsWinner ? 'lost' : 'won';
+  } else if (liquidityMatched === 0) {
+    displayStatus = 'refunded';
+  }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
   const displayStatusLabel = currentStatus.label || displayStatus.replace('_', ' ');
