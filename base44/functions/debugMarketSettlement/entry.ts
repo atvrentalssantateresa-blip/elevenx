@@ -30,31 +30,69 @@ Deno.serve(async (req) => {
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     
     // Fetch market account
-    const marketInfo = await connection.getAccountInfo(new PublicKey(marketPda));
+    let marketInfo;
+    try {
+      marketInfo = await connection.getAccountInfo(new PublicKey(marketPda));
+    } catch (connErr) {
+      console.error('[debugMarketSettlement] Connection error:', connErr);
+      return Response.json({
+        error: 'Failed to connect to Solana',
+        message: connErr.message,
+        marketPda,
+      }, { status: 500 });
+    }
+    
     if (!marketInfo) {
       return Response.json({ 
         error: 'Market account not found on-chain',
         marketPda,
+        hint: 'Market may not be deployed yet - use "Deploy Market" first',
       }, { status: 404 });
     }
     
     console.log('[debugMarketSettlement] Market account found:', {
       owner: marketInfo.owner.toBase58(),
       dataSize: marketInfo.data.length,
+      expectedSize: '>=246 bytes',
     });
     
     // Parse market data
     const data = marketInfo.data;
     console.log('[debugMarketSettlement] Market data (hex):', data.toString('hex'));
     
-    // Layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + oracle_odds(24) + total_matched(24) + total_pending(24) + total_lp_committed(8) + accrued_fees(8) + settled(1) + voided(1) + ...
-    const openUntil = data.readBigUInt64LE(146);
-    const settleAfter = data.readBigUInt64LE(154);
-    const feePercent = data.readUInt16LE(152);
-    const outcomeCount = data[154];
-    const winningOutcome = data[155];
-    const settled = data[244];
-    const voided = data[245];
+    if (data.length < 246) {
+      return Response.json({
+        marketPda,
+        owner: marketInfo.owner.toBase58(),
+        dataSize: marketInfo.data.length,
+        error: 'Market account data too small - may be corrupted or from different program version',
+        expectedSize: '>=246 bytes',
+        dataHex: data.toString('hex'),
+      });
+    }
+    
+    // Parse market data with error handling
+    let openUntil, settleAfter, feePercent, outcomeCount, winningOutcome, settled, voided;
+    try {
+      // Layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
+      openUntil = data.readBigUInt64LE(146);
+      settleAfter = data.readBigUInt64LE(154);
+      feePercent = data.readUInt16LE(152);
+      outcomeCount = data[154];
+      winningOutcome = data[155];
+      settled = data[244];
+      voided = data[245];
+    } catch (parseErr) {
+      console.error('[debugMarketSettlement] Failed to parse market data:', parseErr);
+      return Response.json({
+        marketPda,
+        owner: marketInfo.owner.toBase58(),
+        dataSize: marketInfo.data.length,
+        error: 'Failed to parse market data - layout may have changed',
+        parseError: parseErr.message,
+        dataHex: data.toString('hex'),
+      });
+    }
     
     const now = Math.floor(Date.now() / 1000);
     
