@@ -190,9 +190,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   };
 
   // CRITICAL: Override status display when liquidityMatched is 0 - show "Refunded" not "Won"
-  const displayStatus = liquidityMatched === 0 && (dbStatus === 'won' || dbStatus === 'refunded' || offer.status === 'refunded') 
-    ? 'refunded' 
-    : offer.status;
+  const displayStatus = liquidityMatched === 0 ? 'refunded' : offer.status;
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
   const displayStatusLabel = currentStatus.label || displayStatus.replace('_', ' ');
