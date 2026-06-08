@@ -46,24 +46,29 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   let isLpLost = dbStatus === 'lost';
   
   // If DB doesn't have won/lost status but market is settled, calculate from outcome
+  // ON-CHAIN LOGIC: LP wins when lp_offer.outcome != market.winning_outcome
   if (!isLpWon && !isLpLost && isSettled && matchData?.winner) {
     const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
     const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
     
-    // LP wins when their backed outcome LOSES
-    if (backedOutcome === 'a' && winningOutcome !== 'team_a') {
-      isLpWon = true;
-    } else if (backedOutcome === 'b' && winningOutcome !== 'team_b') {
-      isLpWon = true;
-    } else if (backedOutcome === 'draw' && winningOutcome !== 'draw') {
-      isLpWon = true;
+    // Map backed outcome to match winner format
+    const backedIsWinner = 
+      (backedOutcome === 'a' && winningOutcome === 'team_a') ||
+      (backedOutcome === 'b' && winningOutcome === 'team_b') ||
+      (backedOutcome === 'draw' && winningOutcome === 'draw');
+    
+    // ON-CHAIN: LP WINS when backed outcome != winning outcome (LP backed a loser)
+    // ON-CHAIN: LP LOSES when backed outcome == winning outcome (LP backed the winner)
+    if (backedIsWinner) {
+      isLpLost = true; // LP backed the winner → LP loses (must pay bettors)
     } else {
-      isLpLost = true; // LP backed the winner
+      isLpWon = true; // LP backed a loser → LP wins (keeps bettors' stakes)
     }
     
     console.log('[LpPositionCard] Calculated LP win/loss from market:', {
       backedOutcome,
       winningOutcome,
+      backedIsWinner,
       isLpWon,
       isLpLost
     });
