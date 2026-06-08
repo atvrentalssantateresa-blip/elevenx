@@ -198,6 +198,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   console.log('[STATUS CALC] winningOutcome:', winningOutcome, '(from bet.winning_outcome or match.winner)');
   console.log('[STATUS CALC] offer.outcome:', offer.outcome);
   console.log('[STATUS CALC] liquidityMatched:', liquidityMatched);
+  console.log('[STATUS CALC] dbStatus:', dbStatus);
   
   if (liquidityMatched === 0) {
     displayStatus = 'refunded';
@@ -217,6 +218,10 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
     // Override DB status with calculated result
     displayStatus = backedIsWinner ? 'lost' : 'won';
     console.log('[STATUS CALC] Setting to:', displayStatus);
+  } else if (isSettled && (dbStatus === 'won' || dbStatus === 'lost')) {
+    // Fallback: use DB status when winningOutcome is not set yet
+    displayStatus = dbStatus;
+    console.log('[STATUS CALC] Using DB status fallback:', displayStatus);
   }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
