@@ -120,11 +120,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   console.log('Position ID:', position.id);
   console.log('liquidityMatched VALUE:', liquidityMatched, 'type:', typeof liquidityMatched);
   console.log('liquidityMatched === 0:', liquidityMatched === 0);
-  console.log('liquidityMatched == 0:', liquidityMatched == 0);
-  console.log('!liquidityMatched:', !liquidityMatched);
-  console.log('RAW offer object:', JSON.stringify(offer, null, 2));
-  console.log('RAW position object:', JSON.stringify(position, null, 2));
-  console.log('displayStatusLabel:', displayStatusLabel);
+  console.log('RAW offer.status:', offer.status);
+  console.log('RAW dbStatus:', dbStatus);
   console.log('==================================');
   // Withdrawn = unmatched liquidity already withdrawn (no bets were matched, so nothing left)
   const isWithdrawn = dbStatus === 'withdrawn' || offer.status === 'withdrawn' ||
