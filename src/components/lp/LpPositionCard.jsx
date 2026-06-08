@@ -70,11 +70,18 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
     isLpWon = dbStatus === 'won';
     isLpLost = dbStatus === 'lost';
     
+    // CRITICAL: If liquidityMatched = 0, LP position is NOT won/lost - it's just unmatched (withdrawn/refunded)
+    // LP can only win/lose when there's matched liquidity at stake
+    if (liquidityMatched === 0) {
+      isLpWon = false;
+      isLpLost = false;
+      console.log('[LpPositionCard] No matched liquidity - LP position is neutral (unmatched)');
+    }
     // If DB doesn't have won/lost status but market is settled, calculate from outcome
     // ON-CHAIN LOGIC: LP wins when lp_offer.outcome != market.winning_outcome
     // CRITICAL: Only calculate if match has a VALID winner (not empty, not 'void')
     // ALSO: If position has unmatched liquidity, LP hasn't received their full payout yet, so show as "lost" (pending settlement)
-    if (!isLpWon && !isLpLost && isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void' && liquidityUnmatched === 0) {
+    else if (!isLpWon && !isLpLost && isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void' && liquidityUnmatched === 0) {
     const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
     const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
     
