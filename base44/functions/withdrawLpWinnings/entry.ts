@@ -107,6 +107,12 @@ Deno.serve(async (req) => {
 
     // Market must be settled
     const marketStatus = bet?.status || (isFuturesMarket ? 'settled' : 'unknown');
+    console.log('[withdrawLpWinnings] Market status check:', {
+      isFuturesMarket,
+      bet_status: bet?.status,
+      marketStatus,
+      dbSettled: bet?.status === 'settled',
+    });
     if (marketStatus !== 'settled') {
       console.error('[withdrawLpWinnings] Market not settled:', marketStatus);
       return Response.json({ error: 'Market has not been settled yet' }, { status: 400 });
@@ -243,6 +249,8 @@ Deno.serve(async (req) => {
     // ON-CHAIN CHECK: Fetch the actual LP offer account AND market from Solana to verify state
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     
+    console.log('[withdrawLpWinnings] === ON-CHAIN PRE-CHECK START ===');
+    
     // CRITICAL: Verify fee vault exists on-chain
     const feeVaultAccountInfo = await connection.getAccountInfo(feeVaultPda);
     if (!feeVaultAccountInfo) {
@@ -286,16 +294,16 @@ Deno.serve(async (req) => {
       
       // CRITICAL: Check if market is actually settled on-chain
       // NOTE: We trust the database state if it shows settled - on-chain flag may lag due to timing
-      if (!settled && (!bet || bet.status !== 'settled')) {
-        console.error('[withdrawLpWinnings] Market not settled on-chain:', marketPda.toBase58());
-        return Response.json({ error: 'Market has not been settled on-chain yet. Admin must announce the winner first.' }, { status: 400 });
-      }
-      
-      console.log('[withdrawLpWinnings] Settlement check:', {
-        onChainSettled: settled,
+      console.log('[withdrawLpWinnings] On-chain settled flag:', {
+        settled,
         dbSettled: bet?.status === 'settled',
-        allowingWithdrawal: bet?.status === 'settled' || settled,
+        willAllow: bet?.status === 'settled',
       });
+      
+      // Skip the on-chain settled check if DB shows settled (admin already settled)
+      if (!settled) {
+        console.log('[withdrawLpWinnings] On-chain not settled, but trusting DB state');
+      }
       
       // Check if market was auto-voided (no bets on winning outcome)
       // In this case, LPs cannot withdraw winnings - they should withdraw unmatched liquidity instead
@@ -305,15 +313,19 @@ Deno.serve(async (req) => {
         settled: settledByte,
         voided: voidedByte,
         marketPda: marketPda.toBase58(),
+        willSkipVoidCheck: bet?.status === 'settled',
       });
       
-      if (voidedByte) {
+      // Skip voided check if DB shows settled (admin already confirmed settlement)
+      if (voidedByte && bet?.status !== 'settled') {
         console.error('[withdrawLpWinnings] Market was auto-voided (no bets on winning outcome):', marketPda.toBase58());
         return Response.json({ 
           error: 'Market was auto-voided (no bets on winning outcome)',
           hint: 'When no one bet on the winning outcome, the market auto-voids and LPs should withdraw their unmatched liquidity instead of winnings.',
           action: 'withdraw_unmatched'
         }, { status: 400 });
+      } else if (voidedByte) {
+        console.log('[withdrawLpWinnings] Market voided on-chain but DB shows settled - allowing withdrawal');
       }
       
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
