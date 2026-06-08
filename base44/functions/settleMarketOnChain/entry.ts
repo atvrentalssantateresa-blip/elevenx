@@ -233,12 +233,12 @@ Deno.serve(async (req) => {
         instruction_type: 'settle_market',
         programId: SOLANA_PROGRAM_ID,
         keys: [
-          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true }, // market
-          { pubkey: oracleVotePda.toBase58(), isSigner: false, isWritable: true }, // oracle_vote
-          { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true }, // vote_tally
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true }, // platform_config
-          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault
-          { pubkey: admin_wallet, isSigner: true, isWritable: true }, // admin/oracle (signer)
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },  // market (mut)
+          { pubkey: oracleVotePda.toBase58(), isSigner: false, isWritable: true }, // oracle_vote (init_if_needed, mut)
+          { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true }, // vote_tally (mut)
+          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // platform_config (NOT mut in Rust)
+          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },  // fee_vault (mut)
+          { pubkey: admin_wallet, isSigner: true, isWritable: true }, // oracle/admin (signer, mut - pays for oracle_vote init)
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program
         ],
         instruction_data: data.toString('base64'),
