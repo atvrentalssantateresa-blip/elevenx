@@ -441,7 +441,23 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
               alreadyClaimed
             });
             
-            // Priority 0: Already claimed (matched positions that were claimed)
+            // Priority 0: Refunded/Withdrawn (unmatched positions) - CHECK THIS FIRST
+            if (liquidityMatched === 0 && (isRefunded || isWithdrawn || userBetStatus === 'refunded' || userBetStatus === 'withdrawn')) {
+              return (
+                <div className="flex-1 flex flex-col gap-1">
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
+                    
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Withdrawn ◎{liquidityDeposited.toFixed(4)}
+                  </Button>
+                </div>);
+
+            }
+
+            // Priority 1: Already claimed (MATCHED positions only)
             if (alreadyClaimed && liquidityMatched > 0) {
               const claimedAmount = liquidityMatched + potentialEarnings;
               return (
@@ -457,23 +473,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // Priority 0b: Refunded/Withdrawn (unmatched positions)
-            if (isRefunded || isWithdrawn || userBetStatus === 'refunded') {
-              return (
-                <div className="flex-1 flex flex-col gap-1">
-                  <Button
-                    disabled
-                    variant="outline"
-                    className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
-                    
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Withdrawn ◎{liquidityDeposited.toFixed(4)}
-                  </Button>
-                </div>);
-
-            }
-
-            // Priority 1: LP LOST with matched liquidity - no funds to claim
+            // Priority 2: LP LOST with matched liquidity - no funds to claim
             if (isLpLost && liquidityMatched > 0) {
               return (
                 <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
@@ -486,7 +486,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // Priority 2: LP WON with matched liquidity - claim winnings (matched stake + fees)
+            // Priority 3: LP WON with matched liquidity - claim winnings (matched stake + fees)
             if (isLpWon && liquidityMatched > 0 && !alreadyClaimed && onWithdrawRequest) {
               const claimAmount = liquidityMatched + liquidityMatched * 0.02; // stake + 2% fees
               return (
@@ -501,7 +501,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // Priority 3: Has unmatched liquidity - withdraw unmatched
+            // Priority 4: Has unmatched liquidity - withdraw unmatched
             if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
               return (
                 <Button
