@@ -460,16 +460,16 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // Priority 1: Has unmatched liquidity - withdraw unmatched (ALWAYS available)
-            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
+            // Priority 1: LP LOST - no funds to claim (show immediately, don't allow withdrawal)
+            if (isLpLost) {
               return (
-                <Button
-                  onClick={handleWithdraw}
-                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold bg-[#242424]">
-                  
-                  <Wallet className="w-3 h-3 mr-1" />
-                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
-                </Button>);
+                <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5 text-destructive" />
+                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">Position Lost</span>
+                  </div>
+                  <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
+                </div>);
 
             }
 
@@ -489,16 +489,16 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // LP LOST - no funds to claim
-            if (isLpLost) {
+            // Priority 3: Has unmatched liquidity - withdraw unmatched (only if not won/lost)
+            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
               return (
-                <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
-                  <div className="flex items-center gap-1.5">
-                    <XCircle className="w-3.5 h-3.5 text-destructive" />
-                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">Position Lost</span>
-                  </div>
-                  <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
-                </div>);
+                <Button
+                  onClick={handleWithdraw}
+                  className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold bg-[#242424]">
+                  
+                  <Wallet className="w-3 h-3 mr-1" />
+                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
+                </Button>);
 
             }
 
