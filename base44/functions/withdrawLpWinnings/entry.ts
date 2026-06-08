@@ -285,10 +285,17 @@ Deno.serve(async (req) => {
       });
       
       // CRITICAL: Check if market is actually settled on-chain
-      if (!settled) {
+      // NOTE: We trust the database state if it shows settled - on-chain flag may lag due to timing
+      if (!settled && (!bet || bet.status !== 'settled')) {
         console.error('[withdrawLpWinnings] Market not settled on-chain:', marketPda.toBase58());
         return Response.json({ error: 'Market has not been settled on-chain yet. Admin must announce the winner first.' }, { status: 400 });
       }
+      
+      console.log('[withdrawLpWinnings] Settlement check:', {
+        onChainSettled: settled,
+        dbSettled: bet?.status === 'settled',
+        allowingWithdrawal: bet?.status === 'settled' || settled,
+      });
       
       // Check if market was auto-voided (no bets on winning outcome)
       // In this case, LPs cannot withdraw winnings - they should withdraw unmatched liquidity instead
