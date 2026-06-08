@@ -96,12 +96,10 @@ Deno.serve(async (req) => {
     const instruction = {
       instruction_type: 'initialize_platform',
       programId: SOLANA_PROGRAM_ID,
-      keys: [
-        { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true }, // platform_config
-        { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault
-        { pubkey: walletAddress, isSigner: true, isWritable: true }, // admin (signer)
-        { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program
-      ],
+      accounts: {
+        platformConfig: platformPda.toBase58(),
+        feeVault: feeVaultPda.toBase58(),
+      },
       instruction_data: initData.toString('base64'),
     };
 
