@@ -316,16 +316,15 @@ Deno.serve(async (req) => {
         willSkipVoidCheck: bet?.status === 'settled',
       });
       
-      // Skip voided check if DB shows settled (admin already confirmed settlement)
-      if (voidedByte && bet?.status !== 'settled') {
+      // CRITICAL: Voided markets = NO LP winnings (funds went to DAO)
+      // This check applies even if DB shows settled (admin may have settled incorrectly)
+      if (voidedByte) {
         console.error('[withdrawLpWinnings] Market was auto-voided (no bets on winning outcome):', marketPda.toBase58());
         return Response.json({ 
           error: 'Market was auto-voided (no bets on winning outcome)',
-          hint: 'When no one bet on the winning outcome, the market auto-voids and LPs should withdraw their unmatched liquidity instead of winnings.',
+          hint: 'When no one bet on the winning outcome, the market auto-voids and funds go to DAO.\n\nLPs should withdraw their unmatched liquidity instead of winnings.',
           action: 'withdraw_unmatched'
         }, { status: 400 });
-      } else if (voidedByte) {
-        console.log('[withdrawLpWinnings] Market voided on-chain but DB shows settled - allowing withdrawal');
       }
       
       const lpOfferAccountInfo = await connection.getAccountInfo(lpOfferPda);
