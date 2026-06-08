@@ -69,7 +69,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   
   // If DB doesn't have won/lost status but market is settled, calculate from outcome
   // ON-CHAIN LOGIC: LP wins when lp_offer.outcome != market.winning_outcome
-  if (!isLpWon && !isLpLost && isSettled && matchData?.winner) {
+  // CRITICAL: Only calculate if match has a VALID winner (not empty, not 'void')
+  if (!isLpWon && !isLpLost && isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void') {
     const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
     const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
     
