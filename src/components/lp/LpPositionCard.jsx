@@ -437,13 +437,15 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
           {(() => {
-            // Only consider claimed if status is explicitly 'claimed' (not refunded)
-            const userBetStatus = position.userBet?.status || position.status;
+            // CRITICAL: Use aggregated userBetStatus from dashboard (prioritizes claimed/withdrawn over pending/active)
+            // This fixes the issue where old pending transactions show claim/withdraw buttons after claiming
+            const userBetStatus = position.userBetStatus || position.userBet?.status || position.status;
             const offerStatus = offer.status;
             const alreadyClaimed = userBetStatus === 'claimed';
             
-            console.log('[LpPositionCard] Claim check:', {
+            console.log('[LpPositionCard] Claim check (using aggregated status):', {
               userBetStatus,
+              userBetStatus_source: position.userBetStatus ? 'aggregated_from_dashboard' : 'fallback_to_position',
               position_userBet_status: position.userBet?.status,
               position_status: position.status,
               offer_status: offerStatus,
@@ -451,6 +453,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             });
             
             // Priority 0: Refunded/Withdrawn (unmatched positions) - CHECK THIS FIRST
+            // Use aggregated userBetStatus to prevent old pending records from showing withdraw buttons
             if (liquidityMatched === 0 && (isRefunded || isWithdrawn || userBetStatus === 'refunded' || userBetStatus === 'withdrawn')) {
               return (
                 <div className="flex-1 flex flex-col gap-1">
@@ -467,7 +470,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             }
 
             // Priority 1: Already claimed (MATCHED positions only)
-            if (alreadyClaimed && liquidityMatched > 0) {
+            // Use aggregated userBetStatus to prevent old records from showing claim buttons
+            if ((alreadyClaimed || userBetStatus === 'claimed') && liquidityMatched > 0) {
               const claimedAmount = liquidityMatched + potentialEarnings;
               return (
                 <div className="flex-1 flex flex-col gap-1">
@@ -496,7 +500,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             }
 
             // Priority 3: LP WON with matched liquidity - claim winnings (matched stake + fees)
-            if (isLpWon && liquidityMatched > 0 && !alreadyClaimed && onWithdrawRequest) {
+            // Use aggregated userBetStatus to prevent already-claimed positions from showing claim buttons
+            if (isLpWon && liquidityMatched > 0 && userBetStatus !== 'claimed' && !alreadyClaimed && onWithdrawRequest) {
               const claimAmount = liquidityMatched + liquidityMatched * 0.02; // stake + 2% fees
               return (
                 <Button
@@ -511,7 +516,8 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
             }
 
             // Priority 4: Has unmatched liquidity - withdraw unmatched
-            if ((hasUnmatched || liquidityUnmatched > 0) && onWithdrawRequest) {
+            // Use aggregated userBetStatus to prevent already-refunded positions from showing withdraw buttons
+            if ((hasUnmatched || liquidityUnmatched > 0) && userBetStatus !== 'refunded' && userBetStatus !== 'withdrawn' && onWithdrawRequest) {
               return (
                 <Button
                   onClick={handleWithdraw}
