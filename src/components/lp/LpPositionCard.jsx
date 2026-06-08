@@ -40,6 +40,13 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   const isSettled = dbStatus === 'won' || dbStatus === 'lost' || dbStatus === 'settled' || 
                     (matchData?.winner && matchData.winner !== '');
   
+  console.log('[LpPositionCard] Settlement check:', {
+    dbStatus,
+    match_winner: matchData?.winner,
+    isSettled,
+    offer_status: offer.status
+  });
+  
   // For LP positions: won = backed the loser (bettors lost), lost = backed the winner (bettors won)
   // Calculate win/loss by comparing LP's backed outcome vs market winner
   let isLpWon = dbStatus === 'won';
