@@ -35,6 +35,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // userBet.status = settlement state (won/lost/claimed)
   // offer.status = matching state (open/partially_matched/fully_matched/withdrawn)
   const dbStatus = position.userBetStatus || position.userBet?.status || position.status || offer.status || 'active';
+  const isVoided = dbStatus === 'void' || offer.status === 'void' || (matchData?.status === 'voided') || matchData?.winner === 'void';
   
   console.log('[LpPositionCard] Status check:', {
     position_userBetStatus: position.userBetStatus,
@@ -97,13 +98,6 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   
   const isClaimed = dbStatus === 'claimed';
   const isRefunded = dbStatus === 'refunded';
-  const isVoided = dbStatus === 'void' || offer.status === 'void' || (matchData?.status === 'voided') || matchData?.winner === 'void';
-  
-  // If market was voided, LP position is lost (no payouts, keep nothing)
-  if (isVoided && liquidityMatched > 0) {
-    isLpLost = true;
-    isLpWon = false;
-  }
   
   console.log('[LpPositionCard] ===== LP POSITION DEBUG =====');
   console.log('[LpPositionCard] Position ID:', position.id);
