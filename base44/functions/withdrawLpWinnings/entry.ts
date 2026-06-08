@@ -353,7 +353,7 @@ Deno.serve(async (req) => {
       });
 
       console.log('[withdrawLpWinnings] On-chain LP offer state:', {
-        withdrawn: withdrawnFlag === 1,
+        withdrawn: fullyWithdrawnFlag === 1,
         amountMatchedOnChain: Number(amountMatchedOnChain) / 1e9,
         lpOfferPda: lpOfferPda.toBase58(),
         accountDataLength: accountData.length,
