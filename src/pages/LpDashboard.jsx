@@ -198,6 +198,11 @@ export default function LpDashboard() {
     queryFn: () => base44.entities.Match.list()
   });
 
+  const { data: bets = [] } = useQuery({
+    queryKey: ['bets'],
+    queryFn: () => base44.entities.Bet.list()
+  });
+
   // Extract unique groups from ALL matches (not just open bets), plus all World Cup groups A-L
   const groupSet = new Set(matches.map((m) => m.group_stage).filter(Boolean));
 
@@ -903,19 +908,21 @@ export default function LpDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {matchLpPositions.map((offer, idx) => {
                       const match = matches.find((m) => m.id === offer.match_id);
+                      const bet = bets.find((b) => b.match_id === offer.match_id);
                       console.log('[LpDashboard] Rendering Match LP position:', {
                         offer_id: offer.id,
                         userBetId: offer.userBetId,
                         offer_status: offer.status,
                         userBetStatus: offer.userBetStatus,
                         userBet_status: offer.userBet?.status,
+                        bet_winning_outcome: bet?.winning_outcome,
                         final_position_status: { ...offer, userBetId: offer.userBetId || offer.id }.status,
                         final_position_userBetStatus: { ...offer, userBetId: offer.userBetId || offer.id }.userBetStatus
                       });
                       return (
                         <LpPositionCard
                           key={`match-${offer.id || offer.userBetId}`}
-                          position={{ ...offer, userBetId: offer.userBetId || offer.id }}
+                          position={{ ...offer, userBetId: offer.userBetId || offer.id, bet_winning_outcome: bet?.winning_outcome || '' }}
                           match={match}
                           walletAddress={walletAddress}
                           onWithdrawRequest={(withdrawData) => {

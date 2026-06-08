@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import BetCountdown from '@/components/betting/BetCountdown';
 import { base44 } from '@/api/base44Client';
 
-export default function LpPositionCard({ position, match, walletAddress, onWithdrawRequest }) {
+export default function LpPositionCard({ position, match, bet, walletAddress, onWithdrawRequest }) {
   // Support both BetOffer (offer) and UserBet (position) entities
   const offer = position;
   if (!offer) return null;
@@ -35,7 +35,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // userBet.status = settlement state (won/lost/claimed)
   // offer.status = matching state (open/partially_matched/fully_matched/withdrawn)
   const dbStatus = position.userBetStatus || position.userBet?.status || position.status || offer.status || 'active';
-  const isVoided = dbStatus === 'void' || dbStatus === 'voided' || offer.status === 'void' || (matchData?.status === 'voided') || matchData?.winner === 'void';
+  const isVoided = dbStatus === 'void' || dbStatus === 'voided' || offer.status === 'void' || (matchData?.status === 'voided') || winningOutcome === 'void';
   
   console.log('[LpPositionCard] Status check:', {
     position_userBetStatus: position.userBetStatus,
@@ -191,17 +191,22 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // LP LOSES when backed outcome == winning outcome (LP backed the winner)
   let displayStatus = offer.status;
   
+  // Get winning outcome from Bet entity (match.winner is often empty)
+  const winningOutcome = offer.bet_winning_outcome || '';
+  
   console.log('[STATUS CALC] isSettled:', isSettled);
-  console.log('[STATUS CALC] matchData.winner:', matchData?.winner);
+  console.log('[STATUS CALC] winningOutcome:', winningOutcome, '(from bet.winning_outcome or match.winner)');
   console.log('[STATUS CALC] offer.outcome:', offer.outcome);
   console.log('[STATUS CALC] liquidityMatched:', liquidityMatched);
   
   if (liquidityMatched === 0) {
     displayStatus = 'refunded';
     console.log('[STATUS CALC] Setting to refunded (no matched liquidity)');
-  } else if (isSettled && matchData?.winner && matchData.winner !== '' && matchData.winner !== 'void') {
+  } else if (winningOutcome === 'void') {
+    displayStatus = 'void';
+    console.log('[STATUS CALC] Setting to void (market voided)');
+  } else if (isSettled && winningOutcome && winningOutcome !== '' && winningOutcome !== 'void') {
     const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
-    const winningOutcome = matchData.winner; // 'team_a', 'team_b', or 'draw'
     const backedIsWinner = 
       (backedOutcome === 'a' && winningOutcome === 'team_a') ||
       (backedOutcome === 'b' && winningOutcome === 'team_b') ||
