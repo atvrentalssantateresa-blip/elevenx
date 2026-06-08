@@ -91,6 +91,13 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   
   const isClaimed = dbStatus === 'claimed';
   const isRefunded = dbStatus === 'refunded';
+  const isVoided = dbStatus === 'void' || offer.status === 'void' || (matchData?.status === 'voided');
+  
+  // If market was voided, LP position is lost (no payouts, keep nothing)
+  if (isVoided && liquidityMatched > 0) {
+    isLpLost = true;
+    isLpWon = false;
+  }
   
   console.log('[LpPositionCard] ===== LP POSITION DEBUG =====');
   console.log('[LpPositionCard] Position ID:', position.id);
@@ -411,7 +418,14 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
         {/* LP Result Indicator */}
         {isSettled && (
-          liquidityMatched === 0 ? (
+          isVoided ? (
+            <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
+              <div className="flex items-center justify-between text-[9px]">
+                <span className="font-bold uppercase tracking-wider">⚠️ Market Voided</span>
+                <span className="text-white/40">No payout (void outcome)</span>
+              </div>
+            </div>
+          ) : liquidityMatched === 0 ? (
             <div className="px-3 py-2 rounded-lg border bg-secondary/10 border-secondary/30 text-muted-foreground">
               <div className="flex items-center justify-between text-[9px]">
                 <span className="font-bold uppercase tracking-wider">ℹ️ Unmatched (No Action)</span>
@@ -486,13 +500,15 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
 
             }
 
-            // Priority 2: LP LOST with matched liquidity - no funds to claim
-            if (isLpLost && liquidityMatched > 0) {
+            // Priority 2: LP LOST with matched liquidity - no funds to claim (includes voided markets)
+            if ((isLpLost || isVoided) && liquidityMatched > 0) {
               return (
                 <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
                   <div className="flex items-center gap-1.5">
                     <XCircle className="w-3.5 h-3.5 text-destructive" />
-                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">Position Lost</span>
+                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">
+                      {isVoided ? 'Market Voided' : 'Position Lost'}
+                    </span>
                   </div>
                   <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
                 </div>);
