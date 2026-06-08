@@ -27,8 +27,11 @@ Deno.serve(async (req) => {
 
     console.log('=== FORCE REINIT PLATFORM ===');
     console.log('Admin wallet:', walletAddress);
+    console.log('SOLANA_PROGRAM_ID from env:', SOLANA_PROGRAM_ID);
+    console.log('SOLANA_PROGRAM_ID length:', SOLANA_PROGRAM_ID?.length);
+    console.log('SOLANA_PROGRAM_ID trimmed:', SOLANA_PROGRAM_ID?.trim());
 
-    const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    const programId = new PublicKey(SOLANA_PROGRAM_ID.trim());
     const adminPubkey = new PublicKey(walletAddress);
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
@@ -83,10 +86,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build initialization instruction - try simple format first (older Anchor)
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initialize_platform'));
+    // Build initialization instruction - use Anchor's global:snake_case format
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
-    console.log('Using discriminator (simple_snake):', discriminator.toString('hex'));
+    console.log('Using discriminator (global_snake):', discriminator.toString('hex'));
     
     const initData = Buffer.alloc(10);
     discriminator.copy(initData, 0);
@@ -98,10 +101,19 @@ Deno.serve(async (req) => {
       accounts: {
         platformConfig: platformPda.toBase58(),
         feeVault: feeVaultPda.toBase58(),
+        admin: adminPubkey.toBase58(), // Explicitly include admin
       },
       instruction_data: initData.toString('base64'),
       version: 'v3',
     };
+    
+    console.log('Instruction payload:', {
+      programId: SOLANA_PROGRAM_ID,
+      platformPda: platformPda.toBase58(),
+      feeVaultPda: feeVaultPda.toBase58(),
+      admin: adminPubkey.toBase58(),
+      discriminator: discriminator.toString('hex'),
+    });
 
     console.log('Init instruction ready');
 
