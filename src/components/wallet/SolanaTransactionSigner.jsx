@@ -586,6 +586,25 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(updateIx);
+      } else if (instruction.instruction_type === 'withdraw_fees') {
+        // withdraw_fees — admin withdraws accumulated fees from fee vault to admin wallet
+        console.log('Creating withdraw_fees program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        
+        const withdrawFeesIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(withdrawFeesIx);
       }
 
       // Get recent blockhash for transaction

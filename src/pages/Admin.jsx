@@ -22,6 +22,7 @@ export default function Admin() {
   const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
   const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
+  const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -212,6 +213,12 @@ export default function Admin() {
   const handleInitPlatformSuccess = async () => {
     toast.success('✓ Platform initialized on Solana!');
     setInitPlatformDialog(null);
+    queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
+  };
+
+  const handleWithdrawFeesSuccess = async () => {
+    toast.success('✓ Fees withdrawn to admin wallet!');
+    setWithdrawFeesDialog(null);
     queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
   };
 
@@ -598,6 +605,49 @@ export default function Admin() {
                   <Wallet className="w-4 h-4 mr-2" />
                   Check Fee Vault
                 </Button>
+                <Button
+                  onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
+                    try {
+                      const res = await base44.functions.invoke('checkFeeVault');
+                      if (res.data.error) {
+                        toast.error('Error: ' + res.data.error);
+                        return;
+                      }
+                      if (res.data.totalFeesSOL <= 0) {
+                        toast.error('Fee vault is empty!');
+                        return;
+                      }
+                      // Prompt user for amount
+                      const amountStr = prompt(`Fee Vault Balance: ◎${res.data.totalFeesSOL.toFixed(4)} SOL\n\nEnter amount to withdraw (SOL):`, res.data.totalFeesSOL.toFixed(4));
+                      if (!amountStr) return;
+                      const amountSOL = parseFloat(amountStr);
+                      if (isNaN(amountSOL) || amountSOL <= 0 || amountSOL > res.data.totalFeesSOL) {
+                        toast.error('Invalid amount');
+                        return;
+                      }
+                      // Prepare withdraw instruction
+                      const withdrawRes = await base44.functions.invoke('withdrawFees', { amount_sol: amountSOL });
+                      if (withdrawRes.data.error) {
+                        toast.error('Error: ' + withdrawRes.data.error);
+                        return;
+                      }
+                      setWithdrawFeesDialog({
+                        instruction: withdrawRes.data.solana_instruction,
+                        amountSOL,
+                      });
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-white rounded-xl"
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Withdraw Fees
+                </Button>
               </div>
             </Card>
           </TabsContent>
@@ -784,6 +834,35 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setDeployMatchesDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {withdrawFeesDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-green-600/20 border border-green-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-green-400 mb-1">Withdraw Fees</h3>
+                  <p className="text-sm text-gray-400">Amount: ◎{withdrawFeesDialog.amountSOL.toFixed(4)} SOL</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={withdrawFeesDialog.instruction}
+                  amount={withdrawFeesDialog.amountSOL.toFixed(4)}
+                  onSuccess={handleWithdrawFeesSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setWithdrawFeesDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setWithdrawFeesDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
