@@ -151,26 +151,6 @@ export default function LpDashboard() {
           : `match_${offer.match_id}_${offer.outcome}`; // For matches: match_id + outcome
         
         if (!groupedMap.has(groupKey)) {
-          // CRITICAL: Parimutuel LP logic - calculate correct status from winning outcome, not DB
-          const betWinningOutcome = offer.bet?.winning_outcome || '';
-          const matchWinner = offer.match?.winner || '';
-          const winningOutcome = betWinningOutcome || matchWinner;
-          const backedOutcome = offer.outcome;
-          const liquidityMatched = offer.amount_matched || 0;
-          
-          let calculatedStatus = offer.userBetStatus || offer.userBet?.status || 'pending';
-          
-          // Override DB status with parimutuel calculation if market settled
-          if (winningOutcome && winningOutcome !== '' && winningOutcome !== 'void' && liquidityMatched > 0) {
-            const backedIsWinner = 
-              (backedOutcome === 'a' && winningOutcome === 'team_a') ||
-              (backedOutcome === 'b' && winningOutcome === 'team_b') ||
-              (backedOutcome === 'draw' && winningOutcome === 'draw');
-            calculatedStatus = backedIsWinner ? 'lost' : 'won';
-          } else if (winningOutcome === 'void') {
-            calculatedStatus = 'void';
-          }
-          
           groupedMap.set(groupKey, {
             ...offer,
             _isFutures: isFutures,
@@ -178,7 +158,7 @@ export default function LpDashboard() {
             total_liquidity_deposited: offer.userBet?.liquidity_deposited || offer.amount_offered || 0,
             total_liquidity_matched: offer.amount_matched || 0,
             total_liquidity_unmatched: offer.amount_unmatched || 0,
-            userBetStatus: calculatedStatus,
+            userBetStatus: offer.userBetStatus || offer.userBet?.status,
           });
         } else {
           // Group this transaction with existing position
@@ -188,29 +168,14 @@ export default function LpDashboard() {
           existing.total_liquidity_matched += offer.amount_matched || 0;
           existing.total_liquidity_unmatched += offer.amount_unmatched || 0;
           
-          // CRITICAL: Recalculate parimutuel status for the group (not just aggregate DB status)
-          const betWinningOutcome = offer.bet?.winning_outcome || existing.bet?.winning_outcome || '';
-          const matchWinner = offer.match?.winner || existing.match?.winner || '';
-          const winningOutcome = betWinningOutcome || matchWinner;
-          const backedOutcome = existing.outcome;
-          const liquidityMatched = existing.total_liquidity_matched;
-          
           // Use the earliest created_date for the group
           if (offer.userBet?.created_date < existing.userBet?.created_date) {
             existing.userBet = offer.userBet;
+            existing.userBetStatus = offer.userBetStatus || offer.userBet?.status;
           }
           
-          // Override with parimutuel calculation if settled
-          if (winningOutcome && winningOutcome !== '' && winningOutcome !== 'void' && liquidityMatched > 0) {
-            const backedIsWinner = 
-              (backedOutcome === 'a' && winningOutcome === 'team_a') ||
-              (backedOutcome === 'b' && winningOutcome === 'team_b') ||
-              (backedOutcome === 'draw' && winningOutcome === 'draw');
-            existing.userBetStatus = backedIsWinner ? 'lost' : 'won';
-          } else if (winningOutcome === 'void') {
-            existing.userBetStatus = 'void';
-          } else if (offer.userBetStatus === 'claimed') {
-            // Only use claimed status if not yet settled
+          // If this transaction has a claimed status, prioritize it
+          if (offer.userBetStatus === 'claimed') {
             existing.userBetStatus = 'claimed';
           }
         }
@@ -959,7 +924,7 @@ export default function LpDashboard() {
                       return (
                         <LpPositionCard
                           key={`match-${offer.id || offer.userBetId}`}
-                          position={{ ...offer, userBetId: offer.userBetId || offer.id, bet_winning_outcome: bet?.winning_outcome || '' }}
+                          position={{ ...offer, userBetId: offer.userBetId || offer.id, bet_winning_outcome: bet?.winning_outcome || match?.winner || '' }}
                           match={match}
                           bet={bet}
                           walletAddress={walletAddress}
