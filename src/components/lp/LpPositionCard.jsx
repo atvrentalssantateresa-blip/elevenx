@@ -179,14 +179,26 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   };
 
   const statusConfig = {
-    open: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30' },
-    partially_matched: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
-    fully_matched: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30' },
-    withdrawn: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30' },
-    settled: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30' }
+    open: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Open' },
+    partially_matched: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'Partially Matched' },
+    fully_matched: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30', label: 'Fully Matched' },
+    withdrawn: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Withdrawn' },
+    settled: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30', label: 'Settled' },
+    won: { color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/30', label: 'Won' },
+    lost: { color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30', label: 'Lost' },
+    refunded: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Refunded' },
+    void: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Void' },
+    active: { color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', label: 'Active' },
+    pending: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Pending' }
   };
 
-  const currentStatus = statusConfig[offer.status] || statusConfig.open;
+  // CRITICAL: Override status display when liquidityMatched is 0 - show "Refunded" not "Won"
+  const displayStatus = liquidityMatched === 0 && (dbStatus === 'won' || dbStatus === 'refunded' || offer.status === 'refunded') 
+    ? 'refunded' 
+    : offer.status;
+  
+  const currentStatus = statusConfig[displayStatus] || statusConfig.open;
+  const displayStatusLabel = currentStatus.label || displayStatus.replace('_', ' ');
 
   // Handle withdraw click - fetch match data and prepare withdraw instruction
   const handleWithdraw = async () => {
@@ -362,7 +374,7 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
                 }
               </div>
               <Badge className={`${currentStatus.bg} ${currentStatus.border} ${currentStatus.color} text-[9px] sm:text-[10px] font-bold border`}>
-                {offer.status.replace('_', ' ')}
+                {displayStatusLabel}
               </Badge>
             </div>
             {!isFutures && matchData.match_end_time &&
