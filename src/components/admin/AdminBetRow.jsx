@@ -70,9 +70,22 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
         <div className="flex items-center gap-2">
           {getStatusBadge()}
           {bet.solana_market_pda && (
-            <a href={`https://solscan.io/account/${bet.solana_market_pda}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline flex items-center gap-1">
-              <ExternalLink className="w-3 h-3" />Solscan
-            </a>
+            <>
+              <a href={`https://solscan.io/account/${bet.solana_market_pda}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline flex items-center gap-1">
+                <ExternalLink className="w-3 h-3" />Solscan
+              </a>
+              <Button 
+                onClick={async () => {
+                  const res = await base44.functions.invoke('debugMarketSettlement', { match_id: bet.match_id });
+                  console.log('[AdminBetRow] Debug result:', res.data);
+                  alert(JSON.stringify(res.data, null, 2));
+                }}
+                size="sm"
+                className="h-6 text-[9px] bg-gray-700 hover:bg-gray-600 text-white border-gray-600 rounded-lg"
+              >
+                Debug
+              </Button>
+            </>
           )}
         </div>
       </div>
