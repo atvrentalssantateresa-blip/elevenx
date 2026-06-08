@@ -908,14 +908,16 @@ export default function LpDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {matchLpPositions.map((offer, idx) => {
                       const match = matches.find((m) => m.id === offer.match_id);
-                      const bet = bets.find((b) => b.match_id === offer.match_id);
+                      const bet = bets.find((b) => b.id === offer.bet_id || b.match_id === offer.match_id);
                       console.log('[LpDashboard] Rendering Match LP position:', {
                         offer_id: offer.id,
                         userBetId: offer.userBetId,
                         offer_status: offer.status,
                         userBetStatus: offer.userBetStatus,
                         userBet_status: offer.userBet?.status,
+                        bet_id: bet?.id,
                         bet_winning_outcome: bet?.winning_outcome,
+                        match_winner: match?.winner,
                         final_position_status: { ...offer, userBetId: offer.userBetId || offer.id }.status,
                         final_position_userBetStatus: { ...offer, userBetId: offer.userBetId || offer.id }.userBetStatus
                       });
@@ -924,6 +926,7 @@ export default function LpDashboard() {
                           key={`match-${offer.id || offer.userBetId}`}
                           position={{ ...offer, userBetId: offer.userBetId || offer.id, bet_winning_outcome: bet?.winning_outcome || '' }}
                           match={match}
+                          bet={bet}
                           walletAddress={walletAddress}
                           onWithdrawRequest={(withdrawData) => {
                             setPendingTx({
