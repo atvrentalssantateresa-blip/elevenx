@@ -26,7 +26,7 @@ export default function LpStatsHeader({ lpPositions }) {
     return !['won', 'lost', 'claimed', 'withdrawn', 'refunded'].includes(s);
   });
 
-  const netPL = wonPositions.reduce((s, p) => s + (p.liquidity_matched || p.amount_matched || 0) + (p.liquidity_matched || p.amount_matched || 0) * 0.02, 0)
+  const netPL = wonPositions.reduce((s, p) => s + (p.liquidity_matched || p.amount_matched || 0) * 0.02, 0)
               - lostPositions.reduce((s, p) => s + (p.liquidity_matched || p.amount_matched || 0), 0);
 
   const stats = [

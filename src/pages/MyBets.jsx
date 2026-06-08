@@ -396,22 +396,7 @@ export default function MyBets() {
             Track your World Cup betting performance
             {walletAddress && <span className="ml-2 text-[10px] font-mono opacity-50">({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)})</span>}
           </p>
-          {/* Debug: Show all wallets being checked */}
-          {allMyWallets.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-mono">
-              <span className="text-muted-foreground">Checking wallets:</span>
-              {allMyWallets.map(w => (
-                <span key={w} className="px-2 py-0.5 bg-secondary/50 rounded text-primary">
-                  {w?.slice(0, 6)}...{w?.slice(-4)}
-                </span>
-              ))}
-              {user?.id && (
-                <span className="px-2 py-0.5 bg-accent/20 rounded text-accent">
-                  User: {user.id.slice(0, 8)}
-                </span>
-              )}
-            </div>
-          )}
+
         </div>
         <div className="flex gap-2">
           <Button 
@@ -652,37 +637,7 @@ export default function MyBets() {
         </div>
       }
       
-      {/* DEBUG PANEL - Shows all bets and filtering */}
-      <div className="mt-8 p-4 border border-border/30 rounded-xl bg-secondary/10">
-        <h3 className="font-heading font-bold text-sm mb-2 text-muted-foreground">🔍 Debug: All Bets for Your Wallets</h3>
-        <div className="text-[10px] font-mono space-y-1 max-h-96 overflow-auto">
-          <div className="text-muted-foreground mb-2">
-            Checking {allMyWallets.length} wallet(s): {allMyWallets.map(w => w?.slice(0, 8)).join(', ')}
-          </div>
-          {myBets.length === 0 ? (
-            <div className="text-yellow-400">⚠️ No bets found for your wallets! Check if you placed bets with a different wallet.</div>
-          ) : (
-            myBets.map((bet, idx) => (
-              <div key={bet.id} className="p-2 bg-card rounded border border-border/20">
-                <div className="flex gap-2 flex-wrap">
-                  <span className="text-primary">Bet #{idx + 1}</span>
-                  <span className={allMyWallets.some(w => bet.wallet_address?.trim() === w?.trim()) ? 'text-accent' : 'text-destructive'}>
-                    {allMyWallets.some(w => bet.wallet_address?.trim() === w?.trim()) ? '✓ Match' : '✗ No Match'}
-                  </span>
-                  <span className="text-muted-foreground">ID: {bet.id.slice(0, 12)}</span>
-                </div>
-                <div className="mt-1 text-muted-foreground">
-                  Wallet: {bet.wallet_address?.slice(0, 10)}... | 
-                  Role: {bet.role} | 
-                  Status: {bet.status} | 
-                  Amount: ◎{bet.amount} |
-                  {bet.futures_market_id ? '🏆 Futures' : '⚽ Match'}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+
     </div>);
 
 }
