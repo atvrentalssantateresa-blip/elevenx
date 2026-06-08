@@ -48,15 +48,15 @@ Deno.serve(async (req) => {
     const adminPubkey = new PublicKey(walletAddress);
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
-    // Derive platform config PDA
+    // Derive platform config PDA (use V2 seeds to avoid conflicts with old deployments)
     const [platformPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform')],
+      [Buffer.from('platform_v2')],
       programId
     );
 
-    // Derive fee vault PDA
+    // Derive fee vault PDA (use V2 seeds to avoid conflicts with old deployments)
     const [feeVaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('fee_vault')],
+      [Buffer.from('fee_vault_v2')],
       programId
     );
 

@@ -16,9 +16,9 @@ Deno.serve(async (req) => {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
-    // Derive platform config PDA
+    // Derive platform config PDA (check V2 first, then fallback to V1)
     const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform')],
+      [Buffer.from('platform_v2')],
       programId
     );
     
