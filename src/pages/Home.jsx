@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import MatchCard from '@/components/betting/MatchCard';
 import HottestBetCard from '@/components/betting/HottestBetCard';
+import ProtocolVault from '@/components/treasury/ProtocolVault';
 import { getTeamFlag } from '@/utils/flags';
 
 const WC_PHOTOS = [
@@ -62,6 +63,18 @@ export default function Home() {
 
   const totalVolume = bets.reduce((s, b) => s + (b.total_pool || 0), 0);
   const activeBettors = new Set(userBets.map((ub) => ub.created_by_id)).size;
+
+  // Protocol Vault calculations
+  const unresolvedStakes = bets
+    .filter((b) => b.status === 'open' || b.status === 'closed')
+    .reduce((acc, b) => acc + (b.total_pool || 0), 0);
+  
+  const unclaimedWinnings = userBets
+    .filter((ub) => ub.status === 'won' || ub.status === 'refunded')
+    .reduce((acc, ub) => acc + (ub.amount || 0), 0);
+  
+  // Fee vault PDA (static for now - can be fetched from on-chain later)
+  const feeVaultPda = 'FeeVaultPDA...'; // Will be populated from checkFeeVault
 
   return (
     <div className="space-y-6 -mt-2">
@@ -152,23 +165,36 @@ export default function Home() {
                 <span className="text-[10px] sm:text-[11px] font-bold text-accent tracking-widest">HYBRID MODEL</span>
               </div>
             </div>
-            <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
-              Be The House.<br />
-              <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
-            </h1>
-            <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
-              Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
-            </p>
-            <button
-              onClick={() => navigator.clipboard.writeText('111111111111111111111111111')}
-              className="flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group mt-3"
-              title="Copy contract address">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
+                  Be The House.<br />
+                  <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
+                </h1>
+                <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
+                  Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
+                </p>
+                <button
+                  onClick={() => navigator.clipboard.writeText('111111111111111111111111111')}
+                  className="flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group mt-3"
+                  title="Copy contract address">
+                  
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white/60 tracking-wide">Contract: 111111111111111111111111111</span>
+                  <svg className="w-3 h-3 text-white/60 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
               
-              <span className="text-[10px] sm:text-[11px] font-bold text-white/60 tracking-wide">Contract: 111111111111111111111111111</span>
-              <svg className="w-3 h-3 text-white/60 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
+              {/* Protocol Vault - Live Treasury Stats */}
+              <div className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                <ProtocolVault
+                  daoBalance={0.0042}
+                  unresolvedStakes={unresolvedStakes}
+                  unclaimedWinnings={unclaimedWinnings}
+                  feeVaultPda={feeVaultPda} />
+              </div>
+            </div>
           </div>
 
           <div className="relative z-10 mt-5 sm:mt-6">
