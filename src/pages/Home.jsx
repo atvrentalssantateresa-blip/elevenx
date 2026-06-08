@@ -187,7 +187,7 @@ export default function Home() {
               </div>
               
               {/* Protocol Vault - Live Treasury Stats */}
-              <div className="flex-shrink-0 w-[220px] sm:w-[260px]">
+              <div className="flex-shrink-0 w-[220px] sm:w-[260px] -mt-2">
                 <ProtocolVault
                   daoBalance={0.0042}
                   unresolvedStakes={unresolvedStakes}
