@@ -167,16 +167,60 @@ export default function Home() {
             </div>
             <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
               <div className="flex-1 min-w-0 w-full sm:w-auto">
-                <h1 className="font-heading font-black text-xl sm:text-2xl md:text-3xl leading-tight mb-2 sm:mb-3 text-white">
-                  Be The House.<br />
-                  <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
-                </h1>
-                <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
-                  Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
-                </p>
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex-1">
+                    <h1 className="font-heading font-black text-xl sm:text-2xl md:text-3xl leading-tight mb-2 text-white">
+                      Be The House.<br />
+                      <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
+                    </h1>
+                    <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
+                      Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
+                    </p>
+                  </div>
+                  
+                  {/* Protocol Vault - Live Treasury Stats (integrated into same container) */}
+                  <div className="flex-shrink-0 w-[200px] sm:w-[220px]">
+                    <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 border border-emerald-500/20">
+                      <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/20">
+                        <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[9px] text-white/50">Fees</span>
+                          <span className="text-xs sm:text-sm font-bold text-emerald-400">◎{daoBalance.toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[9px] text-white/50">Locked</span>
+                          <span className="text-xs sm:text-sm font-bold text-yellow-400">◎{unresolvedStakes.toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[9px] text-white/50">Unclaimed</span>
+                          <span className="text-xs sm:text-sm font-bold text-purple-400">◎{unclaimedWinnings.toFixed(4)}</span>
+                        </div>
+                      </div>
+                      {feeVaultPda && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+                          <a
+                            href={`https://solscan.io/account/${feeVaultPda}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[8px] text-emerald-400/60 hover:text-emerald-400 transition-colors truncate max-w-[100px] font-mono">
+                            {feeVaultPda.slice(0, 4)}...{feeVaultPda.slice(-4)}
+                          </a>
+                          <div className="flex items-center gap-1 text-[8px] text-emerald-400 font-bold">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                            Live
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
                 <button
                   onClick={() => navigator.clipboard.writeText('111111111111111111111111111')}
-                  className="flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group mt-3"
+                  className="flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group"
                   title="Copy contract address">
                   
                   <span className="text-[10px] sm:text-[11px] font-bold text-white/60 tracking-wide">Contract: 111111111111111111111111111</span>
@@ -184,45 +228,6 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 </button>
-              </div>
-              
-              {/* Protocol Vault - Live Treasury Stats (integrated into same container) */}
-              <div className="w-full sm:w-auto sm:flex-shrink-0 sm:-mt-1">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 backdrop-blur-sm rounded-xl p-3 sm:p-3.5 border border-emerald-500/20">
-                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/20">
-                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
-                  </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-1 gap-2 sm:space-y-1.5">
-                    <div className="flex flex-col">
-                      <span className="text-[8px] sm:text-[9px] text-white/50">Fees</span>
-                      <span className="text-xs sm:text-sm font-bold text-emerald-400">◎{daoBalance.toFixed(4)}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[8px] sm:text-[9px] text-white/50">Locked</span>
-                      <span className="text-xs sm:text-sm font-bold text-yellow-400">◎{unresolvedStakes.toFixed(4)}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[8px] sm:text-[9px] text-white/50">Unclaimed</span>
-                      <span className="text-xs sm:text-sm font-bold text-purple-400">◎{unclaimedWinnings.toFixed(4)}</span>
-                    </div>
-                  </div>
-                  {feeVaultPda && (
-                    <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-                      <a
-                        href={`https://solscan.io/account/${feeVaultPda}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[8px] text-emerald-400/60 hover:text-emerald-400 transition-colors truncate max-w-[100px] font-mono">
-                        {feeVaultPda.slice(0, 4)}...{feeVaultPda.slice(-4)}
-                      </a>
-                      <div className="flex items-center gap-1 text-[8px] text-emerald-400 font-bold">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        Live
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
