@@ -82,12 +82,12 @@ export default function Home() {
 
       {/* ── HERO CARDS ── */}
       <div className="grid md:grid-cols-3 gap-4">
-        {/* Card 1 — World Cup Hype (Football Image) - Shows first on mobile */}
+        {/* Card 1 — World's First Decentralized - Shows first on mobile & left on desktop */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between order-1 md:order-1">
+          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between order-1">
           
           <img
             src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80"
@@ -145,12 +145,20 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Card 2 — Main CTA (BetP2P) - Shows second on mobile */}
+        {/* Card 2 — Treasury Ledger - Shows second on mobile & middle on desktop */}
+        <ProtocolVault
+          daoBalance={daoBalance}
+          unresolvedStakes={unresolvedStakes}
+          unclaimedWinnings={unclaimedWinnings}
+          feeVaultPda={feeVaultPda}
+        />
+
+        {/* Card 3 — Main CTA (Be The House) - Shows third on mobile & right on desktop */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-2 md:order-2"
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-3"
           style={{ background: '#121212' }}>
           
           {/* Glow orbs */}
@@ -204,13 +212,6 @@ export default function Home() {
 
         </motion.div>
 
-        {/* Card 3 — Protocol Vault */}
-        <ProtocolVault
-          daoBalance={daoBalance}
-          unresolvedStakes={unresolvedStakes}
-          unclaimedWinnings={unclaimedWinnings}
-          feeVaultPda={feeVaultPda}
-        />
       </div>
 
       {/* ── LIVE STATS BAR ── */}
