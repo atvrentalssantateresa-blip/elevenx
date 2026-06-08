@@ -22,13 +22,13 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
   // CRITICAL: For futures, prefer amount_offered/amount_matched over liquidity_* fields
   // Support grouped transactions - use total_* fields if available, otherwise fall back to individual fields
   const liquidityDeposited = isFutures 
-    ? (offer.total_liquidity_deposited || offer.amount_offered || 0) 
+    ? (offer.amount_offered || offer.total_liquidity_deposited || offer.liquidity_deposited || 0) 
     : (offer.total_liquidity_deposited || offer.liquidity_deposited || offer.amount_offered || offer.amount || 0);
   const liquidityMatched = isFutures 
-    ? (offer.total_liquidity_matched || offer.amount_matched || 0) 
+    ? (offer.amount_matched || offer.total_liquidity_matched || offer.liquidity_matched || 0) 
     : (offer.total_liquidity_matched || offer.liquidity_matched || offer.amount_matched || 0);
   const liquidityUnmatched = isFutures 
-    ? (offer.total_liquidity_unmatched || offer.amount_unmatched || 0) 
+    ? (offer.amount_unmatched || offer.total_liquidity_unmatched || offer.liquidity_unmatched || 0) 
     : (offer.total_liquidity_unmatched || offer.liquidity_unmatched || offer.amount_unmatched || 0);
 
   // CRITICAL: Check UserBet status FIRST (settlement info), then BetOffer status (matching info)
