@@ -94,15 +94,15 @@ Deno.serve(async (req) => {
     
     // Validate admin wallet matches on-chain platform config
     const connection = new (await import('npm:@solana/web3.js@1.98.4')).Connection('https://api.devnet.solana.com', 'confirmed');
-    const platformInfo = await connection.getAccountInfo(platformPda);
-    if (!platformInfo) {
+    const platformInfoValidate = await connection.getAccountInfo(platformPda);
+    if (!platformInfoValidate) {
       return Response.json({ 
         error: 'Platform config not found on-chain. Run "Init Platform" first.',
         fix: 'Go to Admin > Platform tab > click "Init Platform"'
       }, { status: 400 });
     }
     
-    const adminBytes = platformInfo.data.slice(8, 40);
+    const adminBytes = platformInfoValidate.data.slice(8, 40);
     const onChainAdmin = new PublicKey(adminBytes).toBase58();
     
     console.log('[settleMarketOnChain] On-chain admin:', onChainAdmin);
@@ -118,15 +118,24 @@ Deno.serve(async (req) => {
       }, { status: 403 });
     }
     
-    const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
-    if (!feeVaultInfo) {
+    const feeVaultInfoValidate = await connection.getAccountInfo(feeVaultPda);
+    if (!feeVaultInfoValidate) {
       return Response.json({ error: 'Fee vault not found on-chain' }, { status: 400 });
     }
 
-    // Fetch market account and validate
+    // Fetch and validate ALL accounts before building transaction
+    console.log('[settleMarketOnChain] Validating all PDAs...');
+    
+    // 1. Validate market account
     let marketInfo;
     try {
       marketInfo = await connection.getAccountInfo(marketPda);
+      console.log('[settleMarketOnChain] Market account:', {
+        exists: !!marketInfo,
+        owner: marketInfo?.owner.toBase58(),
+        dataSize: marketInfo?.data.length,
+        expectedOwner: programId.toBase58(),
+      });
     } catch (accountErr) {
       console.error('[settleMarketOnChain] Failed to fetch market account:', accountErr.message);
       throw new Error('Failed to fetch market account: ' + accountErr.message);
@@ -136,8 +145,39 @@ Deno.serve(async (req) => {
       throw new Error('Market account not found on-chain. PDA: ' + marketPda.toBase58());
     }
     
-    console.log('[settleMarketOnChain] Market account size:', marketInfo.data.length, 'bytes');
-    console.log('[settleMarketOnChain] Market account found - proceeding with settlement');
+    if (!marketInfo.owner.equals(programId)) {
+      throw new Error('Market account owned by wrong program! Expected: ' + programId.toBase58() + ', Got: ' + marketInfo.owner.toBase58());
+    }
+    
+    // 2. Validate platform config (already validated above)
+    console.log('[settleMarketOnChain] Platform config:', {
+      exists: true,
+      owner: platformInfoValidate.owner.toBase58(),
+      dataSize: platformInfoValidate.data.length,
+    });
+    
+    // 3. Validate fee vault (already validated above)
+    console.log('[settleMarketOnChain] Fee vault:', {
+      exists: true,
+      owner: feeVaultInfoValidate.owner.toBase58(),
+      dataSize: feeVaultInfoValidate.data.length,
+    });
+    
+    // 4. Check vote_tally (may not exist yet - will be created by init_if_needed)
+    const voteTallyInfo = await connection.getAccountInfo(voteTallyPda);
+    console.log('[settleMarketOnChain] Vote tally:', {
+      exists: !!voteTallyInfo,
+      willCreate: !voteTallyInfo,
+    });
+    
+    // 5. Check oracle_vote (will be created by init_if_needed)
+    const oracleVoteInfo = await connection.getAccountInfo(oracleVotePda);
+    console.log('[settleMarketOnChain] Oracle vote:', {
+      exists: !!oracleVoteInfo,
+      willCreate: !oracleVoteInfo,
+    });
+    
+    console.log('[settleMarketOnChain] All PDA validations passed - proceeding with settlement');
 
     // Handle void outcome separately
     if (winning_outcome === 'void') {
