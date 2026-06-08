@@ -10,7 +10,7 @@ import AdminBetRow from '@/components/admin/AdminBetRow';
 import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
 import AdminMatchesPanel from '@/components/admin/AdminMatchesPanel';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy } from 'lucide-react';
+import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy, Wallet } from 'lucide-react';
 
 export default function Admin() {
   const [walletAddress, setWalletAddress] = useState(null);
@@ -578,6 +578,25 @@ export default function Admin() {
                   className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
                 >
                   Debug Admin
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const res = await base44.functions.invoke('checkFeeVault');
+                      if (res.data.error) {
+                        toast.error('Error: ' + res.data.error);
+                      } else {
+                        toast.success(`✓ Fee Vault: ◎${res.data.totalFeesSOL.toFixed(4)} SOL`);
+                        alert(`Fee Vault Balance\n\nTotal Fees: ◎${res.data.totalFeesSOL.toFixed(4)} SOL (${res.data.totalFeesLamports} lamports)\n\nFee Vault PDA: ${res.data.feeVaultPda}\nAdmin Wallet: ${res.data.adminWallet}\n\nView on Solscan: ${res.data.solscanUrl}`);
+                      }
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-600/30 text-white rounded-xl"
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Check Fee Vault
                 </Button>
               </div>
             </Card>
