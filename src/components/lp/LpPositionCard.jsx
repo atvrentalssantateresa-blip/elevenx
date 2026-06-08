@@ -68,10 +68,15 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   
   console.log('[LpPositionCard] RAW DATA:', { liquidityMatched, liquidityDeposited, liquidityUnmatched, dbStatus, offer_status: offer.status });
   
-  if ((isVoided || dbStatus === 'void' || dbStatus === 'voided') && liquidityMatched > 0) {
+  // Check DB status FIRST for void/lost markets
+  if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
     isLpLost = true;
     isLpWon = false;
-    console.log('[LpPositionCard] VOIDED MARKET - LP LOST (overriding backend status):', { dbStatus, isVoided });
+    console.log('[LpPositionCard] VOIDED MARKET - LP LOST (from DB status):', { dbStatus, isVoided });
+  } else if (dbStatus === 'lost') {
+    isLpLost = true;
+    isLpWon = false;
+    console.log('[LpPositionCard] LP LOST (from DB status)');
   } else if (liquidityMatched === 0 || liquidityMatched <= 0) {
     // CRITICAL: If liquidityMatched = 0, LP position is NOT won/lost - it's just unmatched (withdrawn/refunded)
     isLpWon = false;
@@ -193,7 +198,14 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   console.log('[STATUS CALC] liquidityMatched:', liquidityMatched);
   console.log('[STATUS CALC] dbStatus:', dbStatus);
   
-  if (liquidityMatched === 0) {
+  // CRITICAL: Check DB status FIRST for void/lost markets before checking liquidity
+  if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
+    displayStatus = 'void';
+    console.log('[STATUS CALC] Setting to void (market voided)');
+  } else if (dbStatus === 'lost') {
+    displayStatus = 'lost';
+    console.log('[STATUS CALC] Setting to lost (from DB status)');
+  } else if (liquidityMatched === 0) {
     displayStatus = 'refunded';
     console.log('[STATUS CALC] Setting to refunded (no matched liquidity)');
   } else if (winningOutcome === 'void') {
@@ -469,6 +481,29 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
         {/* LP Result Indicator */}
         {(() => {
           console.log('[LpPositionCard] Rendering LP Result:', { isSettled, liquidityMatched, isLpWon, isLpLost, dbStatus });
+          
+          // CRITICAL: Check DB status FIRST - void/lost markets should show correctly
+          if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
+            return (
+              <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-bold uppercase tracking-wider">💸 Market Voided (LP Lost)</span>
+                  <span className="text-white/40">Funds to DAO</span>
+                </div>
+              </div>
+            );
+          }
+          
+          if (dbStatus === 'lost') {
+            return (
+              <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-bold uppercase tracking-wider">💸 LP Position Lost</span>
+                  <span className="text-white/40">Backed winner ✗</span>
+                </div>
+              </div>
+            );
+          }
           
           if (liquidityMatched === 0) {
             return (
