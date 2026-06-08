@@ -165,9 +165,9 @@ export default function Home() {
                 <span className="text-[10px] sm:text-[11px] font-bold text-accent tracking-widest">HYBRID MODEL</span>
               </div>
             </div>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="font-heading font-black text-xl sm:text-2xl md:text-3xl leading-tight mb-2 sm:mb-3 text-white">
                   Be The House.<br />
                   <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
                 </h1>
@@ -187,7 +187,7 @@ export default function Home() {
               </div>
               
               {/* Protocol Vault - Live Treasury Stats */}
-              <div className="flex-shrink-0 w-[180px] sm:w-[200px]">
+              <div className="flex-shrink-0 w-[220px] sm:w-[260px]">
                 <ProtocolVault
                   daoBalance={0.0042}
                   unresolvedStakes={unresolvedStakes}
