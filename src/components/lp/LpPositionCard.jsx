@@ -421,12 +421,14 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
           {(() => {
             // Only consider claimed if status is explicitly 'claimed' or 'refunded'
             const userBetStatus = position.userBet?.status || position.status;
-            const alreadyClaimed = userBetStatus === 'claimed' || userBetStatus === 'refunded';
+            const offerStatus = offer.status;
+            const alreadyClaimed = userBetStatus === 'claimed' || userBetStatus === 'refunded' || offerStatus === 'settled';
             
             console.log('[LpPositionCard] Claim check:', {
               userBetStatus,
               position_userBet_status: position.userBet?.status,
               position_status: position.status,
+              offer_status: offerStatus,
               alreadyClaimed
             });
             

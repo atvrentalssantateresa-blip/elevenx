@@ -135,19 +135,29 @@ export default function MyBets() {
   const { data: myBets = [], isLoading, refetch } = useQuery({
     queryKey: ['myBets', authWallet, phantomWallet, user?.id],
     queryFn: async () => {
-      console.log('[MyBets] Query executing, wallet from auth:', walletAddress);
-      console.log('[MyBets] Wallet length:', walletAddress?.length);
-      console.log('[MyBets] Wallet trimmed:', walletAddress?.trim());
+      console.log('[MyBets] Query executing, wallets:', { authWallet, phantomWallet, allMyWallets });
       const all = await base44.entities.UserBet.list('-created_date', 100);
       console.log('[MyBets] Total bets in DB:', all.length);
-      console.log('[MyBets] All bets:', all.map(b => ({ id: b.id, wallet: b.wallet_address, amount: b.amount, status: b.status })));
-      const filtered = allMyWallets.length > 0 ? all.filter((ub) => {
-        return allMyWallets.some(w => ub.wallet_address?.trim() === w?.trim());
-      }) : [];
-      console.log('[MyBets] My bets:', filtered.length);
-      if (walletAddress) return filtered;
-      if (user?.id) return all.filter((ub) => ub.created_by_id === user.id);
-      return [];
+      console.log('[MyBets] All bets:', all.map(b => ({ id: b.id, wallet: b.wallet_address?.slice(0, 8), amount: b.amount, status: b.status, role: b.role })));
+      
+      // Filter by wallet address OR by created_by_id (fallback)
+      let filtered = [];
+      if (allMyWallets.length > 0) {
+        filtered = all.filter((ub) => {
+          const match = allMyWallets.some(w => ub.wallet_address?.trim() === w?.trim());
+          console.log('[MyBets] Bet wallet match:', { bet_id: ub.id, bet_wallet: ub.wallet_address?.slice(0, 8), matches: match });
+          return match;
+        });
+      } else if (user?.id) {
+        filtered = all.filter((ub) => {
+          const match = ub.created_by_id === user.id;
+          console.log('[MyBets] Bet created_by match:', { bet_id: ub.id, created_by: ub.created_by_id, matches: match });
+          return match;
+        });
+      }
+      
+      console.log('[MyBets] Filtered bets:', filtered.length, filtered.map(b => ({ id: b.id, role: b.role, status: b.status })));
+      return filtered;
     },
     enabled: allMyWallets.length > 0 || !!user,
     refetchOnWindowFocus: true,
