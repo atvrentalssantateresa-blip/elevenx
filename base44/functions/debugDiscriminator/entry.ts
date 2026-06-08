@@ -35,12 +35,16 @@ Deno.serve(async (req) => {
     // Check if platform exists
     const platformInfo = await connection.getAccountInfo(platformPda);
     
-    // Calculate BOTH discriminator formats
-    const discGlobal = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
-    const discSimple = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initialize_platform'));
+    // Calculate ALL discriminator formats
+    const discGlobalSnake = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
+    const discGlobalCamel = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initializePlatform'));
+    const discSimpleSnake = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initialize_platform'));
+    const discSimpleCamel = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initializePlatform'));
     
-    const discriminatorGlobal = Buffer.from(new Uint8Array(discGlobal).slice(0, 8));
-    const discriminatorSimple = Buffer.from(new Uint8Array(discSimple).slice(0, 8));
+    const discriminatorGlobalSnake = Buffer.from(new Uint8Array(discGlobalSnake).slice(0, 8));
+    const discriminatorGlobalCamel = Buffer.from(new Uint8Array(discGlobalCamel).slice(0, 8));
+    const discriminatorSimpleSnake = Buffer.from(new Uint8Array(discSimpleSnake).slice(0, 8));
+    const discriminatorSimpleCamel = Buffer.from(new Uint8Array(discSimpleCamel).slice(0, 8));
     
     return Response.json({
       success: true,
@@ -55,15 +59,25 @@ Deno.serve(async (req) => {
         dataHex: platformInfo.data.slice(0, 32).toString('hex'),
       } : null,
       discriminators: {
-        global_format: {
+        global_snake_case: {
           input: 'global:initialize_platform',
-          hex: discriminatorGlobal.toString('hex'),
-          base64: discriminatorGlobal.toString('base64'),
+          hex: discriminatorGlobalSnake.toString('hex'),
+          base64: discriminatorGlobalSnake.toString('base64'),
         },
-        simple_format: {
+        global_camel_case: {
+          input: 'global:initializePlatform',
+          hex: discriminatorGlobalCamel.toString('hex'),
+          base64: discriminatorGlobalCamel.toString('base64'),
+        },
+        simple_snake_case: {
           input: 'initialize_platform',
-          hex: discriminatorSimple.toString('hex'),
-          base64: discriminatorSimple.toString('base64'),
+          hex: discriminatorSimpleSnake.toString('hex'),
+          base64: discriminatorSimpleSnake.toString('base64'),
+        },
+        simple_camel_case: {
+          input: 'initializePlatform',
+          hex: discriminatorSimpleCamel.toString('hex'),
+          base64: discriminatorSimpleCamel.toString('base64'),
         },
       },
       instruction: {
@@ -73,7 +87,7 @@ Deno.serve(async (req) => {
           platformConfig: platformPda.toBase58(),
           feeVault: '', // Will be derived
         },
-        note: 'Use one of the discriminators above to test which format works',
+        note: 'Try each discriminator format to find which one the deployed program expects',
       },
     });
   } catch (error) {

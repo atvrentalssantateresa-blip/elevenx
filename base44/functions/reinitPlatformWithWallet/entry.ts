@@ -82,11 +82,11 @@ Deno.serve(async (req) => {
     });
 
     // Build initialize_platform instruction
-    // Use Anchor 0.30.1 "global:" namespace format
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initialize_platform'));
+    // Try camelCase format (initializePlatform) which some Anchor versions use
+    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('global:initializePlatform'));
     const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
     
-    console.log('Using discriminator (global:initialize_platform):', discriminator.toString('hex'));
+    console.log('Using discriminator (global:initializePlatform camelCase):', discriminator.toString('hex'));
     
     const initData = Buffer.alloc(10);
     discriminator.copy(initData, 0);
