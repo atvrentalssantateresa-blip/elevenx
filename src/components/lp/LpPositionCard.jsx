@@ -71,11 +71,11 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
     isLpLost = dbStatus === 'lost';
     
     // CRITICAL: If liquidityMatched = 0, LP position is NOT won/lost - it's just unmatched (withdrawn/refunded)
-    // LP can only win/lose when there's matched liquidity at stake
+    // LP can only win/lose when there's matched liquidity at stake - OVERRIDE DB STATUS
     if (liquidityMatched === 0) {
       isLpWon = false;
       isLpLost = false;
-      console.log('[LpPositionCard] No matched liquidity - LP position is neutral (unmatched)');
+      console.log('[LpPositionCard] No matched liquidity - overriding DB status to neutral (unmatched)');
     }
     // If DB doesn't have won/lost status but market is settled, calculate from outcome
     // ON-CHAIN LOGIC: LP wins when lp_offer.outcome != market.winning_outcome
