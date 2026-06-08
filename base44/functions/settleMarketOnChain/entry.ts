@@ -86,10 +86,24 @@ Deno.serve(async (req) => {
       programId
     );
 
+    // Derive oracle_vote and vote_tally PDAs early (needed for validation)
+    const adminPubkey = new PublicKey(admin_wallet);
+    const [oracleVotePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('oracle_vote'), marketPda.toBuffer(), adminPubkey.toBuffer()],
+      programId
+    );
+    
+    const [voteTallyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote_tally'), marketPda.toBuffer()],
+      programId
+    );
+    
     console.log('[settleMarketOnChain] PDAs:', {
       market: marketPda.toBase58(),
       platform: platformPda.toBase58(),
       fee_vault: feeVaultPda.toBase58(),
+      oracle_vote: oracleVotePda.toBase58(),
+      vote_tally: voteTallyPda.toBase58(),
     });
     
     // Validate admin wallet matches on-chain platform config
@@ -202,19 +216,6 @@ Deno.serve(async (req) => {
     data.writeUInt8(outcomeIndex, 8);
 
     const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
-    
-    // Derive oracle_vote and vote_tally PDAs (required by SubmitOracleVote instruction)
-    // Seeds: [b"oracle_vote", market.key().as_ref(), oracle.key().as_ref()]
-    const adminPubkey = new PublicKey(admin_wallet);
-    const [oracleVotePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('oracle_vote'), marketPda.toBuffer(), adminPubkey.toBuffer()],
-      programId
-    );
-    
-    const [voteTallyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vote_tally'), marketPda.toBuffer()],
-      programId
-    );
     
     console.log('[settleMarketOnChain] Prepared submit_oracle_vote instruction:', {
       outcome: outcomeLabel,
