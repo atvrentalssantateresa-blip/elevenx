@@ -74,9 +74,21 @@ Deno.serve(async (req) => {
     // Parse market data with error handling
     let openUntil, settleAfter, feePercent, outcomeCount, winningOutcome, settled, voided;
     try {
-      // Layout: disc(8) + match_id(32) + outcome_names(96) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
-      openUntil = data.readBigUInt64LE(146);
-      settleAfter = data.readBigUInt64LE(154);
+      // Layout: disc(8) + match_id(32) + outcome_a(32) + outcome_b(32) + outcome_draw(32) + open_until(8) + settle_after(8) + fee_percent(2) + outcome_count(1) + winning_outcome(1) + ...
+      // disc: 0-8
+      // match_id: 8-40
+      // outcome_a: 40-72
+      // outcome_b: 72-104
+      // outcome_draw: 104-136
+      // open_until: 136-144
+      // settle_after: 144-152
+      // fee_percent: 152-154
+      // outcome_count: 154
+      // winning_outcome: 155
+      // settled: 244
+      // voided: 245
+      openUntil = data.readBigUInt64LE(136);
+      settleAfter = data.readBigUInt64LE(144);
       feePercent = data.readUInt16LE(152);
       outcomeCount = data[154];
       winningOutcome = data[155];
