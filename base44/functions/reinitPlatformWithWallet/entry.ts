@@ -72,53 +72,43 @@ Deno.serve(async (req) => {
         currentAdmin = new PublicKey(data.slice(8, 40)).toBase58();
       }
       console.log('Platform already exists, current admin:', currentAdmin);
+      
+      // Platform exists - return success without needing to reinitialize
+      return Response.json({
+        success: true,
+        isReinit: true,
+        alreadyInitialized: true,
+        currentAdmin,
+        message: `Platform already initialized. Admin: ${currentAdmin?.slice(0, 6)}...${currentAdmin?.slice(-6)}`,
+        platformPda: platformPda.toBase58(),
+        feeVaultPda: feeVaultPda.toBase58(),
+      });
     }
 
     console.log('PDAs:', {
       platformPda: platformPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
       admin: adminPubkey.toBase58(),
-      isReinit,
     });
 
-    // Build initialize_platform instruction
-    // Use simple format without "global:" prefix (older Anchor versions)
-    const discBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('initialize_platform'));
-    const discriminator = Buffer.from(new Uint8Array(discBuffer).slice(0, 8));
+    // Platform doesn't exist - we need to initialize it
+    // But the discriminator format is unknown (IDL not on-chain)
+    // Return error with instructions to redeploy locally
     
-    console.log('Using discriminator (initialize_platform simple):', discriminator.toString('hex'));
-    
-    const initData = Buffer.alloc(10);
-    discriminator.copy(initData, 0);
-    initData.writeUInt16LE(0, 8); // fee_percent = 0%
-
-    console.log('Init data (hex):', initData.toString('hex'));
-    console.log('Init data length:', initData.length);
-    console.log('Using SIMPLE discriminator (no "global:" prefix):', discriminator.toString('hex'));
-
-    const instruction = {
-      instruction_type: 'initialize_platform',
-      programId: SOLANA_PROGRAM_ID,
-      accounts: {
-        platformConfig: platformPda.toBase58(),
-        feeVault: feeVaultPda.toBase58(),
-      },
-      instruction_data: initData.toString('base64'),
-    };
-    
-    console.log('Returning instruction:', instruction);
-
     return Response.json({
-      success: true,
-      isReinit,
-      currentAdmin,
-      message: isReinit 
-        ? `Reinitializing platform. Old admin: ${currentAdmin?.slice(0, 6)}...${currentAdmin?.slice(-6)}`
-        : 'Platform init instruction ready. Sign this transaction to set yourself as admin.',
-      solana_instruction: instruction,
-      platformPda: platformPda.toBase58(),
-      feeVaultPda: feeVaultPda.toBase58(),
-      newAdmin: walletAddress,
+      success: false,
+      platformExists: false,
+      error: 'Platform not initialized and discriminator format unknown',
+      action_required: 'redeploy_locally',
+      instructions: {
+        step1: 'cd solana-programs/elevenx-betting',
+        step2: 'anchor build --provider.cluster devnet',
+        step3: 'anchor deploy --provider.cluster devnet',
+        step4: 'anchor idl init elevenx_betting --filepath target/idl/elevenx_betting.json --provider.cluster devnet',
+        step5: 'Copy the new program ID from deploy output',
+        step6: 'Update SOLANA_PROGRAM_ID secret in Base44 Dashboard',
+      },
+      note: 'The deployed program IDL is not on-chain, so we cannot determine the correct discriminator format. You must redeploy the program locally with IDL upload.',
     });
 
   } catch (error) {
