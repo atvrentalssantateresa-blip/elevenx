@@ -434,29 +434,39 @@ export default function LpPositionCard({ position, match, walletAddress, onWithd
         </div>
 
         {/* LP Result Indicator */}
-        {isSettled && (
-          liquidityMatched === 0 ? (
-            <div className="px-3 py-2 rounded-lg border bg-secondary/10 border-secondary/30 text-muted-foreground">
-              <div className="flex items-center justify-between text-[9px]">
-                <span className="font-bold uppercase tracking-wider">ℹ️ Unmatched (No Action)</span>
-                <span className="text-white/40">No bets were matched</span>
+        {(() => {
+          console.log('[LpPositionCard] Rendering LP Result:', { isSettled, liquidityMatched, isLpWon, isLpLost, dbStatus });
+          
+          if (liquidityMatched === 0) {
+            return (
+              <div className="px-3 py-2 rounded-lg border bg-secondary/10 border-secondary/30 text-muted-foreground">
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-bold uppercase tracking-wider">ℹ️ Unmatched (No Action)</span>
+                  <span className="text-white/40">No bets were matched</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className={`px-3 py-2 rounded-lg border ${
-            isLpWon ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-destructive/10 border-destructive/30 text-destructive'}`
-            }>
-              <div className="flex items-center justify-between text-[9px]">
-                <span className="font-bold uppercase tracking-wider">
-                  {isLpWon ? '🎉 LP Position Won' : '💸 LP Position Lost'}
-                </span>
-                <span className="text-white/40">
-                  {isLpWon ? 'Backed loser ✓' : 'Backed winner ✗'}
-                </span>
+            );
+          }
+          
+          if (isSettled) {
+            return (
+              <div className={`px-3 py-2 rounded-lg border ${
+              isLpWon ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-destructive/10 border-destructive/30 text-destructive'}`
+              }>
+                <div className="flex items-center justify-between text-[9px]">
+                  <span className="font-bold uppercase tracking-wider">
+                    {isLpWon ? '🎉 LP Position Won' : '💸 LP Position Lost'}
+                  </span>
+                  <span className="text-white/40">
+                    {isLpWon ? 'Backed loser ✓' : 'Backed winner ✗'}
+                  </span>
+                </div>
               </div>
-            </div>
-          )
-        )}
+            );
+          }
+          
+          return null;
+        })()}
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-white/10">
