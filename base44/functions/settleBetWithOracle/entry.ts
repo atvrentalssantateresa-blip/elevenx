@@ -55,18 +55,37 @@ Deno.serve(async (req) => {
             status: 'refunded',
             actual_payout: ub.amount,
           });
-        } else if (ub.outcome === winningOutcome) {
-          // User won
-          await base44.entities.UserBet.update(ub.id, {
-            status: 'won',
-            actual_payout: ub.potential_payout,
-          });
+        } else if (ub.role === 'lp') {
+          // LP LOGIC: LP WINS when they backed a LOSER (outcome != winningOutcome)
+          // LP LOSES when they backed the WINNER (outcome === winningOutcome)
+          if (ub.outcome === winningOutcome) {
+            // LP backed the winner → LP LOSES (pays out to bettors)
+            await base44.entities.UserBet.update(ub.id, {
+              status: 'lost',
+              actual_payout: 0,
+            });
+          } else {
+            // LP backed a loser → LP WINS (keeps bettors' stake + fees)
+            await base44.entities.UserBet.update(ub.id, {
+              status: 'won',
+              actual_payout: ub.amount + (ub.liquidity_matched * 0.02 || 0), // stake + 2% fees
+            });
+          }
         } else {
-          // User lost
-          await base44.entities.UserBet.update(ub.id, {
-            status: 'lost',
-            actual_payout: 0,
-          });
+          // Regular bettor logic
+          if (ub.outcome === winningOutcome) {
+            // Bettor won
+            await base44.entities.UserBet.update(ub.id, {
+              status: 'won',
+              actual_payout: ub.potential_payout,
+            });
+          } else {
+            // Bettor lost
+            await base44.entities.UserBet.update(ub.id, {
+              status: 'lost',
+              actual_payout: 0,
+            });
+          }
         }
       }
     }
