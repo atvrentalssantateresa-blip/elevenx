@@ -1,10 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, DollarSign, Globe, Search } from 'lucide-react';
+import { Trophy, TrendingUp, DollarSign, Globe, Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 import { Input } from '@/components/ui/input';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { getWalletFromAuth } from '@/utils/auth';
 
 export default function FuturesLpPanel({ 
   futuresMarkets, 
@@ -14,6 +17,25 @@ export default function FuturesLpPanel({
 }) {
   const [activeGroup, setActiveGroup] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Get wallet from auth
+  const walletAddress = getWalletFromAuth();
+  
+  // Fetch user's existing LP positions for futures
+  const { data: myFuturesLpPositions = [] } = useQuery({
+    queryKey: ['myFuturesLpPositions', walletAddress],
+    queryFn: async () => {
+      if (!walletAddress) return [];
+      
+      const allUserBets = await base44.entities.UserBet.list('-created_date', 200);
+      return allUserBets.filter(ub => 
+        ub.wallet_address === walletAddress && 
+        ub.role === 'lp' && 
+        ub._isFutures
+      );
+    },
+    enabled: !!walletAddress,
+  });
 
   // Filter markets by search query
   const filteredMarkets = searchQuery
@@ -126,6 +148,7 @@ export default function FuturesLpPanel({
                   key={market.id}
                   market={market}
                   onProvideLiquidity={onProvideLiquidity}
+                  myLpPositions={myFuturesLpPositions}
                 />
               ))}
             </div>
@@ -157,6 +180,7 @@ export default function FuturesLpPanel({
                     key={market.id}
                     market={market}
                     onProvideLiquidity={onProvideLiquidity}
+                    myLpPositions={myFuturesLpPositions}
                   />
                 ))}
               </div>
@@ -188,6 +212,7 @@ export default function FuturesLpPanel({
                       key={market.id}
                       market={market}
                       onProvideLiquidity={onProvideLiquidity}
+                      myLpPositions={myFuturesLpPositions}
                     />
                   ))}
                 </div>
@@ -200,7 +225,7 @@ export default function FuturesLpPanel({
   );
 }
 
-function FuturesMarketLpCard({ market, onProvideLiquidity }) {
+function FuturesMarketLpCard({ market, onProvideLiquidity, myLpPositions = [] }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [amount, setAmount] = useState('');
 
@@ -208,6 +233,24 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
   
   // Check if market is ready for LP (must be created on-chain first)
   const isMarketReady = market.solana_market_created && market.solana_market_pda;
+  
+  // Find user's existing LP position for this market + outcome
+  const myPosition = useMemo(() => {
+    return myLpPositions.find(pos => 
+      pos.bet_id === market.id && 
+      pos.outcome_label === activeOutcome?.label
+    );
+  }, [myLpPositions, market.id, activeOutcome?.label]);
+  
+  // Calculate max additional contribution
+  // User can add more liquidity on top of their existing unmatched portion
+  const existingDeposited = myPosition?.liquidity_deposited || 0;
+  const existingUnmatched = myPosition?.liquidity_unmatched || 0;
+  const existingMatched = myPosition?.liquidity_matched || 0;
+  
+  // Max contribution = existing unmatched (still available) + any new amount
+  // But we show a helpful hint about current position
+  const hasExistingPosition = existingDeposited > 0;
 
   return (
     <motion.div
@@ -282,7 +325,31 @@ function FuturesMarketLpCard({ market, onProvideLiquidity }) {
             </p>
           </div>
         )}
-        {isMarketReady && (
+        {isMarketReady && hasExistingPosition && (
+          <div className={`rounded-xl p-3 mb-4 border ${
+            existingMatched > 0 
+              ? 'bg-blue-500/10 border-blue-500/20' 
+              : 'bg-emerald-500/10 border-emerald-500/20'
+          }`}>
+            <div className="flex items-start gap-2">
+              {existingMatched > 0 ? (
+                <AlertCircle className="w-3 h-3 text-blue-400 mt-0.5" />
+              ) : (
+                <DollarSign className="w-3 h-3 text-emerald-400 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p className="text-[9px] font-bold text-white/80 mb-1">
+                  Your Position: ◎{existingDeposited.toFixed(4)} total
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[8px] text-white/60">
+                  <span>Matched: ◎{existingMatched.toFixed(4)}</span>
+                  <span>Unmatched: ◎{existingUnmatched.toFixed(4)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {isMarketReady && !hasExistingPosition && (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4">
             <p className="text-[10px] text-emerald-400/80 leading-relaxed">
               <span className="font-bold">Bet against</span> {market.country} finishing {activeOutcome.position.toLowerCase()}. Profit if they don't reach it.
