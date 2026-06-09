@@ -196,30 +196,45 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       const hasMatchedInDb = offer.amount_matched > 0 || offer.liquidity_matched > 0;
       const isSettled = offer.status === 'settled';
 
-      // CRITICAL: Always call withdrawLiquidity for unmatched funds - it checks on-chain balance directly
-      // Don't check win/loss - that's only for claiming winnings (matched portion)
-      console.log('[LpPositionCard] Withdrawing unmatched liquidity for userBet:', userBetId);
+      // CRITICAL: Call correct function based on LP position state
+      // - LP WON (settled): use withdrawLpWinnings to claim matched winnings + fees
+      // - LP LOST/UNMATCHED: use withdrawLiquidity to withdraw unmatched funds
+      console.log('[LpPositionCard] Determining withdraw type for userBet:', userBetId);
+      console.log('[LpPositionCard] LP state:', { isLpWon, isLpLost, isSettled, liquidityMatched, dbStatus });
       
-      // Run on-chain check and withdraw call
-      const checkRes = await base44.functions.invoke('checkLpOfferOnChain', { userBetId });
-      console.log('[LpPositionCard] On-chain check result:', checkRes.data);
+      let res;
       
-      if (!checkRes.data.canClaim) {
-        let userMessage = checkRes.data.error || 'Cannot withdraw';
-        if (checkRes.data.reason === 'already_withdrawn') {
-          userMessage = 'This LP position has already been withdrawn on-chain.';
-        } else if (checkRes.data.reason === 'not_found_on_chain') {
-          userMessage = 'LP position not found on-chain. The market may not be deployed.';
+      if (isLpWon && liquidityMatched > 0) {
+        // LP WON - claim matched winnings + fees
+        console.log('[LpPositionCard] LP WON - calling withdrawLpWinnings');
+        res = await base44.functions.invoke('withdrawLpWinnings', {
+          userBetId,
+          walletAddress
+        });
+      } else {
+        // LP LOST or UNMATCHED - withdraw unmatched liquidity
+        console.log('[LpPositionCard] Withdrawing unmatched liquidity - calling withdrawLiquidity');
+        
+        // Run on-chain check first
+        const checkResUnmatched = await base44.functions.invoke('checkLpOfferOnChain', { userBetId });
+        console.log('[LpPositionCard] On-chain check result:', checkResUnmatched.data);
+        
+        if (!checkResUnmatched.data.canClaim) {
+          let userMessage = checkResUnmatched.data.error || 'Cannot withdraw';
+          if (checkResUnmatched.data.reason === 'already_withdrawn') {
+            userMessage = 'This LP position has already been withdrawn on-chain.';
+          } else if (checkResUnmatched.data.reason === 'not_found_on_chain') {
+            userMessage = 'LP position not found on-chain. The market may not be deployed.';
+          }
+          alert('Cannot withdraw:\n\n' + userMessage);
+          return;
         }
-        alert('Cannot withdraw:\n\n' + userMessage);
-        return;
+        
+        res = await base44.functions.invoke('withdrawLiquidity', { 
+          userBetId,
+          walletAddress 
+        });
       }
-      
-      // Call withdrawLiquidity - it handles both open and settled markets
-      const res = await base44.functions.invoke('withdrawLiquidity', { 
-        userBetId,
-        walletAddress 
-      });
 
       // Block if on-chain check says can't claim
       if (!checkRes.data.canClaim) {
