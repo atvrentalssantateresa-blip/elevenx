@@ -75,6 +75,17 @@ Deno.serve(async (req) => {
     const openUntilDate = bet.open_until ? new Date(bet.open_until) : null;
     const isBettingClosed = bet.status === 'closed' || bet.status === 'settled' || (openUntilDate && now > openUntilDate);
     
+    console.log('[withdrawLiquidity] Betting window check:', {
+      bet_id: bet.id,
+      bet_status: bet.status,
+      open_until: bet.open_until,
+      openUntilDate: openUntilDate?.toISOString(),
+      now: now.toISOString(),
+      isBettingClosed,
+      timeDiff_ms: openUntilDate ? now.getTime() - openUntilDate.getTime() : null,
+      timeDiff_hours: openUntilDate ? (now.getTime() - openUntilDate.getTime()) / (1000 * 60 * 60) : null,
+    });
+    
     if (!isBettingClosed) {
       return Response.json({ 
         error: 'Cannot withdraw yet - market is still open for betting',
