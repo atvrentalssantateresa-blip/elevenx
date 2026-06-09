@@ -74,10 +74,9 @@ pub fn withdraw_liquidity(ctx: Context<WithdrawLiquidity>) -> Result<()> {
     let market = &mut ctx.accounts.market;
     let offer = &mut ctx.accounts.lp_offer;
 
-    // Allow withdrawal if market is still open OR if market is settled (for unmatched funds)
-    let is_open = clock.unix_timestamp < market.open_until;
-    let is_settled = market.settled;
-    require!(is_open || is_settled, BettingError::BettingClosed);
+    // CRITICAL FIX: Allow LP withdrawal of unmatched funds at ANY time (open, closed, or settled)
+    // LPs should never be locked in - unmatched funds are always withdrawable
+    // Only block if already fully withdrawn
     require!(!offer.fully_withdrawn, BettingError::ClaimNothing);
 
     let available = offer.available();
