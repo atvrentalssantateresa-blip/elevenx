@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
+import { PublicKey, SystemProgram, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'npm:buffer@6.0.3';
 
 /**
@@ -30,23 +30,31 @@ Deno.serve(async (req) => {
     const marketPubkey = new PublicKey(marketPda);
     const adminPubkey = new PublicKey(adminWallet);
 
+    // Fetch actual balance from Solana
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const balance = await connection.getBalance(marketPubkey);
+
     console.log('[sweepMarketFunds] Preparing sweep:', {
       marketPda: marketPubkey.toBase58(),
       adminWallet: adminPubkey.toBase58(),
-      programId: programId.toBase58(),
+      balanceLamports: balance,
+      balanceSOL: balance / 1e9,
     });
 
     // Simple transfer instruction - transfer ALL lamports from market to admin
-    // This is a system-level transfer, not a program instruction
     const transferInstruction = SystemProgram.transfer({
       fromPubkey: marketPubkey,
       toPubkey: adminPubkey,
-      lamports: 42623920, // Will be replaced with actual balance by frontend
+      lamports: balance,
     });
 
     return Response.json({
       success: true,
-      message: 'Sign to sweep funds from market account',
+      message: `Sign to sweep ${balance / 1e9} SOL from market account`,
+      balance: {
+        lamports: balance,
+        sol: balance / 1e9,
+      },
       solana_instruction: {
         instruction_type: 'sweep_market_funds',
         programId: SystemProgram.programId.toBase58(),
@@ -55,8 +63,7 @@ Deno.serve(async (req) => {
           { pubkey: marketPubkey.toBase58(), isSigner: false, isWritable: true },
           { pubkey: adminPubkey.toBase58(), isSigner: false, isWritable: true },
         ]
-      },
-      note: 'Frontend must fetch actual market balance and update lamports before signing'
+      }
     });
   } catch (error) {
     console.error('[sweepMarketFunds] Error:', error);
