@@ -269,21 +269,19 @@ Deno.serve(async (req) => {
 
     // Use force_settle_market if market is already settled/voided (bypasses checks)
     // Otherwise use submit_oracle_vote (normal flow)
+    // IMPORTANT: Use SIMPLE discriminators (no "global:" prefix) to match deployed program
     let settleInstruction;
     
     if (settlementFinalized || isVoided) {
-      // Try SIMPLE discriminator format (without "global:" prefix) - older Anchor versions
+      // SIMPLE discriminator format (no "global:" prefix) - matches deployed program
       const forceDiscriminator = Buffer.from(sha256('force_settle_market')).slice(0, 8);
       const forceData = Buffer.alloc(9);
       forceDiscriminator.copy(forceData, 0);
       forceData.writeUInt8(outcomeIndex, 8);
       
-      console.log('[settleMarketOnChain] force_settle_market discriminator (SIMPLE format - no prefix):', forceDiscriminator.toString('hex'));
-      console.log('[settleMarketOnChain] force_settle_market instruction data (hex):', forceData.toString('hex'));
-      
-      console.log('[settleMarketOnChain] Using force_settle_market with SIMPLE discriminator:', {
+      console.log('[settleMarketOnChain] Using force_settle_market (SIMPLE discriminator):', {
         outcome: outcomeLabel,
-        outcomeIndex: outcomeIndex,
+        outcomeIndex,
         discriminator: forceDiscriminator.toString('hex'),
       });
       
@@ -291,48 +289,37 @@ Deno.serve(async (req) => {
         instruction_type: 'settle_market_force',
         programId: SOLANA_PROGRAM_ID,
         keys: [
-          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },   // market (mut) - account 0
-          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault (mut) - account 1
-          { pubkey: admin_wallet, isSigner: true, isWritable: true },            // admin (mut, signer) - account 2
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // platform_config - account 3
-          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program - account 4
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: admin_wallet, isSigner: true, isWritable: true },
+          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
+          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
         ],
         instruction_data: forceData.toString('base64'),
       };
-      
-      console.log('[settleMarketOnChain] force_settle_market final instruction:', {
-        discriminator: forceDiscriminator.toString('hex'),
-        outcomeIndex,
-        keys: settleInstruction.keys,
-        dataBase64: forceData.toString('base64'),
-      });
     } else {
-      // Normal flow: submit_oracle_vote - use SIMPLE discriminator (no "global:" prefix)
+      // SIMPLE discriminator format (no "global:" prefix) - matches deployed program
       const discriminator = Buffer.from(sha256('submit_oracle_vote')).slice(0, 8);
       const data = Buffer.alloc(9);
       discriminator.copy(data, 0);
       data.writeUInt8(outcomeIndex, 8);
       
-      console.log('[settleMarketOnChain] submit_oracle_vote discriminator (SIMPLE format):', discriminator.toString('hex'));
-      
-      console.log('[settleMarketOnChain] Using submit_oracle_vote with SIMPLE discriminator:', {
+      console.log('[settleMarketOnChain] Using submit_oracle_vote (SIMPLE discriminator):', {
         outcome: outcomeLabel,
-        outcomeIndex: outcomeIndex,
+        outcomeIndex,
         discriminator: discriminator.toString('hex'),
-        oracleVotePda: oracleVotePda.toBase58(),
-        voteTallyPda: voteTallyPda.toBase58(),
       });
       
       settleInstruction = {
         instruction_type: 'settle_market',
         programId: SOLANA_PROGRAM_ID,
         keys: [
-          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },       // market (mut)
-          { pubkey: oracleVotePda.toBase58(), isSigner: false, isWritable: true },   // oracle_vote (init_if_needed, mut)
-          { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true },    // vote_tally (mut)
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },    // platform_config (NOT mut)
-          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },     // fee_vault (mut)
-          { pubkey: admin_wallet, isSigner: true, isWritable: true },                // oracle/admin signer
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: oracleVotePda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
+          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: admin_wallet, isSigner: true, isWritable: true },
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
         ],
         instruction_data: data.toString('base64'),
