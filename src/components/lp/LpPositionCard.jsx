@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import BetCountdown from '@/components/betting/BetCountdown';
+import WithdrawAmountModal from '@/components/lp/WithdrawAmountModal';
 import { base44 } from '@/api/base44Client';
 
 export default function LpPositionCard({ position, match, bet, walletAddress, onWithdrawRequest }) {
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
   // Support both BetOffer (offer) and UserBet (position) entities
   const offer = position;
   if (!offer) return null;
@@ -187,8 +190,10 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   const displayStatusLabel = currentStatus.label || displayStatus.replace('_', ' ');
   console.log('[STATUS CALC] Final displayStatusLabel:', displayStatusLabel);
 
-  // Handle withdraw click - fetch match data and prepare withdraw instruction
-  const handleWithdraw = async () => {
+  // Handle withdraw confirmation - after user selects amount
+  const handleWithdrawConfirm = async (selectedAmount) => {
+    setShowWithdrawModal(false);
+
     if (!onWithdrawRequest) return;
 
     try {
@@ -249,9 +254,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
       onWithdrawRequest({
         solanaInstruction: res.data.solana_instruction,
-        withdrawAmount: res.data.withdrawAmount || res.data.amount,
+        withdrawAmount: selectedAmount,
         lpFeeBonus: res.data.lpFeeBonus || 0,
-        totalWithdraw: res.data.totalWithdraw || res.data.amount,
+        totalWithdraw: selectedAmount + (res.data.lpFeeBonus || 0),
         positionId: offer.userBetId || offer.id,
         offerId: offer.offer_id || null,
         match: match
@@ -560,7 +565,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
               const claimAmount = liquidityMatched + liquidityMatched * 0.02; // stake + 2% fees
               return (
                 <Button
-                  onClick={handleWithdraw}
+                  onClick={() => setShowWithdrawModal(true)}
                   className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs text-black rounded-xl font-heading font-bold"
                   style={{ background: 'linear-gradient(135deg, #14f195, #00ff87)' }}>
                   
@@ -580,7 +585,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
             if (canWithdrawUnmatched) {
               return (
                 <Button
-                  onClick={handleWithdraw}
+                  onClick={() => setShowWithdrawModal(true)}
                   className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold bg-[#242424]">
                   
                   <Wallet className="w-3 h-3 mr-1" />
@@ -627,6 +632,16 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
           </Link>
         </div>
       </div>
+
+      {/* Withdraw Amount Modal */}
+      <WithdrawAmountModal
+        open={showWithdrawModal}
+        onClose={() => setShowWithdrawModal(false)}
+        maxAmount={isLpWon && liquidityMatched > 0 ? liquidityMatched + liquidityMatched * 0.02 : liquidityUnmatched}
+        title={isLpWon && liquidityMatched > 0 ? 'Withdraw Winnings' : 'Withdraw Liquidity'}
+        onConfirm={handleWithdrawConfirm}
+        isLoading={false}
+      />
     </motion.div>);
 
 }
