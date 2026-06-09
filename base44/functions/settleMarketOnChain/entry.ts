@@ -194,17 +194,33 @@ Deno.serve(async (req) => {
     console.log('[settleMarketOnChain] All PDA validations passed - proceeding with settlement');
     
     // Check if market is voided on-chain - if so, cannot settle normally
+    // EXCEPTION: If settlement_finalized is already set, allow re-settlement to fix fee vault
     const marketData = marketInfo.data;
+    let isVoided = false;
+    let settlementFinalized = false;
     if (marketData.length >= 246) {
       const voidedByte = marketData[245];
-      if (voidedByte === 1) {
-        return Response.json({
-          error: 'Market is already voided on-chain',
-          hint: 'Voided markets cannot be settled normally. All bets should be refunded instead.',
-          voided: true,
-          action: 'Mark bets as refunded in DB and process refunds via claimRefund function'
-        }, { status: 400 });
+      isVoided = voidedByte === 1;
+      // Check settlement_finalized flag (byte 244)
+      if (marketData.length >= 245) {
+        const settledByte = marketData[244];
+        settlementFinalized = settledByte === 1;
       }
+    }
+    
+    console.log('[settleMarketOnChain] Market state:', {
+      voided: isVoided,
+      settlement_finalized: settlementFinalized,
+      willProceed: settlementFinalized, // Allow re-settle if already finalized
+    });
+    
+    if (isVoided && !settlementFinalized) {
+      return Response.json({
+        error: 'Market is already voided on-chain',
+        hint: 'Voided markets cannot be settled normally. All bets should be refunded instead.',
+        voided: true,
+        action: 'Mark bets as refunded in DB and process refunds via claimRefund function'
+      }, { status: 400 });
     }
 
     // Always update market timestamps before settling (ensures settle_after is in the past)
