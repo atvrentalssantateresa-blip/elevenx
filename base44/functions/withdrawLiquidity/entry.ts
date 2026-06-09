@@ -151,6 +151,13 @@ Deno.serve(async (req) => {
         programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
         lpOfferPda: lpOfferPda.toBase58(),
+        // Include account keys explicitly for the frontend
+        keys: [
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: lpOfferPda.toBase58(), isSigner: false, isWritable: true },
+          { pubkey: walletAddress, isSigner: true, isWritable: true },
+          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+        ],
       },
       message: `Sign to withdraw ◎${actualWithdrawAmount.toFixed(4)}`,
     });

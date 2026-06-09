@@ -433,16 +433,35 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       } else if (instruction.instruction_type === 'withdraw_liquidity') {
         // withdraw_liquidity — program instruction to withdraw unmatched LP funds
         console.log('Creating withdraw_liquidity program instruction:', instruction);
+        console.log('[withdraw_liquidity] Instruction details:', {
+          marketPda: instruction.marketPda,
+          lpOfferPda: instruction.lpOfferPda,
+          hasKeysArray: !!instruction.keys,
+          keys: instruction.keys,
+        });
         
         const programId = new PublicKey(instruction.programId);
-        const keys = [
+        
+        // Use keys array from instruction if provided (preferred), otherwise derive from PDAs
+        const keys = instruction.keys?.map(k => ({
+          pubkey: new PublicKey(k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })) || [
           { pubkey: new PublicKey(instruction.marketPda), isSigner: false, isWritable: true },
           { pubkey: new PublicKey(instruction.lpOfferPda), isSigner: false, isWritable: true },
           { pubkey: provider.publicKey, isSigner: true, isWritable: true },
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
+        console.log('[withdraw_liquidity] Final keys:', keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })));
+        
         const data = await anchorDiscriminator('withdraw_liquidity');
+        console.log('[withdraw_liquidity] Discriminator:', data.toString('hex'));
         
         const withdrawIx = new TransactionInstruction({
           keys,
