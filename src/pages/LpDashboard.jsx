@@ -270,6 +270,8 @@ export default function LpDashboard() {
         type: 'provide_liquidity'
       });
       setPendingCommitData(data.commit_data);
+      // Close detail modal to reveal the signing modal
+      setDetailModalOpen(false);
     },
     onError: (err) => {
       console.error('[provideLiquidity] Error:', err);
