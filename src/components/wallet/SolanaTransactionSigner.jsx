@@ -215,9 +215,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         transaction.add(createMarketIx);
         
-      } else if (instruction.instruction_type === 'settle_market') {
-        // settle_market - program instruction to announce winner and settle market (emergency_settle)
-        console.log('Creating settle_market program instruction:', instruction);
+      } else if (instruction.instruction_type === 'settle_market' || instruction.instruction_type === 'settle_market_force') {
+        // settle_market / settle_market_force - program instruction to announce winner and settle market
+        console.log('Creating settle_market_force program instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
         
@@ -890,6 +890,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       txMessage = '✓ Market created on-chain!';
     } else if (instruction?.instruction_type === 'void_market') {
       txMessage = '✓ Market voided! Click ⚡ Test Mode again to recreate.';
+    } else if (instruction?.instruction_type === 'settle_market_force') {
+      txMessage = '✓ Market force-settled successfully!';
     } else if (instruction?.instruction_type === 'update_market_timestamps') {
       txMessage = '✓ Market timestamps updated!';
     }
