@@ -3,7 +3,11 @@ import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'npm:buffer@6.0.3';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '9nwxZGK9nceBL1hPHDgyKeEkvGVjKuHY3Cq6vADXQ7GS';
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
+
+if (!SOLANA_PROGRAM_ID) {
+  throw new Error('SOLANA_PROGRAM_ID secret not configured');
+}
 
 /**
  * Admin-only: Sweep SOL from a settled market account to fee vault.
