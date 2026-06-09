@@ -679,15 +679,31 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
+                    // Find settled markets with stuck funds
+                    const settledBets = allBets.filter(b => b.status === 'settled' && b.solana_market_pda);
+                    if (settledBets.length === 0) {
+                      toast.error('No settled markets found');
+                      return;
+                    }
+                    // Prompt user to select a market
+                    const marketOptions = settledBets.map((b, i) => `${i + 1}. ${b.title || b.id} (PDA: ${b.solana_market_pda})`).join('\n');
+                    const selection = prompt(`Select a settled market to sweep:\n\n${marketOptions}\n\nEnter number (1-${settledBets.length}):`);
+                    if (!selection) return;
+                    const idx = parseInt(selection) - 1;
+                    if (isNaN(idx) || idx < 0 || idx >= settledBets.length) {
+                      toast.error('Invalid selection');
+                      return;
+                    }
+                    const selectedBet = settledBets[idx];
                     try {
                       const res = await base44.functions.invoke('sweepMarketFunds', {
-                        market_pda: 'CCgfcHkLfwxrXyveJTBsGxP2pkMYppg8U5yNGXor9hJp',
+                        market_pda: selectedBet.solana_market_pda,
                         admin_wallet: walletAddress,
                       });
                       if (res.data.solana_instruction) {
                         setSweepDialog({
                           instruction: res.data.solana_instruction,
-                          marketPda: res.data.balance?.lamports,
+                          marketPda: selectedBet.solana_market_pda,
                           balance: res.data.balance,
                         });
                       }
