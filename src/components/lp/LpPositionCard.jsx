@@ -495,9 +495,10 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
               alreadyClaimed
             });
             
-            // Priority 0: VOIDED markets - only block if matched (unmatched is still withdrawable)
-            // When market is voided, matched funds go to DAO, but unmatched LP funds can be withdrawn
-            if (isVoided && liquidityMatched > 0) {
+            // Priority 0: VOIDED markets - block matched funds (went to DAO), but ALLOW unmatched withdrawal
+            // When market is voided, matched funds go to DAO, but unmatched LP funds can still be withdrawn
+            if (isVoided && liquidityMatched > 0 && liquidityUnmatched === 0) {
+              // No unmatched funds left - show voided message
               return (
                 <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
                   <div className="flex items-center gap-1.5">
@@ -543,25 +544,21 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             }
 
-            // Priority 2: LP LOST with matched liquidity - show loss but STILL allow unmatched withdrawal
+            // Priority 2: LP LOST/VOIDED with matched liquidity - show loss but STILL allow unmatched withdrawal
             const hasUnmatchedLiquidity = liquidityUnmatched > 0;
             
-            if ((isLpLost || isVoided) && liquidityMatched > 0) {
-              // If there's unmatched liquidity, show withdraw button instead of "lost" message
-              if (hasUnmatchedLiquidity && userBetStatus !== 'refunded' && userBetStatus !== 'withdrawn') {
-                // Fall through to unmatched withdrawal logic below
-              } else {
-                return (
-                  <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
-                    <div className="flex items-center gap-1.5">
-                      <XCircle className="w-3.5 h-3.5 text-destructive" />
-                      <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">
-                        {isVoided ? 'Market Voided' : 'Position Lost'}
-                      </span>
-                    </div>
-                    <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
-                  </div>);
-              }
+            if ((isLpLost || isVoided) && liquidityMatched > 0 && !hasUnmatchedLiquidity) {
+              // No unmatched funds - show lost/voided message
+              return (
+                <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5 text-destructive" />
+                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">
+                      {isVoided ? 'Market Voided' : 'Position Lost'}
+                    </span>
+                  </div>
+                  <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
+                </div>);
             }
 
             // Priority 3: LP WON with matched liquidity - claim winnings (matched stake + fees)
