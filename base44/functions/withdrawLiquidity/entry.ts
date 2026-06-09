@@ -97,12 +97,6 @@ Deno.serve(async (req) => {
       programId
     );
     
-    // Platform config PDA - required by withdraw_liquidity instruction
-    const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform')],
-      programId
-    );
-    
     console.log('Re-derived PDAs for withdrawal:', {
       marketPda: marketPda.toBase58(),
       lpOfferPda: lpOfferPda.toBase58(),
@@ -155,11 +149,8 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'withdraw_liquidity',
         programId: SOLANA_PROGRAM_ID,
-        accounts: {
-          market: marketPda.toBase58(),
-          lpOffer: lpOfferPda.toBase58(),
-          platformConfig: platformConfigPda.toBase58(),
-        },
+        marketPda: marketPda.toBase58(),
+        lpOfferPda: lpOfferPda.toBase58(),
       },
       message: `Sign to withdraw ◎${actualWithdrawAmount.toFixed(4)}`,
     });
