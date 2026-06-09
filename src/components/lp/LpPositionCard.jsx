@@ -636,8 +636,8 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       <WithdrawAmountModal
         open={showWithdrawModal}
         onClose={() => setShowWithdrawModal(false)}
-        maxAmount={isLpWon && liquidityMatched > 0 ? liquidityMatched + liquidityMatched * 0.02 : liquidityUnmatched}
-        title={isLpWon && liquidityMatched > 0 ? 'Withdraw Winnings' : 'Withdraw Liquidity'}
+        maxAmount={liquidityUnmatched}
+        title="Withdraw Liquidity"
         onConfirm={handleWithdrawConfirm}
         isLoading={false}
       />
