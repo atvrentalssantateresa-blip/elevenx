@@ -54,34 +54,25 @@ Deno.serve(async (req) => {
     // Check if platform exists
     const accountInfo = await connection.getAccountInfo(platformPda);
     
-    if (accountInfo) {
-      console.log('Platform account exists, checking owner...');
-      console.log('Owner:', accountInfo.owner.toBase58());
-      console.log('Expected program:', programId.toBase58());
-      console.log('Is program owner:', accountInfo.owner.equals(programId));
+    if (accountInfo && accountInfo.owner.equals(programId)) {
+      console.log('Platform account exists and owned by current program');
       
-      if (!accountInfo.owner.equals(programId)) {
-        // Account exists but owned by OLD program - FRESH deployment with new program ID
-        console.log('⚠️ Account owned by OLD program - this is a fresh deployment');
-        console.log('The old platform account from the previous deployment still exists at this PDA');
-        console.log('Proceeding anyway - the new program will claim ownership on init');
-      }
-      
-      // Owned by THIS program - check admin
-      const data = Buffer.from(accountInfo.data);
-      const adminBytes = data.slice(8, 40);
-      const currentAdmin = new PublicKey(adminBytes).toBase58();
-      
-      console.log('Platform V3 admin:', currentAdmin);
-      
-      if (currentAdmin.toLowerCase() === walletAddress.toLowerCase()) {
+      // Check if data is valid and has admin set
+      if (accountInfo.data.length >= 40) {
+        const data = Buffer.from(accountInfo.data);
+        const adminBytes = data.slice(8, 40);
+        const currentAdmin = new PublicKey(adminBytes).toBase58();
+        
+        console.log('Platform admin found:', currentAdmin);
+        
+        // Platform already initialized
         return Response.json({
           success: true,
           alreadyInitialized: true,
           currentAdmin,
           platformPda: platformPda.toBase58(),
           feeVaultPda: feeVaultPda.toBase58(),
-          message: 'Platform already initialized with your wallet',
+          message: 'Platform already initialized on-chain',
         });
       }
     }
