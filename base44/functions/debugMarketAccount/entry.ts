@@ -17,24 +17,30 @@ Deno.serve(async (req) => {
     const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
     
     const payload = await req.json();
-    const { match_id } = payload;
+    const { match_id, market_pda } = payload;
     
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     let marketPda;
+    let marketPubkey;
     
-    // Special case: check platform config instead of market
-    if (match_id === 'platform') {
+    // Priority 1: Direct market_pda parameter (uses stored PDA from DB)
+    if (market_pda) {
+      marketPda = new PublicKey(market_pda);
+      marketPubkey = marketPda;
+      console.log('[debugMarketAccount] Using direct market PDA from payload:', marketPda.toBase58());
+    }
+    // Priority 2: Special case - check platform config
+    else if (match_id === 'platform') {
       const [platformConfigPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('platform')],
         programId
       );
       marketPda = platformConfigPda;
+      marketPubkey = marketPda;
       console.log('[debugMarketAccount] Checking platform config PDA:', marketPda.toBase58());
-    } else {
-      if (!match_id) {
-        return Response.json({ error: 'Missing match_id' }, { status: 400 });
-      }
-      
+    }
+    // Priority 3: Derive from match_id (fallback)
+    else if (match_id) {
       const matchIdBytes = Buffer.alloc(32);
       Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
       
@@ -44,18 +50,21 @@ Deno.serve(async (req) => {
         programId
       );
       marketPda = marketPdaDerived;
-      console.log('[debugMarketAccount] Checking market PDA:', marketPda.toBase58());
+      marketPubkey = marketPda;
+      console.log('[debugMarketAccount] Derived market PDA from match_id:', marketPda.toBase58());
+    } else {
+      return Response.json({ error: 'Missing market_pda or match_id' }, { status: 400 });
     }
     
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    console.log('[debugMarketAccount] Checking account at PDA:', marketPda.toBase58());
-    const accountInfo = await connection.getAccountInfo(marketPda);
+    console.log('[debugMarketAccount] Checking account at PDA:', marketPubkey.toBase58());
+    const accountInfo = await connection.getAccountInfo(marketPubkey);
     
     if (!accountInfo) {
       console.log('[debugMarketAccount] Account does not exist');
       return Response.json({
         exists: false,
-        marketPda: marketPda.toBase58(),
+        marketPda: marketPubkey.toBase58(),
         message: 'Account does not exist on-chain',
       });
     }
@@ -107,7 +116,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       exists: true,
-      marketPda: marketPda.toBase58(),
+      marketPda: marketPubkey.toBase58(),
       size: accountInfo.data.length,
       lamports: accountInfo.lamports,
       owner: accountInfo.owner.toBase58(),

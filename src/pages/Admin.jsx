@@ -744,19 +744,19 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
-                    // Get all markets with funds stuck
+                    // Get all settled/void markets
                     const bets = await base44.entities.Bet.list();
-                    const allBetsWithBalance = bets.filter(b => b.solana_market_pda && (b.status === 'settled' || b.status === 'closed' || b.status === 'void'));
+                    const settledBets = bets.filter(b => b.solana_market_pda && (b.status === 'settled' || b.status === 'void'));
                     
-                    if (allBetsWithBalance.length === 0) {
-                      toast.error('No markets found!');
+                    if (settledBets.length === 0) {
+                      toast.error('No settled markets found!');
                       return;
                     }
                     
                     // Build options string
-                    let options = 'Markets to Force Settle:\n\n';
-                    allBetsWithBalance.forEach((bet, i) => {
-                      options += `${i + 1}. ${bet.title}\n   ID: ${bet.id}\n   Status: ${bet.status}\n   Pool: ◎${bet.total_pool?.toFixed(4) || 0} SOL\n\n`;
+                    let options = 'Markets to Sweep Funds From:\n\n';
+                    settledBets.forEach((bet, i) => {
+                      options += `${i + 1}. ${bet.title}\n   ID: ${bet.id}\n   Status: ${bet.status}\n   Pool: ◎${bet.total_pool?.toFixed(4) || 0} SOL\n   PDA: ${bet.solana_market_pda}\n\n`;
                     });
                     options += '\nEnter the NUMBER (e.g., 1) or paste the ID:';
                     
@@ -765,41 +765,42 @@ export default function Admin() {
                     
                     let marketId;
                     const numInput = parseInt(input);
-                    if (!isNaN(numInput) && numInput >= 1 && numInput <= allBetsWithBalance.length) {
-                      marketId = allBetsWithBalance[numInput - 1].id;
+                    if (!isNaN(numInput) && numInput >= 1 && numInput <= settledBets.length) {
+                      marketId = settledBets[numInput - 1].id;
                     } else {
                       marketId = input;
                     }
                     
-                    // Get match for the market
-                    const bet = allBetsWithBalance.find(b => b.id === marketId) || allBets.find(b => b.id === marketId);
-                    if (!bet) {
-                      toast.error('Market not found!');
+                    // Get the bet - use the stored PDA from database!
+                    const bet = settledBets.find(b => b.id === marketId) || bets.find(b => b.id === marketId);
+                    if (!bet || !bet.solana_market_pda) {
+                      toast.error('Market not found or missing PDA!');
                       return;
                     }
                     
-                    // Force settle to route funds to fee vault
-                    const settleRes = await base44.functions.invoke('settleMarketOnChain', {
-                      bet_id: bet.id,
-                      winning_outcome: 'draw',
+                    console.log('[Admin] Sweeping market with stored PDA:', bet.solana_market_pda);
+                    
+                    // Use sweepMarketFunds with the STORED PDA from database
+                    const sweepRes = await base44.functions.invoke('sweepMarketFunds', {
+                      market_pda: bet.solana_market_pda, // Use stored PDA, not derived!
                       admin_wallet: walletAddress,
                     });
                     
-                    if (settleRes.data.error) {
-                      toast.error('Error: ' + settleRes.data.error);
+                    if (sweepRes.data.error) {
+                      toast.error('Error: ' + sweepRes.data.error);
                       return;
                     }
                     
-                    // Show settlement dialog
-                    setSettleDialog({
-                      instruction: settleRes.data.solana_instruction,
-                      bet,
-                      outcome: 'draw',
+                    // Show sweep dialog
+                    setSweepDialog({
+                      instruction: sweepRes.data.solana_instruction,
+                      marketPda: bet.solana_market_pda,
+                      balance: sweepRes.data.balance,
                     });
                   }}
                   className="h-16 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/30 text-white rounded-xl"
                 >
-                  ⚡ Force Settle Market
+                  💰 Sweep Market Funds
                 </Button>
               </div>
             </Card>
