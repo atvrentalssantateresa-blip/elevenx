@@ -109,11 +109,11 @@ Deno.serve(async (req) => {
         programId: programId.toBase58(),
         instruction_data: data.toString('base64'),
         keys: [
-          { pubkey: marketPubkey.toBase58(), isSigner: false, isWritable: true }, // market
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // platform_config
-          { pubkey: adminWallet, isSigner: true, isWritable: true }, // admin signer
-          { pubkey: adminWallet, isSigner: false, isWritable: true }, // admin_destination (receiver)
-          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program
+          { pubkey: marketPubkey.toBase58(), isSigner: false, isWritable: true }, // 0: market
+          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // 1: platform_config
+          { pubkey: adminWallet, isSigner: true, isWritable: true }, // 2: admin (signer)
+          { pubkey: adminWallet, isSigner: false, isWritable: true }, // 3: admin_destination (receiver)
+          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // 4: system_program
         ]
       }
     });
