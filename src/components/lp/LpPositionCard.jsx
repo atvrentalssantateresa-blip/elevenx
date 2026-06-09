@@ -62,56 +62,35 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   });
   
   // CRITICAL: VOIDED markets = LP LOSES (no payout, regardless of backend DB status)
-  // This check MUST happen FIRST before any other win/loss logic
+  // CRITICAL: DB status is the ONLY source of truth for settled markets
+  // settleBetWithOracle sets the correct status in the DB - frontend must trust it
   let isLpWon = false;
   let isLpLost = false;
   
   console.log('[LpPositionCard] RAW DATA:', { liquidityMatched, liquidityDeposited, liquidityUnmatched, dbStatus, offer_status: offer.status });
   
-  // Check DB status FIRST for void/lost markets
-  if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
+  // ALWAYS use DB status for settled markets - DO NOT calculate from winningOutcome
+  if (dbStatus === 'won') {
+    isLpWon = true;
+    isLpLost = false;
+    console.log('[LpPositionCard] LP WON (from DB status)');
+  } else if (dbStatus === 'lost' || dbStatus === 'void' || dbStatus === 'voided') {
     isLpLost = true;
     isLpWon = false;
-    console.log('[LpPositionCard] VOIDED MARKET - LP LOST (from DB status):', { dbStatus, isVoided });
-  } else if (dbStatus === 'lost') {
-    isLpLost = true;
-    isLpWon = false;
-    console.log('[LpPositionCard] LP LOST (from DB status)');
-  } else if (liquidityMatched === 0 || liquidityMatched <= 0) {
-    // CRITICAL: If liquidityMatched = 0, LP position is NOT won/lost - it's just unmatched (withdrawn/refunded)
+    console.log('[LpPositionCard] LP LOST/VOID (from DB status):', dbStatus);
+  } else if (dbStatus === 'refunded' || dbStatus === 'withdrawn') {
     isLpWon = false;
     isLpLost = false;
-    console.log('[LpPositionCard] FORCED OVERRIDE: No matched liquidity - setting to neutral (unmatched)');
-  } else if (winningOutcome && winningOutcome !== '' && winningOutcome !== 'void') {
-    // Calculate from winningOutcome (source of truth)
-    const backedOutcome = offer.outcome;
-    const backedIsWinner = 
-      (backedOutcome === 'a' && winningOutcome === 'team_a') ||
-      (backedOutcome === 'b' && winningOutcome === 'team_b') ||
-      (backedOutcome === 'draw' && winningOutcome === 'draw');
-    
-    // ON-CHAIN: LP WINS when backed outcome != winning outcome (LP backed a loser)
-    // ON-CHAIN: LP LOSES when backed outcome == winning outcome (LP backed the winner)
-    if (backedIsWinner) {
-      isLpLost = true;
-      isLpWon = false;
-    } else {
-      isLpWon = true;
-      isLpLost = false;
-    }
-    
-    console.log('[LpPositionCard] Calculated LP win/loss from winningOutcome:', {
-      backedOutcome,
-      winningOutcome,
-      backedIsWinner,
-      isLpWon,
-      isLpLost
-    });
+    console.log('[LpPositionCard] LP REFUNDED/WITHDRAWN (from DB status)');
+  } else if (liquidityMatched === 0 || liquidityMatched <= 0) {
+    // No matched liquidity - neutral state
+    isLpWon = false;
+    isLpLost = false;
+    console.log('[LpPositionCard] No matched liquidity - neutral');
   } else {
-    // No winningOutcome yet - use DB status as fallback
+    // Fallback only if DB status is not set yet
     isLpWon = dbStatus === 'won';
     isLpLost = dbStatus === 'lost';
-    console.log('[LpPositionCard] Using DB status fallback:', { isLpWon, isLpLost });
   }
   
   const isClaimed = dbStatus === 'claimed';
@@ -187,46 +166,21 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
     pending: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Pending' }
   };
 
-  // CRITICAL: Calculate correct display status based on match result, not DB
-  // LP WINS when backed outcome != winning outcome (LP backed a loser)
-  // LP LOSES when backed outcome == winning outcome (LP backed the winner)
+  // CRITICAL: DB status is the ONLY source of truth - trust what settleBetWithOracle set
   let displayStatus = offer.status;
   
-  console.log('[STATUS CALC] isSettled:', isSettled);
-  console.log('[STATUS CALC] winningOutcome:', winningOutcome, '(from bet.winning_outcome or match.winner)');
-  console.log('[STATUS CALC] offer.outcome:', offer.outcome);
-  console.log('[STATUS CALC] liquidityMatched:', liquidityMatched);
-  console.log('[STATUS CALC] dbStatus:', dbStatus);
+  console.log('[STATUS CALC] dbStatus:', dbStatus, 'isSettled:', isSettled);
   
-  // CRITICAL: Check DB status FIRST for void/lost markets before checking liquidity
-  if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
-    displayStatus = 'void';
-    console.log('[STATUS CALC] Setting to void (market voided)');
-  } else if (dbStatus === 'lost') {
-    displayStatus = 'lost';
-    console.log('[STATUS CALC] Setting to lost (from DB status)');
+  // ALWAYS use DB status directly for settled markets
+  if (dbStatus === 'won' || dbStatus === 'lost' || dbStatus === 'void' || dbStatus === 'voided' || dbStatus === 'refunded' || dbStatus === 'withdrawn' || dbStatus === 'claimed') {
+    displayStatus = dbStatus;
+    console.log('[STATUS CALC] Using DB status directly:', displayStatus);
   } else if (liquidityMatched === 0) {
     displayStatus = 'refunded';
-    console.log('[STATUS CALC] Setting to refunded (no matched liquidity)');
-  } else if (winningOutcome === 'void') {
-    displayStatus = 'void';
-    console.log('[STATUS CALC] Setting to void (market voided)');
-  } else if (isSettled && winningOutcome && winningOutcome !== '' && winningOutcome !== 'void') {
-    const backedOutcome = offer.outcome; // 'a', 'b', or 'draw'
-    const backedIsWinner = 
-      (backedOutcome === 'a' && winningOutcome === 'team_a') ||
-      (backedOutcome === 'b' && winningOutcome === 'team_b') ||
-      (backedOutcome === 'draw' && winningOutcome === 'draw');
-    
-    console.log('[STATUS CALC] backedOutcome:', backedOutcome, 'winningOutcome:', winningOutcome, 'backedIsWinner:', backedIsWinner);
-    
-    // Override DB status with calculated result
-    displayStatus = backedIsWinner ? 'lost' : 'won';
-    console.log('[STATUS CALC] Setting to:', displayStatus);
-  } else if (isSettled && (dbStatus === 'won' || dbStatus === 'lost')) {
-    // Fallback: use DB status when winningOutcome is not set yet
-    displayStatus = dbStatus;
-    console.log('[STATUS CALC] Using DB status fallback:', displayStatus);
+    console.log('[STATUS CALC] No matched liquidity - refunded');
+  } else {
+    // Fallback for unsettled markets
+    displayStatus = offer.status;
   }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
