@@ -62,10 +62,21 @@ Deno.serve(async (req) => {
       
       // CRITICAL: LP wins when their backed outcome LOSES (collects losing bettors' stakes)
       // LP loses when their backed outcome WINS (no losing bettors to collect from)
-      // This applies to ALL outcomes including Draw
+      // SPECIAL CASE: Draw outcome - ALL LPs on A/B lose, funds go to DAO
       if (isLp) {
-        // LP wins when backed outcome LOSES (collects losing bettor stakes)
-        if (!backedWinner) {
+        // SPECIAL DRAW LOGIC: If winning outcome is Draw, all LPs on A/B lose
+        if (winning_outcome === 'draw') {
+          isWinner = false;
+          payout = 0;
+          console.log('[commitSettlement] LP LOST (Draw outcome - funds to DAO):', {
+            userBetId: userBet.id,
+            role: userBet.role,
+            backed_outcome: userBet.outcome,
+            winning_outcome,
+            reason: 'Draw outcome - all LP positions lose, funds swept to DAO'
+          });
+        } else if (!backedWinner) {
+          // LP wins when backed outcome LOSES (collects losing bettor stakes)
           isWinner = true;
           // LP earns matched liquidity (losing bettor stakes) + fees
           payout = userBet.liquidity_matched || userBet.amount || 0;
@@ -77,6 +88,9 @@ Deno.serve(async (req) => {
             reason: 'LP backed the losing outcome, collects from winning bettors'
           });
         } else {
+          // LP loses when backed outcome WINS (no losing bettors to collect from)
+          isWinner = false;
+          payout = 0;
           console.log('[commitSettlement] LP LOST (backed winner):', {
             userBetId: userBet.id,
             role: userBet.role,
