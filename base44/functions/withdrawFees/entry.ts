@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
+import { Connection, PublicKey, SystemProgram, TransactionInstruction } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'npm:buffer@6.0.3';
 
 /**
- * Admin-only: Prepare withdraw_fees instruction to sweep SOL from fee vault to admin wallet.
+ * Admin-only: Directly sweep stuck funds from a market account to admin wallet.
+ * Uses a simple SOL transfer instead of program instruction (works with old deployments).
  */
 Deno.serve(async (req) => {
   try {
@@ -15,51 +16,66 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json();
-    const amountSOL = payload.amount_sol;
-    const amountLamports = Math.floor(amountSOL * 1e9);
+    const { market_pda, admin_wallet } = payload;
 
-    const programId = new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID'));
-    const [feeVaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('fee_vault')],
-      programId
-    );
-    const [platformPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform')],
-      programId
-    );
+    if (!market_pda || !admin_wallet) {
+      return Response.json({ error: 'Missing market_pda or admin_wallet' }, { status: 400 });
+    }
 
-    // Compute Anchor 8-byte discriminator for "withdraw_fees"
-    const msg = new TextEncoder().encode("global:withdraw_fees");
-    const hash = await crypto.subtle.digest('SHA-256', msg);
-    const discriminator = Buffer.from(new Uint8Array(hash).slice(0, 8));
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const marketPubkey = new PublicKey(market_pda);
+    
+    // Get market balance
+    const balance = await connection.getBalance(marketPubkey);
+    const rent = await connection.getMinimumBalanceForRentExemption(215); // Market account size
+    
+    // Calculate withdrawable amount (balance minus rent-exempt minimum)
+    const withdrawableLamports = Math.max(0, balance - rent);
+    
+    if (withdrawableLamports <= 0) {
+      return Response.json({ 
+        error: 'No withdrawable funds (balance too low or at rent-exempt minimum)',
+        balanceLamports: balance,
+        rentExemptMinimum: rent,
+      }, { status: 400 });
+    }
 
-    // Instruction Data: Discriminator (8 bytes) + Amount (u64 LE, 8 bytes) = 16 bytes
-    const instructionData = Buffer.alloc(16);
-    discriminator.copy(instructionData, 0);
-    instructionData.writeBigUInt64LE(BigInt(amountLamports), 8);
+    console.log('[withdrawFees] Market sweep:', {
+      marketPda: market_pda,
+      adminWallet: admin_wallet,
+      balanceLamports: balance,
+      rentExemptMinimum: rent,
+      withdrawableLamports,
+      withdrawableSOL: withdrawableLamports / 1e9,
+    });
 
-    console.log('[withdrawFees] Prepared instruction:', {
-      amountSOL,
-      amountLamports,
-      feeVaultPda: feeVaultPda.toBase58(),
-      platformPda: platformPda.toBase58(),
-      discriminator: discriminator.toString('hex'),
-      instructionData: instructionData.toString('hex'),
+    // Create a simple SystemProgram transfer instruction
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: marketPubkey,
+      toPubkey: new PublicKey(admin_wallet),
+      lamports: withdrawableLamports,
     });
 
     return Response.json({
       success: true,
+      message: `Sign to sweep ◎${(withdrawableLamports / 1e9).toFixed(6)} SOL from market to your wallet`,
       solana_instruction: {
-        instruction_type: 'withdraw_fees',
-        programId: programId.toBase58(),
-        instruction_data: instructionData.toString('base64'),
+        instruction_type: 'sweep_market_funds_simple',
+        programId: SystemProgram.programId.toBase58(),
+        instruction_data: transferIx.data.toString('base64'),
         keys: [
-          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
-          { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: true },
-          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+          { pubkey: market_pda, isSigner: false, isWritable: true },
+          { pubkey: admin_wallet, isSigner: false, isWritable: true },
         ]
-      }
+      },
+      balance: {
+        lamports: balance,
+        sol: balance / 1e9,
+      },
+      withdrawable: {
+        lamports: withdrawableLamports,
+        sol: withdrawableLamports / 1e9,
+      },
     });
   } catch (error) {
     console.error('[withdrawFees] Error:', error);
