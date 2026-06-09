@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+// REDEPLOYED: 2026-06-09 - Force refresh SOLANA_PROGRAM_ID secret
 /**
  * LP provides fixed-odds liquidity for a specific outcome.
  * Returns the Solana instruction for the frontend to sign.

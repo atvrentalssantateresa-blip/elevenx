@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+// REDEPLOYED: 2026-06-09 - Force refresh SOLANA_PROGRAM_ID secret
 // Match against an existing offer — bettor takes the opposing side
 // Bettor stakes at opposing odds: if LP offered Home @ 2.0, bettor bets Away
 // LP's liability covers bettor's winnings

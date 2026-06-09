@@ -8,6 +8,7 @@ import { Buffer } from 'npm:buffer@6.0.3';
  *   1. LPs MUST seed liquidity FIRST (betting locked if pool = 0)
  *   2. Bettor stake CANNOT exceed LP pool size (guaranteed solvency)
  *   3. Bettor matches against existing LP offer at fixed odds
+ * REDEPLOYED: 2026-06-09 - Force refresh SOLANA_PROGRAM_ID secret
  */
 Deno.serve(async (req) => {
   try {
