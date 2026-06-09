@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
     
     if (settlementFinalized || isVoided) {
       // Use force_settle_market - simpler instruction, no oracle_vote/vote_tally needed
-      const forceDiscriminator = Buffer.from(sha256('global:force_settle_market')).slice(0, 8);
+      const forceDiscriminator = Buffer.from(sha256('force_settle_market')).slice(0, 8);
       const forceData = Buffer.alloc(9);
       forceDiscriminator.copy(forceData, 0);
       forceData.writeUInt8(outcomeIndex, 8);
@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
       };
     } else {
       // Normal flow: submit_oracle_vote
-      const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
+      const discriminator = Buffer.from(sha256('submit_oracle_vote')).slice(0, 8);
       const data = Buffer.alloc(9);
       discriminator.copy(data, 0);
       data.writeUInt8(outcomeIndex, 8);
