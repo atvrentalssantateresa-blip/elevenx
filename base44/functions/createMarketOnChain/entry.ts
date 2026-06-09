@@ -3,14 +3,6 @@ import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4
 import { Buffer } from 'npm:buffer@6.0.3';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
-// Force fresh read from secrets on each invocation
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
-const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
-
-if (!SOLANA_PROGRAM_ID) {
-  console.error('[createMarketOnChain] SOLANA_PROGRAM_ID secret not set!');
-}
-
 /**
  * Creates a pari-mutuel market on-chain for a bet entity.
  * No LP required - bettors bet directly against the pool.
@@ -18,6 +10,15 @@ if (!SOLANA_PROGRAM_ID) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    
+    // CRITICAL: Read secrets INSIDE handler to avoid caching stale values
+    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
+    const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
+    
+    if (!SOLANA_PROGRAM_ID) {
+      console.error('[createMarketOnChain] SOLANA_PROGRAM_ID secret not set!');
+      return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
+    }
     
     const payload = await req.json();
     const { bet_id, match_id } = payload;
