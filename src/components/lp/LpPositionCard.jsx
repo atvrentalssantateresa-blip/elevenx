@@ -543,19 +543,25 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             }
 
-            // Priority 2: LP LOST with matched liquidity - no funds to claim (includes voided markets)
+            // Priority 2: LP LOST with matched liquidity - show loss but STILL allow unmatched withdrawal
+            const hasUnmatchedLiquidity = liquidityUnmatched > 0;
+            
             if ((isLpLost || isVoided) && liquidityMatched > 0) {
-              return (
-                <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
-                  <div className="flex items-center gap-1.5">
-                    <XCircle className="w-3.5 h-3.5 text-destructive" />
-                    <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">
-                      {isVoided ? 'Market Voided' : 'Position Lost'}
-                    </span>
-                  </div>
-                  <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
-                </div>);
-
+              // If there's unmatched liquidity, show withdraw button instead of "lost" message
+              if (hasUnmatchedLiquidity && userBetStatus !== 'refunded' && userBetStatus !== 'withdrawn') {
+                // Fall through to unmatched withdrawal logic below
+              } else {
+                return (
+                  <div className="flex-1 flex items-center justify-between bg-destructive/15 border border-destructive/40 rounded-xl px-3 h-9">
+                    <div className="flex items-center gap-1.5">
+                      <XCircle className="w-3.5 h-3.5 text-destructive" />
+                      <span className="text-[11px] font-heading font-bold text-destructive uppercase tracking-wider">
+                        {isVoided ? 'Market Voided' : 'Position Lost'}
+                      </span>
+                    </div>
+                    <span className="font-heading font-black text-sm text-destructive/70">◎0.0000</span>
+                  </div>);
+              }
             }
 
             // Priority 3: LP WON with matched liquidity - claim winnings (matched stake + fees)
@@ -574,10 +580,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             }
 
-            // Priority 4: Has unmatched liquidity - withdraw unmatched
-            // For unmatched positions, allow withdrawal regardless of DB status (which may be 'pending' even after settlement)
-            // Only block if already withdrawn/refunded in DB
-            const canWithdrawUnmatched = (hasUnmatched || liquidityUnmatched > 0) && 
+            // Priority 4: Has unmatched liquidity - withdraw unmatched (ALWAYS allowed unless already withdrawn/refunded)
+            // CRITICAL: This works even for settled/lost markets - unmatched funds are always withdrawable
+            const canWithdrawUnmatched = hasUnmatchedLiquidity && 
                                          userBetStatus !== 'refunded' && 
                                          userBetStatus !== 'withdrawn' &&
                                          onWithdrawRequest;
