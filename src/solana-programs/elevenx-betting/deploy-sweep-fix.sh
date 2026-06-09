@@ -1,28 +1,24 @@
 #!/bin/bash
 set -e
 
-echo "🔄 Deploying updated ElevenX betting program..."
+echo "=== Deploying sweep_market_funds fix ==="
 echo ""
 
-# Navigate to program directory
 cd "$(dirname "$0")"
 
 # Build the program
 echo "🔨 Building program..."
-anchor build
+anchor build -- --features no-entrypoint
 
-# Get program ID
-PROGRAM_ID=$(grep '^declare_id!' programs/elevenx-betting/src/lib.rs | sed 's/declare_id!\("//' | sed 's/"\);//')
-echo "📌 Program ID: $PROGRAM_ID"
-
-# Deploy to devnet
-echo "🚀 Deploying to devnet..."
+# Deploy to Devnet
+echo "🚀 Deploying to Devnet..."
 anchor deploy --provider.cluster devnet
 
+# Get the program ID
+PROGRAM_ID=$(grep 'declare_id!' programs/elevenx-betting/src/lib.rs | sed 's/.*declare_id!\("//' | sed 's/".*//')
 echo ""
 echo "✅ Deployment complete!"
+echo "Program ID: $PROGRAM_ID"
 echo ""
-echo "Program deployed to: $PROGRAM_ID"
-echo "Verify at: https://solscan.io/account/$PROGRAM_ID?cluster=devnet"
+echo "⚠️  IMPORTANT: Update SOLANA_PROGRAM_ID secret in Base44 Dashboard with this address!"
 echo ""
-echo "⚠️  IMPORTANT: Update SOLANA_PROGRAM_ID secret in Base44 dashboard if program ID changed!"
