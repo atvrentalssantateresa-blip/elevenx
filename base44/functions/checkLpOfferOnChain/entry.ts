@@ -83,10 +83,14 @@ Deno.serve(async (req) => {
       // LpOffer layout: discriminator (8) + market (32) + lp (32) + outcome (1) + odds_bps (8) + amount_committed (8) + amount_matched (8) + closed (1) + matched_stake (8) + withdrawn (1) + bump (1) = 108 bytes
       // Offsets: 0-7=disc, 8-39=market, 40-71=lp, 72=outcome, 73-80=odds_bps, 81-88=amount_committed, 89-96=amount_matched, 97=closed, 98-105=matched_stake, 106=withdrawn, 107=bump
       const accountData = lpOfferAccountInfo.data;
+      console.log('[checkLpOfferOnChain] Account data length:', accountData.length);
+      console.log('[checkLpOfferOnChain] Account data (hex):', accountData.toString('hex'));
+      
       const storedOutcome = accountData[72]; // outcome is stored at offset 72
-      const fullyWithdrawnFlag = accountData[114]; // fully_withdrawn bool at offset 114 (NEW LAYOUT)
-      const withdrawnAmountOnChain = accountData.readBigUInt64LE(106); // withdrawn_amount u64 at offset 106 (NEW LAYOUT)
-      const amountMatchedOnChain = accountData.readBigUInt64LE(89); // amount_matched at offset 89
+      // Try both offset 106 and 114 for withdrawn flag (different program versions)
+      const fullyWithdrawnFlag = accountData.length > 114 ? accountData[114] : (accountData.length > 106 ? accountData[106] : 0);
+      const withdrawnAmountOnChain = accountData.length > 106 ? accountData.readBigUInt64LE(106) : BigInt(0);
+      const amountMatchedOnChain = accountData.length > 96 ? accountData.readBigUInt64LE(89) : BigInt(0);
 
       const derivedOutcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
       
