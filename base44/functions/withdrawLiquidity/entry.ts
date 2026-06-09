@@ -69,9 +69,19 @@ Deno.serve(async (req) => {
     const bet = bets[0];
     if (!bet) return Response.json({ error: 'Bet not found' }, { status: 400 });
     
-    // Allow withdrawal if market is open OR settled (for unmatched funds)
-    if (bet.status !== 'open' && bet.status !== 'settled') {
-      return Response.json({ error: 'Cannot withdraw from this market' }, { status: 400 });
+    // Allow withdrawal if betting window has closed (regardless of settlement status)
+    // CRITICAL: Check open_until timestamp - if time passed, betting is closed even if status='open'
+    const now = new Date();
+    const openUntilDate = bet.open_until ? new Date(bet.open_until) : null;
+    const isBettingClosed = bet.status === 'closed' || bet.status === 'settled' || (openUntilDate && now > openUntilDate);
+    
+    if (!isBettingClosed) {
+      return Response.json({ 
+        error: 'Cannot withdraw yet - market is still open for betting',
+        hint: `Market closes at ${bet.open_until}`,
+        now: now.toISOString(),
+        openUntil: bet.open_until,
+      }, { status: 400 });
     }
 
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
