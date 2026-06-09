@@ -278,6 +278,7 @@ Deno.serve(async (req) => {
       forceData.writeUInt8(outcomeIndex, 8);
       
       console.log('[settleMarketOnChain] force_settle_market discriminator (global: format):', forceDiscriminator.toString('hex'));
+      console.log('[settleMarketOnChain] force_settle_market instruction data (hex):', forceData.toString('hex'));
       
       console.log('[settleMarketOnChain] Using force_settle_market (market already settled/voided):', {
         outcome: outcomeLabel,
@@ -289,14 +290,21 @@ Deno.serve(async (req) => {
         instruction_type: 'settle_market_force',
         programId: SOLANA_PROGRAM_ID,
         keys: [
-          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },   // market (mut)
-          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault (mut)
-          { pubkey: admin_wallet, isSigner: true, isWritable: true },            // admin signer
-          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // platform_config
-          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },   // market (mut) - account 0
+          { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true }, // fee_vault (mut) - account 1
+          { pubkey: admin_wallet, isSigner: true, isWritable: true },            // admin (mut, signer) - account 2
+          { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false }, // platform_config - account 3
+          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // system_program - account 4
         ],
         instruction_data: forceData.toString('base64'),
       };
+      
+      console.log('[settleMarketOnChain] force_settle_market final instruction:', {
+        discriminator: forceDiscriminator.toString('hex'),
+        outcomeIndex,
+        keys: settleInstruction.keys,
+        dataBase64: forceData.toString('base64'),
+      });
     } else {
       // Normal flow: submit_oracle_vote - Anchor uses "global:" prefix by default
       const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
