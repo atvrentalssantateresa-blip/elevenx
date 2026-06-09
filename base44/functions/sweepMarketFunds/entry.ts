@@ -101,6 +101,20 @@ Deno.serve(async (req) => {
     console.log('[sweepMarketFunds] Instruction data (hex):', data.toString('hex'));
     console.log('[sweepMarketFunds] Instruction data length:', data.length);
 
+    // Alternative: Simple transfer instruction (no program call needed)
+    // This directly transfers lamports from market PDA to admin wallet
+    const transferInstruction = {
+      instruction_type: 'simple_transfer',
+      programId: '11111111111111111111111111111111', // System program
+      instruction_data: '',
+      keys: [
+        { pubkey: marketPubkey.toBase58(), isSigner: false, isWritable: true }, // From: market PDA
+        { pubkey: adminWallet, isSigner: false, isWritable: true }, // To: admin wallet
+      ],
+      // Simple transfer doesn't need discriminator - just transfer remaining balance minus rent
+      transfer_lamports: balance - 890880, // Keep rent-exempt minimum (0.00089088 SOL)
+    };
+
     return Response.json({
       success: true,
       message: `Sign to sweep ${balance / 1e9} SOL from market account to your wallet`,
@@ -119,7 +133,8 @@ Deno.serve(async (req) => {
           { pubkey: adminWallet, isSigner: false, isWritable: true }, // 3: admin_destination (receiver)
           { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false }, // 4: system_program
         ]
-      }
+      },
+      alternative_simple_transfer: transferInstruction,
     });
   } catch (error) {
     console.error('[sweepMarketFunds] Error:', error);
