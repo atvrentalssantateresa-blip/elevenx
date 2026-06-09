@@ -75,12 +75,22 @@ Deno.serve(async (req) => {
     }
 
     // Build sweep_market_funds instruction
-    // Anchor uses "global:<instruction_name>" format
-    const discriminator = Buffer.from(sha256('global:sweep_market_funds')).slice(0, 8);
+    // Try BOTH discriminator formats to match deployed program
+    // Format 1: Anchor 0.29+ "global:<name>" format
+    const discGlobal = Buffer.from(sha256('global:sweep_market_funds')).slice(0, 8);
+    // Format 2: Simple format (just the name)
+    const discSimple = Buffer.from(sha256('sweep_market_funds')).slice(0, 8);
+    
+    // Use GLOBAL format (Anchor default) - program was deployed with Anchor
+    const discriminator = discGlobal;
     const data = Buffer.alloc(8); // Only discriminator, no args
     discriminator.copy(data, 0);
     
-    console.log('[sweepMarketFunds] Discriminator (global:sweep_market_funds):', discriminator.toString('hex'));
+    console.log('[sweepMarketFunds] Discriminator formats:', {
+        global: discGlobal.toString('hex'),
+        simple: discSimple.toString('hex'),
+        using: 'global',
+    });
 
     return Response.json({
       success: true,
