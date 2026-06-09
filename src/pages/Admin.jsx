@@ -745,12 +745,42 @@ export default function Admin() {
                       return;
                     }
                     try {
-                      // Prompt for market ID (bet_id)
-                      const marketId = prompt('Enter Market ID (bet_id) to sweep funds from:');
-                      if (!marketId) return;
+                      // Get all settled markets
+                      const bets = await base44.entities.Bet.list();
+                      const settledBets = bets.filter(b => b.status === 'settled' || b.status === 'closed');
+                      
+                      if (settledBets.length === 0) {
+                        toast.error('No settled markets found!');
+                        return;
+                      }
+                      
+                      // Build options string
+                      let options = 'Settled Markets:\n\n';
+                      settledBets.forEach((bet, i) => {
+                        options += `${i + 1}. ${bet.title}\n   ID: ${bet.id}\n   Pool: ◎${bet.total_pool?.toFixed(4) || 0} SOL\n\n`;
+                      });
+                      options += '\nEnter the NUMBER (e.g., 1) or paste the ID:';
+                      
+                      const input = prompt(options);
+                      if (!input) return;
+                      
+                      let marketId;
+                      const numInput = parseInt(input);
+                      if (!isNaN(numInput) && numInput >= 1 && numInput <= settledBets.length) {
+                        marketId = settledBets[numInput - 1].id;
+                      } else {
+                        marketId = input;
+                      }
+                      
+                      // Get match for the market
+                      const bet = settledBets.find(b => b.id === marketId) || bets.find(b => b.id === marketId);
+                      if (!bet) {
+                        toast.error('Market not found!');
+                        return;
+                      }
                       
                       // Check market on-chain balance
-                      const res = await base44.functions.invoke('debugMarketAccount', { bet_id: marketId });
+                      const res = await base44.functions.invoke('debugMarketAccount', { bet_id: marketId, match_id: bet.match_id });
                       if (res.data.error) {
                         toast.error('Error: ' + res.data.error);
                         return;
@@ -762,12 +792,13 @@ export default function Admin() {
                       }
                       
                       const balanceSOL = res.data.balanceLamports / 1e9;
-                      const confirmSweep = confirm(`Sweep Market Funds\n\nMarket: ${marketId}\nBalance: ◎${balanceSOL.toFixed(6)} SOL\n\nThis will transfer ALL funds to your admin wallet.\n\nContinue?`);
+                      const confirmSweep = confirm(`Sweep Market Funds\n\nMarket: ${bet.title}\nID: ${marketId}\nBalance: ◎${balanceSOL.toFixed(6)} SOL\n\nThis will transfer ALL funds to your admin wallet.\n\nContinue?`);
                       if (!confirmSweep) return;
                       
                       // Prepare sweep instruction
                       const sweepRes = await base44.functions.invoke('sweepMarketFunds', { 
                         bet_id: marketId,
+                        match_id: bet.match_id,
                         admin_wallet: walletAddress 
                       });
                       if (sweepRes.data.error) {
