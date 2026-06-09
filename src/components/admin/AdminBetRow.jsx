@@ -45,11 +45,14 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
 
     const { settled, voided, paused, settlement_finalized } = marketStatus;
 
+    // CRITICAL: When market is settled (even with voided=true from old state), show as settled
+    // This handles the case where on-chain state has both flags set due to Draw settlement with no winners
     if (settlement_finalized || settled) {
       return <Badge className="bg-accent/10 text-accent border-accent/30"><CheckCircle className="w-3 h-3 mr-1" />{settlement_finalized ? 'Finalized' : 'Settled'}</Badge>;
     }
 
-    if (voided) {
+    // Only show voided if NOT settled (prevents false voided display after successful settlement)
+    if (voided && !settled) {
       return <Badge className="bg-muted/10 text-muted-foreground border-muted/30"><XCircle className="w-3 h-3 mr-1" />Voided</Badge>;
     }
 
@@ -96,7 +99,7 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
             <span className="text-muted-foreground">Status:</span>
             <span className="text-white font-bold">{marketStatus.status}</span>
           </div>
-          {marketStatus.voided && (
+          {marketStatus.voided && !marketStatus.settled && (
             <div className="flex justify-between bg-destructive/20 border border-destructive/50 rounded px-2 py-1 -mx-2 -my-1">
               <span className="text-destructive font-bold">⚠️ VOIDED</span>
               <span className="text-destructive/80">Market auto-voided - bets will be refunded</span>
@@ -114,7 +117,7 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
       )}
 
       <div className="flex gap-2">
-        {marketStatus?.voided ? (
+        {marketStatus?.voided && !marketStatus?.settled ? (
           <Badge className="flex-1 bg-destructive/10 text-destructive border-destructive/30 px-3 py-2 justify-center">
             <AlertCircle className="w-3 h-3 mr-1" />
             Market Voided - Refunds in Progress
