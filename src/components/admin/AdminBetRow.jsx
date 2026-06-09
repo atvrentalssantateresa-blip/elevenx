@@ -69,6 +69,7 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
         <div>
           <h3 className="font-heading font-bold text-sm text-white">{match.team_a} vs {match.team_b}</h3>
           <p className="text-xs text-muted-foreground">{match.group_stage}</p>
+          <p className="text-[10px] font-mono text-muted-foreground mt-1">Bet ID: {bet.id}</p>
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge()}
