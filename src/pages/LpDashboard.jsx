@@ -275,6 +275,8 @@ export default function LpDashboard() {
     },
     onError: (err) => {
       console.error('[provideLiquidity] Error:', err);
+      // Close detail modal so user can see the error
+      setDetailModalOpen(false);
       // Check if it's an authentication error
       if (err.response?.status === 401 || err.message?.includes('Authentication required') || err.message?.includes('logged in')) {
         const confirmLogin = confirm(
