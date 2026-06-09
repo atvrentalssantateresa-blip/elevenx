@@ -84,24 +84,18 @@ Deno.serve(async (req) => {
     }
 
     // Build sweep_market_funds instruction
-    // The deployed program uses Anchor's default "account:<name>" format for instructions
-    // Try multiple formats to find the right one
+    // The Rust program declares: pub fn sweep_market_funds(ctx: Context<SweepMarketFunds>) -> Result<()>
+    // Anchor uses "global:<instruction_name>" format for instruction discriminators
     const discGlobal = Buffer.from(sha256('global:sweep_market_funds')).slice(0, 8);
-    const discAccount = Buffer.from(sha256('account:sweep_market_funds')).slice(0, 8);
-    const discSimple = Buffer.from(sha256('sweep_market_funds')).slice(0, 8);
     
-    // Use ACCOUNT format (some Anchor versions)
-    const discriminator = discAccount;
-    const data = Buffer.alloc(8); // Only discriminator, no args
+    // Use GLOBAL format (Anchor default)
+    const discriminator = discGlobal;
+    const data = Buffer.alloc(8); // Only discriminator - sweep_market_funds takes no args
     discriminator.copy(data, 0);
     
-    console.log('[sweepMarketFunds] Discriminator formats:', {
-        global: discGlobal.toString('hex'),
-        account: discAccount.toString('hex'),
-        simple: discSimple.toString('hex'),
-        using: 'account',
-        instructionDataHex: data.toString('hex'),
-    });
+    console.log('[sweepMarketFunds] Discriminator:', discGlobal.toString('hex'));
+    console.log('[sweepMarketFunds] Instruction data (hex):', data.toString('hex'));
+    console.log('[sweepMarketFunds] Instruction data length:', data.length);
 
     return Response.json({
       success: true,
