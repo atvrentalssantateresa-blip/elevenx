@@ -49,8 +49,8 @@ export default function InitPlatform() {
       if (!walletAddress) {
         throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
       }
-      const res = await base44.functions.invoke('forceReinitPlatform', { walletAddress });
-      console.log('[InitPlatform] forceReinitPlatform response:', res.data);
+      const res = await base44.functions.invoke('initPlatformV2', { walletAddress });
+      console.log('[InitPlatform] initPlatformV2 response:', res.data);
       if (res.data.error) throw new Error(res.data.error);
       
       // If already initialized, just refresh the status
@@ -58,7 +58,7 @@ export default function InitPlatform() {
         await refetch();
         setInstruction(null);
         setError(null);
-        alert('Platform is already initialized with your wallet!');
+        alert('Platform V2 is already initialized! Refreshing status...');
         return;
       }
       
@@ -74,7 +74,7 @@ export default function InitPlatform() {
     setInstruction(null);
     setError(null);
     await refetch();
-    alert('Platform initialized successfully! You can now create markets.');
+    alert('Platform V2 initialized successfully! You can now create markets.');
   };
 
   const copyToClipboard = (text) => {
@@ -274,7 +274,7 @@ export default function InitPlatform() {
               onClick={handleInit}
               className="w-full h-12"
             >
-              🚀 Initialize Platform V3 (Fresh Start)
+              🚀 Initialize Platform V2 (Fresh Start)
             </Button>
           </div>
         )}
