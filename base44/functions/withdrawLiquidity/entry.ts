@@ -71,9 +71,12 @@ Deno.serve(async (req) => {
     
     // Allow withdrawal if betting window has closed (regardless of settlement status)
     // CRITICAL: Check open_until timestamp - if time passed, betting is closed even if status='open'
+    // ALSO: Allow if market is within 60 seconds of closing (prevents "almost closed" errors)
     const now = new Date();
     const openUntilDate = bet.open_until ? new Date(bet.open_until) : null;
+    const timeUntilClose = openUntilDate ? openUntilDate.getTime() - now.getTime() : null;
     const isBettingClosed = bet.status === 'closed' || bet.status === 'settled' || (openUntilDate && now > openUntilDate);
+    const isAlmostClosed = timeUntilClose !== null && timeUntilClose < 60 * 1000; // Within 60 seconds
     
     console.log('[withdrawLiquidity] Betting window check:', {
       bet_id: bet.id,
@@ -82,11 +85,12 @@ Deno.serve(async (req) => {
       openUntilDate: openUntilDate?.toISOString(),
       now: now.toISOString(),
       isBettingClosed,
-      timeDiff_ms: openUntilDate ? now.getTime() - openUntilDate.getTime() : null,
-      timeDiff_hours: openUntilDate ? (now.getTime() - openUntilDate.getTime()) / (1000 * 60 * 60) : null,
+      isAlmostClosed,
+      timeUntilClose_ms: timeUntilClose,
+      timeUntilClose_seconds: timeUntilClose ? timeUntilClose / 1000 : null,
     });
     
-    if (!isBettingClosed) {
+    if (!isBettingClosed && !isAlmostClosed) {
       return Response.json({ 
         error: 'Cannot withdraw yet - market is still open for betting',
         hint: `Market closes at ${bet.open_until}`,
