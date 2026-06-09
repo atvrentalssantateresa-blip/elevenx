@@ -93,7 +93,6 @@ pub fn force_settle_market(ctx: Context<ForceSettleMarket>, winning_outcome: u8)
 }
 
 
-
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 #[derive(Accounts)]
