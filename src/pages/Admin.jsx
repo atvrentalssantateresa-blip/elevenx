@@ -674,6 +674,28 @@ export default function Admin() {
                       return;
                     }
                     try {
+                      const res = await base44.functions.invoke('sweepMarketFunds', {
+                        market_pda: 'CCgfcHkLfwxrXyveJTBsGxP2pkMYppg8U5yNGXor9hJp',
+                        admin_wallet: walletAddress,
+                      });
+                      if (res.data.balance) {
+                        alert(`Sweep Market Funds\n\nMarket: CCgfcHkLfwxrXyveJTBsGxP2pkMYppg8U5yNGXor9hJp\nBalance: ◎${res.data.balance.sol.toFixed(6)} SOL (${res.data.balance.lamports} lamports)\n\n⚠️ This will transfer ALL funds from this settled market to your wallet.\n\nTransaction ready to sign!`);
+                      }
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-16 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/30 text-white rounded-xl"
+                >
+                  💰 Sweep Market Funds
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
+                    try {
                       const res = await base44.functions.invoke('checkFeeVault');
                       if (res.data.error) {
                         toast.error('Error: ' + res.data.error);
