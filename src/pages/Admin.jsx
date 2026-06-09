@@ -744,79 +744,62 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
-                    try {
-                      // Get all settled markets
-                      const bets = await base44.entities.Bet.list();
-                      const settledBets = bets.filter(b => b.status === 'settled' || b.status === 'closed');
-                      
-                      if (settledBets.length === 0) {
-                        toast.error('No settled markets found!');
-                        return;
-                      }
-                      
-                      // Build options string
-                      let options = 'Settled Markets:\n\n';
-                      settledBets.forEach((bet, i) => {
-                        options += `${i + 1}. ${bet.title}\n   ID: ${bet.id}\n   Pool: ◎${bet.total_pool?.toFixed(4) || 0} SOL\n\n`;
-                      });
-                      options += '\nEnter the NUMBER (e.g., 1) or paste the ID:';
-                      
-                      const input = prompt(options);
-                      if (!input) return;
-                      
-                      let marketId;
-                      const numInput = parseInt(input);
-                      if (!isNaN(numInput) && numInput >= 1 && numInput <= settledBets.length) {
-                        marketId = settledBets[numInput - 1].id;
-                      } else {
-                        marketId = input;
-                      }
-                      
-                      // Get match for the market
-                      const bet = settledBets.find(b => b.id === marketId) || bets.find(b => b.id === marketId);
-                      if (!bet) {
-                        toast.error('Market not found!');
-                        return;
-                      }
-                      
-                      // Check market on-chain balance
-                      const res = await base44.functions.invoke('debugMarketAccount', { bet_id: marketId, match_id: bet.match_id });
-                      if (res.data.error) {
-                        toast.error('Error: ' + res.data.error);
-                        return;
-                      }
-                      
-                      if (res.data.balanceLamports <= 0) {
-                        toast.error('Market account is empty!');
-                        return;
-                      }
-                      
-                      const balanceSOL = res.data.balanceLamports / 1e9;
-                      const confirmSweep = confirm(`Sweep Market Funds\n\nMarket: ${bet.title}\nID: ${marketId}\nBalance: ◎${balanceSOL.toFixed(6)} SOL\n\nThis will transfer ALL funds to your admin wallet.\n\nContinue?`);
-                      if (!confirmSweep) return;
-                      
-                      // Prepare sweep instruction - pass market_pda directly
-                      const sweepRes = await base44.functions.invoke('sweepMarketFunds', { 
-                        market_pda: bet.solana_market_pda,
-                        admin_wallet: walletAddress 
-                      });
-                      if (sweepRes.data.error) {
-                        toast.error('Error: ' + sweepRes.data.error);
-                        return;
-                      }
-                      
-                      setSweepDialog({
-                        instruction: sweepRes.data.solana_instruction,
-                        marketPda: bet.solana_market_pda,
-                        balance: { lamports: res.data.balanceLamports, sol: balanceSOL },
-                      });
-                    } catch (err) {
-                      toast.error('Error: ' + err.message);
+                    // Get all markets with funds stuck
+                    const bets = await base44.entities.Bet.list();
+                    const allBetsWithBalance = bets.filter(b => b.solana_market_pda && (b.status === 'settled' || b.status === 'closed' || b.status === 'void'));
+                    
+                    if (allBetsWithBalance.length === 0) {
+                      toast.error('No markets found!');
+                      return;
                     }
+                    
+                    // Build options string
+                    let options = 'Markets to Force Settle:\n\n';
+                    allBetsWithBalance.forEach((bet, i) => {
+                      options += `${i + 1}. ${bet.title}\n   ID: ${bet.id}\n   Status: ${bet.status}\n   Pool: ◎${bet.total_pool?.toFixed(4) || 0} SOL\n\n`;
+                    });
+                    options += '\nEnter the NUMBER (e.g., 1) or paste the ID:';
+                    
+                    const input = prompt(options);
+                    if (!input) return;
+                    
+                    let marketId;
+                    const numInput = parseInt(input);
+                    if (!isNaN(numInput) && numInput >= 1 && numInput <= allBetsWithBalance.length) {
+                      marketId = allBetsWithBalance[numInput - 1].id;
+                    } else {
+                      marketId = input;
+                    }
+                    
+                    // Get match for the market
+                    const bet = allBetsWithBalance.find(b => b.id === marketId) || allBets.find(b => b.id === marketId);
+                    if (!bet) {
+                      toast.error('Market not found!');
+                      return;
+                    }
+                    
+                    // Force settle to route funds to fee vault
+                    const settleRes = await base44.functions.invoke('settleMarketOnChain', {
+                      bet_id: bet.id,
+                      winning_outcome: 'draw',
+                      admin_wallet: walletAddress,
+                    });
+                    
+                    if (settleRes.data.error) {
+                      toast.error('Error: ' + settleRes.data.error);
+                      return;
+                    }
+                    
+                    // Show settlement dialog
+                    setSettleDialog({
+                      instruction: settleRes.data.solana_instruction,
+                      bet,
+                      outcome: 'draw',
+                    });
                   }}
                   className="h-16 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/30 text-white rounded-xl"
                 >
-                  ⚡ Sweep Market Funds
+                  ⚡ Force Settle Market
                 </Button>
               </div>
             </Card>
