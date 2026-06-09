@@ -33,9 +33,8 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   const liquidityMatched = isFutures 
     ? (offer.total_liquidity_matched || offer.amount_matched || offer.liquidity_matched || 0) 
     : (offer.total_liquidity_matched || offer.liquidity_matched || 0);
-  const liquidityUnmatched = isFutures 
-    ? (offer.total_liquidity_unmatched || offer.amount_unmatched || offer.liquidity_unmatched || 0) 
-    : (offer.total_liquidity_unmatched || offer.liquidity_unmatched || 0);
+  // CRITICAL: Calculate unmatched as deposited - matched (don't trust DB field)
+  const liquidityUnmatched = Math.max(0, liquidityDeposited - liquidityMatched);
 
   // CRITICAL: Check UserBet status FIRST (settlement info), then BetOffer status (matching info)
   // userBet.status = settlement state (won/lost/claimed)
