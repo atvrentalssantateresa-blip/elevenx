@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
- * Create a quick test match that starts in 10 minutes and ends in 30 minutes.
- * Betting window closes in 30 minutes.
+ * Create a quick test match that starts now and ends in 10 minutes.
+ * Betting window closes in 10 minutes.
  * Admin only function.
  */
 Deno.serve(async (req) => {
@@ -17,8 +17,8 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const startTime = new Date(now.getTime()); // Starts NOW
-    const endTime = new Date(now.getTime() + 5 * 60 * 1000); // Ends in 5 minutes
-    const bettingCloseTime = new Date(now.getTime() + 5 * 60 * 1000); // Betting closes in 5 minutes
+    const endTime = new Date(now.getTime() + 10 * 60 * 1000); // Ends in 10 minutes
+    const bettingCloseTime = new Date(now.getTime() + 10 * 60 * 1000); // Betting closes in 10 minutes
 
     console.log('[createQuickTestMatch] Creating test match with timestamps:', {
       now: now.toISOString(),
@@ -107,15 +107,15 @@ Deno.serve(async (req) => {
         endTime: endTime.toISOString(),
         bettingCloseTime: bettingCloseTime.toISOString(),
         timeUntilStart: '0 minutes',
-        timeUntilEnd: '5 minutes',
-        timeUntilBettingClose: '5 minutes',
+        timeUntilEnd: '10 minutes',
+        timeUntilBettingClose: '10 minutes',
         marketInitialized,
         marketPda,
       },
       nextSteps: marketInitialized ? {
         step1: 'Go to /lp to provide liquidity',
         step2: 'Go to /matches to place bets',
-        step3: 'Wait 5 minutes, then settle as Draw in /admin',
+        step3: 'Wait 10 minutes, then settle as Draw in /admin',
       } : {
         step1: 'Go to /admin → Matches tab',
         step2: 'Find "Quick Test" and click "Initialize Market"',
