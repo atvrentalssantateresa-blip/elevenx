@@ -210,7 +210,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
       } else if (instruction.instruction_type === 'settle_market' || instruction.instruction_type === 'settle_market_force') {
         // settle_market / settle_market_force - program instruction to announce winner and settle market
-        console.log('Creating settle_market_force program instruction:', instruction);
+        console.log('=== SETTLE_MARKET INSTRUCTION ===');
+        console.log('instruction_type:', instruction.instruction_type);
+        console.log('Full instruction:', instruction);
+        console.log('instruction.keys:', instruction.keys);
+        console.log('instruction.keys?.length:', instruction.keys?.length);
         
         const programId = new PublicKey(instruction.programId);
         
@@ -220,7 +224,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('[SolanaTransactionSigner] settle_market data (hex):', data.toString('hex'));
         
         // Build keys from instruction, replacing SIGNER_WALLET placeholder with actual wallet
-        const keys = instruction.keys?.map(k => {
+        if (!instruction.keys || instruction.keys.length === 0) {
+          console.error('[SolanaTransactionSigner] NO KEYS PROVIDED!');
+          throw new Error('settle_market instruction missing keys array');
+        }
+        const keys = instruction.keys.map(k => {
           const pubkeyStr = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
           console.log('[SolanaTransactionSigner] Processing key:', {
             original: k.pubkey,
