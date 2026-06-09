@@ -561,14 +561,17 @@ export default function Admin() {
                     if (loadingActions.initPlatform) return;
                     setLoadingActions(prev => ({ ...prev, initPlatform: true }));
                     try {
-                      const res = await base44.functions.invoke('initPlatformConfig', { walletAddress });
-                      if (res.data.alreadyExists) {
-                        toast.success('✓ Platform already initialized');
+                      // Use forceReinitPlatform which handles both fresh init and re-init correctly
+                      const res = await base44.functions.invoke('forceReinitPlatform', { walletAddress });
+                      console.log('[Admin] forceReinitPlatform response:', res.data);
+                      if (res.data.alreadyInitialized) {
+                        toast.success('✓ Platform already initialized!');
                         queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
                       } else {
                         setInitPlatformDialog({ instruction: res.data.solana_instruction });
                       }
                     } catch (err) {
+                      console.error('[Admin] forceReinitPlatform error:', err);
                       toast.error('Error: ' + err.message);
                     } finally {
                       setLoadingActions(prev => ({ ...prev, initPlatform: false }));
