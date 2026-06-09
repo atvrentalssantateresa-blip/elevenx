@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Offer not found' }, { status: 404 });
     }
 
-    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID');
+    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
 
     // Check on-chain balance
