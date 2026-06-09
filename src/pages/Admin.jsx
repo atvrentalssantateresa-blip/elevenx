@@ -581,10 +581,16 @@ export default function Admin() {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (loadingActions.checkConfig) return;
+                    console.log('[Admin] Check Config button clicked');
+                    if (loadingActions.checkConfig) {
+                      console.log('[Admin] Already loading, returning');
+                      return;
+                    }
                     setLoadingActions(prev => ({ ...prev, checkConfig: true }));
+                    console.log('[Admin] Calling checkPlatformConfig...');
                     try {
                       const res = await base44.functions.invoke('checkPlatformConfig');
+                      console.log('[Admin] checkPlatformConfig response:', res.data);
                       if (res.data.error) {
                         toast.error('Error: ' + res.data.error);
                       } else if (res.data.initialized) {
@@ -595,6 +601,7 @@ export default function Admin() {
                         alert(`Platform Config Status\n\n✗ Not Initialized\n\n${res.data.message || 'Platform config account does not exist'}\n\nPDA: ${res.data.platformConfigPda}`);
                       }
                     } catch (err) {
+                      console.error('[Admin] checkPlatformConfig error:', err);
                       toast.error('Error: ' + err.message);
                     } finally {
                       setLoadingActions(prev => ({ ...prev, checkConfig: false }));
