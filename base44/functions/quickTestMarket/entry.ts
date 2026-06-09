@@ -3,7 +3,7 @@ import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
+const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
 const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
 
 /**
@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       team_b_flag: '🔴',
       group_stage: 'Quick Test',
       match_time: matchTime.toISOString(),
+      match_end_time: settleAfter.toISOString(),
       venue: 'Test Arena',
       status: 'upcoming',
     });
