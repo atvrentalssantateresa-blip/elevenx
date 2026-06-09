@@ -37,36 +37,21 @@ Deno.serve(async (req) => {
       // Get all user bets for this bet
       const userBets = await base44.entities.UserBet.filter({ bet_id: bet.id });
 
-      // Check if there are any winners (winners_pool > 0)
-      const hasWinners = userBets.some(ub => ub.outcome === winningOutcome && (ub.status === 'active' || ub.status === 'won'));
-
-      // Update bet status - void if no winners, settled otherwise
+      // CRITICAL FIX: Always settle the bet, even if no one backed the winning outcome
+      // When no winners exist (e.g., Draw won but no bets on Draw), funds route to DAO/Fee vault
+      // This prevents incorrectly marking markets as "void" when they should be "settled"
       await base44.entities.Bet.update(bet.id, {
-        status: hasWinners ? 'settled' : 'void',
-        winning_outcome: hasWinners ? winningOutcome : '',
+        status: 'settled',
+        winning_outcome: winningOutcome,
       });
 
       for (const ub of userBets) {
         if (ub.status !== 'active') continue;
 
-        if (!hasWinners) {
-          // No winners on the winning outcome (e.g., Draw won but no one bet on Draw)
-          // CRITICAL: LPs LOSE their matched liquidity (it goes to DAO fee vault)
-          // Only regular bettors get refunded
-          if (ub.role === 'lp') {
-            // LP loses - matched liquidity goes to DAO
-            await base44.entities.UserBet.update(ub.id, {
-              status: 'lost',
-              actual_payout: 0,
-            });
-          } else {
-            // Regular bettor gets refunded
-            await base44.entities.UserBet.update(ub.id, {
-              status: 'refunded',
-              actual_payout: ub.amount,
-            });
-          }
-        } else if (ub.role === 'lp') {
+        // Check if this specific user bet is a winner
+        const isWinner = ub.outcome === winningOutcome;
+        
+        if (ub.role === 'lp') {
           // LP LOGIC: LP WINS when they backed a LOSER (outcome != winningOutcome)
           // LP LOSES when they backed the WINNER (outcome === winningOutcome)
           if (ub.outcome === winningOutcome) {
