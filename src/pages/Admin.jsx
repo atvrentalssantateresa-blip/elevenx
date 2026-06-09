@@ -23,6 +23,7 @@ export default function Admin() {
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
   const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
   const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
+  const [sweepDialog, setSweepDialog] = useState(null); // { instruction, marketPda, balance }
   const [loadingActions, setLoadingActions] = useState({
     registerAdmin: false,
     initPlatform: false,
@@ -232,6 +233,11 @@ export default function Admin() {
     toast.success('✓ Fees withdrawn to admin wallet!');
     setWithdrawFeesDialog(null);
     queryClient.invalidateQueries({ queryKey: ['platformConfig'] });
+  };
+
+  const handleSweepSuccess = async () => {
+    toast.success('✓ Market funds swept to admin wallet!');
+    setSweepDialog(null);
   };
 
   const handleDeployFuturesSuccess = async () => {
@@ -678,8 +684,12 @@ export default function Admin() {
                         market_pda: 'CCgfcHkLfwxrXyveJTBsGxP2pkMYppg8U5yNGXor9hJp',
                         admin_wallet: walletAddress,
                       });
-                      if (res.data.balance) {
-                        alert(`Sweep Market Funds\n\nMarket: CCgfcHkLfwxrXyveJTBsGxP2pkMYppg8U5yNGXor9hJp\nBalance: ◎${res.data.balance.sol.toFixed(6)} SOL (${res.data.balance.lamports} lamports)\n\n⚠️ This will transfer ALL funds from this settled market to your wallet.\n\nTransaction ready to sign!`);
+                      if (res.data.solana_instruction) {
+                        setSweepDialog({
+                          instruction: res.data.solana_instruction,
+                          marketPda: res.data.balance?.lamports,
+                          balance: res.data.balance,
+                        });
                       }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
@@ -918,6 +928,35 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setWithdrawFeesDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {sweepDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
+              <div className="space-y-4">
+                <div className="bg-orange-600/20 border border-orange-600/30 rounded-xl p-4">
+                  <h3 className="font-heading font-bold text-lg text-orange-400 mb-1">Sweep Market Funds</h3>
+                  <p className="text-sm text-gray-400">Balance: ◎{sweepDialog.balance?.sol.toFixed(6)} SOL ({sweepDialog.balance?.lamports} lamports)</p>
+                </div>
+                <SolanaTransactionSigner
+                  instruction={sweepDialog.instruction}
+                  amount={sweepDialog.balance?.sol.toFixed(6)}
+                  onSuccess={handleSweepSuccess}
+                  onError={(err) => {
+                    toast.error('Failed: ' + err.message);
+                    setSweepDialog(null);
+                  }}
+                />
+                <Button
+                  onClick={() => setSweepDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
