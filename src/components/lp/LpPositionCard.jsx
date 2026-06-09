@@ -196,25 +196,30 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       const hasMatchedInDb = offer.amount_matched > 0 || offer.liquidity_matched > 0;
       const isSettled = offer.status === 'settled';
 
-      // Determine which withdraw function to call based on DB state (no pre-check needed)
-      let withdrawFn;
-      if ((hasMatchedInDb) && isLpWon) {
-        withdrawFn = 'withdrawLpWinnings';
-      } else if (hasUnmatched || offer.liquidity_unmatched > 0) {
-        withdrawFn = 'withdrawUnmatchedLiquidity';
-      } else if (isSettled && isLpWon) {
-        withdrawFn = 'withdrawLpWinnings';
-      } else {
-        throw new Error('No withdrawable funds. LP position lost or has no unmatched liquidity.');
+      // CRITICAL: Always call withdrawLiquidity for unmatched funds - it checks on-chain balance directly
+      // Don't check win/loss - that's only for claiming winnings (matched portion)
+      console.log('[LpPositionCard] Withdrawing unmatched liquidity for userBet:', userBetId);
+      
+      // Run on-chain check and withdraw call
+      const checkRes = await base44.functions.invoke('checkLpOfferOnChain', { userBetId });
+      console.log('[LpPositionCard] On-chain check result:', checkRes.data);
+      
+      if (!checkRes.data.canClaim) {
+        let userMessage = checkRes.data.error || 'Cannot withdraw';
+        if (checkRes.data.reason === 'already_withdrawn') {
+          userMessage = 'This LP position has already been withdrawn on-chain.';
+        } else if (checkRes.data.reason === 'not_found_on_chain') {
+          userMessage = 'LP position not found on-chain. The market may not be deployed.';
+        }
+        alert('Cannot withdraw:\n\n' + userMessage);
+        return;
       }
-
-      // Run on-chain check and withdraw call in parallel
-      const [checkRes, res] = await Promise.all([
-        base44.functions.invoke('checkLpOfferOnChain', { userBetId }),
-        withdrawFn === 'withdrawUnmatchedLiquidity'
-          ? base44.functions.invoke('withdrawUnmatchedLiquidity', { userBetId, walletAddress })
-          : base44.functions.invoke('withdrawLpWinnings', { userBetId })
-      ]);
+      
+      // Call withdrawLiquidity - it handles both open and settled markets
+      const res = await base44.functions.invoke('withdrawLiquidity', { 
+        userBetId,
+        walletAddress 
+      });
 
       // Block if on-chain check says can't claim
       if (!checkRes.data.canClaim) {
@@ -228,29 +233,11 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
         return;
       }
 
-      // Handle HTTP errors (400, 404, 500, etc.)
+      // Handle HTTP errors
       if (res.status !== 200 || res.data?.error) {
         const errorMsg = res.data?.error || res.statusText || 'Unknown error';
-        console.error('[LpPositionCard] Withdraw failed:', {
-          status: res.status,
-          error: errorMsg,
-          data: res.data
-        });
-
-        let userMessage = errorMsg;
-        if (errorMsg.includes('did not win') || errorMsg.includes('LP position did not win')) {
-          userMessage = 'This LP position did not win. In parimutuel betting, LPs profit when bettors lose.\n\nYour backed outcome won, so the LP position lost value.';
-        } else if (errorMsg.includes('Market has not been settled')) {
-          userMessage = 'Market must be settled before claiming. Wait for admin to settle the market.';
-        } else if (errorMsg.includes('auto-voided') || errorMsg.includes('no bets on winning outcome')) {
-          userMessage = '⚠️ Market Auto-Voided\n\nNo one bet on the winning outcome, so the market was automatically voided.\n\nYour unmatched liquidity can still be withdrawn - use "Withdraw Unmatched" instead.';
-        } else if (errorMsg.includes('No unmatched liquidity')) {
-          userMessage = 'No unmatched liquidity available. All funds are locked in matched positions.';
-        } else if (errorMsg.includes('Only LP positions')) {
-          userMessage = 'Only LP positions can withdraw winnings. This appears to be a regular bet.';
-        }
-
-        alert('Withdraw failed:\n\n' + userMessage);
+        console.error('[LpPositionCard] Withdraw failed:', { status: res.status, error: errorMsg });
+        alert('Withdraw failed:\n\n' + errorMsg);
         return;
       }
 
@@ -268,14 +255,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       });
     } catch (err) {
       console.error('[LpPositionCard] Withdraw failed:', err);
-      console.error('[LpPositionCard] Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
-
-      const backendError = err.response?.data?.error || err.message;
-      alert('Withdraw failed:\n\n' + backendError);
+      alert('Withdraw failed:\n\n' + err.message);
     }
   };
 
