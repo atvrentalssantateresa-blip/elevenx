@@ -606,6 +606,31 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(withdrawFeesIx);
+      } else if (instruction.instruction_type === 'sweep_market_funds') {
+        // sweep_market_funds — admin sweeps stuck funds from market account to admin wallet
+        console.log('Creating sweep_market_funds program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        
+        console.log('[sweep_market_funds] Keys:', keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })));
+        
+        const sweepIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(sweepIx);
       }
 
       // Get recent blockhash for transaction
@@ -895,6 +920,12 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       txMessage = '✓ Market force-settled successfully!';
     } else if (instruction?.instruction_type === 'update_market_timestamps') {
       txMessage = '✓ Market timestamps updated!';
+    } else if (instruction?.instruction_type === 'sweep_market_funds') {
+      txMessage = '✓ Market funds swept to your wallet!';
+      if (instruction.amountLamports) {
+        const solAmount = (instruction.amountLamports / 1e9).toFixed(6);
+        payoutInfo = `◎${solAmount} SOL received`;
+      }
     }
     
     return (

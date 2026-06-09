@@ -949,7 +949,10 @@ export default function Admin() {
                 <SolanaTransactionSigner
                   instruction={sweepDialog.instruction}
                   amount={sweepDialog.balance?.sol.toFixed(6)}
-                  onSuccess={handleSweepSuccess}
+                  onSuccess={() => {
+                    toast.success('✓ Market funds swept to your wallet!');
+                    setSweepDialog(null);
+                  }}
                   onError={(err) => {
                     toast.error('Failed: ' + err.message);
                     setSweepDialog(null);

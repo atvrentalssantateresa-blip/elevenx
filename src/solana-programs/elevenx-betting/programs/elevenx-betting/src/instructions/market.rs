@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{BetMarket, PlatformConfig, VoteTally};
+use crate::state::{BetMarket, PlatformConfig, VoteTally, FeeVault};
 use crate::errors::BettingError;
 
 // ── CreateMarketParams ────────────────────────────────────────────────────────
@@ -98,11 +98,120 @@ pub fn update_market_timestamps(
     Ok(())
 }
 
+// ── sweep_market_funds ────────────────────────────────────────────────────────
+// Admin instruction to sweep remaining SOL from a settled/voided market account
+
+pub fn sweep_market_funds(ctx: Context<SweepMarketFunds>) -> Result<()> {
+    let market = &ctx.accounts.market;
+    
+    // Require market to be settled or voided
+    require!(market.settled, BettingError::AlreadySettled);
+    
+    let market_info = &mut ctx.accounts.market.to_account_info();
+    let admin_info = &mut ctx.accounts.admin.to_account_info();
+    
+    // Transfer ALL remaining lamports from market to admin
+    let rent_exempt = Rent::get()?.minimum_balance(market_info.data_len());
+    let transfer_amount = market_info
+        .lamports()
+        .checked_sub(rent_exempt)
+        .unwrap_or(0);
+    
+    if transfer_amount > 0 {
+        **market_info.try_borrow_mut_lamports()? -= transfer_amount;
+        **admin_info.try_borrow_mut_lamports()? += transfer_amount;
+    }
+    
+    Ok(())
+}
+
+// ── sweep_market_funds ────────────────────────────────────────────────────────
+/// Admin-only: Sweep all remaining SOL from a market account (for stuck funds after settlement)
+pub fn sweep_market_funds(ctx: Context<SweepMarketFunds>) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    let fee_vault = &mut ctx.accounts.fee_vault;
+    
+    // Only allow sweeping from settled or voided markets
+    require!(market.settled || market.voided, BettingError::TooEarlyToSettle);
+    
+    // Get remaining balance in market account
+    let market_balance = **market.to_account_info().try_borrow_lamports()?;
+    
+    // Rent-exempt minimum for market account (keep enough to keep account alive)
+    let rent_exempt = Rent::get()?.minimum_balance(market.to_account_info().data_len());
+    
+    // Calculate amount to sweep (balance minus rent-exempt minimum)
+    let sweep_amount = market_balance.saturating_sub(rent_exempt);
+    
+    require!(sweep_amount > 0, BettingError::ClaimNothing);
+    
+    // Transfer to fee vault (admin can withdraw from there)
+    **market.to_account_info().try_borrow_mut_lamports()? -= sweep_amount;
+    **fee_vault.to_account_info().try_borrow_mut_lamports()? += sweep_amount;
+    
+    msg!("[sweep_market_funds] Swept {} lamports from market to fee vault", sweep_amount);
+    
+    Ok(())
+}
+
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 #[derive(Accounts)]
 #[instruction(params: CreateMarketParams)]
 pub struct CreateMarket<'info> {
+    #[account(
+        init,
+        payer = admin,
+        space = BetMarket::LEN,
+        seeds = [b"market", params.match_id.as_ref()],
+        bump
+    )]
+    pub market: Account<'info, BetMarket>,
+    #[account(
+        init,
+        payer = admin,
+        space = VoteTally::LEN,
+        seeds = [b"vote_tally", market.key().as_ref()],
+        bump
+    )]
+    pub vote_tally: Account<'info, VoteTally>,
+    #[account(
+        mut,
+        seeds = [b"platform"],
+        bump
+    )]
+    pub platform_config: Account<'info, PlatformConfig>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SweepMarketFunds<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.match_id.as_ref()],
+        bump = market.bump
+    )]
+    pub market: Account<'info, BetMarket>,
+    #[account(
+        mut,
+        seeds = [b"fee_vault"],
+        bump
+    )]
+    pub fee_vault: Account<'info, crate::state::FeeVault>,
+    #[account(
+        seeds = [b"platform"],
+        bump
+    )]
+    pub platform_config: Account<'info, PlatformConfig>,
+    #[account(
+        mut,
+        constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized
+    )]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
     #[account(
         init,
         payer = admin,
@@ -164,4 +273,25 @@ pub struct UpdateMarketTimestamps<'info> {
 
     #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
     pub admin: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SweepMarketFunds<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.match_id.as_ref()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, BetMarket>,
+
+    #[account(seeds = [b"platform"], bump = platform_config.bump)]
+    pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(
+        mut,
+        constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized
+    )]
+    pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 }
