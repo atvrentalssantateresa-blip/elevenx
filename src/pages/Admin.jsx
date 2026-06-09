@@ -45,12 +45,14 @@ export default function Admin() {
     }
   }, []);
 
-  const { data: allBets = [], isLoading: isLoadingBets } = useQuery({
+  const { data: allBets = [], isLoading: isLoadingBets, refetch } = useQuery({
     queryKey: ['allBets'],
     queryFn: async () => {
       const bets = await base44.entities.Bet.list();
       return bets;
     },
+    staleTime: 0, // Always refetch on mount
+    refetchOnMount: true,
   });
 
   const { data: allMatches = {} } = useQuery({
@@ -296,9 +298,19 @@ export default function Admin() {
               <p className="text-xs text-gray-400">Connected Wallet</p>
               <p className="font-mono text-sm text-white">{walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-8)}` : 'Not connected'}</p>
             </div>
-            <Badge variant={walletAddress ? 'default' : 'outline'}>
-              {walletAddress ? '✓ Connected' : '✗ Disconnected'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={walletAddress ? 'default' : 'outline'}>
+                {walletAddress ? '✓ Connected' : '✗ Disconnected'}
+              </Badge>
+              <Button
+                onClick={() => refetch()}
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 text-white"
+              >
+                🔄 Refresh
+              </Button>
+            </div>
           </div>
         </Card>
 
