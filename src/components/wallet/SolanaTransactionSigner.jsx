@@ -587,6 +587,31 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(updateIx);
+      } else if (instruction.instruction_type === 'sweep_market_funds') {
+        // sweep_market_funds — admin sweeps stuck funds from market account to admin wallet
+        console.log('Creating sweep_market_funds program instruction:', instruction);
+        
+        const programId = new PublicKey(instruction.programId);
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
+        const data = Buffer.from(instruction.instruction_data, 'base64');
+        
+        console.log('[sweep_market_funds] Keys:', keys.map(k => ({
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })));
+        
+        const sweepIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        transaction.add(sweepIx);
       } else if (instruction.instruction_type === 'withdraw_fees') {
         // withdraw_fees — admin withdraws accumulated fees from fee vault to admin wallet
         console.log('Creating withdraw_fees program instruction:', instruction);
