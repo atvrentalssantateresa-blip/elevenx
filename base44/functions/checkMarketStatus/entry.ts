@@ -33,18 +33,32 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
     
-    // If bet_id is provided, use it to get the match_id
+    // If bet_id is provided, use it to get the match_id and stored PDA
+    let storedMarketPda = null;
     if (bet_id && !match_id) {
       try {
         const bet = await base44.entities.Bet.get(bet_id);
         if (bet) {
           match_id = bet.match_id;
+          storedMarketPda = bet.solana_market_pda;
           console.log('[checkMarketStatus] Got match_id from bet_id:', match_id);
+          console.log('[checkMarketStatus] Stored market PDA:', storedMarketPda);
         } else {
           console.error('[checkMarketStatus] Bet not found for bet_id:', bet_id);
         }
       } catch (err) {
         console.error('[checkMarketStatus] Failed to fetch bet:', err.message);
+      }
+    } else if (bet_id) {
+      // bet_id provided alongside match_id - still fetch stored PDA
+      try {
+        const bet = await base44.entities.Bet.get(bet_id);
+        if (bet && bet.solana_market_pda) {
+          storedMarketPda = bet.solana_market_pda;
+          console.log('[checkMarketStatus] Using stored market PDA from bet:', storedMarketPda);
+        }
+      } catch (err) {
+        console.error('[checkMarketStatus] Failed to fetch bet for PDA:', err.message);
       }
     }
     
@@ -68,13 +82,23 @@ Deno.serve(async (req) => {
     console.log('[checkMarketStatus] Cache MISS:', cacheKey);
     
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
-    const matchIdBytes = Buffer.alloc(32);
-    Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
+    let marketPda;
     
-    const [marketPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('market'), matchIdBytes],
-      programId
-    );
+    // Use stored PDA from database if available, otherwise derive from match_id
+    if (storedMarketPda) {
+      marketPda = new PublicKey(storedMarketPda);
+      console.log('[checkMarketStatus] Using stored PDA:', marketPda.toBase58());
+    } else {
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match_id.length, 32));
+      
+      const [derivedPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('market'), matchIdBytes],
+        programId
+      );
+      marketPda = derivedPda;
+      console.log('[checkMarketStatus] Derived PDA:', marketPda.toBase58());
+    }
     
     const connection = new Connection(SOLANA_RPC_URL, {
       commitment: 'confirmed',
