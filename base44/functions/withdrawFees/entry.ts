@@ -4,7 +4,7 @@ import { Buffer } from 'npm:buffer@6.0.3';
 
 /**
  * Admin-only: Prepare withdraw_fees instruction using CORRECT "global:" prefix format.
- * Your deployed program: 9nwxZGK9nceBL1hPHDgyKeEkvGVjKuHY3Cq6vADXQ7GS
+ * REDEPLOYED: 2026-06-09 14:30 - Force refresh SOLANA_PROGRAM_ID secret to ADBMkRrNmeCeQw9jzxbM7h7EnydFD9LtHBvYG2qNrxZ
  */
 Deno.serve(async (req) => {
   try {
