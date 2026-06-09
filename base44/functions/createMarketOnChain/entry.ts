@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
     // Frontend will handle the transaction and we'll check on-chain status after
     console.log('Preparing create_market instruction for:', marketPda.toBase58());
 
-    // Prepare create_market instruction - market:create_market (Anchor 0.30.1 module namespace)
-    const discriminator = Buffer.from(sha256("market:create_market")).slice(0, 8);
+    // Prepare create_market instruction with global: prefix (Anchor default)
+    const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
 
     // CRITICAL: Check if this is a TEST market (title contains "Test" or "Quick Test")
     // Test markets should use their DB timeline exactly, no World Cup overrides
@@ -133,8 +133,8 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Prepare platform init instruction - platform:initialize_platform (Anchor 0.30.1 module namespace)
-    const initDiscriminator = Buffer.from(sha256("platform:initialize_platform")).slice(0, 8);
+    // Prepare platform init instruction with global: prefix (Anchor default)
+    const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
     const initParams = Buffer.alloc(3);
     initParams.writeUInt16LE(200, 0); // fee_percent: 2%
     initParams.writeUInt8(51, 2); // consensus_threshold: 51%

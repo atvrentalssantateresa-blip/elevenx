@@ -224,15 +224,15 @@ Deno.serve(async (req) => {
     }
 
     // Always update market timestamps before settling (ensures settle_after is in the past)
-    // Anchor 0.30.1 uses module:instruction format - update_market_timestamps is in market.rs
+    // Anchor uses global:instruction format
     const now = Math.floor(Date.now() / 1000);
-    const timestampDiscriminator = Buffer.from(sha256('market:update_market_timestamps')).slice(0, 8);
+    const timestampDiscriminator = Buffer.from(sha256('global:update_market_timestamps')).slice(0, 8);
     const timestampData = Buffer.alloc(24); // 8 bytes discriminator + 8 bytes open_until + 8 bytes settle_after
     timestampDiscriminator.copy(timestampData, 0);
     timestampData.writeBigInt64LE(BigInt(now - 3600), 8);  // open_until = 1hr ago
     timestampData.writeBigInt64LE(BigInt(now - 1), 16);     // settle_after = 1 sec ago
     
-    console.log('[settleMarketOnChain] Timestamp discriminator (market:update_market_timestamps):', timestampDiscriminator.toString('hex'));
+    console.log('[settleMarketOnChain] Timestamp discriminator (global:update_market_timestamps):', timestampDiscriminator.toString('hex'));
     console.log('[settleMarketOnChain] Timestamp data:', {
       open_until: now - 3600,
       settle_after: now - 1,
@@ -266,19 +266,19 @@ Deno.serve(async (req) => {
     const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
     const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
 
-    // CRITICAL FIX: Use module:instruction format (Anchor 0.30.1 namespace)
-    // submit_oracle_vote and force_settle_market are in oracle.rs module
+    // Use global:instruction format (Anchor default)
+    // submit_oracle_vote and force_settle_market
     
     let settleInstruction;
     
     if (settlementFinalized || isVoided) {
-      // Use oracle:force_settle_market
-      const forceDiscriminator = Buffer.from(sha256('oracle:force_settle_market')).slice(0, 8);
+      // Use global:force_settle_market
+      const forceDiscriminator = Buffer.from(sha256('global:force_settle_market')).slice(0, 8);
       const forceData = Buffer.alloc(9);
       forceDiscriminator.copy(forceData, 0);
       forceData.writeUInt8(outcomeIndex, 8);
       
-      console.log('[settleMarketOnChain] Using oracle:force_settle_market:', {
+      console.log('[settleMarketOnChain] Using global:force_settle_market:', {
         outcome: outcomeLabel,
         outcomeIndex,
         discriminator: forceDiscriminator.toString('hex'),
@@ -297,13 +297,13 @@ Deno.serve(async (req) => {
         instruction_data: forceData.toString('base64'),
       };
     } else {
-      // Use oracle:submit_oracle_vote
-      const discriminator = Buffer.from(sha256('oracle:submit_oracle_vote')).slice(0, 8);
+      // Use global:submit_oracle_vote
+      const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
       const data = Buffer.alloc(9);
       discriminator.copy(data, 0);
       data.writeUInt8(outcomeIndex, 8);
       
-      console.log('[settleMarketOnChain] Using oracle:submit_oracle_vote:', {
+      console.log('[settleMarketOnChain] Using global:submit_oracle_vote:', {
         outcome: outcomeLabel,
         outcomeIndex,
         discriminator: discriminator.toString('hex'),

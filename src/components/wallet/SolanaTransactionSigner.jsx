@@ -6,22 +6,13 @@ import { motion } from 'framer-motion';
 import { Buffer } from 'buffer';
 import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
 
-// Compute Anchor 0.30.1 discriminator: SHA256("module:instruction").slice(0, 8)
-// Instructions are namespaced by their Rust module (platform, market, betting, liquidity, oracle, claims, fees)
-async function moduleDiscriminator(module, instruction) {
-  const msg = new TextEncoder().encode(`${module}:${instruction}`);
+// Compute Anchor discriminator: SHA256("global:<name>").slice(0, 8)
+// Anchor uses "global:<instruction_name>" format by default
+async function anchorDiscriminator(name) {
+  const msg = new TextEncoder().encode(`global:${name}`);
   const hash = await crypto.subtle.digest('SHA-256', msg);
   return Buffer.from(new Uint8Array(hash).slice(0, 8));
 }
-
-// Helper functions for specific modules
-const platformDiscriminator = (name) => moduleDiscriminator('platform', name);
-const marketDiscriminator = (name) => moduleDiscriminator('market', name);
-const bettingDiscriminator = (name) => moduleDiscriminator('betting', name);
-const liquidityDiscriminator = (name) => moduleDiscriminator('liquidity', name);
-const oracleDiscriminator = (name) => moduleDiscriminator('oracle', name);
-const claimsDiscriminator = (name) => moduleDiscriminator('claims', name);
-const feesDiscriminator = (name) => moduleDiscriminator('fees', name);
 
 export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds, futures_market_id, onSuccess, onError }) {
   // userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds, futures_market_id are optional - used for tracking DB records or flow control after transaction
@@ -316,13 +307,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false });
         }
         
-        // liquidity:provide_liquidity discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
-        const disc = await liquidityDiscriminator('provide_liquidity');
+        // Anchor discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
+        const disc = await anchorDiscriminator('provide_liquidity');
         const data = Buffer.alloc(17);
         disc.copy(data, 0);
         data.writeUInt8(instruction.outcome, 8);
         data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9);
-        console.log('[SolanaTransactionSigner] liquidity:provide_liquidity discriminator:', disc.toString('hex'));
+        console.log('[SolanaTransactionSigner] provide_liquidity discriminator:', disc.toString('hex'));
         console.log('[SolanaTransactionSigner] full data:', data.toString('hex'));
         
         const provideIx = new TransactionInstruction({
@@ -347,13 +338,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // lp signer
         keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }); // system_program
         
-        // liquidity:provide_liquidity discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
-        const disc = await liquidityDiscriminator('provide_liquidity');
+        // Anchor discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
+        const disc = await anchorDiscriminator('provide_liquidity');
         const data = Buffer.alloc(17);
         disc.copy(data, 0);
         data.writeUInt8(instruction.outcome, 8);
         data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9);
-        console.log('[SolanaTransactionSigner] liquidity:provide_liquidity discriminator:', disc.toString('hex'));
+        console.log('[SolanaTransactionSigner] provide_liquidity discriminator:', disc.toString('hex'));
         console.log('[SolanaTransactionSigner] full data:', data.toString('hex'));
         
         const provideIx = new TransactionInstruction({
@@ -397,13 +388,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true }); // bettor signer
         keys.push({ pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }); // system_program
         
-        // betting:place_bet discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
-        const disc = await bettingDiscriminator('place_bet');
+        // Anchor discriminator (8 bytes) + outcome (u8) + amount (u64 LE) = 17 bytes
+        const disc = await anchorDiscriminator('place_bet');
         const data = Buffer.alloc(17);
         disc.copy(data, 0);
         data.writeUInt8(instruction.outcome, 8);
         data.writeBigUInt64LE(BigInt(instruction.amountLamports), 9);
-        console.log('[SolanaTransactionSigner] betting:place_bet discriminator:', disc.toString('hex'));
+        console.log('[SolanaTransactionSigner] place_bet discriminator:', disc.toString('hex'));
         console.log('[SolanaTransactionSigner] full data:', data.toString('hex'));
         
         const placeBetIx = new TransactionInstruction({
@@ -443,7 +434,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        const data = await liquidityDiscriminator('withdraw_liquidity');
+        const data = await anchorDiscriminator('withdraw_liquidity');
         
         const withdrawIx = new TransactionInstruction({
           keys,
@@ -465,7 +456,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         ];
         
         // Use instruction_data from backend (8-byte discriminator + 1-byte outcome)
-        const data = instruction.instruction_data ? Buffer.from(instruction.instruction_data, 'base64') : await claimsDiscriminator('refund');
+        const data = instruction.instruction_data ? Buffer.from(instruction.instruction_data, 'base64') : await anchorDiscriminator('refund');
         console.log('[SolanaTransactionSigner] claim_refund instruction_data (hex):', data.toString('hex'));
         
         const refundIx = new TransactionInstruction({
@@ -491,9 +482,22 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false }, // system_program
         ];
         
-        // fees:withdraw_lp_winnings discriminator (Anchor 0.30.1 module namespace)
-        const wlwDisc = await feesDiscriminator('withdraw_lp_winnings');
-        console.log('[withdraw_lp_winnings] Using fees:withdraw_lp_winnings discriminator:', wlwDisc.toString('hex'));
+        // Try both discriminator formats to match deployed program
+        // Format 1: Anchor default "global:<name>" - anchorDiscriminator() adds "global:" prefix
+        const discGlobal = await anchorDiscriminator('withdraw_lp_winnings');
+        // Format 2: Raw SHA256 of just the function name (for older Anchor versions)
+        const msgSimple = new TextEncoder().encode('withdraw_lp_winnings');
+        const hashSimple = await crypto.subtle.digest('SHA-256', msgSimple);
+        const discSimple = Buffer.from(new Uint8Array(hashSimple).slice(0, 8));
+        
+        console.log('[withdraw_lp_winnings] Discriminator formats:', {
+          global_format: discGlobal.toString('hex'),
+          simple_format: discSimple.toString('hex'),
+        });
+        
+        // Use GLOBAL format (Anchor default) - the program was deployed with Anchor
+        const wlwDisc = discGlobal;
+        console.log('[withdraw_lp_winnings] Using GLOBAL discriminator:', wlwDisc.toString('hex'));
         
         // Instruction data: 8-byte discriminator + 8-byte amount (u64 LE)
         const withdrawAmount = BigInt(instruction.withdrawAmountLamports || 0);
