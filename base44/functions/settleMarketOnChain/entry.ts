@@ -226,8 +226,8 @@ Deno.serve(async (req) => {
     // Always update market timestamps before settling (ensures settle_after is in the past)
     // This is a mandatory pre-step for admin settlement to bypass TooEarlyToSettle
     const now = Math.floor(Date.now() / 1000);
-    // Use SIMPLE discriminator format (no "global:" prefix)
-    const timestampDiscriminator = Buffer.from(sha256('update_market_timestamps')).slice(0, 8);
+    // Use Anchor discriminator format (with "global:" prefix)
+    const timestampDiscriminator = Buffer.from(sha256('global:update_market_timestamps')).slice(0, 8);
     const timestampData = Buffer.alloc(24); // 8 bytes discriminator + 8 bytes open_until + 8 bytes settle_after
     timestampDiscriminator.copy(timestampData, 0);
     timestampData.writeBigInt64LE(BigInt(now - 3600), 8);  // open_until = 1hr ago
@@ -269,12 +269,12 @@ Deno.serve(async (req) => {
 
     // Use force_settle_market if market is already settled/voided (bypasses checks)
     // Otherwise use submit_oracle_vote (normal flow)
-    // IMPORTANT: Use SIMPLE discriminators (no "global:" prefix) to match deployed program
+    // IMPORTANT: Use Anchor format discriminators ("global:" prefix) to match deployed program
     let settleInstruction;
     
     if (settlementFinalized || isVoided) {
-      // SIMPLE discriminator format (no "global:" prefix) - matches deployed program
-      const forceDiscriminator = Buffer.from(sha256('force_settle_market')).slice(0, 8);
+      // Anchor discriminator format (with "global:" prefix)
+      const forceDiscriminator = Buffer.from(sha256('global:force_settle_market')).slice(0, 8);
       const forceData = Buffer.alloc(9);
       forceDiscriminator.copy(forceData, 0);
       forceData.writeUInt8(outcomeIndex, 8);
@@ -298,8 +298,8 @@ Deno.serve(async (req) => {
         instruction_data: forceData.toString('base64'),
       };
     } else {
-      // SIMPLE discriminator format (no "global:" prefix) - matches deployed program
-      const discriminator = Buffer.from(sha256('submit_oracle_vote')).slice(0, 8);
+      // Anchor discriminator format (with "global:" prefix)
+      const discriminator = Buffer.from(sha256('global:submit_oracle_vote')).slice(0, 8);
       const data = Buffer.alloc(9);
       discriminator.copy(data, 0);
       data.writeUInt8(outcomeIndex, 8);
