@@ -59,45 +59,15 @@ Deno.serve(async (req) => {
     if (withdrawAmount <= 0) {
       return Response.json({ error: 'No unmatched liquidity remaining' }, { status: 400 });
     }
-    
-    // Allow withdrawal even if offer is cancelled/settled - on-chain check will verify funds exist
-    
 
+    // CRITICAL: Unmatched LP funds are withdrawable at ANY time (open, closed, or settled)
+    // This matches the Solana smart contract - LPs should never be locked in
+    // The on-chain balance check below will verify if funds actually exist
 
     // Fetch Bet and Match
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
     if (!bet) return Response.json({ error: 'Bet not found' }, { status: 400 });
-    
-    // Allow withdrawal if betting window has closed (regardless of settlement status)
-    // CRITICAL: Check open_until timestamp - if time passed, betting is closed even if status='open'
-    // ALSO: Allow if market is within 60 seconds of closing (prevents "almost closed" errors)
-    const now = new Date();
-    const openUntilDate = bet.open_until ? new Date(bet.open_until) : null;
-    const timeUntilClose = openUntilDate ? openUntilDate.getTime() - now.getTime() : null;
-    const isBettingClosed = bet.status === 'closed' || bet.status === 'settled' || (openUntilDate && now > openUntilDate);
-    const isAlmostClosed = timeUntilClose !== null && timeUntilClose < 60 * 1000; // Within 60 seconds
-    
-    console.log('[withdrawLiquidity] Betting window check:', {
-      bet_id: bet.id,
-      bet_status: bet.status,
-      open_until: bet.open_until,
-      openUntilDate: openUntilDate?.toISOString(),
-      now: now.toISOString(),
-      isBettingClosed,
-      isAlmostClosed,
-      timeUntilClose_ms: timeUntilClose,
-      timeUntilClose_seconds: timeUntilClose ? timeUntilClose / 1000 : null,
-    });
-    
-    if (!isBettingClosed && !isAlmostClosed) {
-      return Response.json({ 
-        error: 'Cannot withdraw yet - market is still open for betting',
-        hint: `Market closes at ${bet.open_until}`,
-        now: now.toISOString(),
-        openUntil: bet.open_until,
-      }, { status: 400 });
-    }
 
     const matches = await base44.entities.Match.filter({ id: userBet.match_id });
     const match = matches[0];
