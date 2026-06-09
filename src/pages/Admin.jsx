@@ -31,6 +31,8 @@ export default function Admin() {
     checkFeeVault: false,
     withdrawFees: false,
   }); // Track which buttons are loading
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     const stored = localStorage.getItem('elevenx_wallet_session');
     if (stored) {
