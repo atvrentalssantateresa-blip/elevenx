@@ -271,8 +271,8 @@ Deno.serve(async (req) => {
     let settleInstruction;
     
     if (settlementFinalized || isVoided) {
-      // Use force_settle_market - simpler instruction, no oracle_vote/vote_tally needed
-      const forceDiscriminator = Buffer.from(sha256('force_settle_market')).slice(0, 8);
+      // Use force_settle_market - Anchor uses "global:" prefix by default
+      const forceDiscriminator = Buffer.from(sha256('global:force_settle_market')).slice(0, 8);
       const forceData = Buffer.alloc(9);
       forceDiscriminator.copy(forceData, 0);
       forceData.writeUInt8(outcomeIndex, 8);
