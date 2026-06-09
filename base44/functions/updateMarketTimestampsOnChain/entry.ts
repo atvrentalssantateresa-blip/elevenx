@@ -79,12 +79,11 @@ Deno.serve(async (req) => {
       settleAfterIso: new Date(settleAfter * 1000).toISOString(),
     });
 
-    // Build instruction data for update_market_timestamps (Anchor discriminator)
-    // Note: This instruction must be deployed in the Solana program
+    // Build instruction data for update_market_timestamps - market:update_market_timestamps (Anchor 0.30.1 module namespace)
     const { sha256: sha256fn } = await import('npm:@noble/hashes@1.4.0/sha256');
-    const discriminator = Buffer.from(sha256fn('global:update_market_timestamps')).slice(0, 8);
+    const discriminator = Buffer.from(sha256fn('market:update_market_timestamps')).slice(0, 8);
     console.log('[updateMarketTimestampsOnChain] Discriminator (hex):', discriminator.toString('hex'));
-    console.log('[updateMarketTimestampsOnChain] Instruction name: global:update_market_timestamps');
+    console.log('[updateMarketTimestampsOnChain] Instruction name: market:update_market_timestamps');
     
     const data = Buffer.alloc(24);
     discriminator.copy(data, 0);
