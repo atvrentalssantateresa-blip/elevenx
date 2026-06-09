@@ -587,8 +587,13 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
             }
 
             // Priority 4: Has unmatched liquidity - withdraw unmatched
-            // Use aggregated userBetStatus to prevent already-refunded positions from showing withdraw buttons
-            if ((hasUnmatched || liquidityUnmatched > 0) && userBetStatus !== 'refunded' && userBetStatus !== 'withdrawn' && onWithdrawRequest) {
+            // For unmatched positions, allow withdrawal regardless of DB status (which may be 'pending' even after settlement)
+            // Only block if already withdrawn/refunded in DB
+            const canWithdrawUnmatched = (hasUnmatched || liquidityUnmatched > 0) && 
+                                         userBetStatus !== 'refunded' && 
+                                         userBetStatus !== 'withdrawn' &&
+                                         onWithdrawRequest;
+            if (canWithdrawUnmatched) {
               return (
                 <Button
                   onClick={handleWithdraw}
