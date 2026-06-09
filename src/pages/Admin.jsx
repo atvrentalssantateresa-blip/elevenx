@@ -23,6 +23,14 @@ export default function Admin() {
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
   const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
   const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
+  const [loadingActions, setLoadingActions] = useState({
+    registerAdmin: false,
+    initPlatform: false,
+    checkConfig: false,
+    debugAdmin: false,
+    checkFeeVault: false,
+    withdrawFees: false,
+  }); // Track which buttons are loading
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -528,16 +536,21 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
+                    if (loadingActions.registerAdmin) return;
+                    setLoadingActions(prev => ({ ...prev, registerAdmin: true }));
                     try {
                       const res = await base44.functions.invoke('registerAdminWallet', { walletAddress });
                       toast.success(res.data.message || '✓ Wallet registered as admin!');
                     } catch (err) {
                       toast.error('Error: ' + err.message);
+                    } finally {
+                      setLoadingActions(prev => ({ ...prev, registerAdmin: false }));
                     }
                   }}
-                  className="h-16 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-white rounded-xl"
+                  disabled={loadingActions.registerAdmin}
+                  className="h-16 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-white rounded-xl disabled:opacity-50"
                 >
-                  Register Admin Wallet
+                  {loadingActions.registerAdmin ? 'Registering...' : 'Register Admin Wallet'}
                 </Button>
                 <Button
                   onClick={async () => {
@@ -545,6 +558,8 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
+                    if (loadingActions.initPlatform) return;
+                    setLoadingActions(prev => ({ ...prev, initPlatform: true }));
                     try {
                       const res = await base44.functions.invoke('initPlatformConfig', { walletAddress });
                       if (res.data.alreadyExists) {
@@ -555,14 +570,19 @@ export default function Admin() {
                       }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
+                    } finally {
+                      setLoadingActions(prev => ({ ...prev, initPlatform: false }));
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
+                  disabled={loadingActions.initPlatform}
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl disabled:opacity-50"
                 >
-                  Init Platform
+                  {loadingActions.initPlatform ? 'Initializing...' : 'Init Platform'}
                 </Button>
                 <Button
                   onClick={async () => {
+                    if (loadingActions.checkConfig) return;
+                    setLoadingActions(prev => ({ ...prev, checkConfig: true }));
                     try {
                       const res = await base44.functions.invoke('checkPlatformConfig');
                       if (res.data.error) {
@@ -576,24 +596,32 @@ export default function Admin() {
                       }
                     } catch (err) {
                       toast.error('Error: ' + err.message);
+                    } finally {
+                      setLoadingActions(prev => ({ ...prev, checkConfig: false }));
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
+                  disabled={loadingActions.checkConfig}
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl disabled:opacity-50"
                 >
-                  Check Config
+                  {loadingActions.checkConfig ? 'Checking...' : 'Check Config'}
                 </Button>
                 <Button
                   onClick={async () => {
+                    if (loadingActions.debugAdmin) return;
+                    setLoadingActions(prev => ({ ...prev, debugAdmin: true }));
                     try {
                       await base44.functions.invoke('debugPlatformAdmin');
                       toast.success('✓ Debug complete!');
                     } catch (err) {
                       toast.error('Error: ' + err.message);
+                    } finally {
+                      setLoadingActions(prev => ({ ...prev, debugAdmin: false }));
                     }
                   }}
-                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl"
+                  disabled={loadingActions.debugAdmin}
+                  className="h-16 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white rounded-xl disabled:opacity-50"
                 >
-                  Debug Admin
+                  {loadingActions.debugAdmin ? 'Debugging...' : 'Debug Admin'}
                 </Button>
                 <Button
                   onClick={async () => {
@@ -785,35 +813,6 @@ export default function Admin() {
                 />
                 <Button
                   onClick={() => setDeployFuturesDialog(null)}
-                  variant="outline"
-                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {deployMatchesDialog && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
-              <div className="space-y-4">
-                <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
-                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {72 - deployMatchesDialog.remaining} of 72</h3>
-                  <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployMatchesDialog.remaining}</p>
-                </div>
-                <SolanaTransactionSigner
-                  instruction={deployMatchesDialog.instruction}
-                  amount="0"
-                  onSuccess={handleDeployMatchesSuccess}
-                  onError={(err) => {
-                    toast.error('Failed: ' + err.message);
-                    setDeployMatchesDialog(null);
-                  }}
-                />
-                <Button
-                  onClick={() => setDeployMatchesDialog(null)}
                   variant="outline"
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
