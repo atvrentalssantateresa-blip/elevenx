@@ -29,13 +29,27 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const marketPubkey = new PublicKey(marketPda);
     const adminPubkey = new PublicKey(adminWallet);
 
-    // Fetch actual balance from Solana
+    // Fetch actual balance from Solana AND get the owning program ID
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
     const balance = await connection.getBalance(marketPubkey);
+    
+    // Fetch market account info to get the actual owner program
+    const marketInfo = await connection.getAccountInfo(marketPubkey);
+    if (!marketInfo) {
+      return Response.json({ error: 'Market account not found on-chain' }, { status: 404 });
+    }
+    
+    // CRITICAL: Use the market's actual owner program ID, not the configured secret
+    // This handles program upgrades/migrations where markets were deployed under old program IDs
+    const programId = marketInfo.owner;
+    console.log('[sweepMarketFunds] Using market owner program ID:', programId.toBase58());
+    console.log('[sweepMarketFunds] Configured SOLANA_PROGRAM_ID:', SOLANA_PROGRAM_ID);
+    if (programId.toBase58() !== SOLANA_PROGRAM_ID) {
+      console.log('[sweepMarketFunds] ⚠️ Program ID mismatch detected - using market owner (correct behavior)');
+    }
 
     // Derive platform PDA
     const [platformPda] = PublicKey.findProgramAddressSync(
@@ -51,12 +65,7 @@ Deno.serve(async (req) => {
       balanceSOL: balance / 1e9,
     });
 
-    // Check if market is settled/voided
-    const marketInfo = await connection.getAccountInfo(marketPubkey);
-    if (!marketInfo) {
-      return Response.json({ error: 'Market account not found' }, { status: 404 });
-    }
-
+    // Check if market is settled/voided (marketInfo already fetched above)
     // Parse market data to check settled status (byte 244 = settled, byte 245 = voided)
     const marketData = marketInfo.data;
     let isSettled = false;
