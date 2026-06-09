@@ -780,41 +780,22 @@ export default function Admin() {
                     
                     console.log('[Admin] Sweeping market with stored PDA:', bet.solana_market_pda);
                     
-                    // Try simple sweep first (more reliable)
-                    try {
-                      const sweepRes = await base44.functions.invoke('simpleSweepFunds', {
-                        market_pda: bet.solana_market_pda,
-                        admin_wallet: walletAddress,
-                      });
-                      
-                      if (sweepRes.data.error) {
-                        throw new Error(sweepRes.data.error);
-                      }
-                      
-                      setSweepDialog({
-                        instruction: sweepRes.data.solana_instruction,
-                        marketPda: bet.solana_market_pda,
-                        balance: sweepRes.data.balance,
-                      });
-                    } catch (err) {
-                      console.error('[Admin] Simple sweep failed, trying program sweep:', err);
-                      // Fallback to program sweep
-                      const sweepRes = await base44.functions.invoke('sweepMarketFunds', {
-                        market_pda: bet.solana_market_pda,
-                        admin_wallet: walletAddress,
-                      });
-                      
-                      if (sweepRes.data.error) {
-                        toast.error('Error: ' + sweepRes.data.error);
-                        return;
-                      }
-                      
-                      setSweepDialog({
-                        instruction: sweepRes.data.solana_instruction,
-                        marketPda: bet.solana_market_pda,
-                        balance: sweepRes.data.balance,
-                      });
+                    // Use on-chain program sweep (only working method for PDAs)
+                    const sweepRes = await base44.functions.invoke('sweepMarketFunds', {
+                      market_pda: bet.solana_market_pda,
+                      admin_wallet: walletAddress,
+                    });
+                    
+                    if (sweepRes.data.error) {
+                      toast.error('Error: ' + sweepRes.data.error);
+                      return;
                     }
+                    
+                    setSweepDialog({
+                      instruction: sweepRes.data.solana_instruction,
+                      marketPda: bet.solana_market_pda,
+                      balance: sweepRes.data.balance,
+                    });
                   }}
                   className="h-16 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/30 text-white rounded-xl"
                 >
