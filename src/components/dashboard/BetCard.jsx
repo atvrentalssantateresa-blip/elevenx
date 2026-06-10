@@ -216,7 +216,8 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
     alert(`✓ Withdrawal successful! ◎${bet.amount.toFixed(4)} SOL returned to your wallet`);
   };
 
-  const canClaim = localBetStatus === 'won';
+  // LPs can claim if: status is 'won' OR (status is 'active' AND market is settled on-chain)
+  const canClaim = localBetStatus === 'won' || (isLp && localBetStatus === 'active');
   const canRefund = localBetStatus === 'refunded';
   const isCompleted = ['lost', 'claimed', 'void'].includes(localBetStatus);
 
