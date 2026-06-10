@@ -1,222 +1,53 @@
-// Country name to flag emoji mapping for World Cup 2026 teams
-const COUNTRY_FLAGS = {
-  // North America (Hosts)
-  'mexico': '🇲🇽',
-  'usa': '🇺🇸',
-  'united states': '🇺🇸',
-  'canada': '🇨🇦',
-  
-  // Europe
-  'england': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'france': '🇫🇷',
-  'germany': '🇩🇪',
-  'spain': '🇪🇸',
-  'portugal': '🇵🇹',
-  'netherlands': '🇳🇱',
-  'belgium': '🇧🇪',
-  'croatia': '🇭🇷',
-  'switzerland': '🇨🇭',
-  'denmark': '🇩🇰',
-  'serbia': '🇷🇸',
-  'poland': '🇵🇱',
-  'sweden': '🇸🇪',
-  'norway': '🇳🇴',
-  'scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
-  'ireland': '🇮🇪',
-  'italy': '🇮🇹',
-  'austria': '🇦🇹',
-  'czechia': '🇨🇿',
-  'czech republic': '🇨🇿',
-  'ukraine': '🇺🇦',
-  'romania': '🇷🇴',
-  'hungary': '🇭🇺',
-  'turkey': '🇹🇷',
-  'greece': '🇬🇷',
-  'slovakia': '🇸🇰',
-  'slovenia': '🇸🇮',
-  'finland': '🇫🇮',
-  'iceland': '🇮🇸',
-  'bosnia and herzegovina': '🇧🇦',
-  'bosnia & herzegovina': '🇧🇦',
-  'bosnia': '🇧🇦',
-  
-  // South America
-  'brazil': '🇧🇷',
-  'argentina': '🇦🇷',
-  'uruguay': '🇺🇾',
-  'colombia': '🇨🇴',
-  'chile': '🇨🇱',
-  'ecuador': '🇪🇨',
-  'paraguay': '🇵🇾',
-  'peru': '🇵🇪',
-  'venezuela': '🇻🇪',
-  'bolivia': '🇧🇴',
-  
-  // Africa
-  'morocco': '🇲🇦',
-  'senegal': '🇸🇳',
-  'tunisia': '🇹🇳',
-  'egypt': '🇪🇬',
-  'nigeria': '🇳🇬',
-  'cameroon': '🇨🇲',
-  'ghana': '🇬🇭',
-  'ivory coast': '🇨🇮',
-  'côte d\'ivoire': '🇨🇮',
-  'cote d\'ivoire': '🇨🇮',
-  'south africa': '🇿🇦',
-  'algeria': '🇩🇿',
-  'mali': '🇲🇱',
-  'burkina faso': '🇧🇫',
-  'guinea': '🇬🇳',
-  'cape verde': '🇨🇻',
-  'congo': '🇨🇬',
-  'dr congo': '🇨🇩',
-  'gabon': '🇬🇦',
-  'benin': '🇧🇯',
-  'madagascar': '🇲🇬',
-  'mauritania': '🇲🇷',
-  'niger': '🇳🇪',
-  'zambia': '🇿🇲',
-  'zimbabwe': '🇿🇼',
-  'mozambique': '🇲🇿',
-  'angola': '🇦🇴',
-  'botswana': '🇧🇼',
-  'namibia': '🇳🇦',
-  
-  // Asia
-  'japan': '🇯🇵',
-  'south korea': '🇰🇷',
-  'korea republic': '🇰🇷',
-  'iran': '🇮🇷',
-  'saudi arabia': '🇸🇦',
-  'australia': '🇦🇺',
-  'qatar': '🇶🇦',
-  'uae': '🇦🇪',
-  'united arab emirates': '🇦🇪',
-  'iraq': '🇮🇶',
-  'uzbekistan': '🇺🇿',
-  'china': '🇨🇳',
-  'jordan': '🇯🇴',
-  'oman': '🇴🇲',
-  'palestine': '🇵🇸',
-  'lebanon': '🇱🇧',
-  'syria': '🇸🇾',
-  'yemen': '🇾🇪',
-  'india': '🇮🇳',
-  'thailand': '🇹🇭',
-  'vietnam': '🇻🇳',
-  'malaysia': '🇲🇾',
-  'singapore': '🇸🇬',
-  'indonesia': '🇮🇩',
-  'philippines': '🇵🇭',
-  
-  // Oceania
-  'new zealand': '🇳🇿',
-  'fiji': '🇫🇯',
-  'papua new guinea': '🇵🇬',
-  
-  // Caribbean / Central America
-  'jamaica': '🇯🇲',
-  'costa rica': '🇨🇷',
-  'panama': '🇵🇦',
-  'honduras': '🇭🇳',
-  'guatemala': '🇬🇹',
-  'el salvador': '🇸🇻',
-  'nicaragua': '🇳🇮',
-  'trinidad and tobago': '🇹🇹',
-  'haiti': '🇭🇹',
-  'cuba': '🇨🇺',
-  'curacao': '🇨🇼',
-  'curaçao': '🇨🇼',
-  'barbados': '🇧🇧',
-  
-  // Special characters / alternate spellings
-  'türkiye': '🇹🇷',
-  'turkey': '🇹🇷',
-  'côte d\'ivoire': '🇨🇮',
-  'cote d\'ivoire': '🇨🇮',
-};
-
 // Country code to flag emoji mapping (for 2-letter and special codes)
 const CODE_FLAGS = {
-  'MX': '🇲🇽',
-  'ZA': '🇿🇦',
-  'KR': '🇰🇷',
-  'CZ': '🇨🇿',
-  'CA': '🇨🇦',
-  'BA': '🇧🇦',
-  'QA': '🇶🇦',
-  'CH': '🇨🇭',
-  'US': '🇺🇸',
-  'PY': '🇵🇾',
-  'AU': '🇦🇺',
-  'TR': '🇹🇷',
-  'BR': '🇧🇷',
-  'MA': '🇲🇦',
-  'HT': '🇭🇹',
-  'GB-SCT': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'DE': '🇩🇪',
-  'CW': '🇨🇼',
-  'CI': '🇨🇮',
-  'EC': '🇪🇨',
-  'NL': '🇳🇱',
-  'JP': '🇯🇵',
-  'SE': '🇸🇪',
-  'TN': '🇹🇳',
-  'BE': '🇧🇪',
-  'EG': '🇪🇬',
-  'IR': '🇮🇷',
-  'NZ': '🇳🇿',
-  'ES': '🇪🇸',
-  'CV': '🇨🇻',
-  'SA': '🇸🇦',
-  'UY': '🇺🇾',
-  'FR': '🇫🇷',
-  'SN': '🇸🇳',
-  'IQ': '🇮🇶',
-  'NO': '🇳🇴',
-  'AR': '🇦🇷',
-  'DZ': '🇩🇿',
-  'AT': '🇦🇹',
-  'JO': '🇯🇴',
-  'PT': '🇵🇹',
-  'CD': '🇨🇩',
-  'CO': '🇨🇴',
-  'UZ': '🇺🇿',
-  'GB-ENG': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'HR': '🇭🇷',
-  'GH': '🇬🇭',
-  'PA': '🇵🇦',
+  'MX': '🇲🇽', 'ZA': '🇿🇦', 'KR': '🇰🇷', 'CZ': '🇨🇿', 'CA': '🇨🇦',
+  'BA': '🇧🇦', 'QA': '🇶🇦', 'CH': '🇨🇭', 'US': '🇺🇸', 'PY': '🇵🇾',
+  'AU': '🇦🇺', 'BR': '🇧🇷', 'MA': '🇲🇦', 'HT': '🇭🇹', 'DE': '🇩🇪',
 };
 
-// Convert country code to emoji flag
-export const getFlagEmoji = (countryCode) => {
-  if (!countryCode) return '🏳️';
-  const upperCode = countryCode.toUpperCase();
-  // Check direct mapping first for special cases
-  if (CODE_FLAGS[upperCode]) return CODE_FLAGS[upperCode];
-  // Fallback to unicode conversion for standard 2-letter codes
-  const codePoints = upperCode
-    .split('')
-    .map(char => 127397 + char.charCodeAt());
-  return String.fromCodePoint(...codePoints);
+// Get country code from team name
+export const getCountryCode = (teamName) => {
+  if (!teamName) return '';
+  const codes = {
+    'mexico': 'MX', 'usa': 'US', 'united states': 'US', 'canada': 'CA',
+    'england': 'EN', 'france': 'FR', 'germany': 'DE', 'spain': 'ES', 'portugal': 'PT',
+    'netherlands': 'NL', 'belgium': 'BE', 'croatia': 'HR', 'switzerland': 'CH',
+    'denmark': 'DK', 'serbia': 'RS', 'poland': 'PL', 'sweden': 'SE', 'wales': 'WA',
+    'italy': 'IT', 'austria': 'AT', 'czechia': 'CZ', 'czech republic': 'CZ',
+    'ukraine': 'UA', 'bosnia and herzegovina': 'BA', 'bosnia & herzegovina': 'BA',
+    'brazil': 'BR', 'argentina': 'AR', 'uruguay': 'UY', 'colombia': 'CO', 'chile': 'CL',
+    'ecuador': 'EC', 'paraguay': 'PY', 'peru': 'PE',
+    'morocco': 'MA', 'senegal': 'SN', 'tunisia': 'TN', 'egypt': 'EG', 'nigeria': 'NG',
+    'cameroon': 'CM', 'ghana': 'GH', 'south africa': 'ZA', 'algeria': 'DZ',
+    'japan': 'JP', 'south korea': 'KR', 'korea republic': 'KR', 'iran': 'IR',
+    'saudi arabia': 'SA', 'australia': 'AU', 'qatar': 'QA', 'uzbekistan': 'UZ',
+    'jordan': 'JO', 'panama': 'PA', 'jamaica': 'JM', 'costa rica': 'CR',
+  };
+  return codes[teamName.toLowerCase().trim()] || teamName.substring(0, 2).toUpperCase();
 };
 
-// Get flag emoji from country name
-export const getFlagFromName = (countryName) => {
-  if (!countryName) return '🏳️';
-  const normalizedName = countryName.toLowerCase().trim();
-  return COUNTRY_FLAGS[normalizedName] || '🏳️';
+// Get flag color for team (primary color of their flag)
+export const getFlagColor = (teamName) => {
+  if (!teamName) return '#64748b';
+  const colors = {
+    'mexico': '#16a34a', 'usa': '#1e40af', 'canada': '#dc2626',
+    'england': '#dc2626', 'france': '#1e40af', 'germany': '#000000', 'spain': '#dc2626',
+    'portugal': '#dc2626', 'netherlands': '#ea580c', 'belgium': '#000000',
+    'brazil': '#ca8a04', 'argentina': '#1e40af', 'uruguay': '#1e40af',
+    'colombia': '#eab308', 'chile': '#3b82f6', 'ecuador': '#eab308',
+    'paraguay': '#1e40af', 'peru': '#dc2626', 'morocco': '#dc2626',
+    'senegal': '#16a34a', 'tunisia': '#dc2626', 'egypt': '#dc2626',
+    'nigeria': '#16a34a', 'cameroon': '#16a34a', 'ghana': '#dc2626',
+    'south africa': '#16a34a', 'algeria': '#ffffff', 'japan': '#dc2626',
+    'south korea': '#dc2626', 'iran': '#dc2626', 'saudi arabia': '#16a34a',
+    'australia': '#084594', 'qatar': '#dc2626', 'uzbekistan': '#1e40af',
+    'jordan': '#000000', 'panama': '#1e40af', 'jamaica': '#eab308',
+    'costa rica': '#1e40af', 'ukraine': '#1e40af',
+  };
+  return colors[teamName.toLowerCase().trim()] || '#64748b';
 };
 
-// Get flag for team (handles both name and country code)
+// Get flag for team (returns country code)
 export const getTeamFlag = (teamName, countryCode) => {
-  if (countryCode) {
-    return getFlagEmoji(countryCode);
-  }
-  if (teamName) {
-    return getFlagFromName(teamName);
-  }
-  return '🏳️';
+  return getCountryCode(teamName || '');
 };
