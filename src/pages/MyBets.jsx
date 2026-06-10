@@ -355,7 +355,7 @@ export default function MyBets() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedMatchBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
-                      key={bet.betIds[0]}
+                      key={bet.betIds?.[0] || bet.id || i}
                       bet={bet}
                       index={i}
                       walletAddress={walletAddress}
@@ -374,7 +374,7 @@ export default function MyBets() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedFuturesBetsArray.filter(b => ['active', 'pending', 'won'].includes(b.status)).map((bet, i) => (
                     <BetCard
-                      key={bet.betIds[0]}
+                      key={bet.betIds?.[0] || bet.id || i}
                       bet={bet}
                       index={i}
                       walletAddress={walletAddress}
@@ -503,7 +503,7 @@ export default function MyBets() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
                     <BetCard
-                      key={bet.betIds[0]}
+                      key={bet.betIds?.[0] || bet.id || i}
                       bet={bet}
                       index={i}
                       walletAddress={walletAddress}
@@ -520,7 +520,7 @@ export default function MyBets() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                   {groupedFuturesBetsArray.filter(b => ['lost', 'won', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
                     <BetCard
-                      key={bet.betIds[0]}
+                      key={bet.betIds?.[0] || bet.id || i}
                       bet={bet}
                       index={i}
                       walletAddress={walletAddress}

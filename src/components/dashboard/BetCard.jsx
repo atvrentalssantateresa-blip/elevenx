@@ -230,7 +230,7 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   const isParimutuelLp = bet.role === 'lp' && !bet.offer_id;
 
   // For parimutuel bets: calculate pool share instead of match progress
-  const poolShare = isParimutuelLp ? calculatePoolShare(bet.amount, bet.total_pool || bet.amount) : 0;
+  const poolShare = isParimutuelLp ? (calculatePoolShare(bet.amount || 0, bet.total_pool || bet.amount || 1) || 0) : 0;
   const isParimutuelActive = isParimutuelLp && (bet.status === 'pending' || bet.status === 'active');
 
   // For fixed-odds bets: calculate match progress (how much of the bet is matched)
