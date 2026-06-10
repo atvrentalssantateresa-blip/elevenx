@@ -12,6 +12,28 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
 /**
+ * Derive lp_offer PDA from seeds: ["lp_offer", marketPda, lpWallet, [outcome]]
+ */
+function deriveLpOfferPda(marketPda, lpWallet, outcome) {
+  try {
+    const programId = new PublicKey('EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN');
+    const [pda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('lp_offer'),
+        new PublicKey(marketPda).toBuffer(),
+        new PublicKey(lpWallet).toBuffer(),
+        Buffer.from([outcome]),
+      ],
+      programId
+    );
+    return pda.toBase58();
+  } catch (err) {
+    console.error('[deriveLpOfferPda] Error:', err);
+    return null;
+  }
+}
+
+/**
  * Fetch on-chain lp_offer account and decode amounts + closed flag.
  * LpOffer layout after 8-byte discriminator:
  *   discriminator: 8 bytes (0-7)
@@ -112,32 +134,33 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Detect if this is a futures LP position
   const isFutures = offer?._isFutures || position?._isFutures || false;
 
-  // Fetch on-chain lp_offer state - PRIMARY SOURCE OF TRUTH
-  // CRITICAL: positionPda MUST be the lp_offer PDA (seeds: ["lp_offer", marketPda, lpWallet, [outcome]])
-  // For futures, outcome is stored as outcome_label (e.g. "Team Alpha") or we derive from position data
-  const positionPda = position?.solana_position_pda || position?.userBet?.solana_position_pda;
+  // For FUTURES: Derive PDA and read EXCLUSIVELY from on-chain (no DB fallback)
+  // For matches: use existing logic with DB fallback
   const marketPda = position?.solana_market_pda || position?.userBet?.solana_market_pda || bet?.solana_market_pda;
   const lpWallet = position?.wallet_address || position?.userBet?.wallet_address;
   
-  // For futures: outcome is 0/1/2 or outcome_label; for matches: 'a'/'b'/'draw'
+  // Derive outcome number
   const outcomeNum = isFutures 
-    ? (offer.outcome_num !== undefined ? offer.outcome_num : (offer.outcome === 'a' ? 0 : offer.outcome === 'b' ? 1 : 2))
+    ? (offer.outcome_num !== undefined ? offer.outcome_num : 0)
     : (offer?.outcome === 'a' ? 1 : offer?.outcome === 'b' ? 2 : 3);
+  
+  // For futures: derive PDA from seeds if not provided
+  const positionPda = isFutures && marketPda && lpWallet
+    ? (position?.solana_position_pda || deriveLpOfferPda(marketPda, lpWallet, outcomeNum))
+    : (position?.solana_position_pda || position?.userBet?.solana_position_pda);
   
   console.log('[LpPositionCard] === PDA LOOKUP ===');
   console.log('[LpPositionCard] position.id:', position.id);
   console.log('[LpPositionCard] isFutures:', isFutures);
-  console.log('[LpPositionCard] position.solana_position_pda:', position.solana_position_pda);
-  console.log('[LpPositionCard] position.userBet?.solana_position_pda:', position.userBet?.solana_position_pda);
-  console.log('[LpPositionCard] FINAL positionPda (to query):', positionPda);
   console.log('[LpPositionCard] marketPda:', marketPda);
   console.log('[LpPositionCard] lpWallet:', lpWallet);
-  console.log('[LpPositionCard] outcome:', offer.outcome, '→ num:', outcomeNum);
+  console.log('[LpPositionCard] outcomeNum:', outcomeNum);
+  console.log('[LpPositionCard] positionPda:', positionPda);
   
   const { data: onChainOffer, refetch: refetchOnChain } = useQuery({
     queryKey: ['lp-offer-onchain', positionPda],
     queryFn: () => fetchLpOfferOnChain(positionPda),
-    enabled: !!positionPda,
+    enabled: isFutures ? !!(positionPda && marketPda && lpWallet) : !!positionPda,
     staleTime: 5000,
   });
   
@@ -156,27 +179,28 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Get match from position data if not passed
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // CRITICAL: Use ON-CHAIN data as PRIMARY source, DB as fallback ONLY
-  // Bug 1 Fix: Read matched amount from on-chain lp_offer, not DB
-  const liquidityDeposited = onChainOffer 
-    ? onChainOffer.amountCommitted 
-    : (isFutures ? (offer.total_liquidity_deposited || offer.amount_offered || 0) : (offer.liquidity_deposited || 0));
+  // CRITICAL: For FUTURES, use ONLY on-chain data (NO DB fallback)
+  // For matches, use on-chain with DB fallback
+  const liquidityDeposited = isFutures 
+    ? (onChainOffer ? onChainOffer.amountCommitted : 0)
+    : (onChainOffer ? onChainOffer.amountCommitted : (offer.liquidity_deposited || 0));
   
-  const liquidityMatched = onChainOffer 
-    ? onChainOffer.amountMatched 
-    : (isFutures ? (offer.total_liquidity_matched || offer.amount_matched || 0) : (offer.liquidity_matched || 0));
+  const liquidityMatched = isFutures 
+    ? (onChainOffer ? onChainOffer.amountMatched : 0)
+    : (onChainOffer ? onChainOffer.amountMatched : (offer.liquidity_matched || 0));
   
-  const liquidityUnmatched = onChainOffer 
-    ? onChainOffer.unmatched 
-    : Math.max(0, liquidityDeposited - liquidityMatched);
+  const liquidityUnmatched = isFutures 
+    ? (onChainOffer ? onChainOffer.unmatched : 0)
+    : (onChainOffer ? onChainOffer.unmatched : Math.max(0, liquidityDeposited - liquidityMatched));
   
   console.log('[LpPositionCard] === FINAL DISPLAY VALUES ===');
   console.log('[LpPositionCard] position.id:', position.id);
-  console.log('[LpPositionCard] data source:', onChainOffer ? 'ON-CHAIN' : 'DB FALLBACK');
+  console.log('[LpPositionCard] isFutures:', isFutures);
+  console.log('[LpPositionCard] data source:', onChainOffer ? 'ON-CHAIN' : (isFutures ? 'NO DATA' : 'DB FALLBACK'));
   console.log('[LpPositionCard] liquidityDeposited:', liquidityDeposited, 'SOL');
   console.log('[LpPositionCard] liquidityMatched:', liquidityMatched, 'SOL');
   console.log('[LpPositionCard] liquidityUnmatched:', liquidityUnmatched, 'SOL');
-  console.log('[LpPositionCard] onChainOffer raw:', onChainOffer);
+  console.log('[LpPositionCard] onChainOffer:', onChainOffer);
   
   // Bug 2 Fix: Read settlement state from on-chain market, not DB
   const onChainSettled = onChainMarket?.settled === true;
