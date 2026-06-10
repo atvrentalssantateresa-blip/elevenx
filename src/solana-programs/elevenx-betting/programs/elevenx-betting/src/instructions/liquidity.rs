@@ -55,6 +55,14 @@ pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u6
         offer.withdrawn_amount = 0;
         offer.fully_withdrawn = false;
         offer.bump = ctx.bumps.lp_offer;
+    } else {
+        // ── ODDS DRIFT PROTECTION ───────────────────────────────────────────
+        // If offer already exists, ensure the current market odds match the initial locked odds.
+        // This prevents LP from backing outcome at changed/stale pricing.
+        require!(
+            market.oracle_odds[outcome as usize] == offer.odds_bps,
+            BettingError::OddsMismatch
+        );
     }
 
     offer.amount_committed = offer
@@ -70,21 +78,23 @@ pub fn provide_liquidity(ctx: Context<ProvideLiquidity>, outcome: u8, amount: u6
 // LP withdraws unmatched liquidity before market closes.
 
 pub fn withdraw_liquidity(ctx: Context<WithdrawLiquidity>) -> Result<()> {
-    let clock = Clock::get()?;
     let market = &mut ctx.accounts.market;
     let offer = &mut ctx.accounts.lp_offer;
 
-    // CRITICAL FIX: Allow LP withdrawal of unmatched funds at ANY time (open, closed, or settled)
-    // LPs should never be locked in - unmatched funds are always withdrawable
-    // Only block if already fully withdrawn
+    // ── STATE SEPARATION: Unmatched withdrawal path ──────────────────────────
+    // Only block if already closed (unmatched already withdrawn)
+    require!(!offer.closed, BettingError::AlreadyWithdrawn);
     require!(!offer.fully_withdrawn, BettingError::ClaimNothing);
 
     let available = offer.available();
     require!(available > 0, BettingError::ZeroStake);
 
-    // Mark offer closed and reduce market totals.
+    // Lock the unmatched withdrawal path forever, preserving amount_committed
     offer.closed = true;
-    market.total_lp_committed = market.total_lp_committed.saturating_sub(available);
+
+    market.total_lp_committed = market.total_lp_committed
+        .checked_sub(available)
+        .ok_or(BettingError::Overflow)?;
 
     // Transfer unmatched SOL back to LP.
     **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= available;

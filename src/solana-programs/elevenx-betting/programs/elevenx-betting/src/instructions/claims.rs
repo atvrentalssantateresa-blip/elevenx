@@ -76,19 +76,24 @@ pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Re
     let fee_vault = &mut ctx.accounts.fee_vault;
 
     require!(market.settled && !market.voided, BettingError::AlreadySettled);
+    require!(!lp_offer.fully_withdrawn, BettingError::ClaimNothing);
 
-    // CORRECTED: LP wins when the bettors on their backed outcome LOST (LP collects losing stakes).
-    // LP backs outcome X — if outcome X LOST, LP wins.
+    // ── DAO DRAW RULE ────────────────────────────────────────────────────────
+    // If settled as a Draw (2), all matched funds belong to the house/DAO. LP loses matched stakes.
+    require!(market.winning_outcome != 2, BettingError::ClaimNothing);
+
+    // LP wins when the bettors on their backed outcome LOST
     require!(
         lp_offer.outcome != market.winning_outcome,
         BettingError::ClaimNothing
     );
 
-    // Use amount_matched as source of winnings (losing bettor stakes matched to this LP)
-    let available_winnings = lp_offer.amount_matched;
-    require!(available_winnings > 0, BettingError::ClaimNothing);
+    // ── WATER-TIGHT WINNINGS MATH ────────────────────────────────────────────
+    // LP gets back locked liability (amount_matched) + the lost bettor stake (matched_stake)
+    let available_winnings = lp_offer.amount_matched
+        .checked_add(lp_offer.matched_stake)
+        .ok_or(BettingError::Overflow)?;
     
-    // FIX: Check remaining withdrawable amount (total winnings - already withdrawn)
     let remaining_withdrawable = available_winnings
         .checked_sub(lp_offer.withdrawn_amount)
         .ok_or(BettingError::Overflow)?;
@@ -103,15 +108,13 @@ pub fn withdraw_lp_winnings(ctx: Context<WithdrawLpWinnings>, amount: u64) -> Re
     let payout = amount.saturating_sub(fee);
 
     let lp_offer_mut = &mut ctx.accounts.lp_offer;
-    
-    // FIX: Track withdrawn amount instead of boolean flag to allow partial withdrawals
     lp_offer_mut.withdrawn_amount = lp_offer_mut
         .withdrawn_amount
         .checked_add(amount)
         .ok_or(BettingError::Overflow)?;
     
-    // Only mark as fully withdrawn if all winnings have been withdrawn
-    lp_offer_mut.fully_withdrawn = lp_offer_mut.withdrawn_amount >= lp_offer_mut.amount_matched;
+    // Mark as fully withdrawn once they've taken all liability + winnings
+    lp_offer_mut.fully_withdrawn = lp_offer_mut.withdrawn_amount >= available_winnings;
 
     if fee > 0 {
         **ctx.accounts.market.to_account_info().try_borrow_mut_lamports()? -= fee;
