@@ -276,8 +276,8 @@ Deno.serve(async (req) => {
     // submit_oracle_vote and force_settle_market
     
     // Use test_announce_winner with EXACT discriminator from deployed program
-    // Pre-computed discriminator: [23, 224, 213, 209, 146, 125, 80, 245]
-    const testDiscriminator = Buffer.from([23, 224, 213, 209, 146, 125, 80, 245]);
+    // Pre-computed discriminator: [23, 224, 211, 209, 146, 125, 80, 245]
+    const testDiscriminator = Buffer.from([23, 224, 211, 209, 146, 125, 80, 245]);
     const testData = Buffer.alloc(9); // 8 bytes discriminator + 1 byte outcome (u8)
     testDiscriminator.copy(testData, 0);
     testData.writeUInt8(outcomeIndex, 8);
