@@ -275,42 +275,43 @@ Deno.serve(async (req) => {
     // Use global:instruction format (Anchor default)
     // submit_oracle_vote and force_settle_market
     
-    // Use test_announce_winner for testing (requires 'testing' feature enabled in deployed program)
-    // Discriminator: global:test_announce_winner
-    const testDiscriminator = Buffer.from(sha256('global:test_announce_winner')).slice(0, 8);
+    // Use test_announce_winner with EXACT discriminator from deployed program
+    // Pre-computed discriminator: [23, 224, 213, 209, 146, 125, 80, 245]
+    const testDiscriminator = Buffer.from([23, 224, 213, 209, 146, 125, 80, 245]);
     const testData = Buffer.alloc(9); // 8 bytes discriminator + 1 byte outcome (u8)
     testDiscriminator.copy(testData, 0);
     testData.writeUInt8(outcomeIndex, 8);
     
-    console.log('[settleMarketOnChain] Using global:test_announce_winner:', {
+    console.log('[settleMarketOnChain] Using test_announce_winner:', {
       outcome: outcomeLabel,
       outcomeIndex,
       discriminator: testDiscriminator.toString('hex'),
+      instruction_data_hex: testData.toString('hex'),
     });
     
     settleInstruction = {
       instruction_type: 'settle_market',
       programId: SOLANA_PROGRAM_ID,
+      // EXACT account order as required by the program:
+      // 1. market (writable), 2. fee_vault (writable), 3. platform_config (readonly), 4. admin (signer, writable)
       keys: [
         { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
         { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
         { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
         { pubkey: admin_wallet, isSigner: true, isWritable: true },
-        { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
       ],
       instruction_data: testData.toString('base64'),
     };
 
     return Response.json({
       success: true,
-      message: `Sign to settle market: ${outcomeLabel} (using test_announce_winner)`,
+      message: `Sign to settle market: ${outcomeLabel}`,
       // Two-step: sign timestamps first, then settle
       timestamp_instruction: timestampInstruction,
       solana_instruction: settleInstruction,
       bet_id: bet_id,
       winning_outcome: winning_outcome,
       instruction_type: 'test_announce_winner',
-      note: 'Requires program deployed with "testing" feature enabled. If you get error 101, redeploy program with: anchor build --verifiable -- --features testing',
     });
 
   } catch (error) {
