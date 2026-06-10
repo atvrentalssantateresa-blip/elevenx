@@ -50,18 +50,19 @@ export default function Futures() {
     },
   });
 
-  // Filter markets by selected group
+  // Filter markets by selected group - only show individual country markets (1 card = 1 country, 3 positions)
   const filteredMarketsByGroup = React.useMemo(() => {
     if (activeGroup === 'ALL') {
-      return futuresMarkets;
+      // Exclude tournament-wide markets like "World Cup Winner" or "Group Winner"
+      return futuresMarkets.filter(m => m.category === 'tournament' && !m.country.includes('Group ') && m.country !== 'World Cup' && m.country !== 'Test');
     }
     
     const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-    // For group tabs A-L: show markets where country is a team in that group OR is the group itself (Group A Winner markets)
+    // For group tabs A-L: show only individual country markets that belong to this group
     return futuresMarkets.filter(m => {
-      // Include "Group X Winner" markets for the selected group
-      if (m.country === `Group ${activeGroup}`) return true;
-      // Include individual country markets that belong to this group
+      // Exclude tournament-wide markets
+      if (m.country.includes('Group ') || m.country === 'World Cup' || m.country === 'Test') return false;
+      // Include only countries in this group
       return groupTeams.includes(m.country);
     });
   }, [futuresMarkets, activeGroup]);
@@ -228,13 +229,13 @@ export default function Futures() {
       )
     : futuresMarkets;
   
-  // Then filter by group
+  // Then filter by group - exclude tournament-wide markets
   const filteredMarkets = activeGroup === 'ALL' 
-    ? searchFilteredMarkets 
+    ? searchFilteredMarkets.filter(m => !m.country.includes('Group ') && m.country !== 'World Cup')
     : searchFilteredMarkets.filter(m => {
         const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-        // Show markets for this group (e.g., "Group A") OR team names OR test markets
-        return m.country === activeGroup || m.country === 'Test' || groupTeams.includes(m.country);
+        // Show only countries in this group (exclude Test, World Cup, Group Winner markets)
+        return groupTeams.includes(m.country);
       });
 
   // Auto-scroll to first matching group when search query changes
@@ -260,30 +261,17 @@ export default function Futures() {
   }, [searchQuery]);
 
   // Separate test markets from real markets
-  const testMarkets = futuresMarkets.filter(m => m.title?.includes('Quick Test') || m.title?.includes('Future Test'));
-  const openMarkets = filteredMarkets.filter((m) => m.status === 'open' && !m.title?.includes('Quick Test') && !m.title?.includes('Future Test'));
-  const comingMarkets = filteredMarkets.filter((m) => m.status === 'coming_soon' && !m.title?.includes('Quick Test') && !m.title?.includes('Future Test'));
-  
-  // Group markets by actual group (Group A, B, C, etc.) for ALL view
-  const marketsByGroup = React.useMemo(() => {
-    const grouped = {};
-    openMarkets.forEach(m => {
-      const groupName = m.country; // e.g., "Group A"
-      if (groupName && groupName.startsWith('Group ')) {
-        if (!grouped[groupName]) grouped[groupName] = [];
-        grouped[groupName].push(m);
-      }
-    });
-    return grouped;
-  }, [openMarkets]);
+  const testMarkets = futuresMarkets.filter(m => m.country === 'Test');
+  const openMarkets = filteredMarkets.filter((m) => m.status === 'open' && m.country !== 'Test');
+  const comingMarkets = filteredMarkets.filter((m) => m.status === 'coming_soon' && m.country !== 'Test');
   
   // Debug: Log markets count
   React.useEffect(() => {
     console.log('[Futures] Total markets:', futuresMarkets.length);
+    console.log('[Futures] Test markets:', testMarkets.length);
     console.log('[Futures] Open markets:', openMarkets.length);
-    console.log('[Futures] Markets by group:', marketsByGroup);
     console.log('[Futures] First 3 markets:', futuresMarkets.slice(0, 3).map(m => ({ country: m.country, status: m.status, title: m.title })));
-  }, [futuresMarkets, openMarkets, marketsByGroup]);
+  }, [futuresMarkets, testMarkets, openMarkets]);
 
   // Calculate totals for hero
   const totalPool = openMarkets.reduce((sum, m) =>
@@ -449,10 +437,10 @@ export default function Futures() {
         </section>
       )}
       
-      {/* Regular Futures Markets - Show ALL markets (open + coming_soon) grouped by group */}
+      {/* Regular Futures Markets - Show individual country markets grouped by group */}
       {futuresMarkets.length > 0 ? (
         activeGroup !== 'ALL' ? (
-          /* Single Group View */
+          /* Single Group View - Show countries in this group */
           <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
             <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
@@ -461,7 +449,7 @@ export default function Futures() {
               <div>
                 <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  {filteredMarketsByGroup.length} markets
+                  {filteredMarketsByGroup.length} countries
                 </p>
               </div>
             </div>
@@ -478,11 +466,14 @@ export default function Futures() {
             </div>
           </section>
         ) : (
-          /* All Groups View - Group ALL markets by their actual group */
+          /* All Groups View - Group countries by their group */
           <div className="space-y-6 sm:space-y-8">
             {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((letter) => {
               const groupName = `Group ${letter}`;
-              const groupMarkets = futuresMarkets.filter(m => m.country === groupName);
+              const groupTeams = WORLD_CUP_GROUPS_2026[letter]?.map(t => t.name) || [];
+              const groupMarkets = futuresMarkets.filter(m => 
+                groupTeams.includes(m.country) && m.country !== 'Test' && m.country !== 'World Cup'
+              );
               if (groupMarkets.length === 0) return null;
               
               return (
@@ -494,7 +485,7 @@ export default function Futures() {
                     <div>
                       <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
                       <p className="text-[10px] sm:text-xs text-muted-foreground">
-                        {groupMarkets.length} markets
+                        {groupMarkets.length} countries
                       </p>
                     </div>
                   </div>
