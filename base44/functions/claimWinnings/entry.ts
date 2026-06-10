@@ -179,12 +179,21 @@ Deno.serve(async (req) => {
     console.log('[claimWinnings] Market account data length:', marketInfo?.data.length);
     console.log('[claimWinnings] Market account lamports:', marketInfo?.lamports);
     
-    if (marketInfo && marketInfo.data.length >= 249) {
-      console.log('[claimWinnings] Market data byte 244 (settled flag):', marketInfo.data[244]);
-      console.log('[claimWinnings] Market is settled (on-chain):', marketInfo.data[244] === 1);
+    // BetMarket account layout (281 bytes):
+    // - winning_outcome: byte 155 (u8 enum: 0=unsettled, 1=a, 2=b, 3=draw)
+    // - settled: byte 276 (bool)
+    // - voided: byte 277 (bool)
+    if (marketInfo && marketInfo.data.length >= 281) {
+      const winningOutcomeByte = marketInfo.data[155];
+      const settledFlag = marketInfo.data[276];
+      const voidedFlag = marketInfo.data[277];
+      console.log('[claimWinnings] Market winning_outcome (byte 155):', winningOutcomeByte, '(0=unsettled, 1=a, 2=b, 3=draw)');
+      console.log('[claimWinnings] Market settled (byte 276):', settledFlag);
+      console.log('[claimWinnings] Market voided (byte 277):', voidedFlag);
+      console.log('[claimWinnings] Market is settled (on-chain):', settledFlag === 1);
     }
     
-    const isSettledOnChain = marketInfo && marketInfo.data.length >= 249 && marketInfo.data[244] === 1;
+    const isSettledOnChain = marketInfo && marketInfo.data.length >= 281 && marketInfo.data[276] === 1;
     
     // Check if position exists on-chain and read its state - include outcome byte in PDA
     const bettorPubkey = new PublicKey(trimmedWallet);
