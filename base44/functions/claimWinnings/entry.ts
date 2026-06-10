@@ -149,14 +149,6 @@ Deno.serve(async (req) => {
         bet_id: userBet.bet_id
       }, { status: 404 });
     }
-    
-    console.log('[claimWinnings] === BET ENTITY DEBUG ===');
-    console.log('[claimWinnings] Bet ID:', bet.id);
-    console.log('[claimWinnings] Bet title:', bet.title);
-    console.log('[claimWinnings] Bet status:', bet.status);
-    console.log('[claimWinnings] Bet winning_outcome:', bet.winning_outcome);
-    console.log('[claimWinnings] Bet solana_market_pda:', bet.solana_market_pda);
-    console.log('[claimWinnings] Bet.solana_market_pda matches derived PDA:', bet.solana_market_pda === marketPda.toBase58());
 
     // Check on-chain market state
     const { Connection: SolanaConnection } = await import('npm:@solana/web3.js@1.98.4');
@@ -165,6 +157,14 @@ Deno.serve(async (req) => {
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
     const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
+    
+    console.log('[claimWinnings] === BET ENTITY DEBUG ===');
+    console.log('[claimWinnings] Bet ID:', bet.id);
+    console.log('[claimWinnings] Bet title:', bet.title);
+    console.log('[claimWinnings] Bet status:', bet.status);
+    console.log('[claimWinnings] Bet winning_outcome:', bet.winning_outcome);
+    console.log('[claimWinnings] Bet solana_market_pda:', bet.solana_market_pda);
+    console.log('[claimWinnings] Bet.solana_market_pda matches derived PDA:', bet.solana_market_pda === marketPda.toBase58());
 
     // CRITICAL DEBUG: Log the EXACT market PDA being checked
     console.log('[claimWinnings] === MARKET PDA DEBUG ===');
