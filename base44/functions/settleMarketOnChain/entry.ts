@@ -289,7 +289,7 @@ Deno.serve(async (req) => {
       instruction_data_hex: testData.toString('hex'),
     });
     
-    settleInstruction = {
+    const settleInstruction = {
       instruction_type: 'settle_market',
       programId: SOLANA_PROGRAM_ID,
       // EXACT account order as required by the program:
