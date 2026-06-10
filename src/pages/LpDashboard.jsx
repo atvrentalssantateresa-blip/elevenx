@@ -965,11 +965,18 @@ export default function LpDashboard() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {futuresLpPositions.map((offer, idx) => {
+                      // Fetch futures market to get solana_market_pda
+                      const futuresMarket = futuresMarkets.find((fm) => fm.id === offer.bet_id);
                       return (
                         <LpPositionCard
                           key={`futures-${offer.id || offer.userBetId}`}
-                          position={{ ...offer, userBetId: offer.userBetId || offer.id }}
+                          position={{ 
+                            ...offer, 
+                            userBetId: offer.userBetId || offer.id,
+                            solana_market_pda: futuresMarket?.solana_market_pda || offer.solana_market_pda,
+                          }}
                           match={null}
+                          bet={futuresMarket}
                           walletAddress={walletAddress}
                           onWithdrawRequest={(withdrawData) => {
                             setPendingTx({

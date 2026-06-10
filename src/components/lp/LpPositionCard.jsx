@@ -12,7 +12,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
 /**
- * Fetch on-chain lp_offer account and decode the closed flag.
+ * Fetch on-chain lp_offer account and decode amounts + closed flag.
  * LpOffer layout after 8-byte discriminator:
  *   market: Pubkey (32)
  *   lp: Pubkey (32)
@@ -31,9 +31,9 @@ async function fetchLpOfferOnChain(positionPda) {
     if (!accountInfo) return null;
     const data = accountInfo.data;
     if (data.length < 98) return null;
-    const CLOSED_OFFSET = 97; // 8 + 32 + 32 + 1 + 8 + 8 + 8 = 97
-    const AMOUNT_COMMITTED_OFFSET = 73; // 8 + 32 + 32 + 1 = 73
-    const AMOUNT_MATCHED_OFFSET = 81;   // 73 + 8 = 81
+    const CLOSED_OFFSET = 97;
+    const AMOUNT_COMMITTED_OFFSET = 73;
+    const AMOUNT_MATCHED_OFFSET = 81;
     const amountCommittedLamports = Number(data.readBigUInt64LE(AMOUNT_COMMITTED_OFFSET));
     const amountMatchedLamports = Number(data.readBigUInt64LE(AMOUNT_MATCHED_OFFSET));
     const closed = data[CLOSED_OFFSET] === 1;
@@ -43,7 +43,45 @@ async function fetchLpOfferOnChain(positionPda) {
       unmatched: Math.max(0, (amountCommittedLamports - amountMatchedLamports)) / 1e9,
       closed,
     };
-  } catch {
+  } catch (err) {
+    console.error('[fetchLpOfferOnChain] Error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch on-chain BetMarket account for settlement state.
+ * Market layout:
+ *   winning_outcome: u8 at offset 155 (0=unsettled, 1=a, 2=b, 3=draw)
+ *   settled: bool at offset 276
+ *   voided: bool at offset 277
+ */
+async function fetchMarketStateOnChain(marketPda) {
+  try {
+    const rpcUrl = 'https://api.devnet.solana.com';
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const pubkey = new PublicKey(marketPda);
+    const accountInfo = await connection.getAccountInfo(pubkey);
+    if (!accountInfo) return null;
+    const data = accountInfo.data;
+    if (data.length < 278) return null;
+    
+    const WINNING_OUTCOME_OFFSET = 155;
+    const SETTLED_OFFSET = 276;
+    const VOIDED_OFFSET = 277;
+    
+    const winningOutcomeRaw = data[WINNING_OUTCOME_OFFSET];
+    const settled = data[SETTLED_OFFSET] === 1;
+    const voided = data[VOIDED_OFFSET] === 1;
+    
+    let winningOutcome = null;
+    if (winningOutcomeRaw === 1) winningOutcome = 'a';
+    else if (winningOutcomeRaw === 2) winningOutcome = 'b';
+    else if (winningOutcomeRaw === 3) winningOutcome = 'draw';
+    
+    return { settled, voided, winningOutcome };
+  } catch (err) {
+    console.error('[fetchMarketStateOnChain] Error:', err.message);
     return null;
   }
 }
@@ -51,13 +89,22 @@ async function fetchLpOfferOnChain(positionPda) {
 export default function LpPositionCard({ position, match, bet, walletAddress, onWithdrawRequest }) {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
-  // Fetch on-chain lp_offer state to determine if already withdrawn (closed flag)
+  // Fetch on-chain lp_offer state - PRIMARY SOURCE OF TRUTH
   const positionPda = position.solana_position_pda || position.userBet?.solana_position_pda;
+  const marketPda = position.solana_market_pda || position.userBet?.solana_market_pda || bet?.solana_market_pda;
+  
   const { data: onChainOffer, refetch: refetchOnChain } = useQuery({
     queryKey: ['lp-offer-onchain', positionPda],
     queryFn: () => fetchLpOfferOnChain(positionPda),
     enabled: !!positionPda,
-    staleTime: 30000,
+    staleTime: 5000, // Refetch more frequently for real-time accuracy
+  });
+  
+  const { data: onChainMarket } = useQuery({
+    queryKey: ['market-state-onchain', marketPda],
+    queryFn: () => fetchMarketStateOnChain(marketPda),
+    enabled: !!marketPda,
+    staleTime: 5000,
   });
 
   // Support both BetOffer (offer) and UserBet (position) entities
@@ -67,29 +114,42 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Detect if this is a futures LP position
   const isFutures = offer._isFutures || position._isFutures || false;
 
-  // Get match from position data if not passed - ALWAYS use matchData, never match directly
+  // Get match from position data if not passed
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // Get winning outcome from Bet entity (match.winner is often empty)
-  const winningOutcome = offer.bet_winning_outcome || matchData.winner || '';
-
-  // Handle both BetOffer and UserBet structures - use amount as fallback for parimutuel LP
-  // CRITICAL: For futures, prefer amount_offered/amount_matched over liquidity_* fields
-  // Support grouped transactions - ALWAYS use total_* fields when available (they're aggregated)
-  const liquidityDeposited = isFutures 
-    ? (offer.total_liquidity_deposited || offer.amount_offered || offer.liquidity_deposited || 0) 
-    : (offer.total_liquidity_deposited || offer.liquidity_deposited || 0);
-  const liquidityMatched = isFutures 
-    ? (offer.total_liquidity_matched || offer.amount_matched || offer.liquidity_matched || 0) 
-    : (offer.total_liquidity_matched || offer.liquidity_matched || 0);
-  // CRITICAL: Calculate unmatched as deposited - matched (don't trust DB field)
-  const liquidityUnmatched = Math.max(0, liquidityDeposited - liquidityMatched);
+  // CRITICAL: Use ON-CHAIN data as PRIMARY source, DB as fallback
+  // Bug 1 Fix: Read matched amount from on-chain lp_offer, not DB
+  const liquidityDeposited = onChainOffer 
+    ? onChainOffer.amountCommitted 
+    : (isFutures ? (offer.total_liquidity_deposited || offer.amount_offered || 0) : (offer.liquidity_deposited || 0));
+  
+  const liquidityMatched = onChainOffer 
+    ? onChainOffer.amountMatched 
+    : (isFutures ? (offer.total_liquidity_matched || offer.amount_matched || 0) : (offer.liquidity_matched || 0));
+  
+  const liquidityUnmatched = onChainOffer 
+    ? onChainOffer.unmatched 
+    : Math.max(0, liquidityDeposited - liquidityMatched);
+  
+  // Bug 2 Fix: Read settlement state from on-chain market, not DB
+  const onChainSettled = onChainMarket?.settled === true;
+  const onChainVoided = onChainMarket?.voided === true;
+  const onChainWinningOutcome = onChainMarket?.winningOutcome;
+  
+  console.log('[LpPositionCard] ON-CHAIN DATA:', {
+    position_id: position.id,
+    onChainOffer,
+    onChainMarket,
+    liquidityDeposited,
+    liquidityMatched,
+    liquidityUnmatched,
+  });
 
   // CRITICAL: Check UserBet status FIRST (settlement info), then BetOffer status (matching info)
   // userBet.status = settlement state (won/lost/claimed)
   // offer.status = matching state (open/partially_matched/fully_matched/withdrawn)
   const dbStatus = position.userBetStatus || position.userBet?.status || position.status || offer.status || 'active';
-  const isVoided = dbStatus === 'void' || dbStatus === 'voided' || offer.status === 'void' || (matchData?.status === 'voided') || winningOutcome === 'void';
+  const isVoided = dbStatus === 'void' || dbStatus === 'voided' || offer.status === 'void' || (matchData?.status === 'voided') || onChainWinningOutcome === 'void';
   
   console.log('===== [LpPositionCard] INPUT DATA =====');
   console.log('position.id:', position.id);
@@ -217,21 +277,44 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
     pending: { color: 'text-muted-foreground', bg: 'bg-secondary/20', border: 'border-secondary/30', label: 'Pending' }
   };
 
-  // CRITICAL: DB status is the ONLY source of truth - trust what settleBetWithOracle set
+  // Bug 2 Fix: Use ON-CHAIN settlement state as PRIMARY source
+  // Status logic: voided==true → "Refunded", settled==true → "Settled", else → "Active"
   let displayStatus = offer.status;
   
-  console.log('[STATUS CALC] dbStatus:', dbStatus, 'isSettled:', isSettled);
+  console.log('[STATUS CALC] ON-CHAIN vs DB:', {
+    onChainSettled,
+    onChainVoided,
+    onChainWinningOutcome,
+    dbStatus,
+    liquidityMatched,
+  });
   
-  // ALWAYS use DB status directly for settled markets
-  if (dbStatus === 'won' || dbStatus === 'lost' || dbStatus === 'void' || dbStatus === 'voided' || dbStatus === 'refunded' || dbStatus === 'withdrawn' || dbStatus === 'claimed') {
-    displayStatus = dbStatus;
-    console.log('[STATUS CALC] Using DB status directly:', displayStatus);
-  } else if (liquidityMatched === 0) {
-    displayStatus = 'refunded';
-    console.log('[STATUS CALC] No matched liquidity - refunded');
-  } else {
-    // Fallback for unsettled markets
-    displayStatus = offer.status;
+  // PRIORITY 1: On-chain voided = Refunded (regardless of DB)
+  if (onChainVoided === true) {
+    displayStatus = 'voided';
+    console.log('[STATUS CALC] On-chain VOIDED → voided');
+  }
+  // PRIORITY 2: On-chain settled = Settled (use DB for won/lost determination)
+  else if (onChainSettled === true) {
+    // Use DB status for won/lost/claimed
+    if (dbStatus === 'won' || dbStatus === 'lost' || dbStatus === 'claimed') {
+      displayStatus = dbStatus;
+      console.log('[STATUS CALC] On-chain settled + DB status →', displayStatus);
+    } else {
+      displayStatus = 'settled';
+      console.log('[STATUS CALC] On-chain settled (no DB status) → settled');
+    }
+  }
+  // PRIORITY 3: Not settled, not voided = Active/Open (NOT "Refunded")
+  else if (liquidityMatched === 0 || liquidityMatched <= 0) {
+    // Unmatched liquidity, market still open → "Active" or "Open", NOT "Refunded"
+    displayStatus = 'active';
+    console.log('[STATUS CALC] Unmatched + not settled → active');
+  }
+  // PRIORITY 4: Has matched liquidity, market still open → "Active" or matching status
+  else {
+    displayStatus = offer.status || 'active';
+    console.log('[STATUS CALC] Matched + not settled →', displayStatus);
   }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
@@ -472,12 +555,18 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
           </div>
         </div>
 
-        {/* LP Result Indicator */}
+        {/* LP Result Indicator - Use ON-CHAIN state as primary source */}
         {(() => {
-          console.log('[LpPositionCard] Rendering LP Result:', { isSettled, liquidityMatched, isLpWon, isLpLost, dbStatus });
+          console.log('[LpPositionCard] Rendering LP Result:', {
+            onChainSettled,
+            onChainVoided,
+            onChainWinningOutcome,
+            liquidityMatched,
+            dbStatus,
+          });
           
-          // CRITICAL: Check DB status FIRST - void/lost markets should show correctly
-          if (dbStatus === 'void' || dbStatus === 'voided' || winningOutcome === 'void') {
+          // PRIORITY 1: On-chain voided = LP loses (funds to DAO)
+          if (onChainVoided === true) {
             return (
               <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
                 <div className="flex items-center justify-between text-[9px]">
@@ -488,45 +577,59 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
             );
           }
           
-          if (dbStatus === 'lost') {
+          // PRIORITY 2: DB status = lost/void (fallback if on-chain not available)
+          if (dbStatus === 'lost' || dbStatus === 'void' || dbStatus === 'voided') {
             return (
               <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
                 <div className="flex items-center justify-between text-[9px]">
-                  <span className="font-bold uppercase tracking-wider">💸 LP Position Lost</span>
-                  <span className="text-white/40">Backed winner ✗</span>
+                  <span className="font-bold uppercase tracking-wider">💸 {dbStatus === 'void' || dbStatus === 'voided' ? 'Market Voided' : 'LP Position Lost'}</span>
+                  <span className="text-white/40">{dbStatus === 'void' || dbStatus === 'voided' ? 'Funds to DAO' : 'Backed winner ✗'}</span>
                 </div>
               </div>
             );
           }
           
-          if (liquidityMatched === 0) {
+          // PRIORITY 3: On-chain settled → check win/loss
+          if (onChainSettled === true) {
+            // Determine if LP won or lost based on backed outcome vs winning outcome
+            const lpBackedOutcome = offer.outcome; // 'a', 'b', or 'draw'
+            const didLpWin = onChainWinningOutcome && lpBackedOutcome !== onChainWinningOutcome;
+            const didLpLose = onChainWinningOutcome && lpBackedOutcome === onChainWinningOutcome;
+            
+            if (didLpWin) {
+              return (
+                <div className="px-3 py-2 rounded-lg border bg-accent/10 border-accent/30 text-accent">
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="font-bold uppercase tracking-wider">🎉 LP Position Won</span>
+                    <span className="text-white/40">Backed loser ✓</span>
+                  </div>
+                </div>
+              );
+            } else if (didLpLose) {
+              return (
+                <div className="px-3 py-2 rounded-lg border bg-destructive/10 border-destructive/30 text-destructive">
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="font-bold uppercase tracking-wider">💸 LP Position Lost</span>
+                    <span className="text-white/40">Backed winner ✗</span>
+                  </div>
+                </div>
+              );
+            }
+          }
+          
+          // PRIORITY 4: No matched liquidity → show unmatched status (NOT "Refunded")
+          if (liquidityMatched === 0 || liquidityMatched <= 0) {
             return (
               <div className="px-3 py-2 rounded-lg border bg-secondary/10 border-secondary/30 text-muted-foreground">
                 <div className="flex items-center justify-between text-[9px]">
-                  <span className="font-bold uppercase tracking-wider">ℹ️ Unmatched (No Action)</span>
-                  <span className="text-white/40">No bets were matched</span>
+                  <span className="font-bold uppercase tracking-wider">ℹ️ Unmatched</span>
+                  <span className="text-white/40">No bets matched yet</span>
                 </div>
               </div>
             );
           }
           
-          if (isSettled) {
-            return (
-              <div className={`px-3 py-2 rounded-lg border ${
-              isLpWon ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-destructive/10 border-destructive/30 text-destructive'}`
-              }>
-                <div className="flex items-center justify-between text-[9px]">
-                  <span className="font-bold uppercase tracking-wider">
-                    {isLpWon ? '🎉 LP Position Won' : '💸 LP Position Lost'}
-                  </span>
-                  <span className="text-white/40">
-                    {isLpWon ? 'Backed loser ✓' : 'Backed winner ✗'}
-                  </span>
-                </div>
-              </div>
-            );
-          }
-          
+          // PRIORITY 5: Market still open with matched liquidity → no result yet
           return null;
         })()}
 
