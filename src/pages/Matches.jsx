@@ -10,12 +10,15 @@ import { motion } from 'framer-motion';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 
 export default function Matches() {
-  const [activeGroup, setActiveGroup] = useState('ALL');
+  const [activeGroup, setActiveGroup] = useState('TODAY');
   const [search, setSearch] = useState('');
   const [highlightedMatchId, setHighlightedMatchId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const queryClient = useQueryClient();
+  
+  // Get today's date for filtering
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   // Check if user is admin
   useEffect(() => {
@@ -78,17 +81,30 @@ export default function Matches() {
   const betByMatch = {};
   bets.forEach(b => { betByMatch[b.match_id] = b; });
 
+  // Get today's date in YYYY-MM-DD format (user's local timezone)
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  
   // Filter by active group using WORLD_CUP_GROUPS_2026
   const filtered = React.useMemo(() => {
     if (activeGroup === 'ALL') {
       return matches;
     }
     
+    // TODAY filter: show only matches scheduled for today
+    if (activeGroup === 'TODAY') {
+      return matches.filter(m => {
+        if (!m.match_time) return false;
+        const matchDate = format(new Date(m.match_time), 'yyyy-MM-dd');
+        return matchDate === todayStr;
+      });
+    }
+    
+    // Group filter: show only matches in selected group
     const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
     return matches.filter(m => 
       groupTeams.includes(m.team_a) || groupTeams.includes(m.team_b)
     );
-  }, [matches, activeGroup]);
+  }, [matches, activeGroup, todayStr]);
 
   // Filter by search query
   const searchFiltered = search
@@ -227,11 +243,33 @@ export default function Matches() {
           />
         </div>
 
-        {/* Quick-Jump Group Navigation */}
+        {/* Quick-Jump Group Navigation with TODAY tab */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setActiveGroup('TODAY')}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 ${
+              activeGroup === 'TODAY'
+                ? 'bg-accent text-accent-foreground border border-accent/30'
+                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary border border-border/50'
+            }`}
+          >
+            📅 Today
+          </button>
+          <button
+            onClick={() => setActiveGroup('ALL')}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 ${
+              activeGroup === 'ALL'
+                ? 'bg-primary text-primary-foreground border border-primary/30'
+                : 'bg-secondary/50 text-muted-foreground hover:bg-secondary border border-border/50'
+            }`}
+          >
+            All Matches
+          </button>
+        </div>
         <GroupNavigation 
           onGroupClick={(groupName) => {
             setActiveGroup(groupName);
-            if (groupName !== 'ALL') {
+            if (groupName !== 'ALL' && groupName !== 'TODAY') {
               const firstMatch = sortedMatches.find(m => 
                 WORLD_CUP_GROUPS_2026[groupName]?.some(t => t.name === m.team_a || t.name === m.team_b)
               );
@@ -245,7 +283,7 @@ export default function Matches() {
               }
             }
           }} 
-          activeGroup={activeGroup} 
+          activeGroup={activeGroup === 'TODAY' || activeGroup === 'ALL' ? undefined : activeGroup} 
         />
       </motion.div>
 
