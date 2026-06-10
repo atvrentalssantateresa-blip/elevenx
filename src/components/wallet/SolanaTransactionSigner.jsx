@@ -145,22 +145,29 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         
         console.log('[SolanaTransactionSigner] create_market instruction data length:', data.length, '(expected 180)');
         
-        // Build keys — prefer named accounts object, fall back to keys array
+        // Build keys — prefer keys array (always has SIGNER_WALLET placeholder), fall back to accounts object
         const keys = [];
-        if (instruction.accounts) {
-          const accounts = instruction.accounts;
-          keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
-          keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
-          keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
-          keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true });
-          keys.push({ pubkey: new PublicKey(accounts.systemProgram), isSigner: false, isWritable: false });
-        } else if (instruction.keys && instruction.keys.length === 5) {
-          instruction.keys.forEach((k, i) => {
+        if (instruction.keys && instruction.keys.length === 5) {
+          instruction.keys.forEach((k) => {
             const pubkeyStr = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+            if (!pubkeyStr) throw new Error(`create_market: undefined pubkey in keys array at index ${instruction.keys.indexOf(k)}`);
             keys.push({ pubkey: new PublicKey(pubkeyStr), isSigner: k.isSigner, isWritable: k.isWritable });
           });
+        } else if (instruction.accounts) {
+          const a = instruction.accounts;
+          const entries = [
+            ['market', a.market, false, true],
+            ['voteTally', a.voteTally, false, true],
+            ['platformConfig', a.platformConfig, false, true],
+            ['admin (signer)', provider.publicKey?.toBase58(), true, true],
+            ['systemProgram', a.systemProgram || '11111111111111111111111111111111', false, false],
+          ];
+          for (const [name, pubkeyStr, isSigner, isWritable] of entries) {
+            if (!pubkeyStr) throw new Error(`create_market: account "${name}" is undefined`);
+            keys.push({ pubkey: new PublicKey(pubkeyStr), isSigner, isWritable });
+          }
         } else {
-          throw new Error('create_market instruction missing accounts or keys');
+          throw new Error('create_market instruction missing both keys and accounts');
         }
         
         console.log('[SolanaTransactionSigner] create_market keys:', keys.map(k => ({
