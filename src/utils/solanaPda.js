@@ -1,14 +1,19 @@
 import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
-const PROGRAM_ID = 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
+// CRITICAL: Program ID must be set via environment variable - never hardcode
+// This reads from the global window.ELEVENX_PROGRAM_ID set at app initialization
+const getProgramId = () => {
+  const programId = window.ELEVENX_PROGRAM_ID || 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
+  return programId;
+};
 
 /**
  * Derive market PDA from market ID
  * Seeds: ["market", marketIdBytes]
  */
 export const deriveMarketPda = (marketId) => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const marketIdBytes = Buffer.alloc(32);
   Buffer.from(marketId, 'utf-8').copy(marketIdBytes, 0, 0, Math.min(marketId.length, 32));
   const [marketPda] = PublicKey.findProgramAddressSync(
@@ -23,7 +28,7 @@ export const deriveMarketPda = (marketId) => {
  * Seeds: ["position", marketPda, bettorWallet, [outcome]]
  */
 export const deriveBetPositionPda = (marketPdaBase58, bettorWallet, outcomeIndex) => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const marketPda = new PublicKey(marketPdaBase58);
   const bettorPubkey = new PublicKey(bettorWallet);
   
@@ -39,7 +44,7 @@ export const deriveBetPositionPda = (marketPdaBase58, bettorWallet, outcomeIndex
  * Seeds: ["fee_vault"]
  */
 export const deriveFeeVaultPda = () => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const [feeVaultPda] = PublicKey.findProgramAddressSync(
     [Buffer.from('fee_vault')],
     programId
@@ -54,7 +59,7 @@ export const deriveFeeVaultPda = () => {
  * Accounts: market, bet_position, fee_vault, bettor (signer), system_program
  */
 export const buildClaimWinningsInstruction = (marketPdaBase58, bettorWallet, outcomeIndex) => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const marketPda = new PublicKey(marketPdaBase58);
   const bettorPubkey = new PublicKey(bettorWallet);
   
@@ -87,7 +92,7 @@ export const buildClaimWinningsInstruction = (marketPdaBase58, bettorWallet, out
   
   return {
     instruction_type: 'claim_winnings',
-    programId: PROGRAM_ID,
+    programId: getProgramId(),
     keys,
     instruction_data: instructionData.toString('base64'),
   };
@@ -98,7 +103,7 @@ export const buildClaimWinningsInstruction = (marketPdaBase58, bettorWallet, out
  * Seeds: ["lp_offer", marketPda, lpWallet, [outcome]]
  */
 export const deriveLpOfferPda = (marketPdaBase58, lpWallet, outcomeIndex) => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const marketPda = new PublicKey(marketPdaBase58);
   const lpPubkey = new PublicKey(lpWallet);
   
@@ -114,7 +119,7 @@ export const deriveLpOfferPda = (marketPdaBase58, lpWallet, outcomeIndex) => {
  * Discriminator: SHA256("global:withdraw_liquidity").slice(0, 8)
  */
 export const buildWithdrawLiquidityInstruction = async (marketPdaBase58, lpOfferPdaBase58, lpWallet) => {
-  const programId = new PublicKey(PROGRAM_ID);
+  const programId = new PublicKey(getProgramId());
   const marketPda = new PublicKey(marketPdaBase58);
   const lpOfferPda = new PublicKey(lpOfferPdaBase58);
   const lpPubkey = new PublicKey(lpWallet);
@@ -136,7 +141,7 @@ export const buildWithdrawLiquidityInstruction = async (marketPdaBase58, lpOffer
   
   return {
     instruction_type: 'withdraw_liquidity',
-    programId: PROGRAM_ID,
+    programId: getProgramId(),
     keys,
     instruction_data: instructionData.toString('base64'),
   };

@@ -67,7 +67,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
       console.log('========================================');
 
-      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+      // CRITICAL: Read RPC URL from instruction or use environment-based default
+      // Backend functions should provide rpcUrl in instruction if non-standard
+      const rpcUrl = instruction.rpcUrl || window.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+      const connection = new Connection(rpcUrl, 'confirmed');
+      console.log('[SolanaTransactionSigner] Using RPC URL:', rpcUrl);
       const transaction = new Transaction();
       
       // Check instruction type and build appropriate transaction

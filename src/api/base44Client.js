@@ -4,6 +4,14 @@ import { appParams } from '@/lib/app-params';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
+// CRITICAL: Expose Solana environment variables to window for client-side PDA derivation
+// These are set by backend functions when they return instructions
+if (typeof window !== 'undefined') {
+  // Default to devnet if not set - backend functions should override these
+  window.SOLANA_RPC_URL = 'https://api.devnet.solana.com';
+  window.ELEVENX_PROGRAM_ID = 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
+}
+
 // Get wallet auth token from localStorage if available
 const getWalletAuthToken = () => {
   if (typeof window === 'undefined') return null;
