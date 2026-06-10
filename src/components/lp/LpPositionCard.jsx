@@ -28,16 +28,32 @@ async function fetchLpOfferOnChain(positionPda) {
     const rpcUrl = 'https://api.devnet.solana.com';
     const connection = new Connection(rpcUrl, 'confirmed');
     const pubkey = new PublicKey(positionPda);
+    console.log('[fetchLpOfferOnChain] === READING LP_OFFER PDA ===');
+    console.log('[fetchLpOfferOnChain] PDA:', positionPda);
     const accountInfo = await connection.getAccountInfo(pubkey);
-    if (!accountInfo) return null;
+    if (!accountInfo) {
+      console.warn('[fetchLpOfferOnChain] Account NOT FOUND for PDA:', positionPda);
+      return null;
+    }
     const data = accountInfo.data;
-    if (data.length < 98) return null;
+    console.log('[fetchLpOfferOnChain] Account data length:', data.length, '(expected >= 98)');
+    if (data.length < 98) {
+      console.error('[fetchLpOfferOnChain] Data too short:', data.length);
+      return null;
+    }
     const CLOSED_OFFSET = 97;
-    const AMOUNT_COMMITTED_OFFSET = 81;  // 8 + 32 + 32 + 1 + 8 = 81
+    const AMOUNT_COMMITTED_OFFSET = 81;  // discriminator(8) + market(32) + lp(32) + outcome(1) + odds_bps(8) = 81
     const AMOUNT_MATCHED_OFFSET = 89;    // 81 + 8 = 89
     const amountCommittedLamports = Number(data.readBigUInt64LE(AMOUNT_COMMITTED_OFFSET));
     const amountMatchedLamports = Number(data.readBigUInt64LE(AMOUNT_MATCHED_OFFSET));
     const closed = data[CLOSED_OFFSET] === 1;
+    console.log('[fetchLpOfferOnChain] === DECODED VALUES ===');
+    console.log('[fetchLpOfferOnChain] amount_committed (bytes 81-88):', amountCommittedLamports, 'lamports =', amountCommittedLamports / 1e9, 'SOL');
+    console.log('[fetchLpOfferOnChain] amount_matched (bytes 89-96):', amountMatchedLamports, 'lamports =', amountMatchedLamports / 1e9, 'SOL');
+    console.log('[fetchLpOfferOnChain] unmatched:', (amountCommittedLamports - amountMatchedLamports) / 1e9, 'SOL');
+    console.log('[fetchLpOfferOnChain] closed:', closed);
+    console.log('[fetchLpOfferOnChain] raw bytes 81-89 (hex):', data.slice(81, 89).toString('hex'));
+    console.log('[fetchLpOfferOnChain] raw bytes 89-97 (hex):', data.slice(89, 97).toString('hex'));
     return {
       amountCommitted: amountCommittedLamports / 1e9,
       amountMatched: amountMatchedLamports / 1e9,
@@ -91,15 +107,33 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   // Fetch on-chain lp_offer state - PRIMARY SOURCE OF TRUTH
+  // CRITICAL: positionPda MUST be the lp_offer PDA (seeds: ["lp_offer", marketPda, lpWallet, [outcome]])
   const positionPda = position.solana_position_pda || position.userBet?.solana_position_pda;
   const marketPda = position.solana_market_pda || position.userBet?.solana_market_pda || bet?.solana_market_pda;
+  const lpWallet = position.wallet_address || position.userBet?.wallet_address;
+  const outcomeNum = offer.outcome === 'a' ? 1 : offer.outcome === 'b' ? 2 : 3;
+  
+  console.log('[LpPositionCard] === PDA LOOKUP ===');
+  console.log('[LpPositionCard] position.id:', position.id);
+  console.log('[LpPositionCard] isFutures:', isFutures);
+  console.log('[LpPositionCard] position.solana_position_pda:', position.solana_position_pda);
+  console.log('[LpPositionCard] position.userBet?.solana_position_pda:', position.userBet?.solana_position_pda);
+  console.log('[LpPositionCard] FINAL positionPda (to query):', positionPda);
+  console.log('[LpPositionCard] marketPda:', marketPda);
+  console.log('[LpPositionCard] lpWallet:', lpWallet);
+  console.log('[LpPositionCard] outcome:', offer.outcome, '→ num:', outcomeNum);
   
   const { data: onChainOffer, refetch: refetchOnChain } = useQuery({
     queryKey: ['lp-offer-onchain', positionPda],
     queryFn: () => fetchLpOfferOnChain(positionPda),
     enabled: !!positionPda,
-    staleTime: 5000, // Refetch more frequently for real-time accuracy
+    staleTime: 5000,
   });
+  
+  console.log('[LpPositionCard] === ON-CHAIN QUERY RESULT ===');
+  console.log('[LpPositionCard] positionPda:', positionPda);
+  console.log('[LpPositionCard] onChainOffer:', onChainOffer);
+  console.log('[LpPositionCard] query enabled:', !!positionPda);
   
   const { data: onChainMarket } = useQuery({
     queryKey: ['market-state-onchain', marketPda],
@@ -118,7 +152,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Get match from position data if not passed
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // CRITICAL: Use ON-CHAIN data as PRIMARY source, DB as fallback
+  // CRITICAL: Use ON-CHAIN data as PRIMARY source, DB as fallback ONLY
   // Bug 1 Fix: Read matched amount from on-chain lp_offer, not DB
   const liquidityDeposited = onChainOffer 
     ? onChainOffer.amountCommitted 
@@ -131,6 +165,14 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   const liquidityUnmatched = onChainOffer 
     ? onChainOffer.unmatched 
     : Math.max(0, liquidityDeposited - liquidityMatched);
+  
+  console.log('[LpPositionCard] === FINAL DISPLAY VALUES ===');
+  console.log('[LpPositionCard] position.id:', position.id);
+  console.log('[LpPositionCard] data source:', onChainOffer ? 'ON-CHAIN' : 'DB FALLBACK');
+  console.log('[LpPositionCard] liquidityDeposited:', liquidityDeposited, 'SOL');
+  console.log('[LpPositionCard] liquidityMatched:', liquidityMatched, 'SOL');
+  console.log('[LpPositionCard] liquidityUnmatched:', liquidityUnmatched, 'SOL');
+  console.log('[LpPositionCard] onChainOffer raw:', onChainOffer);
   
   // Bug 2 Fix: Read settlement state from on-chain market, not DB
   const onChainSettled = onChainMarket?.settled === true;
@@ -279,7 +321,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   };
 
   // Bug 2 Fix: Use ON-CHAIN settlement state as PRIMARY source
-  // Status logic: voided==true → "Refunded", settled==true → "Settled", else → "Active"
+  // Status logic: voided==true → "Refunded"; settled==true → "Settled"; betting open & not settled → "Active"; betting closed & not settled → "Awaiting Result"
   let displayStatus = offer.status;
   
   console.log('[STATUS CALC] ON-CHAIN vs DB:', {
@@ -290,12 +332,12 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
     liquidityMatched,
   });
   
-  // PRIORITY 1: On-chain voided = Refunded (regardless of DB)
+  // PRIORITY 1: On-chain voided = "Refunded" (regardless of DB)
   if (onChainVoided === true) {
-    displayStatus = 'voided';
-    console.log('[STATUS CALC] On-chain VOIDED → voided');
+    displayStatus = 'refunded';
+    console.log('[STATUS CALC] On-chain VOIDED → refunded');
   }
-  // PRIORITY 2: On-chain settled = Settled (use DB for won/lost determination)
+  // PRIORITY 2: On-chain settled = "Settled" (use DB for won/lost/claimed)
   else if (onChainSettled === true) {
     // Use DB status for won/lost/claimed
     if (dbStatus === 'won' || dbStatus === 'lost' || dbStatus === 'claimed') {
@@ -306,16 +348,15 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       console.log('[STATUS CALC] On-chain settled (no DB status) → settled');
     }
   }
-  // PRIORITY 3: Not settled, not voided = Active/Open (NOT "Refunded")
-  else if (liquidityMatched === 0 || liquidityMatched <= 0) {
-    // Unmatched liquidity, market still open → "Active" or "Open", NOT "Refunded"
-    displayStatus = 'active';
-    console.log('[STATUS CALC] Unmatched + not settled → active');
+  // PRIORITY 3: Betting closed (match ended) but not settled yet → "Awaiting Result"
+  else if (matchData?.match_end_time && new Date(matchData.match_end_time) < new Date()) {
+    displayStatus = 'pending';
+    console.log('[STATUS CALC] Betting closed + not settled → awaiting_result');
   }
-  // PRIORITY 4: Has matched liquidity, market still open → "Active" or matching status
+  // PRIORITY 4: Betting still open → "Active"
   else {
-    displayStatus = offer.status || 'active';
-    console.log('[STATUS CALC] Matched + not settled →', displayStatus);
+    displayStatus = 'active';
+    console.log('[STATUS CALC] Betting open → active');
   }
   
   const currentStatus = statusConfig[displayStatus] || statusConfig.open;
