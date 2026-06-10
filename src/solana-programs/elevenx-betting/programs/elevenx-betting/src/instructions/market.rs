@@ -50,11 +50,13 @@ pub fn create_market(ctx: Context<CreateMarket>, params: CreateMarketParams) -> 
     market.total_matched = [0u64; 3];
     market.total_pending = [0u64; 3];
     market.total_lp_committed = 0;
+    market.settlement_feed = Pubkey::default(); // Must be set by admin after market creation
     market.accrued_fees = 0;
     market.settled = false;
     market.voided = false;
     market.paused = false;
     market.settlement_finalized = false;
+    market.settlement_feed = Pubkey::default(); // Must be set by admin before settlement
     market.bump = ctx.bumps.market;
 
     let tally = &mut ctx.accounts.vote_tally;
@@ -95,6 +97,35 @@ pub fn update_market_timestamps(
     require!(open_until < settle_after, BettingError::InvalidTimeline);
     market.open_until = open_until;
     market.settle_after = settle_after;
+    Ok(())
+}
+
+// ── set_settlement_feed ──────────────────────────────────────────────────────
+/// Admin-only: Pin the Switchboard On-Demand feed pubkey to a market.
+/// CRITICAL SECURITY: Must be set before settlement to prevent oracle substitution attacks.
+
+pub fn set_settlement_feed(ctx: Context<SetSettlementFeed>, feed_pubkey: Pubkey) -> Result<()> {
+    require!(feed_pubkey != Pubkey::default(), BettingError::InvalidOracleAccount);
+    
+    let market = &mut ctx.accounts.market;
+    require!(market.settlement_feed == Pubkey::default(), BettingError::AlreadySettled); // Can only set once
+    
+    market.settlement_feed = feed_pubkey;
+    
+    msg!("[set_settlement_feed] Pinned feed {} to market", feed_pubkey);
+    Ok(())
+}
+
+// ── set_settlement_feed ──────────────────────────────────────────────────────
+/// Admin-only: Pin the Switchboard feed pubkey to a market.
+/// CRITICAL: Must be set before settlement — prevents oracle substitution attacks.
+pub fn set_settlement_feed(
+    ctx: Context<SetSettlementFeed>,
+    feed_pubkey: Pubkey,
+) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    require!(feed_pubkey != Pubkey::default(), BettingError::InvalidOracleAccount);
+    market.settlement_feed = feed_pubkey;
     Ok(())
 }
 
@@ -204,6 +235,42 @@ pub struct UpdateMarketTimestamps<'info> {
 
     #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
     pub admin: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetSettlementFeed<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.match_id.as_ref()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, BetMarket>,
+
+    #[account(seeds = [b"platform"], bump = platform_config.bump)]
+    pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
+    pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SetSettlementFeed<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.match_id.as_ref()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, BetMarket>,
+
+    #[account(seeds = [b"platform"], bump = platform_config.bump)]
+    pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
+    pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

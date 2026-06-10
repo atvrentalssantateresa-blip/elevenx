@@ -67,4 +67,13 @@ pub enum BettingError {
 
     #[msg("Unmatched liquidity already withdrawn")]
     AlreadyWithdrawn,
+
+    #[msg("Invalid or unverified oracle account")]
+    InvalidOracleAccount,
+
+    #[msg("Oracle result not ready (stale or under-sampled)")]
+    OracleNotReady,
+
+    #[msg("Oracle returned an invalid result")]
+    InvalidOracleResult,
 }

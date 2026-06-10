@@ -41,6 +41,11 @@ pub struct BetMarket {
     /// Total LP liquidity locked in this market.
     pub total_lp_committed: u64,
 
+    // ── Oracle settlement ─────────────────────────────────────────────────────
+    /// The Switchboard On-Demand feed pubkey pinned to this market.
+    /// CRITICAL: Prevents attacker from passing a different (but valid) feed.
+    pub settlement_feed: Pubkey,
+
     // ── Legacy / settlement fields ─────────────────────────────────────────────
 
     /// Fees accrued during settlement (transferred to fee vault on finalize).
@@ -50,6 +55,10 @@ pub struct BetMarket {
     pub voided: bool,
     pub paused: bool,
     pub settlement_finalized: bool,
+
+    /// CRITICAL: Switchboard On-Demand feed pubkey for settlement.
+    /// Must be set by admin before settlement to prevent oracle substitution attacks.
+    pub settlement_feed: Pubkey,
 
     pub bump: u8,
 }
@@ -67,10 +76,12 @@ impl BetMarket {
         + 24   // total_matched (3 × 8)
         + 24   // total_pending (3 × 8)
         + 8    // total_lp_committed
+        + 32   // settlement_feed (Pubkey)
         + 8    // accrued_fees
         + 1    // settled
         + 1    // voided
         + 1    // paused
         + 1    // settlement_finalized
+        + 32   // settlement_feed
         + 1;   // bump
 }

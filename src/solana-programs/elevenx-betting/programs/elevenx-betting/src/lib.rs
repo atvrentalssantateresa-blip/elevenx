@@ -89,6 +89,21 @@ pub mod elevenx_betting {
         instructions::oracle::force_void_market(ctx)
     }
 
+    /// Permissionless: Settle market from verified Switchboard On-Demand feed.
+    /// Anyone can crank this — outcome is determined by oracle, not admin.
+    pub fn settle_from_oracle(ctx: Context<SettleFromOracle>) -> Result<()> {
+        instructions::oracle::settle_from_oracle(ctx)
+    }
+
+    /// Admin-only: Pin the Switchboard feed pubkey to a market.
+    /// CRITICAL: Must be set before settlement to prevent oracle substitution.
+    pub fn set_settlement_feed(
+        ctx: Context<SetSettlementFeed>,
+        feed_pubkey: Pubkey,
+    ) -> Result<()> {
+        instructions::market::set_settlement_feed(ctx, feed_pubkey)
+    }
+
     /// Admin-only: Sweep residual SOL from a settled/voided market to admin wallet.
     pub fn sweep_market_funds(ctx: Context<SweepMarketFunds>) -> Result<()> {
         instructions::market::sweep_market_funds(ctx)
