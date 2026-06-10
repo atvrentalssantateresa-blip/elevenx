@@ -231,6 +231,26 @@ Deno.serve(async (req) => {
       }
     }
     
+    // SYNC DB: If market is settled on-chain but DB isn't updated, sync it now
+    if (isSettledOnChain && onChainWinningOutcome && bet.winning_outcome !== onChainWinningOutcome) {
+      console.log('[claimWinnings] Syncing DB: bet.winning_outcome', bet.winning_outcome, '->', onChainWinningOutcome);
+      await serviceRole.entities.Bet.update(bet.id, { 
+        winning_outcome: onChainWinningOutcome,
+        status: 'settled'
+      });
+      bet.winning_outcome = onChainWinningOutcome;
+      bet.status = 'settled';
+    }
+    
+    // Sync user bet status if needed
+    for (const ub of validBets) {
+      if (ub.status !== 'won' && ub.outcome === onChainWinningOutcome) {
+        console.log('[claimWinnings] Syncing DB: UserBet', ub.id, 'status', ub.status, '-> won');
+        await serviceRole.entities.UserBet.update(ub.id, { status: 'won' });
+        ub.status = 'won';
+      }
+    }
+    
     if (validBets.length === 0) {
       console.log('[claimWinnings] No valid bets after on-chain validation');
       return Response.json({ 
