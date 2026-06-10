@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useWallet } from '@/lib/WalletContext';
 import { Wallet, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -16,29 +15,32 @@ async function anchorDiscriminator(name) {
 
 export default function SolanaTransactionSigner({ instruction, amount, userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds, futures_market_id, onSuccess, onError }) {
   // userBetId, offerId, betId, isOffer, isPlatformInit, batchBetIds, futures_market_id are optional - used for tracking DB records or flow control after transaction
-  const { isConnected, connect } = useWallet();
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState(null);
   const [error, setError] = useState(null);
 
   const handleSignTransaction = async () => {
-    if (!isConnected) {
-      await connect();
-      return;
-    }
-
     setIsSigning(true);
     setError(null);
 
     try {
+      // Direct Phantom connection - don't rely on WalletContext
       const provider = window.solana;
       
+      console.log('[SolanaTransactionSigner] Phantom detection:', {
+        hasWindowSolana: !!window.solana,
+        isPhantom: window.solana?.isPhantom,
+        providerType: typeof window.solana,
+      });
+      
       if (!provider) {
-        throw new Error('Phantom wallet not found');
+        throw new Error('Phantom wallet not found. Please install Phantom extension.');
       }
 
       if (!provider.isConnected) {
+        console.log('[SolanaTransactionSigner] Connecting to Phantom...');
         await provider.connect();
+        console.log('[SolanaTransactionSigner] Connected successfully');
       }
 
       // CRITICAL: Force Phantom to use the correct wallet
@@ -47,7 +49,6 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       const expectedWallet = storedWallet ? JSON.parse(storedWallet).address : null;
       
       console.log('=== SOLANA TRANSACTION SIGNING DEBUG ===');
-      console.log('Component isConnected:', isConnected);
       console.log('Phantom connected:', provider.isConnected);
       console.log('Phantom wallet:', connectedWallet);
       console.log('Expected wallet (from localStorage):', expectedWallet);
@@ -1017,15 +1018,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
             <Loader className="w-4 h-4 mr-2 animate-spin" />
             Signing...
           </>
-        ) : !isConnected ? (
-          <>
-            <Wallet className="w-4 h-4 mr-2" />
-            Connect Phantom
-          </>
         ) : (
           <>
             <Wallet className="w-4 h-4 mr-2" />
-            Sign & Confirm
+            Sign Transaction
           </>
         )}
       </Button>
