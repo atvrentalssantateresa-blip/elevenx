@@ -2,6 +2,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+// DEPLOYMENT FIX 2026-06-10T23:45:00Z - Force fresh deployment to resolve wrong instruction issue
+// This function MUST return claim_winnings instruction with discriminator [161,215,24,59,14,236,242,221]
+// NOT settlement instruction [23,224,211,209,146,125,80,245]
+
 // Helper function to compute SHA256 hash (returns hex string)
 async function sha256(message) {
   const msgBuffer = new TextEncoder().encode(message);
@@ -15,6 +19,8 @@ const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '9nwxZGK9nceBL1hP
 /**
  * Pari-mutuel claim — winner claims proportional share of the pool.
  * Uses wallet-only authentication (no email login required).
+ * 
+ * REDEPLOYED: 2026-06-10T20:45:00Z - Fixed discriminator to [161,215,24,59,14,236,242,221]
  */
 Deno.serve(async (req) => {
   try {
@@ -351,6 +357,15 @@ Deno.serve(async (req) => {
         },
       },
     };
+    
+    // CRITICAL DEBUG: Log full instruction before returning
+    console.log('[claimWinnings] FINAL INSTRUCTION:', {
+      instruction_type: claimInstruction.instruction_type,
+      discriminator_hex: instructionData.slice(0, 8).toString('hex'),
+      discriminator_bytes: Array.from(instructionData.slice(0, 8)),
+      accounts: claimInstruction.keys.map(k => ({ pubkey: k.pubkey, isSigner: k.isSigner, isWritable: k.isWritable })),
+      instruction_data_base64: claimInstruction.instruction_data,
+    });
     
     return Response.json({
       success: true,
