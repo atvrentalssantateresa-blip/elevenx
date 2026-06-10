@@ -237,7 +237,7 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
               betId={market.id}
               isOffer={false}
               onSuccess={handleTransactionSuccess}
-              onError={(err) => alert('Transaction failed: ' + err.message)}
+              onError={(err) => console.error('Transaction error:', err)}
             />
             <Button
               variant="outline"
