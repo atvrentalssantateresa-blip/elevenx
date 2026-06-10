@@ -184,29 +184,26 @@ Deno.serve(async (req) => {
     //         total_matched(24) + total_pending(24) + total_lp_committed(8) + accrued_fees(8) + 
     //         settled(1) + voided(1) + paused(1) + settlement_finalized(1) + bump(1)
     const data = accountInfo.data;
-    const settledOffset = 244; // After accrued_fees
+    // Canonical byte offsets from on-chain BetMarket struct layout:
+    const WINNING_OUTCOME_OFFSET = 155;
+    const SETTLED_OFFSET = 276;
+    const VOIDED_OFFSET = 277;
+
+    const isSettled = data.length > SETTLED_OFFSET ? data[SETTLED_OFFSET] === 1 : false;
+    const isVoided = data.length > VOIDED_OFFSET ? data[VOIDED_OFFSET] === 1 : false;
+    const winningOutcome = data.length > WINNING_OUTCOME_OFFSET ? data[WINNING_OUTCOME_OFFSET] : 0; // 0=a, 1=b, 2=draw
+
+    const isPaused = false;
+    const isSettlementFinalized = isSettled;
+
     console.log('[checkMarketStatus] Data length:', data.length);
-    console.log('[checkMarketStatus] Checking offsets 204-250 for settled flag:');
-    for (let i = 200; i < 250; i++) {
-      if (i < data.length) {
-        console.log(`  Offset ${i}: ${data[i]} (${data[i] === 1 ? '← POSSIBLE SETTLED' : ''})`);
-      }
-    }
-    const isSettled = data[settledOffset] === 1;
-    const isVoided = data[settledOffset + 1] === 1;
-    const isPaused = data[settledOffset + 2] === 1;
-    const isSettlementFinalized = data[settledOffset + 3] === 1;
-    
-    // Read winning_outcome (at offset 8 + 32 + 96 + 8 + 8 + 2 + 1 = 155, but we already have it in the struct)
-    const winningOutcomeOffset = 8 + 32 + 96 + 8 + 8 + 2 + 1; // offset 155
-    const winningOutcome = data[winningOutcomeOffset]; // 0=a, 1=b, 2=draw
-    
     console.log('[checkMarketStatus] Parsed account data:', {
       isSettled,
       isVoided,
-      isPaused,
-      isSettlementFinalized,
       winningOutcome,
+      settled_byte: data[SETTLED_OFFSET],
+      voided_byte: data[VOIDED_OFFSET],
+      winning_outcome_byte: data[WINNING_OUTCOME_OFFSET],
     });
     
     console.log('Account properly initialized - status:', isSettled ? 'settled' : 'initialized');

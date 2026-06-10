@@ -58,6 +58,39 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
   const [withdrawData, setWithdrawData] = useState(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
+  // Fetch on-chain market state to override DB status for settled/voided markets
+  // This prevents showing Refund button on Draw markets (which are settled, not voided)
+  const { data: onChainState } = useQuery({
+    queryKey: ['onchain-market-state', bet.match_id],
+    queryFn: async () => {
+      try {
+        const res = await base44.functions.invoke('checkMarketStatus', { match_id: bet.match_id });
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!bet.match_id && ['refunded', 'void', 'lost', 'won', 'active'].includes(bet.status),
+    staleTime: 60000,
+  });
+
+  // Override localBetStatus based on on-chain data
+  React.useEffect(() => {
+    if (!onChainState || hasClaimedLocally) return;
+    const { settled, voided, winning_outcome } = onChainState;
+    if (voided) {
+      // Voided market → refundable
+      if (localBetStatus !== 'claimed') setLocalBetStatus('refunded');
+    } else if (settled) {
+      const betOutcomeIndex = bet.outcome === 'a' ? 0 : bet.outcome === 'b' ? 1 : 2;
+      if (betOutcomeIndex === winning_outcome) {
+        if (localBetStatus !== 'claimed') setLocalBetStatus('won');
+      } else {
+        setLocalBetStatus('lost');
+      }
+    }
+  }, [onChainState, bet.outcome, hasClaimedLocally]);
+
   // Fetch match data OR futures market data
   const { data: match } = useQuery({
     queryKey: ['match', bet.match_id],
