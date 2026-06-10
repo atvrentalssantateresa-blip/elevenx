@@ -12,6 +12,8 @@ import { Progress } from '@/components/ui/progress';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import { calculatePoolShare } from '@/utils/parimutuel';
 import ShareBetModal from '@/components/dashboard/ShareBetModal';
+import { deriveMarketPda, deriveBetPositionPda, buildClaimWinningsInstruction } from '@/utils/solanaPda';
+import { Buffer } from 'buffer';
 
 const statusConfig = {
   active: { color: 'bg-primary/5 text-primary border-primary/10', icon: Clock, label: 'Active' },
@@ -154,33 +156,67 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
 
   const claimMutation = useMutation({
     mutationFn: async () => {
+      console.log('[BetCard] === CLIENT-SIDE CLAIM BUILD ===');
       console.log('[BetCard] Claiming bet:', bet.id, 'wallet:', walletAddress);
+      
       if (!walletAddress) {
         throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
       }
-      const res = await base44.functions.invoke('claimWinnings', {
-        userBetId: bet.id,
-        walletAddress: walletAddress
-      });
-      console.log('[BetCard] Claim response:', res.data);
-      if (res.data.error) {
-        throw new Error(res.data.error + (res.data.debug ? ' - ' + JSON.stringify(res.data.debug) : ''));
-      }
 
-      // Return solana instruction for signing
-      return res.data;
+      // Fetch UserBet to get outcome
+      const userBet = bet;
+      console.log('[BetCard] UserBet:', {
+        id: userBet.id,
+        outcome: userBet.outcome,
+        potential_payout: userBet.potential_payout,
+      });
+
+      // Determine market ID and whether this is futures
+      const isFutures = !!userBet.futures_market_id || !!userBet._isFutures;
+      const marketId = isFutures ? userBet.futures_market_id : userBet.match_id;
+      
+      console.log('[BetCard] Market info:', {
+        isFutures,
+        marketId,
+        winning_outcome: isFutures ? bet.winning_outcome : null,
+      });
+
+      // Derive market PDA client-side
+      const marketPda = deriveMarketPda(marketId);
+      console.log('[BetCard] Derived market PDA:', marketPda);
+
+      // Map outcome to index: a=0, b=1, draw=2
+      const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
+      console.log('[BetCard] Outcome index:', outcomeIndex);
+
+      // Build claim_winnings instruction client-side
+      const claimInstruction = buildClaimWinningsInstruction(marketPda, walletAddress, outcomeIndex);
+      
+      console.log('[BetCard] Built claim instruction:', {
+        instruction_type: claimInstruction.instruction_type,
+        programId: claimInstruction.programId,
+        accounts: claimInstruction.keys.map(k => `${k.pubkey.slice(0, 8)}... (${k.isSigner ? 'signer' : 'non-signer'}, ${k.isWritable ? 'writable' : 'readonly'})`),
+        data: claimInstruction.instruction_data,
+      });
+
+      // Return instruction for signing (no backend call needed)
+      return {
+        success: true,
+        message: `Ready to claim ◎${(userBet.potential_payout || 0).toFixed(4)} SOL`,
+        userBetId: userBet.id,
+        payout: userBet.potential_payout || 0,
+        solana_instruction: claimInstruction,
+      };
     },
     onSuccess: (data) => {
+      console.log('[BetCard] Claim instruction built successfully:', data);
       // Show transaction signer dialog
       setClaimInstruction(data);
       setClaimDialogOpen(true);
-      // DON'T invalidate here - wait until DB confirms claim in handleClaimTransactionSuccess
     },
     onError: (err) => {
       console.error('[BetCard] Claim error:', err);
-      console.error('[BetCard] Claim error response:', err.response?.data);
-      console.error('[BetCard] Claim error status:', err.response?.status);
-      alert('Claim failed: ' + err.message + (err.response?.data?.error ? ' - ' + err.response?.data.error : ''));
+      alert('Claim failed: ' + err.message);
     }
   });
 
@@ -236,6 +272,33 @@ export default function BetCard({ bet, index, walletAddress, onRefundRequest }) 
       });
     }
   });
+
+  // Client-side PDA derivation helper
+  const deriveClaimPdas = async (marketId, walletPubkey, outcomeIndex, programId) => {
+    const { PublicKey } = await import('@solana/web3.js');
+    
+    // Derive market PDA
+    const marketIdBytes = Buffer.alloc(32);
+    Buffer.from(marketId, 'utf-8').copy(marketIdBytes, 0, 0, Math.min(marketId.length, 32));
+    const [marketPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('market'), marketIdBytes],
+      programId
+    );
+
+    // Derive bet_position PDA: ["position", marketPda, walletPubkey, [outcome]]
+    const [betPositionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('position'), marketPda.toBuffer(), walletPubkey.toBuffer(), Buffer.from([outcomeIndex])],
+      programId
+    );
+
+    // Derive fee_vault PDA: ["fee_vault"]
+    const [feeVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('fee_vault')],
+      programId
+    );
+
+    return { marketPda, betPositionPda, feeVaultPda };
+  };
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
