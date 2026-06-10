@@ -4,7 +4,7 @@ import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 import bs58 from 'npm:bs58@5.0.0';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '9nwxZGK9nceBL1hPHDgyKeEkvGVjKuHY3Cq6vADXQ7GS';
+// programId read inside handler from ELEVENX_PROGRAM_ID
 
 /**
  * Update market timestamps on-chain (admin-only recovery tool).
@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
     const match = matches[0];
     if (!match) return Response.json({ error: 'Match not found' }, { status: 404 });
 
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    if (!SOLANA_PROGRAM_ID) return Response.json({ error: 'ELEVENX_PROGRAM_ID secret not configured' }, { status: 500 });
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     console.log('[updateMarketTimestampsOnChain] Program ID:', SOLANA_PROGRAM_ID);
     

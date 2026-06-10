@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || 'GtqYmsWv3EXdhnkahekABVnoqDhbmjrp7jQLqYxoepyR';
+// programId read inside handler
 
 /**
  * Debug: Check on-chain market state before settlement
@@ -26,8 +26,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Market not deployed on-chain' }, { status: 404 });
     }
     
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+    if (!SOLANA_PROGRAM_ID || !SOLANA_RPC_URL) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
+    }
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     
     // Fetch market account
     let marketInfo;

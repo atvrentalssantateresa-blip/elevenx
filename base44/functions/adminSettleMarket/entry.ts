@@ -36,12 +36,17 @@ Deno.serve(async (req) => {
     if (!match) return Response.json({ error: 'Match not found' }, { status: 404 });
     
     // Get admin wallet from platform config
+    const ELEVENX_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+    if (!ELEVENX_PROGRAM_ID || !SOLANA_RPC_URL) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
+    }
     const platformPda = PublicKey.findProgramAddressSync(
       [Buffer.from('platform')],
-      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+      new PublicKey(ELEVENX_PROGRAM_ID)
     )[0];
     
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const platformInfo = await connection.getAccountInfo(platformPda);
     
     if (!platformInfo) {
@@ -52,7 +57,7 @@ Deno.serve(async (req) => {
     const marketPda = new PublicKey(bet.solana_market_pda);
     const feeVaultPda = PublicKey.findProgramAddressSync(
       [Buffer.from('fee_vault')],
-      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+      new PublicKey(ELEVENX_PROGRAM_ID)
     )[0];
     
     // Build submit_oracle_vote instruction (correct instruction from lib.rs)
@@ -65,12 +70,12 @@ Deno.serve(async (req) => {
     // Derive oracle_vote and vote_tally PDAs (required by SubmitOracleVote)
     const [oracleVotePda] = PublicKey.findProgramAddressSync(
       [Buffer.from('oracle_vote'), marketPda.toBuffer()],
-      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+      new PublicKey(ELEVENX_PROGRAM_ID)
     );
     
     const [voteTallyPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('vote_tally'), marketPda.toBuffer()],
-      new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm')
+      new PublicKey(ELEVENX_PROGRAM_ID)
     );
     
     const transaction = new Transaction().add({
@@ -83,7 +88,7 @@ Deno.serve(async (req) => {
         { pubkey: adminPubkey, isSigner: true, isWritable: true }, // admin/oracle (signer)
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
       ],
-      programId: new PublicKey(Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm'),
+      programId: new PublicKey(ELEVENX_PROGRAM_ID),
       data: data,
     });
     

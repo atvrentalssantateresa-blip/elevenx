@@ -2,12 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const rpcUrl = Deno.env.get('SOLANA_RPC_URL');
+    if (!SOLANA_PROGRAM_ID || !rpcUrl) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
+    }
+    const connection = new Connection(rpcUrl, 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
     // Get the program account info

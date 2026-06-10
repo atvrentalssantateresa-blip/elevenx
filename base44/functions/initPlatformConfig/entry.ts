@@ -6,10 +6,10 @@ import { Buffer } from 'npm:buffer@6.0.3';
  * Initialize platform config on Solana (one-time setup).
  */
 Deno.serve(async (req) => {
-  const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
-  if (!SOLANA_PROGRAM_ID) {
-    return Response.json({ error: 'SOLANA_PROGRAM_ID secret not configured' }, { status: 500 });
-  }
+  const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+  const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+  if (!SOLANA_PROGRAM_ID) return Response.json({ error: 'ELEVENX_PROGRAM_ID secret not configured' }, { status: 500 });
+  if (!SOLANA_RPC_URL) return Response.json({ error: 'SOLANA_RPC_URL secret not configured' }, { status: 500 });
   try {
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
@@ -36,9 +36,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin access required', got_role: walletUser.role }, { status: 403 });
     }
 
-    const connection = {
-      rpcUrl: 'https://api.devnet.solana.com',
-    };
+    const connection = { rpcUrl: SOLANA_RPC_URL };
 
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
 

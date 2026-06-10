@@ -9,9 +9,10 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
-    const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
-    if (!SOLANA_PROGRAM_ID) {
-      return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+    if (!SOLANA_PROGRAM_ID || !SOLANA_RPC_URL) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
     }
     
     const { userBetId } = await req.json();
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'BetOffer not found' }, { status: 404 });
     }
 
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const lpOfferPda = new PublicKey(offer.solana_position_pda);
 

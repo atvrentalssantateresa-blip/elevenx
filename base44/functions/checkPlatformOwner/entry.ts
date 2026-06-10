@@ -1,11 +1,14 @@
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID') || '5NNAN6zcTFvjYxTMDKtkKNaG6H2R8GS17Xridr1JEH9X';
-
 Deno.serve(async (req) => {
   try {
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+    if (!SOLANA_PROGRAM_ID || !SOLANA_RPC_URL) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
+    }
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     
     // Check OLD platform PDA (platform_v1)

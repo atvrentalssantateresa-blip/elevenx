@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, SystemProgram, TransactionInstruction } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA__PROGRAM_ID') || 'PMut1111111111111111111111111111111111111111';
+// programId read inside handler from ELEVENX_PROGRAM_ID
 
 /**
  * Re-initialize platform config with current wallet as admin.
@@ -29,6 +29,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing admin_wallet' }, { status: 400 });
     }
 
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    if (!SOLANA_PROGRAM_ID) return Response.json({ error: 'ELEVENX_PROGRAM_ID secret not configured' }, { status: 500 });
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
 
     const [platformPda] = PublicKey.findProgramAddressSync(

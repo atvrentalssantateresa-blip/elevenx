@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey, Connection, Transaction, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
-const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
+// env vars read inside handler
 
 Deno.serve(async (req) => {
   try {
@@ -27,13 +27,17 @@ Deno.serve(async (req) => {
 
     console.log('=== FORCE REINIT PLATFORM ===');
     console.log('Admin wallet:', walletAddress);
-    console.log('SOLANA_PROGRAM_ID from env:', SOLANA_PROGRAM_ID);
-    console.log('SOLANA_PROGRAM_ID length:', SOLANA_PROGRAM_ID?.length);
-    console.log('SOLANA_PROGRAM_ID trimmed:', SOLANA_PROGRAM_ID?.trim());
+    console.log('ELEVENX_PROGRAM_ID from env:', SOLANA_PROGRAM_ID);
+    console.log('SOLANA_RPC_URL from env:', SOLANA_RPC_URL);
 
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+    if (!SOLANA_PROGRAM_ID || !SOLANA_RPC_URL) {
+      return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
+    }
     const programId = new PublicKey(SOLANA_PROGRAM_ID.trim());
     const adminPubkey = new PublicKey(walletAddress);
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
 
     // Use correct seeds matching deployed contract
     const [platformPda] = PublicKey.findProgramAddressSync(

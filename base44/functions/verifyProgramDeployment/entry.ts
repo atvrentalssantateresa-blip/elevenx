@@ -8,7 +8,9 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const programIdToCheck = payload.programId || 'wBhZVzWqxZ13NtbSAXE4nx2RLcBhS3v2nPoN7MXq9f7';
     
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    const rpcUrl = Deno.env.get('SOLANA_RPC_URL');
+    if (!rpcUrl) return Response.json({ error: 'SOLANA_RPC_URL secret not set' }, { status: 500 });
+    const connection = new Connection(rpcUrl, 'confirmed');
     const programPubkey = new PublicKey(programIdToCheck);
     
     console.log('[verifyProgramDeployment] Checking program:', programIdToCheck);
