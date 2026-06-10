@@ -447,8 +447,8 @@ export default function Futures() {
         </section>
       )}
       
-      {/* Regular Futures Markets */}
-      {filteredMarkets.length > 0 ? (
+      {/* Regular Futures Markets - Show ALL markets (open + coming_soon) grouped by group */}
+      {futuresMarkets.length > 0 ? (
         activeGroup !== 'ALL' ? (
           /* Single Group View */
           <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
@@ -459,13 +459,13 @@ export default function Futures() {
               <div>
                 <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  {filteredMarkets.length} teams
+                  {filteredMarketsByGroup.length} markets
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMarkets.map((m, i) => (
+              {filteredMarketsByGroup.map((m, i) => (
                 <FuturesCard
                   key={m.id}
                   market={m}
@@ -476,34 +476,39 @@ export default function Futures() {
             </div>
           </section>
         ) : (
-          /* All Groups View - Group markets by their actual group */
+          /* All Groups View - Group ALL markets by their actual group */
           <div className="space-y-6 sm:space-y-8">
-            {Object.entries(marketsByGroup).map(([groupName, groupMarkets]) => (
-              <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
-                <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                    <span className="font-heading font-black text-base sm:text-lg text-primary">{groupName.replace('Group ', '')}</span>
+            {Object.entries(WORLD_CUP_GROUPS_2026).map(([groupName, teams]) => {
+              const groupMarkets = futuresMarkets.filter(m => m.country === groupName);
+              if (groupMarkets.length === 0) return null;
+              
+              return (
+                <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
+                  <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                      <span className="font-heading font-black text-base sm:text-lg text-primary">{groupName}</span>
+                    </div>
+                    <div>
+                      <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        {groupMarkets.length} markets
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
-                      {groupMarkets.length} markets
-                    </p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupMarkets.map((market, index) => (
-                    <FuturesCard
-                      key={market.id}
-                      market={market}
-                      index={index}
-                      onSelect={handleCountrySelect}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupMarkets.map((market, index) => (
+                      <FuturesCard
+                        key={market.id}
+                        market={market}
+                        index={index}
+                        onSelect={handleCountrySelect}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )
       ) : (

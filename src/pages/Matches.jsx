@@ -105,6 +105,25 @@ export default function Matches() {
       groupTeams.includes(m.team_a) || groupTeams.includes(m.team_b)
     );
   }, [matches, activeGroup, todayStr]);
+  
+  // For TODAY view, we still need to group by group for display
+  const todayMatchesByGroup = React.useMemo(() => {
+    if (activeGroup !== 'TODAY') return {};
+    const grouped = {};
+    filtered.forEach(m => {
+      let matchGroup = null;
+      Object.entries(WORLD_CUP_GROUPS_2026).forEach(([groupName, teams]) => {
+        const teamNames = teams.map(t => t.name);
+        if (teamNames.includes(m.team_a) || teamNames.includes(m.team_b)) {
+          matchGroup = groupName;
+        }
+      });
+      if (!matchGroup) matchGroup = 'Other';
+      if (!grouped[matchGroup]) grouped[matchGroup] = [];
+      grouped[matchGroup].push(m);
+    });
+    return grouped;
+  }, [filtered, activeGroup]);
 
   // Filter by search query
   const searchFiltered = search
@@ -128,17 +147,28 @@ export default function Matches() {
     return new Date(a.match_time) - new Date(b.match_time);
   });
 
-  // Group matches by date within the active group
-  const groupedByDate = {};
-  sortedMatches.forEach(m => {
-    const dateKey = m.match_time ? format(new Date(m.match_time), 'yyyy-MM-dd') : 'TBD';
-    const dateLabel = m.match_time ? format(new Date(m.match_time), 'EEEE, MMM d · yyyy') : 'TBD';
-    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = { label: dateLabel, matches: [] };
-    groupedByDate[dateKey].matches.push(m);
-  });
+  // Group matches by GROUP (not date) for better organization
+  const matchesByGroup = React.useMemo(() => {
+    const grouped = {};
+    sortedMatches.forEach(m => {
+      // Find which group this match belongs to based on teams
+      let matchGroup = null;
+      Object.entries(WORLD_CUP_GROUPS_2026).forEach(([groupName, teams]) => {
+        const teamNames = teams.map(t => t.name);
+        if (teamNames.includes(m.team_a) || teamNames.includes(m.team_b)) {
+          matchGroup = groupName;
+        }
+      });
+      if (!matchGroup) matchGroup = 'Other';
+      
+      if (!grouped[matchGroup]) grouped[matchGroup] = [];
+      grouped[matchGroup].push(m);
+    });
+    return grouped;
+  }, [sortedMatches]);
 
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
-  const sortedDates = Object.keys(groupedByDate).sort();
+  const sortedGroups = Object.keys(matchesByGroup).sort();
 
   return (
     <div className="space-y-6">
@@ -282,7 +312,7 @@ export default function Matches() {
       </motion.div>
 
       {sortedMatches.length > 0 ? (
-        activeGroup !== 'ALL' ? (
+        activeGroup !== 'ALL' && activeGroup !== 'TODAY' ? (
           /* Single Group View */
           <section id={`group-${activeGroup}`} className="scroll-mt-20 sm:scroll-mt-24">
             <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
@@ -292,91 +322,107 @@ export default function Matches() {
               <div>
                 <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Group {activeGroup}</h2>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  {sortedMatches.length} matches
+                  {matchesByGroup[activeGroup]?.length || 0} matches
                 </p>
               </div>
             </div>
 
-            <div className="space-y-6 sm:space-y-8">
-              {sortedDates.map((dateKey, dateIndex) => {
-                const { label, matches: dateMatches } = groupedByDate[dateKey];
-                return (
-                  <motion.div
-                    key={dateKey}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
-                  >
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5">
-                      <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2">
-                        <span className="font-heading font-bold text-xs sm:text-sm text-primary">{label}</span>
-                      </div>
-                      <div className="flex-1 h-px bg-border/30" />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      {dateMatches.map((m, i) => (
-                        <div
-                          key={m.id}
-                          id={`match-${m.id}`}
-                          className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
-                        >
-                          <MatchCard 
-                            match={m} 
-                            bet={betByMatch[m.id]} 
-                            index={i}
-                            onOddsRefresh={() => {
-                              queryClient.invalidateQueries({ queryKey: ['bets'] });
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {matchesByGroup[activeGroup]?.map((m, i) => (
+                <div
+                  key={m.id}
+                  id={`match-${m.id}`}
+                  className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                >
+                  <MatchCard 
+                    match={m} 
+                    bet={betByMatch[m.id]} 
+                    index={i}
+                    onOddsRefresh={() => {
+                      queryClient.invalidateQueries({ queryKey: ['bets'] });
+                    }}
+                  />
+                </div>
+              ))}
             </div>
           </section>
-        ) : (
-          /* All Groups View */
+        ) : activeGroup === 'TODAY' ? (
+          /* TODAY View - Organized by Group */
           <div className="space-y-6 sm:space-y-8">
-            {sortedDates.map((dateKey, dateIndex) => {
-              const { label, matches: dateMatches } = groupedByDate[dateKey];
-              return (
-                <motion.div
-                  key={dateKey}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: dateIndex * 0.05, duration: 0.4 }}
-                >
-                  <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-5 sticky top-14 sm:top-16 z-10 bg-background/95 backdrop-blur-sm py-2 sm:py-3">
-                    <div className="flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 shadow-lg">
-                      <span className="font-heading font-bold text-xs sm:text-base text-primary">{label}</span>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
+            {Object.entries(todayMatchesByGroup).map(([groupName, groupMatches]) => (
+              <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
+                <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                    <span className="font-heading font-black text-base sm:text-lg text-primary">{groupName}</span>
                   </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                      {groupMatches.length} matches today
+                    </p>
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {dateMatches.map((m, i) => (
-                      <div
-                        key={m.id}
-                        id={`match-${m.id}`}
-                        className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
-                      >
-                        <MatchCard 
-                          match={m} 
-                          bet={betByMatch[m.id]} 
-                          index={i}
-                          onOddsRefresh={() => {
-                            queryClient.invalidateQueries({ queryKey: ['bets'] });
-                          }}
-                        />
-                      </div>
-                    ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {groupMatches.map((m, i) => (
+                    <div
+                      key={m.id}
+                      id={`match-${m.id}`}
+                      className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                    >
+                      <MatchCard 
+                        match={m} 
+                        bet={betByMatch[m.id]} 
+                        index={i}
+                        onOddsRefresh={() => {
+                          queryClient.invalidateQueries({ queryKey: ['bets'] });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          /* All Groups View - Organized by Group */
+          <div className="space-y-6 sm:space-y-8">
+            {sortedGroups.map((groupName, groupIndex) => (
+              <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
+                <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4 sticky top-14 sm:top-16 z-10 bg-background/95 backdrop-blur-sm py-2 sm:py-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                    <span className="font-heading font-black text-base sm:text-lg text-primary">{groupName}</span>
                   </div>
-                </motion.div>
-              );
-            })}
+                  <div>
+                    <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                      {matchesByGroup[groupName]?.length || 0} matches
+                    </p>
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-border/50 to-transparent" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {matchesByGroup[groupName]?.map((m, i) => (
+                    <div
+                      key={m.id}
+                      id={`match-${m.id}`}
+                      className={m.id === highlightedMatchId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-2xl' : ''}
+                    >
+                      <MatchCard 
+                        match={m} 
+                        bet={betByMatch[m.id]} 
+                        index={i}
+                        onOddsRefresh={() => {
+                          queryClient.invalidateQueries({ queryKey: ['bets'] });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         )
       ) : (
