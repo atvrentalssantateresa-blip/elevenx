@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
     }
 
     const totalPayout = validBets.reduce((sum, b) => sum + (b.actual_payout || b.potential_payout || 0), 0);
-    console.log(`✓ Claim: wallet=${trimmedWallet.slice(0, 8)}... | bets=${betsToClaim_validated.length} | total=${totalPayout} SOL`);
+    console.log(`✓ Claim: wallet=${trimmedWallet.slice(0, 8)}... | bets=${validBets.length} | total=${totalPayout} SOL`);
 
     // Validate market is settled and position exists
     if (!marketInfo || !isSettledOnChain) {
