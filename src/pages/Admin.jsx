@@ -74,13 +74,16 @@ export default function Admin() {
     if (!walletAddress) return;
     
     try {
+      console.log('[Admin] Calling settleMarketOnChain for bet:', bet.id, 'outcome:', outcome, 'wallet:', walletAddress);
       const res = await base44.functions.invoke('settleMarketOnChain', {
         bet_id: bet.id,
         winning_outcome: outcome,
         admin_wallet: walletAddress,
       });
+      console.log('[Admin] settleMarketOnChain response:', res.data);
 
       if (res.data.error) {
+        console.error('[Admin] Backend error:', res.data);
         toast.error('Error: ' + res.data.error);
         return;
       }
