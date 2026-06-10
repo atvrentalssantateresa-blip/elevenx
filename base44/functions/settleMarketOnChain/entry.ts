@@ -278,6 +278,14 @@ Deno.serve(async (req) => {
     // Use test_announce_winner with EXACT discriminator from deployed program
     // Pre-computed discriminator: [23, 224, 211, 209, 146, 125, 80, 245]
     const testDiscriminator = Buffer.from([23, 224, 211, 209, 146, 125, 80, 245]);
+    
+    // DEBUG: Compute actual discriminator from SHA256("global:test_announce_winner")
+    const computedDisc = Buffer.from(sha256('global:test_announce_winner')).slice(0, 8);
+    console.log('[settleMarketOnChain] Discriminator verification:', {
+      hardcoded: testDiscriminator.toString('hex'),
+      computed_sha256: computedDisc.toString('hex'),
+      match: testDiscriminator.equals(computedDisc),
+    });
     const testData = Buffer.alloc(9); // 8 bytes discriminator + 1 byte outcome (u8)
     testDiscriminator.copy(testData, 0);
     testData.writeUInt8(outcomeIndex, 8);
