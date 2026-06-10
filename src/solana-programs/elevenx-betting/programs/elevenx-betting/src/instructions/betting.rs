@@ -5,19 +5,17 @@ use crate::errors::BettingError;
 
 // ── place_bet ─────────────────────────────────────────────────────────────────
 //
-// Hybrid fixed-odds model:
+// Liability-based fixed-odds model:
 //   1. Bettor picks an outcome and stakes SOL.
 //   2. We read oracle_odds from the market for that outcome.
 //   3. We match the bettor's stake against the LP offer for that outcome.
-//      LP-first rule: bettor stake CANNOT exceed available LP pool (solvency guarantee).
-//   4. potential_payout = matched_stake * odds_bps / 100.
+//   4. LP liability = stake * (odds - 1) — this is what gets locked in amount_matched.
+//   5. potential_payout = stake * odds_bps / 100.
 
 pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
     let clock = Clock::get()?;
-    // CORRECTED: Define pending_now as 0 — hybrid model always fully matches against LP pool.
-    let pending_now = 0u64;
 
-    // Read-only checks before mutating.
+    // ── Validation ───────────────────────────────────────────────────────────
     {
         let market = &ctx.accounts.market;
         require!(!market.paused, BettingError::MarketPaused);
@@ -25,23 +23,25 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
         require!(clock.unix_timestamp < market.open_until, BettingError::BettingClosed);
         require!(outcome < market.outcome_count, BettingError::InvalidOutcome);
         require!(amount > 0, BettingError::ZeroStake);
-        let odds_bps = market.oracle_odds[outcome as usize];
-        require!(odds_bps > 100, BettingError::InvalidOutcome);
     }
 
-    let odds_bps = ctx.accounts.market.oracle_odds[outcome as usize];
+    let odds_pct = ctx.accounts.market.oracle_odds[outcome as usize];
+    require!(odds_pct > 100, BettingError::InvalidOutcome); // must be > 1.0x
 
-    // ── HYBRID MODEL: ENFORCE LP-FIRST RULE ──────────────────────────────────
-    // Bettor stake CANNOT exceed available LP pool (guaranteed solvency).
-    let available_liquidity = {
-        let offer = &ctx.accounts.lp_offer;
-        offer.available()
-    };
+    // ── LP LIABILITY (not stake) is what must be reserved ─────────────────────
+    // liability = stake * (odds - 1)  =  stake * (odds_pct - 100) / 100
+    let liability = (amount as u128)
+        .checked_mul((odds_pct as u128).checked_sub(100).ok_or(BettingError::Overflow)?)
+        .and_then(|v| v.checked_div(100))
+        .ok_or(BettingError::Overflow)? as u64;
 
+    require!(liability > 0, BettingError::ZeroStake);
+
+    let available_liquidity = ctx.accounts.lp_offer.available();
     require!(available_liquidity > 0, BettingError::NoLiquidity);
-    require!(amount <= available_liquidity, BettingError::StakeExceedsLiquidity);
+    require!(liability <= available_liquidity, BettingError::StakeExceedsLiquidity);
 
-    // Transfer SOL from bettor to market escrow.
+    // ── Move bettor stake into escrow (LP funds already deposited earlier) ─────
     let cpi_ctx = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
         system_program::Transfer {
@@ -53,43 +53,35 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
 
     let market = &mut ctx.accounts.market;
 
-    // ── Match against LP offer (FULLY MATCHED ONLY) ───────────────────────────
-    let matched_now = {
+    // ── Reserve LP liability + record bettor stake separately ─────────────────
+    {
         let offer = &mut ctx.accounts.lp_offer;
 
-        let available = offer.available();
-        let matched = available.min(amount);
-
+        // amount_matched tracks LIABILITY locked (so available() shrinks correctly)
         offer.amount_matched = offer
             .amount_matched
-            .checked_add(matched)
+            .checked_add(liability)
             .ok_or(BettingError::Overflow)?;
 
-        // CORRECTED: Also track matched_stake so LP winnings calc has data.
+        // matched_stake tracks the bettor stake the LP wins if the bettor loses
         offer.matched_stake = offer
             .matched_stake
-            .checked_add(matched)
+            .checked_add(amount)
             .ok_or(BettingError::Overflow)?;
+    }
 
-        matched
-    };
-
-    // Update market tracking.
+    // total_matched tracks bettor stake matched per outcome
     market.total_matched[outcome as usize] = market.total_matched[outcome as usize]
-        .checked_add(matched_now)
-        .ok_or(BettingError::Overflow)?;
-    market.total_pending[outcome as usize] = market.total_pending[outcome as usize]
-        .checked_add(pending_now)
+        .checked_add(amount)
         .ok_or(BettingError::Overflow)?;
 
-    // potential_payout = matched_stake * odds_bps / 100
-    // e.g. 1 SOL at odds 2.10 (210 bps) → 2.10 SOL gross payout.
-    let potential_payout = (matched_now as u128)
-        .checked_mul(odds_bps as u128)
+    // gross_payout = stake * odds = stake * odds_pct / 100
+    let potential_payout = (amount as u128)
+        .checked_mul(odds_pct as u128)
         .and_then(|v| v.checked_div(100))
-        .unwrap_or(0) as u64;
+        .ok_or(BettingError::Overflow)? as u64;
 
-    // ── Initialize / update BetPosition ──────────────────────────────────────
+    // ── Init / update BetPosition ─────────────────────────────────────────────
     let position = &mut ctx.accounts.bet_position;
     if position.market == Pubkey::default() {
         position.market = market.key();
@@ -97,20 +89,18 @@ pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()>
         position.outcome = outcome;
         position.matched_stake = 0;
         position.pending_stake = 0;
-        position.odds_bps = odds_bps;
+        position.odds_bps = odds_pct;
         position.potential_payout = 0;
         position.claimable = 0;
         position.claimed = false;
         position.bump = ctx.bumps.bet_position;
     }
 
+    require!(position.outcome == outcome, BettingError::InvalidOutcome); // no mixed outcomes
+
     position.matched_stake = position
         .matched_stake
-        .checked_add(matched_now)
-        .ok_or(BettingError::Overflow)?;
-    position.pending_stake = position
-        .pending_stake
-        .checked_add(pending_now)
+        .checked_add(amount)
         .ok_or(BettingError::Overflow)?;
     position.potential_payout = position
         .potential_payout
