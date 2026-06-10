@@ -3,73 +3,45 @@ import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 /**
- * Prepare claim_refund instruction for users who should receive refunds.
- * Returns the Solana instruction for the frontend to sign.
+ * claim_refund instruction builder (for VOIDED markets only)
+ * Discriminator: [2, 96, 183, 251, 63, 208, 46, 46]
+ * Data: discriminator + 1 byte outcome (u8)
+ * Accounts: market, bet_position, bettor, system_program
  */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    
+    const serviceRole = base44.asServiceRole;
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
-    if (!SOLANA_PROGRAM_ID) {
-      return Response.json({ error: 'Solana program ID not configured. Please contact support.' }, { status: 500 });
-    }
     
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-    if (!base58Regex.test(SOLANA_PROGRAM_ID)) {
-      return Response.json({ error: 'Invalid Solana program ID configuration. Please contact support.' }, { status: 500 });
-    }
+    const { userBetId } = await req.json();
     
-    const payload = await req.json();
-    const { userBetId } = payload;
-
-    if (!userBetId) return Response.json({ error: 'Missing userBetId' }, { status: 400 });
+    if (!userBetId) {
+      return Response.json({ error: 'Missing userBetId' }, { status: 400 });
+    }
 
     // Fetch UserBet
-    const userBets = await base44.entities.UserBet.filter({ id: userBetId });
+    const userBets = await serviceRole.entities.UserBet.filter({ id: userBetId });
     const userBet = userBets[0];
-    if (!userBet) return Response.json({ error: 'UserBet not found' }, { status: 404 });
-    
-    // Only allow refunds for bets marked as refunded or lost (when market was voided)
-    if (userBet.status !== 'refunded' && userBet.status !== 'lost') {
-      return Response.json({ error: 'This bet is not eligible for refund' }, { status: 400 });
+    if (!userBet) {
+      return Response.json({ error: 'UserBet not found' }, { status: 404 });
     }
 
-    // Fetch Bet to check if it's settled/voided
-    const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
+    // Fetch Bet entity
+    const bets = await serviceRole.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
-    if (!bet) return Response.json({ error: 'Bet not found' }, { status: 404 });
-    
-    // Check if market was voided (everyone gets refund) or if this is a losing bet that should get refund
-    // In the current hybrid model, losers don't get refunds - only voided markets do
-    // But if the DB shows 'refunded', we should allow them to claim
-    if (bet.status !== 'settled' && bet.status !== 'void') {
-      return Response.json({ error: 'Market has not been settled yet' }, { status: 400 });
+    if (!bet) {
+      return Response.json({ error: 'Bet entity not found' }, { status: 404 });
     }
 
-    // Get wallet address - try UserBet first, then fall back to BetOffer for LPs
-    let walletAddress = userBet.wallet_address;
-    
-    if (!walletAddress && userBet.role === 'lp' && userBet.offer_id) {
-      // For LPs, get wallet from BetOffer
-      const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
-      const offer = offers[0];
-      if (offer && offer.lp_wallet_address) {
-        walletAddress = offer.lp_wallet_address;
-      }
-    }
-    
-    if (!walletAddress) {
-      console.error('Claim refund failed - UserBet:', userBetId, 'role:', userBet.role, 'offer_id:', userBet.offer_id, 'wallet_address:', userBet.wallet_address);
-      return Response.json({ error: 'No wallet address found. Please ensure your wallet is connected and try again.' }, { status: 400 });
-    }
-    
-    if (!base58Regex.test(walletAddress)) {
-      return Response.json({ error: 'Invalid wallet address format' }, { status: 400 });
+    // Check market is voided
+    if (bet.status !== 'void') {
+      return Response.json({ error: 'Market not voided - refunds only available for voided markets' }, { status: 400 });
     }
 
-    const userPubkey = new PublicKey(walletAddress);
+    // Derive PDAs
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
+    const bettorPubkey = new PublicKey(userBet.wallet_address);
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(userBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(userBet.match_id.length, 32));
 
@@ -78,41 +50,40 @@ Deno.serve(async (req) => {
       programId
     );
 
-    let positionPda;
-    let outcomeIndex;
-    
-    // For LP offers, use the stored solana_position_pda from BetOffer
-    if (userBet.role === 'lp' && userBet.offer_id) {
-      const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
-      const offer = offers[0];
-      if (!offer || !offer.solana_position_pda) {
-        return Response.json({ error: 'LP offer not found or missing PDA' }, { status: 400 });
-      }
-      positionPda = new PublicKey(offer.solana_position_pda);
-      outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
-    } else {
-      // For regular bettors, derive position PDA with outcome byte
-      outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
-      const [derivedPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('position'), marketPda.toBuffer(), userPubkey.toBuffer(), Buffer.from([outcomeIndex])],
-        programId
-      );
-      positionPda = derivedPda;
-    }
+    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
 
-    // Fee vault PDA
-    const [feeVaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('fee_vault')],
+    const [positionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('position'), marketPda.toBuffer(), bettorPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
 
     // Build instruction data: 8-byte discriminator + 1-byte outcome
-    const { sha256 } = await import('npm:@noble/hashes@1.4.0/sha256');
-    const discriminator = Buffer.from(sha256('global:refund')).slice(0, 8);
+    const discriminator = Buffer.from([2, 96, 183, 251, 63, 208, 46, 46]);
     const instructionData = Buffer.alloc(9);
     discriminator.copy(instructionData, 0);
     instructionData.writeUInt8(outcomeIndex, 8);
-    
+
+    console.log('[claimRefund] Discriminator (bytes):', Array.from(discriminator));
+    console.log('[claimRefund] Discriminator (hex):', discriminator.toString('hex'));
+    console.log('[claimRefund] Instruction data (hex):', instructionData.toString('hex'));
+
+    // Build accounts in exact order:
+    // 1. market [writable]
+    // 2. bet_position [writable]
+    // 3. bettor [writable, NOT signer]
+    // 4. system_program [readonly]
+    const keys = [
+      { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: positionPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: userBet.wallet_address, isSigner: false, isWritable: true },
+      { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+    ];
+
+    console.log('[claimRefund] Accounts:');
+    keys.forEach((k, i) => {
+      console.log(`  [${i}] ${k.pubkey} (isSigner: ${k.isSigner}, isWritable: ${k.isWritable})`);
+    });
+
     return Response.json({
       success: true,
       refundAmount: userBet.amount,
@@ -120,17 +91,14 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'claim_refund',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        positionPda: positionPda.toBase58(),
-        bettorPubkey: userPubkey.toBase58(),
-        refundAmountLamports: Math.round(userBet.amount * 1_000_000_000),
+        keys,
         instruction_data: instructionData.toString('base64'),
       },
-      message: `Sign to claim your refund of ◎${userBet.amount}`,
+      message: `Sign to claim refund of ◎${userBet.amount.toFixed(4)} from voided market`,
     });
 
   } catch (error) {
-    console.error('claimRefund error:', error);
+    console.error('[claimRefund] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

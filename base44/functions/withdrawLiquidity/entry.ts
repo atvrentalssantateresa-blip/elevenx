@@ -1,43 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
+import { PublicKey, Connection } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
 /**
- * LP withdraws unmatched liquidity.
- * Returns the Solana instruction for the frontend to sign.
+ * withdraw_liquidity instruction builder (LP withdraws unmatched liquidity)
+ * Discriminator: [10, 224, 253, 15, 227, 173, 172, 25]
+ * Data: discriminator (no additional data)
+ * Accounts: market, lp_offer, lp, system_program
  */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
+    
     if (!SOLANA_PROGRAM_ID) {
-      return Response.json({ error: 'Solana program ID not configured. Please contact support.' }, { status: 500 });
+      return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
     }
     
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-    if (!base58Regex.test(SOLANA_PROGRAM_ID)) {
-      return Response.json({ error: 'Invalid Solana program ID configuration. Please contact support.' }, { status: 500 });
-    }
-    
-    const payload = await req.json();
-    const { walletAddress, userBetId } = payload;
+    const { walletAddress, userBetId } = await req.json();
 
     if (!walletAddress) return Response.json({ error: 'Wallet not connected' }, { status: 401 });
     if (!userBetId) return Response.json({ error: 'Missing userBetId' }, { status: 400 });
-
-    if (!base58Regex.test(walletAddress)) {
-      return Response.json({ error: 'Invalid wallet address format. Please reconnect your wallet.' }, { status: 400 });
-    }
 
     // Fetch UserBet
     const userBets = await base44.entities.UserBet.filter({ id: userBetId });
     const userBet = userBets[0];
     if (!userBet) return Response.json({ error: 'UserBet not found' }, { status: 404 });
     if (userBet.role !== 'lp') return Response.json({ error: 'Not an LP bet' }, { status: 400 });
-    // Allow withdrawal for any LP position - on-chain check will verify if unmatched funds exist
 
-    // Fetch BetOffer to get the unmatched amount (if offer_id exists)
+    // Fetch BetOffer
     let offer = null;
     let withdrawAmount = 0;
     
@@ -45,37 +36,21 @@ Deno.serve(async (req) => {
       const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
       offer = offers[0];
       if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
-      
-      console.log('Withdraw check - Offer status:', offer.status, 'amount_unmatched:', offer.amount_unmatched, 'userBet.status:', userBet.status);
-      
-      // Use offer's unmatched amount
       withdrawAmount = offer.amount_unmatched || 0;
     } else {
-      // No offer_id - use UserBet's liquidity_unmatched directly (parimutuel LP)
       withdrawAmount = userBet.liquidity_unmatched || 0;
-      console.log('Withdraw check - UserBet (no offer):', 'liquidity_unmatched:', withdrawAmount, 'userBet.status:', userBet.status);
     }
     
     if (withdrawAmount <= 0) {
       return Response.json({ error: 'No unmatched liquidity remaining' }, { status: 400 });
     }
 
-    // CRITICAL: Unmatched LP funds are withdrawable at ANY time (open, closed, or settled)
-    // This matches the Solana smart contract - LPs should never be locked in
-    // The on-chain balance check below will verify if funds actually exist
-
-    // Fetch Bet and Match
+    // Fetch Bet
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
     if (!bet) return Response.json({ error: 'Bet not found' }, { status: 400 });
 
-    const matches = await base44.entities.Match.filter({ id: userBet.match_id });
-    const match = matches[0];
-
-    // Derive outcome index (0=a, 1=b, 2=draw) - MUST match provideLiquidity
-    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
-    
-    // Derive PDAs - MUST match Solana program exactly
+    // Derive PDAs
     const programId = new PublicKey(SOLANA_PROGRAM_ID);
     const lpPubkey = new PublicKey(walletAddress);
     const matchIdBytes = Buffer.alloc(32);
@@ -86,79 +61,63 @@ Deno.serve(async (req) => {
       programId
     );
     
-    // Re-derive lp_offer PDA with correct seeds: ["lp_offer", market_pubkey, lp_pubkey, &[outcome]]
+    const outcomeIndex = userBet.outcome === 'a' ? 0 : userBet.outcome === 'b' ? 1 : 2;
+    
     const [lpOfferPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('lp_offer'), marketPda.toBuffer(), lpPubkey.toBuffer(), Buffer.from([outcomeIndex])],
       programId
     );
-    
-    console.log('Re-derived PDAs for withdrawal:', {
-      marketPda: marketPda.toBase58(),
-      lpOfferPda: lpOfferPda.toBase58(),
-      stored_market_pda: offer.solana_bet_pool_pda,
-      stored_lp_pda: offer.solana_position_pda,
-      outcomeIndex,
-      userBet_outcome: userBet.outcome,
-    });
 
-    // Check on-chain balance - use on-chain balance as source of truth
+    // Check on-chain balance
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    const lpOfferPubkey = new PublicKey(offer.solana_position_pda || lpOfferPda);
-    
-    console.log('Checking on-chain balance:', {
-      lpOfferPubkey: lpOfferPubkey.toBase58(),
-      stored_pda: offer.solana_position_pda,
-      derived_pda: lpOfferPda.toBase58(),
-      dbUnmatchedAmount: withdrawAmount,
-    });
-    
+    const lpOfferPubkey = offer?.solana_position_pda ? new PublicKey(offer.solana_position_pda) : lpOfferPda;
     const accountInfo = await connection.getAccountInfo(lpOfferPubkey);
     const onChainBalance = (accountInfo?.lamports || 0) / 1e9;
     
-    console.log('On-chain account info:', {
-      exists: !!accountInfo,
-      lamports: accountInfo?.lamports,
-      balanceSol: onChainBalance,
-      dbUnmatchedAmount: withdrawAmount,
-    });
-    
-    // Use on-chain balance as the withdraw amount (DB may be out of sync)
-    // Rent-exempt minimum on Solana is ~0.00000204 SOL, so if balance is less than 0.001, account is empty
     if (onChainBalance < 0.001) {
-      return Response.json({ 
-        error: 'No funds available on-chain. DB may be out of sync.',
-        hint: `On-chain balance: ◎${onChainBalance.toFixed(6)}, DB shows: ◎${withdrawAmount.toFixed(4)}`
-      }, { status: 400 });
+      return Response.json({ error: 'No funds available on-chain' }, { status: 400 });
     }
-    
-    // Withdraw the actual on-chain balance (minus small buffer for rent if needed)
-    const actualWithdrawAmount = onChainBalance;
-    
-    console.log('Using on-chain balance as withdraw amount:', actualWithdrawAmount);
-    
+
+    // Build instruction data: discriminator only (no args)
+    const discriminator = Buffer.from([10, 224, 253, 15, 227, 173, 172, 25]);
+    const instructionData = discriminator;
+
+    console.log('[withdrawLiquidity] Discriminator (bytes):', Array.from(discriminator));
+    console.log('[withdrawLiquidity] Discriminator (hex):', discriminator.toString('hex'));
+
+    // Build accounts in exact order:
+    // 1. market [writable]
+    // 2. lp_offer [writable]
+    // 3. lp [signer, writable]
+    // 4. system_program [readonly]
+    const keys = [
+      { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: lpOfferPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: walletAddress, isSigner: true, isWritable: true },
+      { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+    ];
+
+    console.log('[withdrawLiquidity] Accounts:');
+    keys.forEach((k, i) => {
+      console.log(`  [${i}] ${k.pubkey} (isSigner: ${k.isSigner}, isWritable: ${k.isWritable})`);
+    });
+
     return Response.json({
       success: true,
       userBetId,
-      offerId: offer.id,
-      amount: actualWithdrawAmount,
+      offerId: offer?.id,
+      amount: onChainBalance,
       solana_instruction: {
         instruction_type: 'withdraw_liquidity',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(),
-        // Include account keys explicitly for the frontend
-        keys: [
-          { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
-          { pubkey: lpOfferPda.toBase58(), isSigner: false, isWritable: true },
-          { pubkey: walletAddress, isSigner: true, isWritable: true },
-          { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
-        ],
+        keys,
+        instruction_data: instructionData.toString('base64'),
       },
-      message: `Sign to withdraw ◎${actualWithdrawAmount.toFixed(4)}`,
+      message: `Sign to withdraw ◎${onChainBalance.toFixed(4)}`,
     });
 
   } catch (error) {
-    console.error('withdrawLiquidity error:', error);
+    console.error('[withdrawLiquidity] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

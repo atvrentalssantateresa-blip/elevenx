@@ -1,29 +1,24 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
-import { Buffer } from 'npm:buffer@6.0.3';
+import { PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
+import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 /**
- * Creates a pari-mutuel market on-chain for a bet entity.
- * No LP required - bettors bet directly against the pool.
- * Version: 2026-06-10T19-52-00 - FORCE REDEPLOY FOR NEW PROGRAM ID EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN
+ * create_market instruction builder
+ * Discriminator: [103, 226, 97, 235, 200, 188, 251, 254]
+ * Data: discriminator + match_id (32) + outcome_names (3x32) + open_until (i64) + settle_after (i64) + fee_override (Option<u16>) + outcome_count (u8) + oracle_odds (3x u64)
+ * Accounts: market, vote_tally, platform_config, admin, system_program
  */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    
-    // CRITICAL: Read secrets INSIDE handler to avoid caching stale values
     const SOLANA_PROGRAM_ID = Deno.env.get('SOLANA_PROGRAM_ID');
-    const SOLANA_RPC_URL = 'https://api.devnet.solana.com';
     
     if (!SOLANA_PROGRAM_ID) {
-      console.error('[createMarketOnChain] SOLANA_PROGRAM_ID secret not set!');
       return Response.json({ error: 'Solana program ID not configured' }, { status: 500 });
     }
     
-    const payload = await req.json();
-    const { bet_id, match_id } = payload;
-
+    const { bet_id, match_id } = await req.json();
     if (!bet_id || !match_id) {
       return Response.json({ error: 'Missing bet_id or match_id' }, { status: 400 });
     }
@@ -45,33 +40,28 @@ Deno.serve(async (req) => {
       programId
     );
 
-    // Skip on-chain check to avoid rate limits - just create the instruction
-    // Frontend will handle the transaction and we'll check on-chain status after
-    console.log('Preparing create_market instruction for:', marketPda.toBase58());
+    const [voteTallyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote_tally'), marketPda.toBuffer()],
+      programId
+    );
 
-    // CRITICAL: Use exact discriminator expected by deployed program EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN
-    // Pre-computed: [103,226,97,235,200,188,251,254] = 0x67e261ebc8cbfbfe
+    const [platformPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('platform')],
+      programId
+    );
+
+    const [feeVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('fee_vault')],
+      programId
+    );
+
+    // Build instruction data
     const discriminator = Buffer.from([103, 226, 97, 235, 200, 188, 251, 254]);
-
-    // CRITICAL: Check if this is a TEST market (title contains "Test" or "Quick Test")
-    // Test markets should use their DB timeline exactly, no World Cup overrides
-    const isTestMarket = bet.title?.toLowerCase().includes('test') || 
-                         bet.outcome_a?.toLowerCase().includes('test');
     
-    // Use the ACTUAL bet.open_until from database
+    const isTestMarket = bet.title?.toLowerCase().includes('test');
     const bettingCloseTime = new Date(bet.open_until).getTime();
     const openUntil = Math.floor(bettingCloseTime / 1000);
-    
-    // For test markets: settle 1 second after betting closes (minimum required by Solana program)
-    // For production markets: 5 minutes after betting closes
     const settleAfter = isTestMarket ? openUntil + 1 : openUntil + 300;
-    
-    if (isTestMarket) {
-      console.log('[createMarketOnChain] TEST market detected - using DB timeline:', {
-        openUntil: new Date(openUntil * 1000).toISOString(),
-        settleAfter: new Date(settleAfter * 1000).toISOString(),
-      });
-    }
 
     const outcomeNames = [
       Buffer.alloc(32),
@@ -82,18 +72,13 @@ Deno.serve(async (req) => {
     Buffer.from(bet.outcome_b || 'B').copy(outcomeNames[1], 0, 0, Math.min(bet.outcome_b?.length || 1, 32));
     Buffer.from(bet.outcome_draw || 'Draw').copy(outcomeNames[2], 0, 0, Math.min(bet.outcome_draw?.length || 4, 32));
 
-    // Build instruction data: discriminator + CreateMarketParams (Borsh serialized)
-    // CreateMarketParams: match_id [u8;32] + outcome_names [[u8;32];3] + open_until i64 + settle_after i64
-    //                     + fee_percent_override Option<u16> (1 flag + 2 bytes if Some) + outcome_count u8 + oracle_odds [u64;3]
-    // Total: 32 + 96 + 8 + 8 + 3 + 1 + 24 = 172 bytes
+    // Params: 32 + 96 + 8 + 8 + 3 + 1 + 24 = 172 bytes
     const paramsData = Buffer.alloc(172);
     let offset = 0;
     
-    // match_id: [u8; 32]
     matchIdBytes.copy(paramsData, offset);
     offset += 32;
     
-    // outcome_names: [[u8; 32]; 3]
     outcomeNames[0].copy(paramsData, offset);
     offset += 32;
     outcomeNames[1].copy(paramsData, offset);
@@ -101,26 +86,20 @@ Deno.serve(async (req) => {
     outcomeNames[2].copy(paramsData, offset);
     offset += 32;
     
-    // open_until: i64 LE
     paramsData.writeBigInt64LE(BigInt(openUntil), offset);
     offset += 8;
     
-    // settle_after: i64 LE
     paramsData.writeBigInt64LE(BigInt(settleAfter), offset);
     offset += 8;
     
-    // fee_percent_override: Option<u16> - Borsh requires 1 byte flag (0=None, 1=Some), then 2 bytes if Some
-    paramsData.writeUInt8(1, offset); // flag = 1 (Some)
+    paramsData.writeUInt8(1, offset); // flag = Some
     offset += 1;
     paramsData.writeUInt16LE(bet.fee_percent || 200, offset);
     offset += 2;
     
-    // outcome_count: u8
-    paramsData.writeUInt8(3, offset);
+    paramsData.writeUInt8(3, offset); // outcome_count
     offset += 1;
     
-    // oracle_odds: [u64; 3] LE
-    // Convert decimal odds to basis points (multiply by 100) before converting to BigInt
     const oddsA = BigInt(Math.round((bet.odds_a || bet.oracle_odds_a || 0) * 100));
     const oddsB = BigInt(Math.round((bet.odds_b || bet.oracle_odds_b || 0) * 100));
     const oddsDraw = BigInt(Math.round((bet.odds_draw || bet.oracle_odds_draw || 0) * 100));
@@ -133,103 +112,45 @@ Deno.serve(async (req) => {
 
     const instructionData = Buffer.concat([discriminator, paramsData]);
 
-    console.log('Market PDA derived:', marketPda.toBase58());
-    console.log('Instruction data length:', instructionData.length);
+    console.log('[createMarketOnChain] Discriminator (bytes):', Array.from(discriminator));
+    console.log('[createMarketOnChain] Discriminator (hex):', discriminator.toString('hex'));
+    console.log('[createMarketOnChain] Market PDA:', marketPda.toBase58());
 
-    const [voteTallyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vote_tally'), marketPda.toBuffer()],
-      programId
-    );
+    // Build accounts in exact order:
+    // 1. market [writable]
+    // 2. vote_tally [writable]
+    // 3. platform_config [writable]
+    // 4. admin [signer, writable]
+    // 5. system_program [readonly]
+    const keys = [
+      { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: platformPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId.toBase58(), isSigner: false, isWritable: false },
+    ];
 
-    const [platformConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('platform')],
-      programId
-    );
+    console.log('[createMarketOnChain] Accounts:');
+    keys.forEach((k, i) => {
+      console.log(`  [${i}] ${k.pubkey} (isSigner: ${k.isSigner}, isWritable: ${k.isWritable})`);
+    });
 
-    const [feeVaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('fee_vault')],
-      programId
-    );
-
-    // Prepare platform init instruction with global: prefix (Anchor default)
-    const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
-    const initParams = Buffer.alloc(3);
-    initParams.writeUInt16LE(200, 0); // fee_percent: 2%
-    initParams.writeUInt8(51, 2); // consensus_threshold: 51%
-    const initInstructionData = Buffer.concat([initDiscriminator, initParams]);
-
-    // Check if platform is already initialized by checking if account exists
-    const connection = new Connection(SOLANA_RPC_URL);
-    let platformInitialized = false;
-    try {
-      const accountInfo = await connection.getAccountInfo(platformConfigPda);
-      platformInitialized = accountInfo !== null;
-      console.log('Platform initialized:', platformInitialized);
-    } catch (err) {
-      console.error('Failed to check platform status:', err.message);
-      platformInitialized = false;
-    }
-    
-    // Check if market exists on-chain (only if DB says it's created or force_recreate)
-    let marketExistsOnChain = false;
-    if (bet.solana_market_created || payload.force_recreate) {
-      try {
-        const marketInfo = await connection.getAccountInfo(marketPda);
-        marketExistsOnChain = marketInfo !== null && marketInfo.data.length > 100;
-        console.log('Market on-chain check:', { exists: marketExistsOnChain, hasData: marketInfo?.data.length });
-      } catch (err) {
-        console.error('Failed to check market status:', err.message);
-      }
-    }
-    
-    // Build create market instruction with EXACT 5 accounts in required order:
-    // (1) market PDA [writable], (2) vote_tally PDA [writable], (3) platform_config PDA [writable],
-    // (4) admin [signer, writable], (5) system_program
-    const createMarketInstruction = {
-      instruction_type: 'create_market',
-      programId: SOLANA_PROGRAM_ID,
-      marketPda: marketPda.toBase58(),
-      instruction_data: instructionData.toString('base64'),
-      accounts: {
-        market: marketPda.toBase58(),
-        voteTally: voteTallyPda.toBase58(),
-        platformConfig: platformConfigPda.toBase58(),
-        admin: 'SIGNER_WALLET',
-        systemProgram: SystemProgram.programId.toBase58(),
-      }
-    };
-    
-    // If DB says created but market doesn't exist on-chain, force recreate
-    const shouldForceRecreate = (bet.solana_market_created && !marketExistsOnChain) || payload.force_recreate;
-
-    // Only return platform init if NOT already initialized
-    // Return createMarketInstruction in solana_instruction field for frontend to sign
-    const response = {
+    return Response.json({
       success: true,
       marketPda: marketPda.toBase58(),
-      alreadyExists: marketExistsOnChain && !shouldForceRecreate,
-      forceRecreated: shouldForceRecreate,
-      needsPlatformInit: !platformInitialized,
-      platformConfigPda: platformConfigPda.toBase58(),
+      platformPda: platformPda.toBase58(),
       feeVaultPda: feeVaultPda.toBase58(),
-      solana_instruction: platformInitialized ? createMarketInstruction : {
-        instruction_type: 'initialize_platform',
+      solana_instruction: {
+        instruction_type: 'create_market',
         programId: SOLANA_PROGRAM_ID,
-        instruction_data: initInstructionData.toString('base64'),
-        accounts: {
-          platformConfig: platformConfigPda.toBase58(),
-          feeVault: feeVaultPda.toBase58(),
-          admin: 'SIGNER_WALLET', // Use placeholder - frontend will replace with actual wallet
-        }
+        keys,
+        instruction_data: instructionData.toString('base64'),
       },
-      message: shouldForceRecreate ? 'Recreating market (DB says created but on-chain missing)' : (platformInitialized ? 'Sign transaction to create market' : 'Initialize platform first, then create market'),
-      bet_id: bet.id,
-    };
-    
-    return Response.json(response);
+      message: 'Sign transaction to create market',
+    });
 
   } catch (error) {
-    console.error('createMarketOnChain error:', error);
+    console.error('[createMarketOnChain] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
