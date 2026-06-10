@@ -267,14 +267,21 @@ export default function Futures() {
   const marketsByGroup = React.useMemo(() => {
     const grouped = {};
     openMarkets.forEach(m => {
-      if (m.country?.startsWith('Group ')) {
-        const groupName = m.country; // e.g., "Group A"
+      const groupName = m.country; // e.g., "Group A"
+      if (groupName && groupName.startsWith('Group ')) {
         if (!grouped[groupName]) grouped[groupName] = [];
         grouped[groupName].push(m);
       }
     });
     return grouped;
   }, [openMarkets]);
+  
+  // Debug: Log markets count
+  React.useEffect(() => {
+    console.log('[Futures] Total markets:', futuresMarkets.length);
+    console.log('[Futures] Open markets:', openMarkets.length);
+    console.log('[Futures] Markets by group:', marketsByGroup);
+  }, [futuresMarkets, openMarkets, marketsByGroup]);
 
   // Calculate totals for hero
   const totalPool = openMarkets.reduce((sum, m) =>
