@@ -187,10 +187,10 @@ export default function LpDashboard() {
       return groupedResult;
     },
     enabled: !!walletAddress,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    staleTime: 0
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: 30000
   });
 
   const { data: matches = [] } = useQuery({
@@ -390,11 +390,8 @@ export default function LpDashboard() {
       setModalTransactionMode(false);
       setDetailModalOpen(false);
       setError(null);
-      // Invalidate ALL relevant queries to refresh claimed status
-      await queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress], refetchType: 'all' });
-      await queryClient.invalidateQueries({ queryKey: ['openBets'] });
-      await queryClient.invalidateQueries({ queryKey: ['allOffers'] });
-      await queryClient.invalidateQueries({ queryKey: ['userBets'], refetchType: 'all' });
+      // Only refetch myOffers - don't invalidate everything (causes jarring refresh)
+      await refetchOffers();
     }, 2500);
   };
 
