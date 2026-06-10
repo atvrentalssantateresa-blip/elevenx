@@ -132,60 +132,41 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'settle_after must be after open_until' }, { status: 400 });
     }
 
-    // Prepare create_market instruction
-    const discriminator = Buffer.from(sha256("global:create_market")).slice(0, 8);
+    // Hardcoded discriminator matching deployed program (same as createMarketOnChain)
+    const discriminator = Buffer.from([103, 226, 97, 235, 200, 188, 251, 254]);
 
-    // IMPORTANT: Solana program only supports exactly 3 outcomes (like 1X2 betting)
-    // Futures markets must have exactly 3 outcomes (e.g., "Group A Winner: Team A / Team B / Other")
     const outcomeNames = [Buffer.alloc(32), Buffer.alloc(32), Buffer.alloc(32)];
-    
-    // Fill in outcome names (pad to 32 bytes each)
     for (let i = 0; i < 3; i++) {
-      if (futuresMarket.outcomes?.[i]?.label) {
-        Buffer.from(futuresMarket.outcomes[i].label).copy(outcomeNames[i], 0, 0, Math.min(futuresMarket.outcomes[i].label.length, 32));
-      } else {
-        Buffer.from(`Outcome ${i + 1}`).copy(outcomeNames[i], 0, 0, 10);
-      }
+      const label = futuresMarket.outcomes?.[i]?.label || `Outcome ${i + 1}`;
+      Buffer.from(label, 'utf-8').copy(outcomeNames[i], 0, 0, Math.min(label.length, 32));
     }
 
-    // Build instruction data (fixed size for 3 outcomes)
-    const paramsData = Buffer.alloc(32 + (32 * 3) + 8 + 8 + 2 + 1 + (8 * 3));
-    let offset = 0;
-    
-    // match_id (32 bytes) - use futures market ID
+    // match_id (32 bytes) — use futures market ID as seed
     const matchIdBytes = Buffer.alloc(32);
     Buffer.from(futures_market_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(futures_market_id.length, 32));
-    matchIdBytes.copy(paramsData, offset);
-    offset += 32;
-    
-    // outcome_names (32 bytes each × 3)
-    outcomeNames.forEach(name => {
-      name.copy(paramsData, offset);
-      offset += 32;
-    });
-    
-    // open_until (8 bytes)
-    paramsData.writeBigInt64LE(BigInt(openUntil), offset);
-    offset += 8;
-    
-    // settle_after (8 bytes)
-    paramsData.writeBigInt64LE(BigInt(settleAfter), offset);
-    offset += 8;
-    
-    // fee_percent (2 bytes) - 0 for now
-    paramsData.writeUInt16LE(0, offset);
-    offset += 2;
-    
-    // outcome_count (1 byte) - MUST be 3
-    paramsData.writeUInt8(3, offset);
-    offset += 1;
-    
-    // oracle_odds (8 bytes each × 3) - convert decimal odds to basis points
-    for (let i = 0; i < 3; i++) {
-      const oddsBps = BigInt(Math.round((futuresMarket.outcomes?.[i]?.odds || 1) * 100));
-      paramsData.writeBigUInt64LE(oddsBps, offset);
-      offset += 8;
-    }
+
+    // fee as Option<u16>: 0x01 + u16 LE (same encoding as createMarketOnChain)
+    const feeOptionBuf = Buffer.alloc(3);
+    feeOptionBuf.writeUInt8(1, 0);
+    feeOptionBuf.writeUInt16LE(0, 1); // 0% fee
+
+    // oracle_odds: must be > 100 (100 = 1.0x)
+    const oddsArr = [0, 1, 2].map(i => Math.max(Math.round((futuresMarket.outcomes?.[i]?.odds || 2.0) * 100), 101));
+
+    // Build params: 32 + 96 + 8 + 8 + 3 + 1 + 24 = 172 bytes (matches createMarketOnChain)
+    const paramsData = Buffer.alloc(172);
+    let offset = 0;
+    matchIdBytes.copy(paramsData, offset); offset += 32;
+    outcomeNames[0].copy(paramsData, offset); offset += 32;
+    outcomeNames[1].copy(paramsData, offset); offset += 32;
+    outcomeNames[2].copy(paramsData, offset); offset += 32;
+    paramsData.writeBigInt64LE(BigInt(openUntil), offset); offset += 8;
+    paramsData.writeBigInt64LE(BigInt(settleAfter), offset); offset += 8;
+    feeOptionBuf.copy(paramsData, offset); offset += 3;
+    paramsData.writeUInt8(3, offset); offset += 1; // outcome_count = 3
+    paramsData.writeBigUInt64LE(BigInt(oddsArr[0]), offset); offset += 8;
+    paramsData.writeBigUInt64LE(BigInt(oddsArr[1]), offset); offset += 8;
+    paramsData.writeBigUInt64LE(BigInt(oddsArr[2]), offset); offset += 8;
 
     const instructionData = Buffer.concat([discriminator, paramsData]);
 
@@ -236,6 +217,23 @@ Deno.serve(async (req) => {
     });
     console.log('[createFuturesMarketOnChain] Saved solana_market_pda to DB:', marketPda.toBase58());
 
+    console.log('[createFuturesMarketOnChain] Instruction data length:', instructionData.length, '(expected 180)');
+
+    const keys = [
+      { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: voteTallyPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: platformConfigPda.toBase58(), isSigner: false, isWritable: true },
+      { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: true },
+      { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+    ];
+    const accounts = {
+      market: marketPda.toBase58(),
+      voteTally: voteTallyPda.toBase58(),
+      platformConfig: platformConfigPda.toBase58(),
+      admin: 'SIGNER_WALLET',
+      systemProgram: '11111111111111111111111111111111',
+    };
+
     return Response.json({
       success: true,
       marketPda: marketPda.toBase58(),
@@ -245,12 +243,8 @@ Deno.serve(async (req) => {
         programId: SOLANA_PROGRAM_ID,
         marketPda: marketPda.toBase58(),
         instruction_data: instructionData.toString('base64'),
-        accounts: {
-          market: marketPda.toBase58(),
-          voteTally: voteTallyPda.toBase58(),
-          platformConfig: platformConfigPda.toBase58(),
-          admin: 'SIGNER_WALLET',
-        },
+        keys,
+        accounts,
         futures_market_id: futures_market_id,
       },
       message: 'Sign to create futures market on-chain',
