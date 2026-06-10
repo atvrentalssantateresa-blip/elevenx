@@ -497,11 +497,11 @@ export default function MyBets() {
         <TabsContent value="history">
           <div className="space-y-4">
             {/* Match History */}
-            {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
+            {groupedMatchBetsArray.filter(b => ['lost', 'won', 'claimed', 'refunded', 'void'].includes(b.status)).length > 0 && (
               <div>
                 <h3 className="font-heading font-bold text-sm mb-3 text-primary">Match Bets</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                  {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
+                  {groupedMatchBetsArray.filter(b => ['lost', 'won', 'claimed', 'refunded', 'void'].includes(b.status)).map((bet, i) => (
                     <BetCard
                       key={bet.betIds?.[0] || bet.id || i}
                       bet={bet}
@@ -530,7 +530,7 @@ export default function MyBets() {
               </div>
             )}
             
-            {groupedMatchBetsArray.filter(b => ['lost', 'claimed', 'refunded', 'void'].includes(b.status)).length === 0 &&
+            {groupedMatchBetsArray.filter(b => ['lost', 'won', 'claimed', 'refunded', 'void'].includes(b.status)).length === 0 &&
              groupedFuturesBetsArray.filter(b => ['lost', 'won', 'claimed', 'refunded', 'void'].includes(b.status)).length === 0 && (
               <EmptyState message="No betting history yet" />
             )}
