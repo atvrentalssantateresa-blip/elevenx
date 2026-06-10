@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 use crate::state::{BetMarket, PlatformConfig, FeeVault};
 use crate::errors::BettingError;
 
-// Switchboard On-Demand SDK — verify import path matches your pinned version
+// Switchboard On-Demand SDK — verify import path matches your pinned version.
 use switchboard_on_demand::PullFeedAccountData;
 
-// ── Internal settlement logic (shared by oracle + emergency paths) ────────────
+// ── Internal settlement logic (shared by oracle + test paths) ─────────────────
 
 fn execute_settlement(
     market: &mut BetMarket,
@@ -55,19 +55,21 @@ pub fn settle_from_oracle(ctx: Context<SettleFromOracle>) -> Result<()> {
     }
 
     // ── SECURITY: verify feed account is genuinely Switchboard ────────────────
+    // The feed pubkey is also pinned via `address = market.settlement_feed` on the
+    // accounts struct, so an attacker cannot substitute a different valid feed.
     let feed_account = ctx.accounts.feed.to_account_info();
     let feed = PullFeedAccountData::parse(feed_account)
         .map_err(|_| error!(BettingError::InvalidOracleAccount))?;
 
     // ── SECURITY: staleness + min samples ─────────────────────────────────────
-    let max_stale_slots: u64 = 250;  // ~100s at ~0.4s/slot
+    let max_stale_slots: u64 = 250; // ~100s at ~0.4s/slot
     let min_samples: u32 = 1;
 
     let raw = feed
         .get_value(&clock, max_stale_slots, min_samples, true)
         .map_err(|_| error!(BettingError::OracleNotReady))?;
 
-    // ── Map numeric feed result to outcome enum ───────────────────────────────
+    // ── Map numeric feed result to outcome enum (0/1/2) ───────────────────────
     let as_int: i64 = raw
         .try_into()
         .map_err(|_| error!(BettingError::InvalidOracleResult))?;
@@ -89,22 +91,35 @@ pub fn settle_from_oracle(ctx: Context<SettleFromOracle>) -> Result<()> {
 
 // ── force_void_market ────────────────────────────────────────────────────────
 // Admin-only: Emergency recovery to VOID a stuck market (NOT settle).
-// SECURITY FIX: Admin can only void (refund all), not pick winners.
+// SECURITY: Admin can only void (refund all), never pick a winner.
 
 pub fn force_void_market(ctx: Context<ForceVoidMarket>) -> Result<()> {
     let market = &mut ctx.accounts.market;
     let clock = Clock::get()?;
-    
+
     require!(!market.settled, BettingError::AlreadySettled);
     require!(!market.voided, BettingError::MarketVoided);
     require!(clock.unix_timestamp >= market.settle_after, BettingError::TooEarlyToSettle);
 
     market.voided = true;
     market.settled = true;
-    
     Ok(())
 }
 
+// ── test_announce_winner (TEST ONLY) ──────────────────────────────────────────
+// Compiled ONLY when the `testing` feature is enabled. Absent from mainnet builds.
+// Lets the admin settle a market to any outcome so the full claim/withdraw/refund
+// flow can be exercised on devnet without a live Switchboard feed.
+
+#[cfg(feature = "testing")]
+pub fn test_announce_winner(ctx: Context<TestAnnounceWinner>, winning_outcome: u8) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    let fee_vault = &mut ctx.accounts.fee_vault;
+    require!(winning_outcome < market.outcome_count, BettingError::InvalidOutcome);
+    require!(!market.settled && !market.voided, BettingError::AlreadySettled);
+    execute_settlement(market, winning_outcome, fee_vault)?;
+    Ok(())
+}
 
 // ── SettleFromOracle Accounts ────────────────────────────────────────────────
 
@@ -120,9 +135,9 @@ pub struct SettleFromOracle<'info> {
     #[account(mut, seeds = [b"fee_vault"], bump = fee_vault.bump)]
     pub fee_vault: Account<'info, FeeVault>,
 
-    /// CHECK: Switchboard On-Demand feed account — validated via parse() + address constraint.
-    /// CRITICAL: The feed pubkey MUST be pinned to the market at creation to prevent
-    /// an attacker from passing a different (but valid) Switchboard feed.
+    /// CHECK: Switchboard On-Demand feed account — validated via parse() AND
+    /// pinned to the market via the address constraint below. This is the
+    /// critical anti-substitution check.
     #[account(address = market.settlement_feed @ BettingError::InvalidOracleAccount)]
     pub feed: AccountInfo<'info>,
 
@@ -133,7 +148,7 @@ pub struct SettleFromOracle<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// ── ForceVoidMarket Accounts ────────────────────────────────────────────────
+// ── ForceVoidMarket Accounts ─────────────────────────────────────────────────
 
 #[derive(Accounts)]
 pub struct ForceVoidMarket<'info> {
@@ -153,18 +168,7 @@ pub struct ForceVoidMarket<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// ── TEST ONLY: test_announce_winner ─────────────────────────────────────────
-// Admin-only test helper for devnet testing. Compiled OUT of mainnet builds.
-
-#[cfg(feature = "testing")]
-pub fn test_announce_winner(ctx: Context<TestAnnounceWinner>, winning_outcome: u8) -> Result<()> {
-    let market = &mut ctx.accounts.market;
-    let fee_vault = &mut ctx.accounts.fee_vault;
-    require!(winning_outcome < market.outcome_count, BettingError::InvalidOutcome);
-    require!(!market.settled && !market.voided, BettingError::AlreadySettled);
-    execute_settlement(market, winning_outcome, fee_vault)?;
-    Ok(())
-}
+// ── TestAnnounceWinner Accounts (TEST ONLY) ──────────────────────────────────
 
 #[cfg(feature = "testing")]
 #[derive(Accounts)]
