@@ -125,6 +125,17 @@ Deno.serve(async (req) => {
       { pubkey: SystemProgram.programId.toBase58(), isSigner: false, isWritable: false },
     ];
 
+    // Also provide named accounts object — required by SolanaTransactionSigner create_market handler
+    const accounts = {
+      market: marketPda.toBase58(),
+      voteTally: voteTallyPda.toBase58(),
+      platformConfig: platformPda.toBase58(),
+      admin: 'SIGNER_WALLET',
+      systemProgram: SystemProgram.programId.toBase58(),
+    };
+
+    console.log('[createMarketOnChain] Instruction data length:', instructionData.length, '(expected 180)');
+
     return Response.json({
       success: true, needsPlatformInit: false,
       marketPda: marketPda.toBase58(), platformPda: platformPda.toBase58(), feeVaultPda: feeVaultPda.toBase58(),
@@ -132,6 +143,7 @@ Deno.serve(async (req) => {
         instruction_type: 'create_market',
         programId: programIdStr,
         keys,
+        accounts,
         instruction_data: instructionData.toString('base64'),
       },
       message: 'Sign transaction to create market',

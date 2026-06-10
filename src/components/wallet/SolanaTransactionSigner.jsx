@@ -143,37 +143,24 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         console.log('[SolanaTransactionSigner] First 8 bytes (discriminator):', data.slice(0, 8).toString('hex'));
         console.log('[SolanaTransactionSigner] Full instruction data (hex):', data.toString('hex'));
         
-        // Validate instruction data size (should be 8 + 171 = 179 bytes)
-        if (data.length !== 179) {
-          console.error('[SolanaTransactionSigner] WARNING: Unexpected instruction data length:', data.length, '(expected 179)');
-        }
+        console.log('[SolanaTransactionSigner] create_market instruction data length:', data.length, '(expected 180)');
         
-        // Build keys in the EXACT order required by the deployed program:
-        // (1) market PDA [seeds: "market" + match_id, writable]
-        // (2) vote_tally PDA [seeds: "vote_tally" + market pubkey, writable]
-        // (3) platform_config PDA [seeds: "platform", writable]
-        // (4) admin [signer, writable]
-        // (5) system_program
+        // Build keys — prefer named accounts object, fall back to keys array
         const keys = [];
-        
         if (instruction.accounts) {
           const accounts = instruction.accounts;
-          
-          // Validate all 5 required accounts are present
-          if (!accounts.market) throw new Error('Missing market account in instruction');
-          if (!accounts.voteTally) throw new Error('Missing voteTally account in instruction');
-          if (!accounts.platformConfig) throw new Error('Missing platformConfig account in instruction');
-          if (!accounts.admin) throw new Error('Missing admin account in instruction');
-          if (!accounts.systemProgram) throw new Error('Missing systemProgram account in instruction');
-          
           keys.push({ pubkey: new PublicKey(accounts.market), isSigner: false, isWritable: true });
           keys.push({ pubkey: new PublicKey(accounts.voteTally), isSigner: false, isWritable: true });
           keys.push({ pubkey: new PublicKey(accounts.platformConfig), isSigner: false, isWritable: true });
-          // Admin must be the signer wallet
           keys.push({ pubkey: provider.publicKey, isSigner: true, isWritable: true });
           keys.push({ pubkey: new PublicKey(accounts.systemProgram), isSigner: false, isWritable: false });
+        } else if (instruction.keys && instruction.keys.length === 5) {
+          instruction.keys.forEach((k, i) => {
+            const pubkeyStr = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+            keys.push({ pubkey: new PublicKey(pubkeyStr), isSigner: k.isSigner, isWritable: k.isWritable });
+          });
         } else {
-          throw new Error('Missing accounts in create_market instruction');
+          throw new Error('create_market instruction missing accounts or keys');
         }
         
         console.log('[SolanaTransactionSigner] create_market keys:', keys.map(k => ({
