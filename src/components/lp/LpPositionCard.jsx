@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,57 @@ import { Link } from 'react-router-dom';
 import BetCountdown from '@/components/betting/BetCountdown';
 import WithdrawAmountModal from '@/components/lp/WithdrawAmountModal';
 import { base44 } from '@/api/base44Client';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { Buffer } from 'buffer';
+
+/**
+ * Fetch on-chain lp_offer account and decode the closed flag.
+ * LpOffer layout after 8-byte discriminator:
+ *   market: Pubkey (32)
+ *   lp: Pubkey (32)
+ *   outcome: u8 (1)
+ *   odds_bps: u64 (8)
+ *   amount_committed: u64 (8)
+ *   amount_matched: u64 (8)
+ *   closed: bool (1)  ← offset 8+32+32+1+8+8+8 = 97
+ */
+async function fetchLpOfferOnChain(positionPda) {
+  try {
+    const rpcUrl = 'https://api.devnet.solana.com';
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const pubkey = new PublicKey(positionPda);
+    const accountInfo = await connection.getAccountInfo(pubkey);
+    if (!accountInfo) return null;
+    const data = accountInfo.data;
+    if (data.length < 98) return null;
+    const CLOSED_OFFSET = 97; // 8 + 32 + 32 + 1 + 8 + 8 + 8 = 97
+    const AMOUNT_COMMITTED_OFFSET = 73; // 8 + 32 + 32 + 1 = 73
+    const AMOUNT_MATCHED_OFFSET = 81;   // 73 + 8 = 81
+    const amountCommittedLamports = Number(data.readBigUInt64LE(AMOUNT_COMMITTED_OFFSET));
+    const amountMatchedLamports = Number(data.readBigUInt64LE(AMOUNT_MATCHED_OFFSET));
+    const closed = data[CLOSED_OFFSET] === 1;
+    return {
+      amountCommitted: amountCommittedLamports / 1e9,
+      amountMatched: amountMatchedLamports / 1e9,
+      unmatched: Math.max(0, (amountCommittedLamports - amountMatchedLamports)) / 1e9,
+      closed,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function LpPositionCard({ position, match, bet, walletAddress, onWithdrawRequest }) {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
+  // Fetch on-chain lp_offer state to determine if already withdrawn (closed flag)
+  const positionPda = position.solana_position_pda || position.userBet?.solana_position_pda;
+  const { data: onChainOffer, refetch: refetchOnChain } = useQuery({
+    queryKey: ['lp-offer-onchain', positionPda],
+    queryFn: () => fetchLpOfferOnChain(positionPda),
+    enabled: !!positionPda,
+    staleTime: 30000,
+  });
 
   // Support both BetOffer (offer) and UserBet (position) entities
   const offer = position;
@@ -258,7 +307,11 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
         totalWithdraw: selectedAmount + (res.data.lpFeeBonus || 0),
         positionId: offer.userBetId || offer.id,
         offerId: offer.offer_id || null,
-        match: match
+        match: match,
+        onSuccess: () => {
+          // Refetch on-chain state immediately after tx confirms so button disappears
+          setTimeout(() => refetchOnChain(), 2000);
+        }
       });
     } catch (err) {
       console.error('[LpPositionCard] Withdraw failed:', err);
@@ -580,12 +633,30 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             }
 
-            // Priority 4: Has unmatched liquidity - withdraw unmatched (ALWAYS allowed unless already withdrawn/refunded)
-            // CRITICAL: This works even for settled/lost markets - unmatched funds are always withdrawable
-            const canWithdrawUnmatched = hasUnmatchedLiquidity && 
+            // Priority 4: Has unmatched liquidity - withdraw unmatched (only if on-chain closed == false)
+            // CRITICAL: Never show withdraw if on-chain closed flag is true (AlreadyWithdrawn error)
+            const onChainClosed = onChainOffer?.closed === true;
+            const onChainUnmatched = onChainOffer ? onChainOffer.unmatched : liquidityUnmatched;
+            const canWithdrawUnmatched = (onChainOffer ? (onChainUnmatched > 0 && !onChainClosed) : hasUnmatchedLiquidity) && 
                                          userBetStatus !== 'refunded' && 
                                          userBetStatus !== 'withdrawn' &&
                                          onWithdrawRequest;
+
+            // If on-chain says already closed, show Withdrawn badge instead
+            if (onChainClosed) {
+              return (
+                <div className="flex-1 flex flex-col gap-1">
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Withdrawn (on-chain)
+                  </Button>
+                </div>
+              );
+            }
+
             if (canWithdrawUnmatched) {
               return (
                 <Button
@@ -593,9 +664,8 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                   className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold bg-[#242424]">
                   
                   <Wallet className="w-3 h-3 mr-1" />
-                  Withdraw ◎{liquidityUnmatched.toFixed(4)}
+                  Withdraw ◎{(onChainOffer ? onChainUnmatched : liquidityUnmatched).toFixed(4)}
                 </Button>);
-
             }
 
             // Position not yet settled

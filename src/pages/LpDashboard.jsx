@@ -404,6 +404,8 @@ export default function LpDashboard() {
     const signature = txResult.signature;
     const userBetId = pendingTx?.userBetId;
     const offerId = pendingTx?.offerId;
+    // Notify card to refetch on-chain state so withdraw button disappears immediately
+    pendingTx?.onSuccess?.();
 
     console.log('[LpDashboard] handleWithdrawSuccess - finalizing withdrawal:', { userBetId, offerId, signature });
 
@@ -935,7 +937,8 @@ export default function LpDashboard() {
                               amount: withdrawData.withdrawAmount || 0,
                               type: 'withdraw_liquidity',
                               userBetId: withdrawData.positionId,
-                              offerId: withdrawData.offerId
+                              offerId: withdrawData.offerId,
+                              onSuccess: withdrawData.onSuccess,
                             });
                           }} />
                       );
@@ -974,7 +977,8 @@ export default function LpDashboard() {
                               amount: withdrawData.withdrawAmount || 0,
                               type: 'withdraw_liquidity',
                               userBetId: withdrawData.positionId,
-                              offerId: withdrawData.offerId
+                              offerId: withdrawData.offerId,
+                              onSuccess: withdrawData.onSuccess,
                             });
                           }} />
                       );
