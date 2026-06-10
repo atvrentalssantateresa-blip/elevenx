@@ -18,6 +18,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
   const [showSigner, setShowSigner] = useState(false);
   const [createMarketMutation, setCreateMarketMutation] = useState({ isPending: false });
   const [isInitializingPlatform, setIsInitializingPlatform] = useState(false);
+  const [successSignature, setSuccessSignature] = useState(null);
 
   useEffect(() => {
     checkMarketStatus();
@@ -102,6 +103,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
 
     setIsLoading(true);
     setError(null);
+    setSuccessSignature(null);
 
     try {
       const walletAddress = localStorage.getItem('solana_wallet');
@@ -132,6 +134,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       console.log('Transaction successful:', signature, 'isPlatformInit:', isPlatformInit);
       setInstruction(null);
       setShowSigner(false);
+      if (!isPlatformInit) setSuccessSignature(signature);
       
       if (isPlatformInit) {
         setIsInitializingPlatform(false);
@@ -397,7 +400,25 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         </Alert>
       )}
 
-      {showSigner && instruction ? (
+      {successSignature && (
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
+          <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
+          <p className="font-heading font-bold text-sm text-accent">✓ Liquidity provided successfully!</p>
+          <a
+            href={`https://solscan.io/tx/${successSignature}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary text-xs font-bold hover:underline mt-2"
+          >
+            View on Solscan → <span className="font-mono text-[10px] text-muted-foreground">{successSignature.slice(0, 8)}...{successSignature.slice(-8)}</span>
+          </a>
+          <Button variant="outline" className="w-full mt-3 text-xs" onClick={() => setSuccessSignature(null)}>
+            Provide More Liquidity
+          </Button>
+        </div>
+      )}
+
+      {!successSignature && (showSigner && instruction ? (
         <SolanaTransactionSigner
           instruction={instruction}
           amount={instruction.instruction_type === 'create_market' ? 0 : amount}
@@ -419,7 +440,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
             'Provide Liquidity'
           )}
         </Button>
-      )}
+      ))}
     </div>
   );
 }
