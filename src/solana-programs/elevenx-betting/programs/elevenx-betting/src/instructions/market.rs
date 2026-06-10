@@ -50,13 +50,12 @@ pub fn create_market(ctx: Context<CreateMarket>, params: CreateMarketParams) -> 
     market.total_matched = [0u64; 3];
     market.total_pending = [0u64; 3];
     market.total_lp_committed = 0;
-    market.settlement_feed = Pubkey::default(); // Must be set by admin after market creation
+    market.settlement_feed = Pubkey::default(); // Must be set by admin via set_settlement_feed
     market.accrued_fees = 0;
     market.settled = false;
     market.voided = false;
     market.paused = false;
     market.settlement_finalized = false;
-    market.settlement_feed = Pubkey::default(); // Must be set by admin before settlement
     market.bump = ctx.bumps.market;
 
     let tally = &mut ctx.accounts.vote_tally;
@@ -102,68 +101,54 @@ pub fn update_market_timestamps(
 
 // ── set_settlement_feed ──────────────────────────────────────────────────────
 /// Admin-only: Pin the Switchboard On-Demand feed pubkey to a market.
-/// CRITICAL SECURITY: Must be set before settlement to prevent oracle substitution attacks.
-
+/// CRITICAL SECURITY: Must be set before settlement to prevent oracle
+/// substitution attacks. Can only be set ONCE (cannot be swapped later).
 pub fn set_settlement_feed(ctx: Context<SetSettlementFeed>, feed_pubkey: Pubkey) -> Result<()> {
     require!(feed_pubkey != Pubkey::default(), BettingError::InvalidOracleAccount);
-    
-    let market = &mut ctx.accounts.market;
-    require!(market.settlement_feed == Pubkey::default(), BettingError::AlreadySettled); // Can only set once
-    
-    market.settlement_feed = feed_pubkey;
-    
-    msg!("[set_settlement_feed] Pinned feed {} to market", feed_pubkey);
-    Ok(())
-}
 
-// ── set_settlement_feed ──────────────────────────────────────────────────────
-/// Admin-only: Pin the Switchboard feed pubkey to a market.
-/// CRITICAL: Must be set before settlement — prevents oracle substitution attacks.
-pub fn set_settlement_feed(
-    ctx: Context<SetSettlementFeed>,
-    feed_pubkey: Pubkey,
-) -> Result<()> {
     let market = &mut ctx.accounts.market;
-    require!(feed_pubkey != Pubkey::default(), BettingError::InvalidOracleAccount);
+    // Can only set once: a zero (default) feed means "not yet set".
+    require!(
+        market.settlement_feed == Pubkey::default(),
+        BettingError::AlreadyInitialized
+    );
+
     market.settlement_feed = feed_pubkey;
+
+    msg!("[set_settlement_feed] Pinned feed {} to market", feed_pubkey);
     Ok(())
 }
 
 // ── sweep_market_funds ────────────────────────────────────────────────────────
 /// Admin-only: Sweep residual SOL from a settled/voided market.
 /// SECURITY FIX: 30-day grace period prevents sweeping unclaimed winnings.
+///
+/// NOTE: This is still a coarse safeguard. It assumes that after 30 days all
+/// legitimate winners/LPs have claimed. It does NOT prove zero funds are owed.
+/// A full fix would track outstanding obligations on the market and refuse to
+/// sweep below them. Treat this as testnet-acceptable, NOT mainnet-final.
 pub fn sweep_market_funds(ctx: Context<SweepMarketFunds>) -> Result<()> {
     let market = &mut ctx.accounts.market;
     let clock = Clock::get()?;
-    
-    // Only allow sweeping from settled or voided markets
+
     require!(market.settled || market.voided, BettingError::TooEarlyToSettle);
-    
-    // ── FIX: 30-day grace period after settlement ──────────────────────────────
-    // Winners/LPs must have had time to claim before admin can sweep residuals.
+
     const SWEEP_GRACE_SECONDS: i64 = 60 * 60 * 24 * 30; // 30 days
     require!(
         clock.unix_timestamp >= market.settle_after.saturating_add(SWEEP_GRACE_SECONDS),
         BettingError::TooEarlyToSettle
     );
-    
-    // Get remaining balance in market account
+
     let market_balance = **market.to_account_info().try_borrow_lamports()?;
-    
-    // Rent-exempt minimum for market account (keep enough to keep account alive)
     let rent_exempt = Rent::get()?.minimum_balance(market.to_account_info().data_len());
-    
-    // Calculate amount to sweep (balance minus rent-exempt minimum)
     let sweep_amount = market_balance.saturating_sub(rent_exempt);
-    
+
     require!(sweep_amount > 0, BettingError::ClaimNothing);
-    
-    // Transfer to admin destination wallet
+
     **market.to_account_info().try_borrow_mut_lamports()? -= sweep_amount;
     **ctx.accounts.admin_destination.try_borrow_mut_lamports()? += sweep_amount;
-    
+
     msg!("[sweep_market_funds] Swept {} lamports from market to admin wallet", sweep_amount);
-    
     Ok(())
 }
 
@@ -199,8 +184,6 @@ pub struct CreateMarket<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
-
 #[derive(Accounts)]
 pub struct SetMarketPaused<'info> {
     #[account(mut, seeds = [b"market", market.match_id.as_ref()], bump = market.bump)]
@@ -235,24 +218,6 @@ pub struct UpdateMarketTimestamps<'info> {
 
     #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
     pub admin: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct SetSettlementFeed<'info> {
-    #[account(
-        mut,
-        seeds = [b"market", market.match_id.as_ref()],
-        bump = market.bump,
-    )]
-    pub market: Account<'info, BetMarket>,
-
-    #[account(seeds = [b"platform"], bump = platform_config.bump)]
-    pub platform_config: Account<'info, PlatformConfig>,
-
-    #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
-    pub admin: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
