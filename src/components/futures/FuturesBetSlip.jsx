@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Trophy, TrendingUp, Loader, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +14,43 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
   const [isPreparing, setIsPreparing] = useState(false);
   const [instruction, setInstruction] = useState(null);
   const [commitData, setCommitData] = useState(null);
+  const [onChainLiquidity, setOnChainLiquidity] = useState(null);
+  const [isLoadingLiquidity, setIsLoadingLiquidity] = useState(false);
 
   const numericAmount = parseFloat(amount) || 0;
   const potentialPayout = numericAmount * (outcome.odds || 0);
   
-  // Max bet is the LP pool amount for this outcome
-  const maxBetAmount = outcome.pool || 0;
-  const hasLiquidity = maxBetAmount > 0;
+  // Use REAL on-chain max stake (liability-based), fall back to DB pool
+  const maxBetAmount = onChainLiquidity?.maxStake || (outcome.pool || 0);
+  const hasLiquidity = maxBetAmount > 0.001;
+
+  // Fetch real on-chain liquidity when component mounts
+  React.useEffect(() => {
+    const fetchLiquidity = async () => {
+      if (!market?.id) return;
+      setIsLoadingLiquidity(true);
+      try {
+        const res = await fetch('/functions/getFuturesLiquidity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ market_id: market.id }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Map outcome position to index (1st=0, 2nd=1, 3rd=2)
+          const outcomeIdx = outcome.position === '1st' ? 0 : outcome.position === '2nd' ? 1 : 2;
+          const outcomeData = data.outcomes[outcomeIdx];
+          console.log('[FuturesBetSlip] On-chain liquidity:', outcomeData);
+          setOnChainLiquidity(outcomeData);
+        }
+      } catch (err) {
+        console.error('[FuturesBetSlip] Failed to fetch on-chain liquidity:', err);
+      } finally {
+        setIsLoadingLiquidity(false);
+      }
+    };
+    fetchLiquidity();
+  }, [market?.id, outcome.position]);
 
   const handlePrepareBet = async () => {
     if (!amount || numericAmount <= 0) return;
@@ -168,11 +198,13 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <Label className="text-xs font-bold">Stake Amount (SOL)</Label>
-            {maxBetAmount > 0 && (
-              <span className="text-[10px] text-muted-foreground">
-                Available: ◎{maxBetAmount.toFixed(2)} SOL
+            {isLoadingLiquidity ? (
+              <span className="text-[10px] text-muted-foreground">Loading...</span>
+            ) : maxBetAmount > 0 ? (
+              <span className="text-[10px] text-accent font-bold">
+                Max: ◎{maxBetAmount.toFixed(4)} SOL
               </span>
-            )}
+            ) : null}
           </div>
           <div className="relative">
             <Input
@@ -187,7 +219,7 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
             />
             {maxBetAmount > 0 && (
               <button
-                onClick={() => setAmount(maxBetAmount.toFixed(2))}
+                onClick={() => setAmount(maxBetAmount.toFixed(4))}
                 className="absolute right-1 top-1 bottom-1 px-3 bg-accent/20 hover:bg-accent/30 border border-accent/30 rounded-lg text-xs font-bold text-accent transition-all"
               >
                 MAX
@@ -196,7 +228,7 @@ export default function FuturesBetSlip({ market, outcome, onClose, onConfirm }) 
           </div>
           {maxBetAmount > 0 && (
             <p className="text-[10px] text-muted-foreground mt-1.5">
-              Maximum bet: ◎{maxBetAmount.toFixed(2)} SOL (LP pool limit)
+              Based on on-chain LP liquidity at {outcome.odds?.toFixed(2)}x odds
             </p>
           )}
         </div>

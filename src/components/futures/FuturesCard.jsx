@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Trophy, Droplets, Clock } from 'lucide-react';
+import { ChevronRight, Trophy, Droplets, Clock, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import BetCountdown from '@/components/betting/BetCountdown';
+import { base44 } from '@/api/base44Client';
 
 const statusStyles = {
   open: 'bg-accent/10 text-accent border border-accent/20',
@@ -37,11 +38,34 @@ const positionColors = {
 };
 
 export default function FuturesCard({ market, index, onSelect }) {
+  const [onChainLiquidity, setOnChainLiquidity] = useState(null);
+  const [isLoadingLiquidity, setIsLoadingLiquidity] = useState(false);
+
+  // Fetch real on-chain liquidity for each outcome
+  useEffect(() => {
+    const fetchLiquidity = async () => {
+      if (!market?.id || market.status !== 'open') return;
+      setIsLoadingLiquidity(true);
+      try {
+        const res = await base44.functions.invoke('getFuturesLiquidity', {
+          market_id: market.id
+        });
+        if (res.data?.success && res.data?.outcomes) {
+          setOnChainLiquidity(res.data.outcomes);
+        }
+      } catch (err) {
+        console.error('[FuturesCard] Failed to fetch liquidity:', err);
+      } finally {
+        setIsLoadingLiquidity(false);
+      }
+    };
+    fetchLiquidity();
+  }, [market?.id, market.status]);
+
   const totalPool = market.outcomes.reduce((sum, o) => sum + (o.pool || 0), 0);
   const totalLpOffers = market.outcomes.reduce((sum, o) => sum + (o.lp_offers || 0), 0);
   
   // Show 0% when no bets placed - bar only fills when actual betting happens
-  // totalPool = matched SOL (real bets), so use that to show activity
   const filledPercentage = totalPool > 0 ? Math.min(100, Math.round(totalPool * 5)) : 0;
 
   return (
@@ -76,9 +100,13 @@ export default function FuturesCard({ market, index, onSelect }) {
 
           {/* Outcomes Grid - 1st, 2nd, 3rd (Clickable) */}
           <div className="grid grid-cols-3 gap-2 mb-3">
-            {market.outcomes.slice(0, 3).map((outcome) => {
+            {market.outcomes.slice(0, 3).map((outcome, idx) => {
               const colors = positionColors[outcome.position] || positionColors['1st'];
-              const hasLiquidity = (outcome.pool || 0) > 0 || (outcome.lp_offers || 0) > 0;
+              
+              // Use REAL on-chain max stake if available
+              const onChainData = onChainLiquidity?.[idx];
+              const maxStake = onChainData?.maxStake || (outcome.pool || 0);
+              const hasLiquidity = maxStake > 0.001;
 
               return (
                 <button
@@ -92,16 +120,21 @@ export default function FuturesCard({ market, index, onSelect }) {
                   <p className={`font-heading font-bold text-sm ${colors.text} mb-0.5`}>
                     {outcome.odds.toFixed(2)}x
                   </p>
-                  {hasLiquidity ? (
+                  {isLoadingLiquidity ? (
+                    <div className="flex items-center gap-1 w-full mt-1">
+                      <Loader className={`w-2 h-2 ${colors.text} animate-spin`} />
+                      <p className={`text-[8px] font-semibold ${colors.text}`}>Loading...</p>
+                    </div>
+                  ) : hasLiquidity ? (
                     <div className="flex items-center gap-1 w-full mt-1">
                       <div className="flex items-center gap-0.5 flex-1">
                         <Droplets className={`w-2 h-2 ${colors.accent}`} />
                         <p className={`text-[8px] font-semibold ${colors.accent}`}>
-                          ◎{outcome.pool.toFixed(1)}
+                          ◎{maxStake.toFixed(2)}
                         </p>
                       </div>
                       <span className={`text-[7px] font-bold ${colors.text} px-1 py-0.5 rounded bg-${colors.text.split('-')[1]}-500/10`}>
-                        Max ◎{outcome.pool.toFixed(2)}
+                        Max ◎{maxStake.toFixed(2)}
                       </span>
                     </div>
                   ) : (

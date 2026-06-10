@@ -108,20 +108,34 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // ENFORCE STAKE LIMIT: Bettor stake cannot exceed available LP pool
-    if (amount > totalLiquidity) {
-      return Response.json({
-        error: `Stake exceeds available liquidity (max: ◎${totalLiquidity.toFixed(4)} SOL)`,
-        hint: 'Your stake cannot exceed the LP pool size',
-        maxAllowed: totalLiquidity,
-        requested: amount,
-      }, { status: 400 });
-    }
-
     // Find the best matching LP offer (highest unmatched amount)
     const bestOffer = validOffers.reduce((best, current) => 
       (current.amount_unmatched || 0) > (best.amount_unmatched || 0) ? current : best
     , validOffers[0]);
+    
+    if (!bestOffer) {
+      return Response.json({
+        error: 'No valid liquidity available (all offers fully matched)',
+        hint: 'Please wait for LPs to add more liquidity',
+      }, { status: 400 });
+    }
+
+    // ENFORCE STAKE LIMIT: Bettor stake cannot exceed available LP pool
+    // Also validate based on liability (stake × (odds-1) must fit in available liquidity)
+    const oddsBps = Math.round((bestOffer.odds_at_creation || selectedOutcome.odds) * 100);
+    const requiredLiquidity = amount * (oddsBps - 100) / 100;
+    
+    if (requiredLiquidity > totalLiquidity) {
+      const maxStake = (totalLiquidity * 100) / (oddsBps - 100);
+      return Response.json({
+        error: `Stake too high for ${selectedOutcome.odds.toFixed(2)}x odds (max: ◎${maxStake.toFixed(4)} SOL)`,
+        hint: `At ${selectedOutcome.odds.toFixed(2)}x, your ◎${amount} stake requires ◎${requiredLiquidity.toFixed(4)} liability, but only ◎${totalLiquidity.toFixed(4)} available`,
+        maxAllowed: maxStake,
+        requested: amount,
+        requiredLiquidity,
+        availableLiquidity: totalLiquidity,
+      }, { status: 400 });
+    }
     
     if (!bestOffer) {
       return Response.json({
