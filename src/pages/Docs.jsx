@@ -556,7 +556,7 @@ export default function Docs() {
               {
                 step: "03",
                 title: "Betting Window Opens",
-                description: "Once deployed and funded, users can place bets. Odds update in real-time based on pool activity.",
+                description: "Users place bets. Odds update in real-time based on pool activity.",
                 icon: <TrendingUp className="w-8 h-8" />
               },
               {
