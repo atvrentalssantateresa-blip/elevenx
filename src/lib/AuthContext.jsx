@@ -141,19 +141,8 @@ export const AuthProvider = ({ children }) => {
             });
             window.base44WithAuth = sdkWithAuth;
 
-            // Fetch real role server-side via walletAuth
-            let role = 'user';
-            try {
-              const walletAddress = payloadJson.walletAddress;
-              if (walletAddress) {
-                const roleRes = await sdkWithAuth.functions.invoke('walletAuth', { walletAddress });
-                if (roleRes.data?.success) {
-                  role = roleRes.data.role || roleRes.data.user?.role || 'user';
-                }
-              }
-            } catch (roleErr) {
-              console.warn('Could not fetch role from walletAuth, defaulting to user:', roleErr.message);
-            }
+            // Use the role encoded in the JWT token (set by walletAuth at login time)
+            const role = payloadJson.role || 'user';
 
             const userData = {
               id: payloadJson.userId,
