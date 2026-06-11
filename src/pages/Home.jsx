@@ -86,7 +86,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between order-1 md:order-1">
+          className="relative overflow-hidden rounded-3xl min-h-[180px] sm:min-h-[320px] flex flex-col justify-between order-1 md:order-1">
           
           <img
             src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80"
@@ -149,7 +149,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl min-h-[300px] sm:min-h-[320px] flex flex-col justify-between p-5 sm:p-7 order-2 md:order-2"
+          className="relative overflow-hidden rounded-3xl flex flex-col justify-between p-4 sm:p-7 order-2 md:order-2"
           style={{ background: '#121212' }}>
           
           {/* Glow orbs */}
@@ -158,23 +158,23 @@ export default function Home() {
           {/* Grid lines decoration */}
           <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(#a69cf2 1px, transparent 1px), linear-gradient(90deg, #a69cf2 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-          <div className="relative z-10 pt-6">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <div className="relative z-10 pt-2 sm:pt-6">
+            <div className="flex items-center gap-2 mb-2 sm:mb-4">
               <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/30 px-2.5 sm:px-3 py-1 rounded-full">
                 <TrendingUp className="w-3 h-3 text-accent" />
                 <span className="text-[10px] sm:text-[11px] font-bold text-accent tracking-widest">HYBRID MODEL</span>
               </div>
             </div>
-            <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl leading-tight mb-2 sm:mb-3 text-white">
+            <h1 className="font-heading font-black text-xl sm:text-3xl md:text-4xl leading-tight mb-1.5 sm:mb-3 text-white">
               Be The House.<br />
               <span className="text-emerald-400" style={{ textShadow: '0 0 25px rgba(16,185,129,0.4)' }}>Earn 2% Fees.</span>
             </h1>
-            <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs">
+            <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs mb-1 sm:mb-3">
               Deposit SOL, provide liquidity, and earn fees on EVERY bet. Dynamic odds. Instant matching. Pure on-chain P2P betting.
             </p>
             <button
               onClick={() => navigator.clipboard.writeText('111111111111111111111111111')}
-              className="flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group mt-3"
+              className="hidden sm:flex items-center gap-1.5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full hover:border-primary/30 transition-all group mt-3"
               title="Copy contract address">
               
               <span className="text-[10px] sm:text-[11px] font-bold text-white/60 tracking-wide">Contract: 111111111111111111111111111</span>
@@ -184,7 +184,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="relative z-10 mt-5 sm:mt-6">
+          <div className="relative z-10 mt-3 sm:mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
               <Link to="/matches" className="flex-1">
                 <Button className="w-full font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm text-black" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 0 18px rgba(16,185,129,0.25)' }}>
