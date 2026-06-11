@@ -43,8 +43,6 @@ export default function DebugWallet() {
       setPhantomConnected(true);
       
       console.log('[Debug] Final address:', address);
-      console.log('[Debug] Expected: BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
-      console.log('[Debug] Match:', address === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi');
       
     } catch (err) {
       console.error('[Debug] Phantom error:', err);
@@ -112,23 +110,20 @@ export default function DebugWallet() {
                 </div>
 
                 <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-sm font-bold mb-2">Comparison:</p>
-                  <div className="space-y-2 text-xs font-mono">
-                    <p>Connected: <span className="text-muted-foreground">{publicKey}</span></p>
-                    <p>Expected:  <span className="text-muted-foreground">BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi</span></p>
-                    <p className={publicKey === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi' ? 'text-accent font-bold' : 'text-destructive font-bold'}>
-                      Match: {publicKey === 'BfN3J2JGFpHkfSNKP1yhC3JUKDX878RsHZuNBQjXbXDi' ? 'YES ✓' : 'NO ✗'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-primary/10 rounded-lg">
                   <p className="text-sm font-bold mb-2">Debug Info:</p>
                   <div className="text-xs font-mono space-y-1 text-muted-foreground">
                     <p>Length: {publicKey.length}</p>
                     <p>First 8: {publicKey.slice(0, 8)}</p>
                     <p>Last 8: {publicKey.slice(-8)}</p>
-                    <p>Starts with BfN3: {publicKey.startsWith('BfN3') ? 'YES' : 'NO'}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <p className="text-sm font-bold mb-2">Additional Debug Info:</p>
+                  <div className="text-xs font-mono space-y-1 text-muted-foreground">
+                    <p>Length: {publicKey.length}</p>
+                    <p>First 8: {publicKey.slice(0, 8)}</p>
+                    <p>Last 8: {publicKey.slice(-8)}</p>
                   </div>
                 </div>
               </div>
@@ -142,9 +137,8 @@ export default function DebugWallet() {
             <ol className="text-sm space-y-2 list-decimal list-inside">
               <li>Click "Connect Phantom"</li>
               <li>Approve the connection in Phantom popup</li>
-              <li>Check if the address matches: <code className="bg-secondary px-1 rounded">BfN3...bXDi</code></li>
-              <li>If it matches but app still shows error - it's a caching/state issue</li>
-              <li>If it doesn't match - you have a different wallet selected in Phantom</li>
+              <li>Check the wallet address displayed above</li>
+              <li>Use this for debugging wallet connection issues</li>
             </ol>
           </CardContent>
         </Card>
