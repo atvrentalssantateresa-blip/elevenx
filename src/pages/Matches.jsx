@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
 
 export default function Matches() {
-  const [activeGroup, setActiveGroup] = useState('TODAY');
+  const [activeGroup, setActiveGroup] = useState('ALL');
   const [search, setSearch] = useState('');
   const [highlightedMatchId, setHighlightedMatchId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
