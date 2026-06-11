@@ -37,27 +37,15 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.clone().json().catch(() => ({}));
-    const force = !!body.force;
+    const force = body.force === true;
 
     console.log('[deployAllFutures] Starting deployment... force:', force);
 
     // Get all futures markets
     const allMarkets = await base44.asServiceRole.entities.FuturesMarket.filter({});
     
-    // If force=true, reset all DB-marked-deployed markets so on-chain check drives truth
-    if (force) {
-      const markedDeployed = allMarkets.filter(m => m.solana_market_created);
-      console.log(`[deployAllFutures] force=true: resetting ${markedDeployed.length} markets to undeployed for re-check`);
-      for (const m of markedDeployed) {
-        await base44.asServiceRole.entities.FuturesMarket.update(m.id, { solana_market_created: false });
-      }
-      // Re-fetch with updated state
-      const refreshed = await base44.asServiceRole.entities.FuturesMarket.filter({});
-      allMarkets.splice(0, allMarkets.length, ...refreshed);
-    }
-
-    // Find markets not marked as deployed
-    const marketsNotMarkedDeployed = allMarkets.filter(m => !m.solana_market_created);
+    // In force mode include all; otherwise only undeployed
+    const marketsNotMarkedDeployed = force ? allMarkets : allMarkets.filter(m => !m.solana_market_created);
 
     console.log(`[deployAllFutures] Found ${marketsNotMarkedDeployed.length} markets not marked as deployed out of ${allMarkets.length} total`);
 
@@ -145,8 +133,8 @@ Deno.serve(async (req) => {
         throw new Error(res.data.error);
       }
 
-      // If already exists, skip to next
-      if (res.data.alreadyExists) {
+      // If already exists and not forcing, skip to next
+      if (res.data.alreadyExists && !force) {
         await base44.asServiceRole.entities.FuturesMarket.update(firstMarket.id, {
           solana_market_created: true,
           solana_market_pda: res.data.marketPda || firstMarket.solana_market_pda,

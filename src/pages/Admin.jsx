@@ -294,9 +294,9 @@ export default function Admin() {
     }
   };
 
-  const startDeployBatch = async (batchOffset, batchLabel) => {
+  const startDeployBatch = async (batchOffset, batchLabel, force = false) => {
     try {
-      const res = await base44.functions.invoke('deployAllMatches', { batch_offset: batchOffset, batch_size: 12 });
+      const res = await base44.functions.invoke('deployAllMatches', { batch_offset: batchOffset, batch_size: 12, force });
       if (res.data.needsSigning) {
         setDeployMatchesDialog({
           instruction: res.data.solana_instruction,
