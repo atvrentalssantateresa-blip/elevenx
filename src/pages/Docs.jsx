@@ -16,7 +16,8 @@ import {
   Users,
   Award,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Droplets
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -361,16 +362,16 @@ export default function Docs() {
           <div className="max-w-4xl mx-auto bg-card/50 border border-border/50 rounded-3xl p-6 md:p-12">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-black text-accent mb-2">2-5%</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Fee Share per Bet</div>
+                <div className="text-2xl sm:text-3xl font-black text-accent mb-2">2–5%</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">of every bet</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl font-black text-accent mb-2">Flexible</div>
                 <div className="text-xs sm:text-sm text-muted-foreground">Withdraw Anytime</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-black text-accent mb-2">Auto-Compounding</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Maximize Returns</div>
+                <div className="text-2xl sm:text-3xl font-black text-accent mb-2">Pro-Rata Rewards</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Earnings proportional to your share of the pool</div>
               </div>
             </div>
             <Button asChild className="w-full h-12 sm:h-14 rounded-xl font-bold text-base sm:text-lg bg-accent hover:bg-accent/90">
@@ -514,6 +515,211 @@ export default function Docs() {
               </Button>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Deploy-on-Chain Workflow Section */}
+      <section className="py-12 md:py-20 bg-gradient-to-b from-background via-primary/5 to-background">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+              <RefreshCcw className="w-3 h-3 mr-1" />
+              Deploy-on-Chain Workflow
+            </Badge>
+            <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-3 md:mb-4 px-2">
+              How Markets Are Deployed
+            </h2>
+            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
+              Before users can bet, each market must be initialized on the Solana blockchain. Here's how it works:
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8 max-w-7xl mx-auto">
+            {[
+              {
+                step: "01",
+                title: "Admin Deploys Market",
+                description: "The admin signs a Solana transaction to create the on-chain betting pool (PDA) for each match or futures market. 48 futures + 72 matches = 120 total deployments.",
+                icon: <Wallet className="w-8 h-8" />
+              },
+              {
+                step: "02",
+                title: "LP Liquidity Added",
+                description: "Liquidity Providers fund the pool before bets open, enabling dynamic odds to work. The pool accepts SOL deposits.",
+                icon: <Droplets className="w-8 h-8" />
+              },
+              {
+                step: "03",
+                title: "Betting Window Opens",
+                description: "Once deployed and funded, users can place bets. Odds update in real-time based on pool activity.",
+                icon: <TrendingUp className="w-8 h-8" />
+              },
+              {
+                step: "04",
+                title: "Settlement by Admin",
+                description: "After the match/tournament ends, admin signs a settlement transaction (2-step: fix timestamp → settle). On-chain outcome is recorded.",
+                icon: <CheckCircle className="w-8 h-8" />
+              },
+              {
+                step: "05",
+                title: "Winners Claim SOL",
+                description: "Winning bettors call a claim instruction. SOL is automatically transferred from the pool to their wallet. No manual processing.",
+                icon: <Award className="w-8 h-8" />
+              }
+            ].map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="relative"
+              >
+                {i < 4 && (
+                  <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary/30 to-transparent -translate-x-8" />
+                )}
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 border-2 border-primary/30 mb-4 md:mb-6 mx-auto">
+                    <div className="text-primary w-10 h-10 sm:w-12 sm:h-12">{step.icon}</div>
+                  </div>
+                  <div className="text-[10px] font-bold text-primary mb-2">STEP {step.step}</div>
+                  <h3 className="font-heading font-bold text-base sm:text-lg mb-2">{step.title}</h3>
+                  <p className="text-muted-foreground text-sm">{step.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Under the Hood Section */}
+      <section className="py-12 md:py-20">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <Badge className="mb-4 bg-accent/10 text-accent border-accent/20">
+              <Shield className="w-3 h-3 mr-1" />
+              Ecosystem Architecture
+            </Badge>
+            <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-3 md:mb-4 px-2">
+              Under the Hood
+            </h2>
+            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
+              The full ElevenX tech stack
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                icon: <Shield className="w-6 h-6" />,
+                title: "Solana Smart Contract",
+                description: "Custom on-chain program written in Rust/Anchor. Handles market creation, betting, settlement, and payouts. All logic is open source.",
+                color: "text-primary"
+              },
+              {
+                icon: <Lock className="w-6 h-6" />,
+                title: "Platform Config PDA",
+                description: "A single on-chain account stores the admin public key, fee percentage, and consensus threshold. Immutable once set.",
+                color: "text-accent"
+              },
+              {
+                icon: <TrendingUp className="w-6 h-6" />,
+                title: "Fee Vault PDA",
+                description: "Protocol fees accumulate in a dedicated on-chain fee vault, separate from betting pools. Admin can withdraw fees via signed transaction.",
+                color: "text-primary"
+              },
+              {
+                icon: <Wallet className="w-6 h-6" />,
+                title: "Market PDAs",
+                description: "Each betting market gets its own Program Derived Address (PDA). Funds are isolated — one market's SOL never mixes with another.",
+                color: "text-accent"
+              },
+              {
+                icon: <Zap className="w-6 h-6" />,
+                title: "Base44 Backend",
+                description: "Serverless backend functions handle oracle data (The Odds API), DB sync, and Solana instruction building. No centralized custody.",
+                color: "text-primary"
+              },
+              {
+                icon: <RefreshCcw className="w-6 h-6" />,
+                title: "Parimutuel Model",
+                description: "All bets go into a shared pool. Winning bettors split the pool proportionally to their stake. No house edge — 100% to winners (minus LP fee).",
+                color: "text-accent"
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="group p-5 md:p-6 rounded-2xl border border-border/50 bg-card/50 hover:border-primary/30 transition-all duration-300"
+              >
+                <div className={`mb-4 ${item.color}`}>{item.icon}</div>
+                <h3 className="font-heading font-bold text-lg md:text-xl mb-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm">{item.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Fee Structure Section */}
+      <section className="py-12 md:py-20 bg-gradient-to-r from-accent/5 via-background to-accent/5">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <Badge className="mb-4 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Fee Structure
+            </Badge>
+            <h2 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-3 md:mb-4 px-2">
+              Transparent Fee Structure
+            </h2>
+            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
+              No hidden fees. Everything is hard-coded in the smart contract.
+            </p>
+          </motion.div>
+
+          <div className="max-w-4xl mx-auto bg-card/50 border border-border/50 rounded-3xl p-6 md:p-10 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+              {[
+                { label: "Platform Fee", value: "0–2%", note: "Hard-capped in smart contract code" },
+                { label: "LP Share", value: "2–5%", note: "Per matched bet (goes to liquidity providers)" },
+                { label: "Bettor Take", value: "95–100%", note: "Of pool after fees" },
+                { label: "Minimum Bet", value: "0.01 SOL", note: "Lowest allowed stake" },
+                { label: "Claim Gas", value: "~0.000005 SOL", note: "Solana transaction fee only" },
+                { label: "Fee Vault", value: "Accumulated", note: "Withdrawable by admin via signed on-chain tx" }
+              ].map((item, i) => (
+                <div key={i} className="p-4 rounded-xl bg-background/50 border border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                    <span className="font-heading font-bold text-lg text-accent">{item.value}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.note}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-sm text-emerald-400 text-center">
+                <strong>Important:</strong> Fees are hard-capped in the smart contract. Even the admin cannot change fees above the cap without deploying a new program.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
