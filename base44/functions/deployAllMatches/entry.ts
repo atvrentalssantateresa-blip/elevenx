@@ -4,8 +4,17 @@ import { Buffer } from 'node:buffer';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 function getSolanaConfig() {
-  const rawUrl = Deno.env.get('SOLANA_RPC_URL') || '';
-  const rpcUrl = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : 'https://api.mainnet-beta.solana.com';
+  let rawUrl = Deno.env.get('SOLANA_RPC_URL') || '';
+  
+  // Handle malformed secret (e.g., "RPC_URL=..." or UUID)
+  if (rawUrl.includes('RPC_URL=')) {
+    rawUrl = rawUrl.split('RPC_URL=')[1].trim();
+  }
+  if (!rawUrl.startsWith('http') || rawUrl.includes('uuid')) {
+    rawUrl = 'https://api.mainnet-beta.solana.com';
+  }
+  
+  const rpcUrl = rawUrl;
   const programIdStr = Deno.env.get('ELEVENX_PROGRAM_ID') || '';
   if (!programIdStr) throw new Error('ELEVENX_PROGRAM_ID secret not set');
   return { rpcUrl, programIdStr, programId: new PublicKey(programIdStr), connection: new Connection(rpcUrl, 'confirmed') };
