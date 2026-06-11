@@ -19,14 +19,14 @@ const WC_PHOTOS = [
 
 
 const FEATURED_MATCHES = [
-{ team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a20ec5003fec97668e1177c', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/a1d1835b2_image.png' },
-{ team_a: 'South Korea', team_b: 'Czech Republic', group: 'Group A', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177d', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/8290ef7dc_image.png' },
+{ team_a: 'Mexico', team_b: 'South Africa', group: 'Group A', date: 'Jun 11', matchId: '6a20ec5003fec97668e1177c', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/a1d1835b2_image.png', odds_a: 2.10, odds_b: 3.80, odds_draw: 3.20 },
+{ team_a: 'South Korea', team_b: 'Czech Republic', group: 'Group A', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177d', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/8290ef7dc_image.png', odds_a: 2.40, odds_b: 2.90, odds_draw: 3.10 },
 { team_a: 'Brazil', team_b: 'Morocco', group: 'Group E', date: 'Jun 12', matchId: '6a20ec5003fec97668e1177e', img: 'https://media.base44.com/images/public/6a1baa5af6f6dc0afc776c3f/f0e42aabe_image.png', odds_a: 1.85, odds_b: 4.20, odds_draw: 3.50 },
-{ team_a: 'USA', team_b: 'Uruguay', group: 'Group D', date: 'Jun 13', matchId: '6a20ec5003fec97668e1177f', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/6adfc36e9_image.png' },
-{ team_a: 'Netherlands', team_b: 'Japan', group: 'Group C', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/21177f821_image.png' },
-{ team_a: 'England', team_b: 'Croatia', group: 'Group D', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/a48a1d137_image.png' },
-{ team_a: 'France', team_b: 'Norway', group: 'Group F', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/3d0f9a726_image.png' },
-{ team_a: 'Spain', team_b: 'Uruguay', group: 'Group H', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/2b6caa45a_image.png' }];
+{ team_a: 'USA', team_b: 'Uruguay', group: 'Group D', date: 'Jun 13', matchId: '6a20ec5003fec97668e1177f', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/6adfc36e9_image.png', odds_a: 2.20, odds_b: 3.40, odds_draw: 3.00 },
+{ team_a: 'Netherlands', team_b: 'Japan', group: 'Group C', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/21177f821_image.png', odds_a: 1.95, odds_b: 4.10, odds_draw: 3.30 },
+{ team_a: 'England', team_b: 'Croatia', group: 'Group D', date: 'Jun 14', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/a48a1d137_image.png', odds_a: 1.75, odds_b: 5.00, odds_draw: 3.60 },
+{ team_a: 'France', team_b: 'Norway', group: 'Group F', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/3d0f9a726_image.png', odds_a: 1.60, odds_b: 5.50, odds_draw: 4.00 },
+{ team_a: 'Spain', team_b: 'Uruguay', group: 'Group H', date: 'Jun 15', matchId: '', img: 'https://media.base44.com/images/public/6a1da108eb293de119e4e930/2b6caa45a_image.png', odds_a: 1.80, odds_b: 4.50, odds_draw: 3.40 }];
 
 
 
@@ -268,6 +268,11 @@ export default function Home() {
               {upcomingMatches.slice(0, 6).map((match, i) => {
             const bet = betByMatch[match.id];
             const featuredImg = FEATURED_MATCHES[i]?.img;
+            // Use bet odds if > 0, otherwise fall back to FEATURED_MATCHES hardcoded odds
+            const featured = FEATURED_MATCHES.find(f => f.team_a === match.team_a && f.team_b === match.team_b) || FEATURED_MATCHES[i];
+            const oddsA = (bet?.odds_a > 0) ? bet.odds_a : (featured?.odds_a || 0);
+            const oddsB = (bet?.odds_b > 0) ? bet.odds_b : (featured?.odds_b || 0);
+            const oddsDraw = (bet?.odds_draw > 0) ? bet.odds_draw : (featured?.odds_draw || 0);
             return (
               <Link to={`/match/${match.id}`} className="group block">
                 <motion.div
@@ -321,22 +326,22 @@ export default function Home() {
                   {/* Odds/Pool */}
                   <div className="pt-2.5 border-t border-border/50">
                     <div className="grid grid-cols-3 gap-1.5 mb-2">
-                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_a ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${oddsA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                         <p className="text-[9px] text-muted-foreground truncate">{match.team_a.split(' ').pop()}</p>
                         <p className="font-bold text-primary text-xs">
-                          {bet?.odds_a ? `${bet.odds_a.toFixed(2)}x` : '—'}
+                          {oddsA > 0 ? `${oddsA.toFixed(2)}x` : '—'}
                         </p>
                       </div>
-                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_draw ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${oddsDraw > 0 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
                         <p className="text-[9px] text-muted-foreground">Draw</p>
                         <p className="font-bold text-yellow-400 text-xs">
-                          {bet?.odds_draw ? `${bet.odds_draw.toFixed(2)}x` : '—'}
+                          {oddsDraw > 0 ? `${oddsDraw.toFixed(2)}x` : '—'}
                         </p>
                       </div>
-                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_b ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${oddsB > 0 ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
                         <p className="text-[9px] text-muted-foreground truncate">{match.team_b.split(' ').pop()}</p>
                         <p className="font-bold text-accent text-xs">
-                          {bet?.odds_b ? `${bet.odds_b.toFixed(2)}x` : '—'}
+                          {oddsB > 0 ? `${oddsB.toFixed(2)}x` : '—'}
                         </p>
                       </div>
                     </div>
