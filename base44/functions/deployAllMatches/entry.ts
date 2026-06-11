@@ -124,13 +124,14 @@ Deno.serve(async (req) => {
 
     const batchOffset = body.batch_offset || 0; // which global index to start from
     const batchSize = body.batch_size || 12;    // how many to include in this batch
+    const force = body.force === true;           // force redeploy all bets regardless of status
 
     const allBets = await base44.asServiceRole.entities.Bet.filter({});
     // Sort deterministically by id for stable batching
     allBets.sort((a, b) => a.id.localeCompare(b.id));
 
-    // Only include bets that are not yet deployed on-chain
-    const undeployed = allBets.filter(b => !b.solana_market_created || !b.solana_market_pda);
+    // In force mode, include all bets; otherwise only undeployed
+    const undeployed = force ? allBets : allBets.filter(b => !b.solana_market_created || !b.solana_market_pda);
 
     // Apply batch window: batchOffset is an index into the undeployed list
     const betsToDeploy = undeployed.slice(batchOffset, batchOffset + batchSize);
@@ -161,7 +162,7 @@ Deno.serve(async (req) => {
     const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
     const marketInfo = await connection.getAccountInfo(marketPda);
 
-    if (marketInfo) {
+    if (marketInfo && !force) {
       // Already exists on-chain, mark as deployed and signal auto-continue
       await base44.asServiceRole.entities.Bet.update(firstBet.id, {
         solana_market_created: true,

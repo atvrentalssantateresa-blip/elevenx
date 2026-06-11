@@ -36,11 +36,26 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
-    console.log('[deployAllFutures] Starting deployment...');
+    const body = await req.clone().json().catch(() => ({}));
+    const force = !!body.force;
+
+    console.log('[deployAllFutures] Starting deployment... force:', force);
 
     // Get all futures markets
     const allMarkets = await base44.asServiceRole.entities.FuturesMarket.filter({});
     
+    // If force=true, reset all DB-marked-deployed markets so on-chain check drives truth
+    if (force) {
+      const markedDeployed = allMarkets.filter(m => m.solana_market_created);
+      console.log(`[deployAllFutures] force=true: resetting ${markedDeployed.length} markets to undeployed for re-check`);
+      for (const m of markedDeployed) {
+        await base44.asServiceRole.entities.FuturesMarket.update(m.id, { solana_market_created: false });
+      }
+      // Re-fetch with updated state
+      const refreshed = await base44.asServiceRole.entities.FuturesMarket.filter({});
+      allMarkets.splice(0, allMarkets.length, ...refreshed);
+    }
+
     // Find markets not marked as deployed
     const marketsNotMarkedDeployed = allMarkets.filter(m => !m.solana_market_created);
 
