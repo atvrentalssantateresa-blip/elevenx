@@ -278,6 +278,7 @@ export default function Admin() {
           instruction: res.data.solana_instruction,
           remaining: res.data.remaining,
           betId: res.data.bet_id,
+          marketPda: res.data.market_pda,
           batchLabel,
           batchSize,
           force,
@@ -303,6 +304,7 @@ export default function Admin() {
           instruction: res.data.solana_instruction,
           remaining: res.data.remaining,
           betId: res.data.bet_id,
+          marketPda: res.data.market_pda,
           batchLabel,
           batchSize: 12,
           force,
@@ -988,7 +990,20 @@ export default function Admin() {
                 <SolanaTransactionSigner
                   instruction={deployMatchesDialog.instruction}
                   amount="0"
-                  onSuccess={() => handleDeployMatchesSuccess(deployMatchesDialog.batchLabel, deployMatchesDialog.batchSize, deployMatchesDialog.force)}
+                  onSuccess={async () => {
+                    // Commit DB update AFTER on-chain confirmation
+                    if (deployMatchesDialog.betId && deployMatchesDialog.marketPda) {
+                      try {
+                        await base44.functions.invoke('commitMarketDeployment', {
+                          bet_id: deployMatchesDialog.betId,
+                          market_pda: deployMatchesDialog.marketPda,
+                        });
+                      } catch (e) {
+                        console.error('[Admin] commitMarketDeployment failed:', e);
+                      }
+                    }
+                    handleDeployMatchesSuccess(deployMatchesDialog.batchLabel, deployMatchesDialog.batchSize, deployMatchesDialog.force);
+                  }}
                   onError={(err) => {
                     toast.error('Failed: ' + err.message);
                     setDeployMatchesDialog(null);

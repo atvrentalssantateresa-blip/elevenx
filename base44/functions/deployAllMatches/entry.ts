@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { solana_instruction } = buildCreateMarketInstruction(firstBet, match, programIdStr, programId, platformPda);
+    const builtInstruction = buildCreateMarketInstruction(firstBet, match, programIdStr, programId, platformPda);
 
     console.log(`[deployAllMatches] Ready to deploy: ${firstBet.title}, remaining: ${remaining}`);
 
@@ -203,8 +203,9 @@ Deno.serve(async (req) => {
       message: `Sign to deploy ${firstBet.title || firstBet.match_id}. ${remaining} remaining after this.`,
       remaining,
       needsSigning: true,
-      solana_instruction,
+      solana_instruction: builtInstruction.solana_instruction,
       bet_id: firstBet.id,
+      market_pda: builtInstruction.marketPda,
     });
 
   } catch (error) {

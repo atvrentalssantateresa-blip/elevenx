@@ -102,10 +102,15 @@ export default function AdminMatchesPanel({ walletAddress }) {
 
   const handleDeploySuccess = async (result) => {
     if (pendingDeploy?.bet_id) {
-      await base44.entities.Bet.update(pendingDeploy.bet_id, {
-        solana_market_created: true,
-        solana_market_pda: result.marketPda || pendingDeploy.marketPda,
-      });
+      const marketPda = result.marketPda || pendingDeploy.marketPda || pendingDeploy.accounts?.market;
+      try {
+        await base44.functions.invoke('commitMarketDeployment', {
+          bet_id: pendingDeploy.bet_id,
+          market_pda: marketPda,
+        });
+      } catch (e) {
+        console.error('[AdminMatchesPanel] commitMarketDeployment failed:', e);
+      }
     }
     
     setPendingDeploy(null);
