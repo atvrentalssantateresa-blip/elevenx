@@ -270,9 +270,9 @@ export default function Admin() {
   };
 
   // After signing, the deployed bet is removed from undeployed list, so always fetch offset=0 next
-  const handleDeployMatchesSuccess = async (batchLabel, batchSize) => {
+  const handleDeployMatchesSuccess = async (batchLabel, batchSize, force = false) => {
     try {
-      const res = await base44.functions.invoke('deployAllMatches', { batch_offset: 0, batch_size: batchSize });
+      const res = await base44.functions.invoke('deployAllMatches', { batch_offset: 0, batch_size: batchSize, force });
       if (res.data.needsSigning) {
         setDeployMatchesDialog({
           instruction: res.data.solana_instruction,
@@ -280,9 +280,10 @@ export default function Admin() {
           betId: res.data.bet_id,
           batchLabel,
           batchSize,
+          force,
         });
       } else if (res.data.autoContinue) {
-        handleDeployMatchesSuccess(batchLabel, batchSize);
+        handleDeployMatchesSuccess(batchLabel, batchSize, force);
       } else {
         setDeployMatchesDialog(null);
         toast.success(res.data.message || `✓ ${batchLabel || 'Batch'} deployed!`);
@@ -304,9 +305,10 @@ export default function Admin() {
           betId: res.data.bet_id,
           batchLabel,
           batchSize: 12,
+          force,
         });
       } else if (res.data.autoContinue) {
-        handleDeployMatchesSuccess(batchLabel, 12);
+        handleDeployMatchesSuccess(batchLabel, 12, force);
       } else {
         toast.success(res.data.message || `✓ ${batchLabel} deployed!`);
         queryClient.invalidateQueries({ queryKey: ['allBets'] });
@@ -416,7 +418,7 @@ export default function Admin() {
                 <Button
                   onClick={async () => {
                     try {
-                      const res = await base44.functions.invoke('deployAllFutures');
+                      const res = await base44.functions.invoke('deployAllFutures', { force: true });
                       if (res.data.needsSigning) {
                         setDeployFuturesDialog({
                           instruction: res.data.solana_instruction,
@@ -424,7 +426,6 @@ export default function Admin() {
                           marketId: res.data.market_id,
                         });
                       } else if (res.data.autoContinue) {
-                        // Auto-continue if market already exists
                         toast.success('Continuing deployment...');
                         setTimeout(() => handleDeployFuturesSuccess(), 500);
                       } else {
@@ -438,7 +439,14 @@ export default function Admin() {
                   className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
                 >
                   <span className="font-bold text-lg text-white">🚀 Deploy All Futures</span>
-                  <span className="text-xs text-gray-400">Deploy all futures markets</span>
+                  <span className="text-xs text-gray-400">Force redeploy all futures</span>
+                </Button>
+                <Button
+                  onClick={() => startDeployBatch(0, 'Force Redeploy', true)}
+                  className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-sm text-white">🔄 Force Redeploy All Matches</span>
+                  <span className="text-xs text-gray-400">Redeploy even if marked deployed</span>
                 </Button>
                 {[
                   [0,'Batch 1–12'],
@@ -980,7 +988,7 @@ export default function Admin() {
                 <SolanaTransactionSigner
                   instruction={deployMatchesDialog.instruction}
                   amount="0"
-                  onSuccess={() => handleDeployMatchesSuccess(deployMatchesDialog.batchLabel, deployMatchesDialog.batchSize)}
+                  onSuccess={() => handleDeployMatchesSuccess(deployMatchesDialog.batchLabel, deployMatchesDialog.batchSize, deployMatchesDialog.force)}
                   onError={(err) => {
                     toast.error('Failed: ' + err.message);
                     setDeployMatchesDialog(null);
