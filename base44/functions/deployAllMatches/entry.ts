@@ -71,13 +71,15 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
     systemProgram: SystemProgram.programId.toBase58(),
   };
 
+  const rpcUrl = Deno.env.get('SOLANA_RPC_URL') || 'https://api.devnet.solana.com';
+  
   return {
     marketPda: marketPda.toBase58(),
     feeVaultPda: feeVaultPda.toBase58(),
     solana_instruction: {
       instruction_type: 'create_market',
       programId: programIdStr,
-      rpcUrl: Deno.env.get('SOLANA_RPC_URL'),
+      rpcUrl,
       keys,
       accounts,
       instruction_data: instructionData.toString('base64'),
