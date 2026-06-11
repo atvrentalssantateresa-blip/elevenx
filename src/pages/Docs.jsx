@@ -550,7 +550,7 @@ export default function Docs() {
               {
                 step: "02",
                 title: "LP Liquidity Added",
-                description: "Liquidity Providers fund the pool before bets open, enabling dynamic odds to work. The pool accepts SOL deposits.",
+                description: "Liquidity Providers deposit SOL to fund the pool, enabling dynamic odds.",
                 icon: <Droplets className="w-8 h-8" />
               },
               {
