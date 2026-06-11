@@ -50,21 +50,13 @@ export default function Futures() {
     },
   });
 
-  // Filter markets by selected group - only show individual country markets (1 card = 1 country, 3 positions)
+  // Filter markets by selected group - no status filtering
   const filteredMarketsByGroup = React.useMemo(() => {
     if (activeGroup === 'ALL') {
-      // Exclude tournament-wide markets like "World Cup Winner" or "Group Winner"
-      return futuresMarkets.filter(m => m.category === 'tournament' && !m.country.includes('Group ') && m.country !== 'World Cup' && m.country !== 'Test');
+      return futuresMarkets.filter(m => !m.country?.includes('Group ') && m.country !== 'World Cup' && m.country !== 'Test');
     }
-    
     const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-    // For group tabs A-L: show only individual country markets that belong to this group
-    return futuresMarkets.filter(m => {
-      // Exclude tournament-wide markets
-      if (m.country.includes('Group ') || m.country === 'World Cup' || m.country === 'Test') return false;
-      // Include only countries in this group
-      return groupTeams.includes(m.country);
-    });
+    return futuresMarkets.filter(m => groupTeams.includes(m.country));
   }, [futuresMarkets, activeGroup]);
 
   // Scroll to group section
@@ -229,12 +221,11 @@ export default function Futures() {
       )
     : futuresMarkets;
   
-  // Then filter by group - exclude tournament-wide markets
+  // Then filter by group - no status filtering, show all statuses
   const filteredMarkets = activeGroup === 'ALL' 
-    ? searchFilteredMarkets.filter(m => !m.country.includes('Group ') && m.country !== 'World Cup')
+    ? searchFilteredMarkets.filter(m => !m.country?.includes('Group ') && m.country !== 'World Cup')
     : searchFilteredMarkets.filter(m => {
         const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-        // Show only countries in this group (exclude Test, World Cup, Group Winner markets)
         return groupTeams.includes(m.country);
       });
 
@@ -471,7 +462,7 @@ export default function Futures() {
             {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((letter) => {
               const groupName = `Group ${letter}`;
               const groupTeams = WORLD_CUP_GROUPS_2026[letter]?.map(t => t.name) || [];
-              const groupMarkets = futuresMarkets.filter(m => 
+              const groupMarkets = searchFilteredMarkets.filter(m => 
                 groupTeams.includes(m.country) && m.country !== 'Test' && m.country !== 'World Cup'
               );
               if (groupMarkets.length === 0) return null;
