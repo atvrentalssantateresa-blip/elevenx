@@ -186,15 +186,15 @@ export default function Home() {
 
           <div className="relative z-10 mt-5 sm:mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
-              <Link to="/lp" className="flex-1">
+              <Link to="/matches" className="flex-1">
                 <Button className="w-full font-heading font-bold px-4 sm:px-6 h-10 sm:h-12 rounded-xl text-xs sm:text-sm text-black" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 0 18px rgba(16,185,129,0.25)' }}>
-                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-                  Provide Liquidity
+                  Place Bet <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5" />
                 </Button>
               </Link>
-              <Link to="/matches" className="flex-1">
+              <Link to="/lp" className="flex-1">
                 <Button variant="outline" className="w-full font-heading font-medium h-10 sm:h-12 rounded-xl border-white/15 text-white/80 bg-white/5 hover:bg-white/10">
-                  Place Bet <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5" />
+                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  Provide Liquidity
                 </Button>
               </Link>
             </div>
