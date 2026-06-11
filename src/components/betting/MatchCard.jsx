@@ -30,35 +30,36 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
   // Fetch live score for live/finished matches
   useEffect(() => {
     const fetchScore = async () => {
-      if (match.status === 'live' || match.status === 'finished') {
-        try {
-          const res = await base44.functions.invoke('fetchTheOddsApi', {
-            sport: 'soccer',
-            match_id: match.id
-          });
-          if (res.data.success && res.data.matches?.[0]) {
-            const apiMatch = res.data.matches[0];
-            setLiveMatch(prev => ({
-              ...prev,
-              score_a: apiMatch.scores?.[0]?.score || prev.score_a || 0,
-              score_b: apiMatch.scores?.[1]?.score || prev.score_b || 0,
-              status: apiMatch.status || prev.status
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to fetch score:', err);
+      try {
+        const res = await base44.functions.invoke('fetchTheOddsApi', {
+          sport: 'soccer',
+          match_id: match.id
+        });
+        if (res.data.success && res.data.matches?.[0]) {
+          const apiMatch = res.data.matches[0];
+          setLiveMatch(prev => ({
+            ...prev,
+            score_a: apiMatch.scores?.[0]?.score ?? prev.score_a ?? match.score_a ?? 0,
+            score_b: apiMatch.scores?.[1]?.score ?? prev.score_b ?? match.score_b ?? 0,
+            status: apiMatch.status || prev.status
+          }));
         }
+      } catch (err) {
+        console.error('Failed to fetch score:', err);
       }
     };
 
-    fetchScore();
+    // Always fetch on mount for matches that might have scores
+    if (match.status === 'live' || match.status === 'finished' || match.score_a !== undefined || match.score_b !== undefined) {
+      fetchScore();
+    }
     
     // Poll every 30s for live matches
     if (match.status === 'live') {
       const interval = setInterval(fetchScore, 30000);
       return () => clearInterval(interval);
     }
-  }, [match.id, match.status]);
+  }, [match.id, match.status, match.score_a, match.score_b]);
 
   const handleRefreshOdds = async (e) => {
     e.preventDefault();
@@ -132,24 +133,19 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
                 {getTeamFlag(match.team_a, match.team_a_flag)}
               </div>
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
-              {/* Score badge - shows when match is live/finished OR when score data exists */}
-              {(liveMatch.status === 'live' || liveMatch.status === 'finished' || liveMatch.score_a !== undefined || liveMatch.score_b !== undefined) && (
-                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                  <span className="text-xs font-bold text-destructive">{liveMatch.score_a ?? match.score_a ?? 0}</span>
-                </div>
-              )}
+              {/* Score badge - always show if match has any score data */}
+              <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                <span className="text-xs font-bold text-destructive">
+                  {liveMatch.score_a ?? match.score_a ?? 0}
+                </span>
+              </div>
             </div>
 
             {/* VS */}
             <div className="flex flex-col items-center gap-1 px-2 flex-shrink-0">
-              {liveMatch.status === 'finished' || liveMatch.status === 'live' || (liveMatch.score_a !== undefined && liveMatch.score_b !== undefined) ?
               <div className="flex items-center gap-1.5 text-sm font-bold">
                   <span className="text-muted-foreground text-xs">-</span>
-                </div> :
-
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">VS</span>
-              }
-
+                </div>
             </div>
 
             {/* Team B */}
@@ -158,12 +154,12 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
                 {getTeamFlag(match.team_b, match.team_b_flag)}
               </div>
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
-              {/* Score badge - shows when match is live/finished OR when score data exists */}
-              {(liveMatch.status === 'live' || liveMatch.status === 'finished' || liveMatch.score_a !== undefined || liveMatch.score_b !== undefined) && (
-                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                  <span className="text-xs font-bold text-destructive">{liveMatch.score_b ?? match.score_b ?? 0}</span>
-                </div>
-              )}
+              {/* Score badge - always show if match has any score data */}
+              <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                <span className="text-xs font-bold text-destructive">
+                  {liveMatch.score_b ?? match.score_b ?? 0}
+                </span>
+              </div>
             </div>
           </div>
 
