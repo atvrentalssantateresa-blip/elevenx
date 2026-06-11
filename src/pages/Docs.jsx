@@ -535,7 +535,7 @@ export default function Docs() {
               How Markets Are Deployed
             </h2>
             <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
-              Before users can bet, each market must be initialized on the Solana blockchain. Here's how it works:
+              Before users can bet, each market is initialized on Solana by the admin. 120 total deployments: 48 futures + 72 match markets.
             </p>
           </motion.div>
 
