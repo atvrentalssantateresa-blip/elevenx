@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { base44 } from '@/api/base44Client';
@@ -11,9 +11,10 @@ import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
 import AdminMatchesPanel from '@/components/admin/AdminMatchesPanel';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
 import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy, Wallet } from 'lucide-react';
+import { useWallet } from '@/lib/WalletContext';
 
 export default function Admin() {
-  const [walletAddress, setWalletAddress] = useState(null);
+  const { walletAddress } = useWallet();
   const [activeTab, setActiveTab] = useState('matches');
   const [settleDialog, setSettleDialog] = useState(null); // { instruction, bet, outcome }
   const [voidDialog, setVoidDialog] = useState(null);
@@ -33,18 +34,6 @@ export default function Admin() {
     withdrawFees: false,
   }); // Track which buttons are loading
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const stored = localStorage.getItem('elevenx_wallet_session');
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        setWalletAddress(data.address);
-      } catch (e) {
-        console.error('[Admin] Failed to parse wallet:', e);
-      }
-    }
-  }, []);
 
   const { data: allBets = [], isLoading: isLoadingBets, refetch } = useQuery({
     queryKey: ['allBets'],
