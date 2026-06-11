@@ -39,7 +39,7 @@ export default function Home() {
 
   const { data: bets = [] } = useQuery({
     queryKey: ['bets'],
-    queryFn: () => base44.entities.Bet.list('-created_date', 50)
+    queryFn: () => base44.entities.Bet.list('-created_date', 200)
   });
 
   const { data: userBets = [] } = useQuery({
@@ -321,22 +321,22 @@ export default function Home() {
                   {/* Odds/Pool */}
                   <div className="pt-2.5 border-t border-border/50">
                     <div className="grid grid-cols-3 gap-1.5 mb-2">
-                      <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-primary/5 border-primary/10">
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_a ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                         <p className="text-[9px] text-muted-foreground truncate">{match.team_a.split(' ').pop()}</p>
                         <p className="font-bold text-primary text-xs">
-                          {bet?.odds_a ? bet.odds_a.toFixed(2) : '—'}x
+                          {bet?.odds_a ? `${bet.odds_a.toFixed(2)}x` : '—'}
                         </p>
                       </div>
-                      <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-yellow-500/5 border-yellow-500/10">
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_draw ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-500/5 border-yellow-500/10'}`}>
                         <p className="text-[9px] text-muted-foreground">Draw</p>
                         <p className="font-bold text-yellow-400 text-xs">
-                          {bet?.odds_draw ? bet.odds_draw.toFixed(2) : '—'}x
+                          {bet?.odds_draw ? `${bet.odds_draw.toFixed(2)}x` : '—'}
                         </p>
                       </div>
-                      <div className="rounded-lg px-1.5 py-1 text-center text-xs border bg-accent/5 border-accent/10">
+                      <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${bet?.odds_b ? 'bg-accent/10 border-accent/20' : 'bg-accent/5 border-accent/10'}`}>
                         <p className="text-[9px] text-muted-foreground truncate">{match.team_b.split(' ').pop()}</p>
                         <p className="font-bold text-accent text-xs">
-                          {bet?.odds_b ? bet.odds_b.toFixed(2) : '—'}x
+                          {bet?.odds_b ? `${bet.odds_b.toFixed(2)}x` : '—'}
                         </p>
                       </div>
                     </div>
