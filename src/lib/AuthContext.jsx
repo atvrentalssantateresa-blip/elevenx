@@ -126,19 +126,6 @@ export const AuthProvider = ({ children }) => {
           console.log('Token decoded:', payloadJson);
           
           if (payloadJson.userId && payloadJson.exp && payloadJson.exp > Math.floor(Date.now() / 1000)) {
-            // Token is valid - SECURITY FIX: Do NOT trust role from JWT payload
-            // Role must come from server-side verification only (walletAuth or base44.auth.me())
-            const userData = {
-              id: payloadJson.userId,
-              wallet_address: payloadJson.walletAddress,
-              role: 'user', // Default to 'user' - real role will be fetched server-side
-              email: payloadJson.email || `${payloadJson.walletAddress?.slice(0, 8)}@elevenx.bet`
-            };
-            setUser(userData);
-            setIsAuthenticated(true);
-            setIsLoadingAuth(false);
-            setAuthChecked(true);
-            
             // Initialize SDK with auth token for backend function calls
             const axiosClient = createAxiosClient({
               baseURL: '',
@@ -153,7 +140,32 @@ export const AuthProvider = ({ children }) => {
               functionsVersion: appParams.functionsVersion,
             });
             window.base44WithAuth = sdkWithAuth;
-            console.log('✓ SDK initialized with auth token for backend calls');
+
+            // Fetch real role server-side via walletAuth
+            let role = 'user';
+            try {
+              const walletAddress = payloadJson.walletAddress;
+              if (walletAddress) {
+                const roleRes = await sdkWithAuth.functions.invoke('walletAuth', { walletAddress });
+                if (roleRes.data?.success) {
+                  role = roleRes.data.role || roleRes.data.user?.role || 'user';
+                }
+              }
+            } catch (roleErr) {
+              console.warn('Could not fetch role from walletAuth, defaulting to user:', roleErr.message);
+            }
+
+            const userData = {
+              id: payloadJson.userId,
+              wallet_address: payloadJson.walletAddress,
+              role,
+              email: payloadJson.email || `${payloadJson.walletAddress?.slice(0, 8)}@elevenx.bet`
+            };
+            setUser(userData);
+            setIsAuthenticated(true);
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            console.log('✓ SDK initialized with auth token for backend calls, role:', role);
             return;
           } else {
             console.log('Token expired or invalid');
