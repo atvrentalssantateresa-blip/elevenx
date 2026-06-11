@@ -212,40 +212,44 @@ export default function Home() {
         className="relative overflow-hidden rounded-2xl p-4 sm:p-5 mb-3"
         style={{ background: 'linear-gradient(135deg, rgba(153,69,255,0.08) 0%, rgba(20,241,149,0.05) 100%)', border: '1px solid rgba(153,69,255,0.15)' }}>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 relative z-10">
-          {/* Protocol Vault Label */}
-          <div className="col-span-2 md:col-span-1 flex flex-col justify-center">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
+        {totalVolume === 0 && activeBettors === 0 ? (
+          <p className="text-center text-sm text-white/60 py-1">🚀 Platform launching for World Cup 2026 — Be the first to place a bet</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 relative z-10">
+            {/* Protocol Vault Label */}
+            <div className="col-span-2 md:col-span-1 flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 mb-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Protocol Vault</span>
+              </div>
+              <p className="text-[10px] text-white/40">On-chain treasury</p>
             </div>
-            <p className="text-[10px] text-white/40">On-chain treasury</p>
-          </div>
 
-          {/* Treasury Balance */}
-          <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-            <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Fees</p>
-            <p className="text-sm font-heading font-bold text-emerald-400">◎0.0000</p>
-          </div>
+            {/* Treasury Balance */}
+            <div className="flex flex-col justify-center border-l border-white/5 pl-4">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Fees</p>
+              <p className="text-sm font-heading font-bold text-emerald-400">◎0.0000</p>
+            </div>
 
-          {/* Unresolved Stakes */}
-          <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-            <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">In Pools</p>
-            <p className="text-sm font-heading font-bold text-yellow-400">◎{totalVolume.toFixed(4)}</p>
-          </div>
+            {/* Unresolved Stakes */}
+            <div className="flex flex-col justify-center border-l border-white/5 pl-4">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">In Pools</p>
+              <p className="text-sm font-heading font-bold text-yellow-400">◎{totalVolume.toFixed(4)}</p>
+            </div>
 
-          {/* Total Volume */}
-          <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-            <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Volume</p>
-            <p className="text-sm font-heading font-bold text-primary">◎{totalVolume.toLocaleString()}</p>
-          </div>
+            {/* Total Volume */}
+            <div className="flex flex-col justify-center border-l border-white/5 pl-4">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Volume</p>
+              <p className="text-sm font-heading font-bold text-primary">◎{totalVolume.toLocaleString()}</p>
+            </div>
 
-          {/* Active Bettors */}
-          <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-            <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Bettors</p>
-            <p className="text-sm font-heading font-bold" style={{ color: '#21c45d' }}>{activeBettors}</p>
+            {/* Active Bettors */}
+            <div className="flex flex-col justify-center border-l border-white/5 pl-4">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Bettors</p>
+              <p className="text-sm font-heading font-bold" style={{ color: '#21c45d' }}>{activeBettors}</p>
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* ── FEATURED MATCHES HORIZONTAL SCROLL ── */}
