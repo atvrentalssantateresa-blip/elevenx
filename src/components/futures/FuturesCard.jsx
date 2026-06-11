@@ -5,6 +5,7 @@ import { ChevronRight, Trophy, Droplets, Clock, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import BetCountdown from '@/components/betting/BetCountdown';
 import { base44 } from '@/api/base44Client';
+import { format } from 'date-fns';
 
 const statusStyles = {
   open: 'bg-accent/10 text-accent border border-accent/20',
@@ -83,9 +84,13 @@ export default function FuturesCard({ market, index, onSelect }) {
               {market.country}
             </span>
             <div className="flex items-center gap-2">
-              {market.open_until && (
+              {(market.status === 'closed' || market.status === 'coming_soon') ? (
+                <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                  📅 Opens {market.open_until ? format(new Date(market.open_until), 'MMM d') : 'Soon'}
+                </span>
+              ) : market.open_until ? (
                 <BetCountdown openUntil={market.open_until} label="" className="text-[8px]" />
-              )}
+              ) : null}
             </div>
           </div>
 
