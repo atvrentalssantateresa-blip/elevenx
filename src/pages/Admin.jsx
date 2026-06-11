@@ -287,29 +287,47 @@ export default function Admin() {
   };
 
   const startDeployBatch = async (startIndex, endIndex, batchLabel, force = false) => {
+    console.log('[Admin] startDeployBatch called:', { startIndex, endIndex, batchLabel, force, walletAddress });
+    
+    // Always use Phantom directly for admin actions
+    const phantom = window.solana;
+    if (!phantom) {
+      toast.error('Phantom wallet not found. Please install it.');
+      return;
+    }
+    
     let effectiveWalletAddress = walletAddress;
-    if (!effectiveWalletAddress) {
-      const phantom = window.solana;
-      if (!phantom) {
-        toast.error('Phantom wallet not found. Please install it.');
-        return;
-      }
+    
+    // Connect if not already connected
+    if (!phantom.isConnected) {
       try {
+        console.log('[Admin] Connecting to Phantom...');
         await phantom.connect();
-        effectiveWalletAddress = phantom.publicKey?.toString();
-        if (!effectiveWalletAddress) {
-          toast.error('Could not get wallet address after connecting.');
-          return;
-        }
-        toast('Wallet connected! Deploying...', { icon: '🔗' });
+        console.log('[Admin] Phantom connected');
       } catch (e) {
-        toast.error('Failed to connect wallet: ' + e.message);
+        console.error('[Admin] Phantom connect error:', e);
+        toast.error('Failed to connect Phantom: ' + e.message);
         return;
       }
     }
+    
+    // Get address directly from Phantom
+    effectiveWalletAddress = phantom.publicKey?.toString();
+    
+    if (!effectiveWalletAddress) {
+      toast.error('Could not get wallet address from Phantom.');
+      return;
+    }
+    
+    console.log('[Admin] Using wallet address:', effectiveWalletAddress);
+    toast('Wallet connected! Deploying...', { icon: '🔗' });
+    
     const batchSize = endIndex - startIndex + 1;
     try {
+      console.log('[Admin] Calling deployAllMatches with batch_offset:', startIndex, 'batch_size:', batchSize);
       const res = await base44.functions.invoke('deployAllMatches', { batch_offset: startIndex, batch_size: batchSize, force });
+      console.log('[Admin] deployAllMatches response:', res.data);
+      
       if (res.data.needsSigning) {
         setDeployMatchesDialog({
           instruction: res.data.solana_instruction,
@@ -317,7 +335,7 @@ export default function Admin() {
           betId: res.data.bet_id,
           marketPda: res.data.market_pda,
           batchLabel,
-          batchSize: 12,
+          batchSize,
           force,
         });
       } else if (res.data.autoContinue) {
@@ -327,6 +345,7 @@ export default function Admin() {
         queryClient.invalidateQueries({ queryKey: ['allBets'] });
       }
     } catch (err) {
+      console.error('[Admin] startDeployBatch error:', err);
       toast.error('Error: ' + err.message);
     }
   };
