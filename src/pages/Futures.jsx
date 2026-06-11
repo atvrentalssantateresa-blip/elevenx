@@ -50,13 +50,13 @@ export default function Futures() {
     },
   });
 
-  // Filter markets by selected group - no status filtering
+  // Filter markets by selected group using market.group field from DB
   const filteredMarketsByGroup = React.useMemo(() => {
     if (activeGroup === 'ALL') {
-      return futuresMarkets.filter(m => !m.country?.includes('Group ') && m.country !== 'World Cup' && m.country !== 'Test');
+      return futuresMarkets.filter(m => m.country !== 'World Cup' && m.country !== 'Test');
     }
-    const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-    return futuresMarkets.filter(m => groupTeams.includes(m.country));
+    const groupLabel = `Group ${activeGroup}`;
+    return futuresMarkets.filter(m => m.group === groupLabel || m.group === activeGroup);
   }, [futuresMarkets, activeGroup]);
 
   // Scroll to group section
@@ -221,13 +221,10 @@ export default function Futures() {
       )
     : futuresMarkets;
   
-  // Then filter by group - no status filtering, show all statuses
-  const filteredMarkets = activeGroup === 'ALL' 
-    ? searchFilteredMarkets.filter(m => !m.country?.includes('Group ') && m.country !== 'World Cup')
-    : searchFilteredMarkets.filter(m => {
-        const groupTeams = WORLD_CUP_GROUPS_2026[activeGroup]?.map(t => t.name) || [];
-        return groupTeams.includes(m.country);
-      });
+  // Then filter by group using market.group field - no status filtering
+  const filteredMarkets = activeGroup === 'ALL'
+    ? searchFilteredMarkets.filter(m => m.country !== 'World Cup' && m.country !== 'Test')
+    : searchFilteredMarkets.filter(m => m.group === `Group ${activeGroup}` || m.group === activeGroup);
 
   // Auto-scroll to first matching group when search query changes
   React.useEffect(() => {
@@ -457,43 +454,59 @@ export default function Futures() {
             </div>
           </section>
         ) : (
-          /* All Groups View - Group countries by their group */
+          /* All Groups View - Group by market.group field from DB */
           <div className="space-y-6 sm:space-y-8">
-            {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((letter) => {
-              const groupName = `Group ${letter}`;
-              const groupTeams = WORLD_CUP_GROUPS_2026[letter]?.map(t => t.name) || [];
-              const groupMarkets = searchFilteredMarkets.filter(m => 
-                groupTeams.includes(m.country) && m.country !== 'Test' && m.country !== 'World Cup'
-              );
-              if (groupMarkets.length === 0) return null;
+            {(() => {
+              const displayMarkets = searchFilteredMarkets.filter(m => m.country !== 'Test' && m.country !== 'World Cup');
+              const groups = [...new Set(displayMarkets.map(m => m.group).filter(Boolean))].sort();
+              // Markets with no group field go into an "Other" bucket
+              const ungrouped = displayMarkets.filter(m => !m.group);
               
               return (
-                <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
-                  <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
-                      <span className="font-heading font-black text-base sm:text-lg text-primary">{letter}</span>
-                    </div>
-                    <div>
-                      <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">
-                        {groupMarkets.length} countries
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {groupMarkets.map((market, index) => (
-                      <FuturesCard
-                        key={market.id}
-                        market={market}
-                        index={index}
-                        onSelect={handleCountrySelect}
-                      />
-                    ))}
-                  </div>
-                </section>
+                <>
+                  {groups.map((groupName) => {
+                    const groupMarkets = displayMarkets.filter(m => m.group === groupName);
+                    const label = groupName.replace('Group ', '');
+                    return (
+                      <section key={groupName} id={`group-${groupName}`} className="scroll-mt-20 sm:scroll-mt-24">
+                        <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center">
+                            <span className="font-heading font-black text-base sm:text-lg text-primary">{label}</span>
+                          </div>
+                          <div>
+                            <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">{groupName}</h2>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">{groupMarkets.length} countries</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {groupMarkets.map((market, index) => (
+                            <FuturesCard key={market.id} market={market} index={index} onSelect={handleCountrySelect} />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                  {ungrouped.length > 0 && (
+                    <section id="group-Other" className="scroll-mt-20 sm:scroll-mt-24">
+                      <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-muted/20 to-muted/10 border border-border/30 flex items-center justify-center">
+                          <span className="font-heading font-black text-base sm:text-lg text-muted-foreground">?</span>
+                        </div>
+                        <div>
+                          <h2 className="font-heading font-bold text-sm sm:text-base text-foreground">Other</h2>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">{ungrouped.length} countries</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {ungrouped.map((market, index) => (
+                          <FuturesCard key={market.id} market={market} index={index} onSelect={handleCountrySelect} />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </>
               );
-            })}
+            })()}
           </div>
         )
       ) : (
