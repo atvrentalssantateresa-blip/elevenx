@@ -126,11 +126,12 @@ export const AuthProvider = ({ children }) => {
           console.log('Token decoded:', payloadJson);
           
           if (payloadJson.userId && payloadJson.exp && payloadJson.exp > Math.floor(Date.now() / 1000)) {
-            // Token is valid
+            // Token is valid - SECURITY FIX: Do NOT trust role from JWT payload
+            // Role must come from server-side verification only (walletAuth or base44.auth.me())
             const userData = {
               id: payloadJson.userId,
               wallet_address: payloadJson.walletAddress,
-              role: payloadJson.role,
+              role: 'user', // Default to 'user' - real role will be fetched server-side
               email: payloadJson.email || `${payloadJson.walletAddress?.slice(0, 8)}@elevenx.bet`
             };
             setUser(userData);
