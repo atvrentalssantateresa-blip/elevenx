@@ -556,19 +556,19 @@ export default function Docs() {
               {
                 step: "03",
                 title: "Betting Window Opens",
-                description: "Users place bets. Odds update in real-time based on pool activity.",
+                description: "Once deployed and funded, users can place bets. Odds update in real-time based on pool activity.",
                 icon: <TrendingUp className="w-8 h-8" />
               },
               {
                 step: "04",
-                title: "Settlement by Admin",
-                description: "After the match/tournament ends, admin signs a settlement transaction (2-step: fix timestamp → settle). On-chain outcome is recorded.",
+                title: "Admin Settles",
+                description: "After the event, admin signs a 2-step settlement: first fix the on-chain timestamp, then record the winning outcome.",
                 icon: <CheckCircle className="w-8 h-8" />
               },
               {
                 step: "05",
                 title: "Winners Claim SOL",
-                description: "Winning bettors call a claim instruction. SOL is automatically transferred from the pool to their wallet. No manual processing.",
+                description: "Winning bettors call claim. SOL transfers directly from the pool PDA to their wallet. No manual processing.",
                 icon: <Award className="w-8 h-8" />
               }
             ].map((step, i) => (
@@ -614,7 +614,7 @@ export default function Docs() {
               Under the Hood
             </h2>
             <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
-              The full ElevenX tech stack
+              The full ElevenX tech stack — all open source.
             </p>
           </motion.div>
 
@@ -623,37 +623,37 @@ export default function Docs() {
               {
                 icon: <Shield className="w-6 h-6" />,
                 title: "Solana Smart Contract",
-                description: "Custom on-chain program written in Rust/Anchor. Handles market creation, betting, settlement, and payouts. All logic is open source.",
+                description: "Custom Rust/Anchor program. Handles market creation, betting, settlement, and payouts. All logic on-chain.",
                 color: "text-primary"
               },
               {
                 icon: <Lock className="w-6 h-6" />,
                 title: "Platform Config PDA",
-                description: "A single on-chain account stores the admin public key, fee percentage, and consensus threshold. Immutable once set.",
+                description: "Stores admin public key, fee %, and consensus threshold on-chain. Set once at launch.",
                 color: "text-accent"
               },
               {
                 icon: <TrendingUp className="w-6 h-6" />,
                 title: "Fee Vault PDA",
-                description: "Protocol fees accumulate in a dedicated on-chain fee vault, separate from betting pools. Admin can withdraw fees via signed transaction.",
+                description: "Protocol fees accumulate in a dedicated on-chain vault. Admin withdraws via signed transaction.",
                 color: "text-primary"
               },
               {
                 icon: <Wallet className="w-6 h-6" />,
                 title: "Market PDAs",
-                description: "Each betting market gets its own Program Derived Address (PDA). Funds are isolated — one market's SOL never mixes with another.",
+                description: "Each betting market has its own Program Derived Address. Funds are fully isolated between markets.",
                 color: "text-accent"
               },
               {
                 icon: <Zap className="w-6 h-6" />,
-                title: "Base44 Backend",
-                description: "Serverless backend functions handle oracle data (The Odds API), DB sync, and Solana instruction building. No centralized custody.",
+                title: "Base44 + Serverless",
+                description: "Backend handles oracle data (The Odds API), DB sync, and Solana instruction building. No centralized custody.",
                 color: "text-primary"
               },
               {
                 icon: <RefreshCcw className="w-6 h-6" />,
                 title: "Parimutuel Model",
-                description: "All bets go into a shared pool. Winning bettors split the pool proportionally to their stake. No house edge — 100% to winners (minus LP fee).",
+                description: "All bets go into a shared pool. Winners split proportionally to stake. No house edge — 100% to winners minus LP fee.",
                 color: "text-accent"
               }
             ].map((item, i) => (
@@ -691,19 +691,19 @@ export default function Docs() {
               Transparent Fee Structure
             </h2>
             <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2">
-              No hidden fees. Everything is hard-coded in the smart contract.
+              No hidden fees. Hard-coded in the smart contract — even the admin can't change them above the cap.
             </p>
           </motion.div>
 
           <div className="max-w-4xl mx-auto bg-card/50 border border-border/50 rounded-3xl p-6 md:p-10 mb-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               {[
-                { label: "Platform Fee", value: "0–2%", note: "Hard-capped in smart contract code" },
-                { label: "LP Share", value: "2–5%", note: "Per matched bet (goes to liquidity providers)" },
-                { label: "Bettor Take", value: "95–100%", note: "Of pool after fees" },
+                { label: "Platform Fee", value: "0–2%", note: "Hard-capped in code" },
+                { label: "LP Share", value: "2–5%", note: "Per matched bet" },
+                { label: "Bettor Take", value: "95–100%", note: "Of pool" },
                 { label: "Minimum Bet", value: "0.01 SOL", note: "Lowest allowed stake" },
-                { label: "Claim Gas", value: "~0.000005 SOL", note: "Solana transaction fee only" },
-                { label: "Fee Vault", value: "Accumulated", note: "Withdrawable by admin via signed on-chain tx" }
+                { label: "Claim Gas", value: "~0.000005 SOL", note: "Solana tx fee only" },
+                { label: "Fee Vault", value: "On-chain", note: "Admin-withdrawable via signed tx" }
               ].map((item, i) => (
                 <div key={i} className="p-4 rounded-xl bg-background/50 border border-border/50">
                   <div className="flex items-center justify-between mb-2">
