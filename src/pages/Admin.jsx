@@ -269,22 +269,21 @@ export default function Admin() {
     }
   };
 
-  const handleDeployMatchesSuccess = async () => {
+  const handleDeployMatchesSuccess = async (groupFilter) => {
     // After signing, call deployAllMatches again to get next match
     try {
-      const res = await base44.functions.invoke('deployAllMatches');
+      const res = await base44.functions.invoke('deployAllMatches', groupFilter ? { group_stage: groupFilter } : {});
       if (res.data.needsSigning) {
         // More matches to deploy
         setDeployMatchesDialog({
           instruction: res.data.solana_instruction,
           remaining: res.data.remaining,
           betId: res.data.bet_id,
+          groupFilter,
         });
       } else if (res.data.autoContinue) {
-        // Market already exists, continue to next
-        handleDeployMatchesSuccess(); // Recursively call to get next
+        handleDeployMatchesSuccess(groupFilter);
       } else {
-        // All done
         setDeployMatchesDialog(null);
         toast.success(res.data.message || '✓ All matches deployed!');
         queryClient.invalidateQueries({ queryKey: ['allBets'] });
@@ -292,6 +291,27 @@ export default function Admin() {
     } catch (err) {
       toast.error('Error: ' + err.message);
       setDeployMatchesDialog(null);
+    }
+  };
+
+  const startDeployGroup = async (groupFilter) => {
+    try {
+      const res = await base44.functions.invoke('deployAllMatches', groupFilter ? { group_stage: groupFilter } : {});
+      if (res.data.needsSigning) {
+        setDeployMatchesDialog({
+          instruction: res.data.solana_instruction,
+          remaining: res.data.remaining,
+          betId: res.data.bet_id,
+          groupFilter,
+        });
+      } else if (res.data.autoContinue) {
+        handleDeployMatchesSuccess(groupFilter);
+      } else {
+        toast.success(res.data.message || `✓ ${groupFilter || 'All matches'} deployed!`);
+        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+      }
+    } catch (err) {
+      toast.error('Error: ' + err.message);
     }
   };
 
@@ -419,33 +439,16 @@ export default function Admin() {
                   <span className="font-bold text-lg text-white">🚀 Deploy All Futures</span>
                   <span className="text-xs text-gray-400">Deploy all futures markets</span>
                 </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const res = await base44.functions.invoke('deployAllMatches');
-                      if (res.data.needsSigning) {
-                        setDeployMatchesDialog({
-                          instruction: res.data.solana_instruction,
-                          remaining: res.data.remaining,
-                          betId: res.data.bet_id,
-                        });
-                      } else if (res.data.autoContinue) {
-                        // Auto-continue if market already exists
-                        toast.success('Continuing deployment...');
-                        setTimeout(() => handleDeployMatchesSuccess(), 500);
-                      } else {
-                        toast.success(res.data.message || '✓ All matches deployed!');
-                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
-                      }
-                    } catch (err) {
-                      toast.error('Error: ' + err.message);
-                    }
-                  }}
-                  className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
-                >
-                  <span className="font-bold text-lg text-white">⚡ Deploy All Matches</span>
-                  <span className="text-xs text-gray-400">Deploy all match markets</span>
-                </Button>
+                {['A','B','C','D','E','F','G','H'].map(group => (
+                  <Button
+                    key={group}
+                    onClick={() => startDeployGroup(`Group ${group}`)}
+                    className="h-24 flex flex-col gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-xl"
+                  >
+                    <span className="font-bold text-lg text-white">⚡ Group {group}</span>
+                    <span className="text-xs text-gray-400">Deploy Group {group} matches</span>
+                  </Button>
+                ))}
                 <Button
                   onClick={async () => {
                     try {
@@ -461,21 +464,7 @@ export default function Admin() {
                   <span className="font-bold text-lg text-white">🎯 Initialize Futures</span>
                   <span className="text-xs text-gray-400">Create on-chain markets</span>
                 </Button>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const res = await base44.functions.invoke('deployAllMatches');
-                      toast.success(res.data.message || '✓ All matches deployed!');
-                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
-                    } catch (err) {
-                      toast.error('Error: ' + err.message);
-                    }
-                  }}
-                  className="h-24 flex flex-col gap-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-xl"
-                >
-                  <span className="font-bold text-lg text-white">🏆 Initialize Matches</span>
-                  <span className="text-xs text-gray-400">Create on-chain markets</span>
-                </Button>
+
                 <Button
                   onClick={async () => {
                     try {
@@ -971,13 +960,13 @@ export default function Admin() {
             <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
               <div className="space-y-4">
                 <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
-                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {72 - deployMatchesDialog.remaining} of 72</h3>
-                  <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployMatchesDialog.remaining}</p>
+                  <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy {deployMatchesDialog.groupFilter || 'All Matches'} — {deployMatchesDialog.remaining} remaining</h3>
+                  <p className="text-sm text-gray-400">Sign each transaction to deploy one match at a time.</p>
                 </div>
                 <SolanaTransactionSigner
                   instruction={deployMatchesDialog.instruction}
                   amount="0"
-                  onSuccess={handleDeployMatchesSuccess}
+                  onSuccess={() => handleDeployMatchesSuccess(deployMatchesDialog.groupFilter)}
                   onError={(err) => {
                     toast.error('Failed: ' + err.message);
                     setDeployMatchesDialog(null);

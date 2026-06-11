@@ -121,10 +121,24 @@ Deno.serve(async (req) => {
 
     console.log('[deployAllMatches] Starting deployment...');
 
-    const allBets = await base44.asServiceRole.entities.Bet.filter({});
-    const betsToDeploy = allBets.filter(b => !b.solana_market_created);
+    const body = await req.json().catch(() => ({}));
+    const groupFilter = body.group_stage || null;
 
-    console.log(`[deployAllMatches] Found ${betsToDeploy.length} bets to deploy out of ${allBets.length} total`);
+    const allBets = await base44.asServiceRole.entities.Bet.filter({});
+    let betsToDeploy = allBets.filter(b => !b.solana_market_created);
+
+    // If group filter provided, also check matches for group_stage
+    if (groupFilter) {
+      const allMatches2 = await base44.asServiceRole.entities.Match.filter({});
+      const matchMap = {};
+      allMatches2.forEach(m => { matchMap[m.id] = m; });
+      betsToDeploy = betsToDeploy.filter(b => {
+        const m = matchMap[b.match_id];
+        return m && m.group_stage && m.group_stage.toLowerCase().includes(groupFilter.toLowerCase());
+      });
+    }
+
+    console.log(`[deployAllMatches] Found ${betsToDeploy.length} bets to deploy${groupFilter ? ` for ${groupFilter}` : ''} out of ${allBets.length} total`);
 
     if (betsToDeploy.length === 0) {
       return Response.json({
