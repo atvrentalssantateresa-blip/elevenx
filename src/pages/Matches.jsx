@@ -197,10 +197,10 @@ export default function Matches() {
                 Deploy All Matches
               </button>
             )}
-            {/* Mobile Expand/Collapse Button */}
+            {/* Expand/Collapse Button */}
             <button
               onClick={() => setIsInfoExpanded(!isInfoExpanded)}
-              className="sm:hidden flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
             >
               {isInfoExpanded ? (
                 <>
@@ -209,7 +209,7 @@ export default function Matches() {
                 </>
               ) : (
                 <>
-                  <span>Info</span>
+                  <span>How it works</span>
                   <ChevronDown className="w-3 h-3" />
                 </>
               )}
@@ -223,7 +223,7 @@ export default function Matches() {
           </p>
 
           {/* How Match Betting Works - Expandable on mobile */}
-          <div className={`overflow-hidden transition-all duration-300 ${isInfoExpanded ? 'max-h-[800px]' : 'max-h-[0px]'} sm:max-h-none`}>
+          <div className={`overflow-hidden transition-all duration-300 ${isInfoExpanded ? 'max-h-[800px]' : 'max-h-[0px]'}`}>
             <div className="border-t border-border/50 pt-4">
               <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full text-primary text-[9px] sm:text-[10px] font-bold tracking-widest uppercase mb-3">
                 ⚽ How Match Betting Works
