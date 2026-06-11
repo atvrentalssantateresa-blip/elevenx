@@ -154,58 +154,66 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Platform not initialized on Solana. Go to Platform tab and click "Init Platform" first.' });
     }
 
-    const firstBet = betsToDeploy[0];
-    const remaining = betsToDeploy.length - 1;
-
-    // Check if already deployed on-chain
-    const matchIdBytes = Buffer.alloc(32);
-    Buffer.from(firstBet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(firstBet.match_id.length, 32));
-    const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
-    const marketInfo = await connection.getAccountInfo(marketPda);
-
-    if (marketInfo && !force) {
-      // Already exists on-chain, mark as deployed and signal auto-continue
-      await base44.asServiceRole.entities.Bet.update(firstBet.id, {
-        solana_market_created: true,
-        solana_market_pda: marketPda.toBase58(),
-      });
-      console.log(`[deployAllMatches] ✓ Already exists on-chain: ${firstBet.title}`);
+    // Find first valid bet to deploy (skip orphans and already-deployed)
+    let betToDeploy = null;
+    let matchToDeploy = null;
+    let remaining = betsToDeploy.length;
+    
+    for (const bet of betsToDeploy) {
+      const matches = await base44.asServiceRole.entities.Match.filter({ id: bet.match_id });
+      const match = matches[0];
+      
+      if (!match) {
+        // Skip orphan bet
+        await base44.asServiceRole.entities.Bet.update(bet.id, { solana_market_created: true });
+        console.log(`[deployAllMatches] Skipping orphan bet ${bet.id} (no match)`);
+        remaining--;
+        continue;
+      }
+      
+      // Check if already deployed on-chain
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(bet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(bet.match_id.length, 32));
+      const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
+      const marketInfo = await connection.getAccountInfo(marketPda);
+      
+      if (marketInfo && !force) {
+        await base44.asServiceRole.entities.Bet.update(bet.id, {
+          solana_market_created: true,
+          solana_market_pda: marketPda.toBase58(),
+        });
+        console.log(`[deployAllMatches] ✓ Already deployed: ${bet.title}`);
+        remaining--;
+        continue;
+      }
+      
+      // Found valid bet to deploy
+      betToDeploy = bet;
+      matchToDeploy = match;
+      break;
+    }
+    
+    if (!betToDeploy) {
       return Response.json({
         success: true,
-        message: `Market already deployed. ${remaining} remaining`,
-        remaining,
+        message: `✓ Batch complete! All matches in this batch already deployed or skipped.`,
+        remaining: 0,
         needsSigning: false,
         autoContinue: true,
       });
     }
+    
+    const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda);
 
-    // Fetch the match
-    const matches = await base44.asServiceRole.entities.Match.filter({ id: firstBet.match_id });
-    const match = matches[0];
-    if (!match) {
-      // Skip this bet and mark it as deployed to avoid infinite loop
-      await base44.asServiceRole.entities.Bet.update(firstBet.id, { solana_market_created: true });
-      console.log(`[deployAllMatches] Skipping bet ${firstBet.id} - no match found`);
-      return Response.json({
-        success: true,
-        message: `Skipped bet (no match). ${remaining} remaining`,
-        remaining,
-        needsSigning: false,
-        autoContinue: true,
-      });
-    }
-
-    const builtInstruction = buildCreateMarketInstruction(firstBet, match, programIdStr, programId, platformPda);
-
-    console.log(`[deployAllMatches] Ready to deploy: ${firstBet.title}, remaining: ${remaining}`);
+    console.log(`[deployAllMatches] Ready to deploy: ${betToDeploy.title}, remaining: ${remaining - 1}`);
 
     return Response.json({
       success: true,
-      message: `Sign to deploy ${firstBet.title || firstBet.match_id}. ${remaining} remaining after this.`,
-      remaining,
+      message: `Sign to deploy ${betToDeploy.title || betToDeploy.match_id}. ${remaining - 1} remaining after this.`,
+      remaining: remaining - 1,
       needsSigning: true,
       solana_instruction: builtInstruction.solana_instruction,
-      bet_id: firstBet.id,
+      bet_id: betToDeploy.id,
       market_pda: builtInstruction.marketPda,
     });
 
