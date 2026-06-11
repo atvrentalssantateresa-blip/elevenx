@@ -70,7 +70,10 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       // CRITICAL: Read RPC URL from instruction or use environment-based default
       // Backend functions should provide rpcUrl in instruction if non-standard
       const rpcUrl = instruction.rpcUrl || window.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const connection = new Connection(rpcUrl, 'confirmed');
+      const connection = new Connection(rpcUrl, {
+        commitment: 'confirmed',
+        confirmTransactionInitialTimeout: 90000,
+      });
       console.log('[SolanaTransactionSigner] Using RPC URL:', rpcUrl);
       const transaction = new Transaction();
       
@@ -619,7 +622,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
 
       // Get recent blockhash for transaction
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = provider.publicKey;
 
@@ -670,10 +673,13 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         }
       }
 
-      console.log('Waiting for confirmation...');
+      console.log('Waiting for confirmation (90s timeout)...');
       let confirmation;
       try {
-        confirmation = await connection.confirmTransaction(sig, 'confirmed');
+        confirmation = await connection.confirmTransaction(
+          { signature: sig, blockhash, lastValidBlockHeight },
+          'confirmed'
+        );
         console.log('Transaction confirmation result:', confirmation);
       } catch (confirmError) {
         console.error('[SolanaTransactionSigner] Confirmation error:', confirmError);

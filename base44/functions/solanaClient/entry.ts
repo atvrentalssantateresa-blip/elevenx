@@ -22,7 +22,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'ELEVENX_PROGRAM_ID secret not set' }, { status: 500 });
     }
 
-    const connection = new Connection(rpcUrl, 'confirmed');
+    const connection = new Connection(rpcUrl, {
+      commitment: 'confirmed',
+      confirmTransactionInitialTimeout: 90000,
+    });
     const programId = new PublicKey(programIdStr);
 
     return Response.json({
@@ -50,6 +53,9 @@ export function getSolanaConfig() {
     rpcUrl,
     programIdStr,
     programId: new PublicKey(programIdStr),
-    connection: new Connection(rpcUrl, 'confirmed'),
+    connection: new Connection(rpcUrl, {
+      commitment: 'confirmed',
+      confirmTransactionInitialTimeout: 90000,
+    }),
   };
 }

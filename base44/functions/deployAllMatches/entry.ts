@@ -77,6 +77,7 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
     solana_instruction: {
       instruction_type: 'create_market',
       programId: programIdStr,
+      rpcUrl: Deno.env.get('SOLANA_RPC_URL'),
       keys,
       accounts,
       instruction_data: instructionData.toString('base64'),
