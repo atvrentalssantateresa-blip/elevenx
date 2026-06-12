@@ -20,9 +20,10 @@ function getSolanaConfig() {
   return { rpcUrl, programIdStr, programId: new PublicKey(programIdStr), connection: new Connection(rpcUrl, 'confirmed') };
 }
 
-function buildCreateMarketInstruction(bet, match, programIdStr, programId, platformPda, rpcUrl) {
+function buildCreateMarketInstruction(bet, match, programIdStr, programId, platformPda, rpcUrl, effectiveMatchId) {
   const matchIdBytes = Buffer.alloc(32);
-  Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
+  const matchIdToUse = effectiveMatchId || match.id;
+  Buffer.from(matchIdToUse, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(matchIdToUse.length, 32));
 
   const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
   const [voteTallyPda] = PublicKey.findProgramAddressSync([Buffer.from('vote_tally'), marketPda.toBuffer()], programId);
@@ -215,18 +216,30 @@ Deno.serve(async (req) => {
       let pdaStatus = 'FREE';
       
       if (marketInfo && !force) {
-        // Parse on-chain market to check if it's dead or has wrong teams
+        // Parse on-chain market to check status
         const data = marketInfo.data;
+        // CONFIRMED byte offsets: odds[0] at 156, odds[1] at 164, odds[2] at 172
         const oracleOddsA = Number(data.readBigUInt64LE(156));
         const oracleOddsB = Number(data.readBigUInt64LE(164));
         const oracleOddsDraw = Number(data.readBigUInt64LE(172));
-        
-        const isDead = oracleOddsA === 0 && oracleOddsB === 0 && oracleOddsDraw === 0;
         
         // Parse team names from on-chain data
         const chainTeamA = new TextDecoder().decode(data.slice(40, 72)).replace(/\0/g, '').trim();
         const chainTeamB = new TextDecoder().decode(data.slice(72, 103)).replace(/\0/g, '').trim();
         const teamMismatch = chainTeamA !== match.team_a || chainTeamB !== match.team_b;
+        const isDead = oracleOddsA === 0 && oracleOddsB === 0 && oracleOddsDraw === 0;
+        const isBettable = oracleOddsA > 100 && oracleOddsB > 100 && oracleOddsDraw > 100;
+        
+        // Step 1c: Skip if already has correct bettable on-chain market (team names match + bettable odds)
+        if (!teamMismatch && !isDead && isBettable) {
+          await base44.asServiceRole.entities.Bet.update(bet.id, {
+            solana_market_created: true,
+            solana_market_pda: marketPda.toBase58(),
+          });
+          console.log(`[deployAllMatches] ✓ Already deployed with bettable market: ${bet.title} (odds: ${oracleOddsA/100}, ${oracleOddsB/100}, ${oracleOddsDraw/100})`);
+          remaining--;
+          continue;
+        }
         
         if (isDead || teamMismatch) {
           // PDA is occupied by dead or fake market - use match_id_v2
@@ -236,15 +249,6 @@ Deno.serve(async (req) => {
           
           // Update DB bet record to use new match_id
           await base44.asServiceRole.entities.Bet.update(bet.id, { match_id: effectiveMatchId });
-        } else {
-          // Already deployed correctly
-          await base44.asServiceRole.entities.Bet.update(bet.id, {
-            solana_market_created: true,
-            solana_market_pda: marketPda.toBase58(),
-          });
-          console.log(`[deployAllMatches] ✓ Already deployed: ${bet.title}`);
-          remaining--;
-          continue;
         }
       }
       
