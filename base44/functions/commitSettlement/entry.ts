@@ -148,8 +148,8 @@ Deno.serve(async (req) => {
     const match = await serviceRole.entities.Match.get(match_id);
     if (match && match.status !== 'finished') {
       await serviceRole.entities.Match.update(match_id, {
-        status: 'finished',
-        winner: winning_outcome === 'a' ? 'team_a' : winning_outcome === 'b' ? 'team_b' : 'draw',
+        status: winning_outcome === 'void' ? 'cancelled' : 'finished',
+        winner: winning_outcome === 'a' ? 'team_a' : winning_outcome === 'b' ? 'team_b' : winning_outcome === 'draw' ? 'draw' : '',
       });
     }
     
