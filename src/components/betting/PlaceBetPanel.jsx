@@ -247,26 +247,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         o.outcome === selectedOutcome &&
         (o.amount_unmatched || 0) > 0
         );
-        if (firstAvailableOffer) {
-          console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
-          res = await callBackendFunction('matchBet', {
-            offer_id: firstAvailableOffer.id,
-            amount: stakeNum,
-            wallet_address: wallet
-          });
-          console.log('[PlaceBetPanel] matchBet response:', res);
-        } else {
-          // No DB offer found — fall back to parimutuel (bet directly into on-chain pool)
-          console.log('[PlaceBetPanel] No DB offer found, using parimutuel placeBet for outcome:', selectedOutcome);
-          res = await callBackendFunction('placeBet', {
-            walletAddress: wallet,
-            bet_id: bet?.id,
-            match_id: matchId,
-            outcome: selectedOutcome,
-            amount: stakeNum,
-          });
-          console.log('[PlaceBetPanel] placeBet (parimutuel) response:', res);
+        if (!firstAvailableOffer) {
+          throw new Error('No LP liquidity available for this outcome. Please wait for a liquidity provider.');
         }
+        console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
+        res = await callBackendFunction('matchBet', {
+          offer_id: firstAvailableOffer.id,
+          amount: stakeNum,
+          wallet_address: wallet
+        });
+        console.log('[PlaceBetPanel] matchBet response:', res);
       }
       // Check for errors in response (callBackendFunction returns data directly, not wrapped in .data)
       console.log('[PlaceBetPanel] Full response:', res);
