@@ -92,11 +92,13 @@ export default function FuturesCard({ market, index, onSelect }) {
                   )}
                 </div>
               ) : market.status === 'settled' ? (
-                <span className="text-[9px] font-bold text-muted-foreground bg-muted/50 border border-border px-2 py-0.5 rounded-full">✅ Settled</span>
+                <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ SETTLED</span>
+              ) : market.status === 'closed' ? (
+                <span className="text-[9px] font-bold text-muted-foreground bg-muted/50 border border-border px-2 py-0.5 rounded-full">CLOSED</span>
               ) : (
                 <div className="flex flex-col items-end gap-0.5">
                   <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/20 border border-yellow-500/30 px-2 py-0.5 rounded-full">
-                    📅 Opens Jun 11
+                    📅 {market.open_until ? `Opens ${format(new Date(market.open_until), 'MMM d')}` : 'Coming Soon'}
                   </span>
                   {market.open_until && (
                     <span className="text-[8px] text-muted-foreground">{format(new Date(market.open_until), 'MMM d, yyyy')}</span>

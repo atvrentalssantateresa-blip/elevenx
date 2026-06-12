@@ -321,34 +321,49 @@ export default function Home() {
                     </Badge>
                   </div>
 
-                  {/* Match Matchup with Scores */}
+                  {/* Match Matchup */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     {/* Team A */}
                     <div className="flex-1 text-center">
                       <div className="text-2xl mb-1">{getTeamFlag(match.team_a, match.team_a_flag)}</div>
                       <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
-                      {hasScore && (
-                        <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                          <span className="text-xs font-bold text-destructive">{scoreA}</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* VS */}
+                    {/* Score / VS */}
                     <div className="flex flex-col items-center gap-1 px-2 flex-shrink-0">
-                      <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">VS</span>
-                      <span className="text-[10px] text-muted-foreground font-medium">{format(new Date(match.match_time), 'MMM d')}</span>
+                      {match.status === 'live' ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-destructive">
+                              {match.score_a ?? 0} - {match.score_b ?? 0}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                            <span className="text-[9px] font-bold text-destructive">LIVE</span>
+                          </div>
+                        </>
+                      ) : match.status === 'finished' ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-muted-foreground">
+                              {match.score_a ?? 0} - {match.score_b ?? 0}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-bold text-muted-foreground">FT</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">VS</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{format(new Date(match.match_time), 'MMM d')}</span>
+                        </>
+                      )}
                     </div>
 
                     {/* Team B */}
                     <div className="flex-1 text-center">
                       <div className="text-2xl mb-1">{getTeamFlag(match.team_b, match.team_b_flag)}</div>
                       <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
-                      {hasScore && (
-                        <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                          <span className="text-xs font-bold text-destructive">{scoreB}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
