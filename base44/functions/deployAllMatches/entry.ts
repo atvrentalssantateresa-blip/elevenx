@@ -190,6 +190,7 @@ Deno.serve(async (req) => {
     let betToDeploy = null;
     let matchToDeploy = null;
     let remaining = betsToDeploy.length;
+    let usedMatchId = null; // Track if we used match_id_v2
     
     for (const bet of betsToDeploy) {
       const matches = await base44.asServiceRole.entities.Match.filter({ id: bet.match_id });
@@ -203,20 +204,48 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // Check if already deployed on-chain
+      // Check PDA status before deployment
       const matchIdBytes = Buffer.alloc(32);
       Buffer.from(bet.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(bet.match_id.length, 32));
       const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
       const marketInfo = await connection.getAccountInfo(marketPda);
       
+      // Check if PDA is occupied by dead/fake market
+      let effectiveMatchId = bet.match_id;
+      let pdaStatus = 'FREE';
+      
       if (marketInfo && !force) {
-        await base44.asServiceRole.entities.Bet.update(bet.id, {
-          solana_market_created: true,
-          solana_market_pda: marketPda.toBase58(),
-        });
-        console.log(`[deployAllMatches] ✓ Already deployed: ${bet.title}`);
-        remaining--;
-        continue;
+        // Parse on-chain market to check if it's dead or has wrong teams
+        const data = marketInfo.data;
+        const oracleOddsA = Number(data.readBigUInt64LE(156));
+        const oracleOddsB = Number(data.readBigUInt64LE(164));
+        const oracleOddsDraw = Number(data.readBigUInt64LE(172));
+        
+        const isDead = oracleOddsA === 0 && oracleOddsB === 0 && oracleOddsDraw === 0;
+        
+        // Parse team names from on-chain data
+        const chainTeamA = new TextDecoder().decode(data.slice(40, 72)).replace(/\0/g, '').trim();
+        const chainTeamB = new TextDecoder().decode(data.slice(72, 103)).replace(/\0/g, '').trim();
+        const teamMismatch = chainTeamA !== match.team_a || chainTeamB !== match.team_b;
+        
+        if (isDead || teamMismatch) {
+          // PDA is occupied by dead or fake market - use match_id_v2
+          effectiveMatchId = bet.match_id + '_v2';
+          pdaStatus = isDead ? 'OCCUPIED_DEAD' : 'OCCUPIED_FAKE';
+          console.log(`[deployAllMatches] PDA ${pdaStatus} for ${bet.match_id}, using ${effectiveMatchId}`);
+          
+          // Update DB bet record to use new match_id
+          await base44.asServiceRole.entities.Bet.update(bet.id, { match_id: effectiveMatchId });
+        } else {
+          // Already deployed correctly
+          await base44.asServiceRole.entities.Bet.update(bet.id, {
+            solana_market_created: true,
+            solana_market_pda: marketPda.toBase58(),
+          });
+          console.log(`[deployAllMatches] ✓ Already deployed: ${bet.title}`);
+          remaining--;
+          continue;
+        }
       }
       
       // Validate odds one more time before deployment
@@ -229,7 +258,8 @@ Deno.serve(async (req) => {
       // Found valid bet to deploy
       betToDeploy = bet;
       matchToDeploy = match;
-      console.log(`[deployAllMatches] ✓ Found valid bet to deploy: ${bet.title || bet.match_id}, odds: A=${bet.odds_a}, B=${bet.odds_b}, Draw=${bet.odds_draw}`);
+      usedMatchId = effectiveMatchId;
+      console.log(`[deployAllMatches] ✓ Found valid bet to deploy: ${bet.title || bet.match_id}, using match_id: ${effectiveMatchId}, odds: A=${bet.odds_a}, B=${bet.odds_b}, Draw=${bet.odds_draw}`);
       break;
     }
     
@@ -243,7 +273,8 @@ Deno.serve(async (req) => {
       });
     }
     
-    const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda, rpcUrl);
+    // Build instruction with effective match_id (may be match_id_v2 if PDA was occupied)
+    const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda, rpcUrl, usedMatchId);
 
     console.log(`[deployAllMatches] Ready to deploy: ${betToDeploy.title}, remaining: ${remaining - 1}`);
 
@@ -255,6 +286,7 @@ Deno.serve(async (req) => {
       solana_instruction: builtInstruction.solana_instruction,
       bet_id: betToDeploy.id,
       market_pda: builtInstruction.marketPda,
+      match_id_used: usedMatchId,
     });
 
   } catch (error) {
