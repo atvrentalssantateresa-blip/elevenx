@@ -16,31 +16,38 @@ Deno.serve(async (req) => {
     // Fetch all matches
     const matches = await base44.entities.Match.list('-match_time', 500);
     
-    // Build plain text list
-    let output = 'COMPLETE MATCH LIST - ELEVENX BETTING PLATFORM\n';
-    output += '='.repeat(80) + '\n\n';
-    output += `Total Matches: ${matches.length}\n`;
-    output += `Export Date: ${new Date().toISOString()}\n\n`;
-    output += '='.repeat(80) + '\n\n';
+    // Build formatted text output
+    const lines = [];
+    lines.push('=== ELEVENX MATCH LIST ===');
+    lines.push(`Total Matches: ${matches.length}`);
+    lines.push('All times in UTC (Costa Rica = UTC-6)\n');
+    lines.push('─'.repeat(80));
     
     matches.forEach((match, index) => {
-      output += `${index + 1}. Match ID: ${match.id}\n`;
-      output += `   ${match.team_a || ''} ${match.team_a_flag || ''} vs ${match.team_b || ''} ${match.team_b_flag || ''}\n`;
-      output += `   Group: ${match.group_stage || 'TBD'} | Venue: ${match.venue || 'TBD'}\n`;
-      output += `   Kick-off: ${match.match_time} (UTC)\n`;
-      output += `   End Time: ${match.match_end_time} (UTC)\n`;
-      output += `   Status: ${match.status || 'upcoming'} | Score: ${match.score_a || 0}-${match.score_b || 0}\n`;
-      if (match.winner) output += `   Winner: ${match.winner}\n`;
-      output += '\n';
+      const matchDate = new Date(match.match_time);
+      const costaRicaTime = new Date(matchDate.getTime() - 6 * 60 * 60 * 1000);
+      
+      lines.push(`\n${index + 1}. ${match.team_a} ${match.team_a_flag || ''} vs ${match.team_b} ${match.team_b_flag || ''}`);
+      lines.push(`   Match ID: ${match.id}`);
+      lines.push(`   UTC Time: ${match.match_time}`);
+      lines.push(`   Costa Rica Time: ${costaRicaTime.toISOString().replace('.000Z', '')}`);
+      lines.push(`   Group: ${match.group_stage || 'TBD'}`);
+      lines.push(`   Venue: ${match.venue || 'TBD'}`);
+      lines.push(`   Status: ${match.status || 'upcoming'}`);
+      if (match.score_a || match.score_b) {
+        lines.push(`   Score: ${match.score_a || 0} - ${match.score_b || 0}`);
+      }
+      if (match.winner) {
+        lines.push(`   Winner: ${match.winner}`);
+      }
     });
     
-    // Return as plain text
-    return new Response(output, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename="matches_list.txt"',
-      },
+    lines.push('\n' + '─'.repeat(80));
+    lines.push(`Exported: ${new Date().toISOString()}`);
+    
+    return Response.json({ 
+      content: lines.join('\n'),
+      count: matches.length 
     });
     
   } catch (error) {

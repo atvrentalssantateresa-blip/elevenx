@@ -10,7 +10,7 @@ import AdminBetRow from '@/components/admin/AdminBetRow';
 import AdminFuturesPanel from '@/components/admin/AdminFuturesPanel';
 import AdminMatchesPanel from '@/components/admin/AdminMatchesPanel';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
-import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy, Wallet } from 'lucide-react';
+import { AlertCircle, Loader, List, TrendingUp, Database, Settings, Trophy, Wallet, X } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
 
 export default function Admin() {
@@ -25,6 +25,7 @@ export default function Admin() {
   const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
   const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
   const [sweepDialog, setSweepDialog] = useState(null); // { instruction, marketPda, balance }
+  const [exportDialog, setExportDialog] = useState(null); // { content, filename }
   const [loadingActions, setLoadingActions] = useState({
     registerAdmin: false,
     initPlatform: false,
@@ -582,9 +583,10 @@ export default function Admin() {
                 <Button
                   onClick={async () => {
                     try {
-                      // Download CSV directly by opening the endpoint
-                      window.open('https://app.base44.com/api/functions/exportMatches', '_blank');
-                      toast.success('✓ Match export started!');
+                      const res = await base44.functions.invoke('exportMatches', {});
+                      // Show in a copyable dialog
+                      const lineCount = res.data ? res.data.split('\n').filter(l => l.includes('Match ID:')).length : 0;
+                      setExportDialog({ content: res.data, filename: 'matches_list.txt', count: lineCount });
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
@@ -592,7 +594,7 @@ export default function Admin() {
                   className="h-24 flex flex-col gap-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-xl"
                 >
                   <span className="font-bold text-lg text-white">📥 Export Matches</span>
-                  <span className="text-xs text-gray-400">Download CSV with IDs</span>
+                  <span className="text-xs text-gray-400">View & copy all 72 matches</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -1126,6 +1128,102 @@ export default function Admin() {
                   className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
                 >
                   Cancel
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {exportDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-3xl w-full max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-heading font-bold text-xl text-white">Complete Match List</h3>
+                  <p className="text-xs text-gray-400 mt-1">{exportDialog.count || 72} matches with IDs and timings</p>
+                </div>
+                <button
+                  onClick={() => setExportDialog(null)}
+                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto mb-4 bg-black/50 rounded-lg p-4 font-mono text-[10px] text-gray-300 whitespace-pre-wrap leading-tight">
+                {exportDialog.content}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(exportDialog.content);
+                    toast.success('✓ Copied to clipboard!');
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                >
+                  📋 Copy All
+                </Button>
+                <Button
+                  onClick={() => {
+                    const blob = new Blob([exportDialog.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = exportDialog.filename || 'matches.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success('✓ Downloaded!');
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
+                >
+                  💾 Download .txt
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {exportDialog && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="bg-gray-900 border border-gray-800 p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-heading font-bold text-xl text-white">Match List ({exportDialog.count} matches)</h3>
+                <button
+                  onClick={() => setExportDialog(null)}
+                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto mb-4 bg-black/50 rounded-lg p-4 font-mono text-xs text-gray-300 whitespace-pre-wrap">
+                {exportDialog.content}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(exportDialog.content);
+                    toast.success('✓ Copied to clipboard!');
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  📋 Copy All
+                </Button>
+                <Button
+                  onClick={() => {
+                    const blob = new Blob([exportDialog.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'elevenx_matches.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  💾 Download .txt
                 </Button>
               </div>
             </Card>
