@@ -249,6 +249,25 @@ Deno.serve(async (req) => {
       });
     }
     
+    // DEBUG: Log exact odds values being passed
+    console.log('[deployMissingMatches] === ODDS DEBUG ===');
+    console.log('[deployMissingMatches] Bet ID:', betToDeploy.id);
+    console.log('[deployMissingMatches] Match:', matchToDeploy.team_a, 'vs', matchToDeploy.team_b);
+    console.log('[deployMissingMatches] Raw odds from DB:', {
+      odds_a: betToDeploy.odds_a,
+      odds_b: betToDeploy.odds_b,
+      odds_draw: betToDeploy.odds_draw,
+    });
+    console.log('[deployMissingMatches] Converted to basis points:', {
+      odds_a_bps: Math.round(betToDeploy.odds_a * 100),
+      odds_b_bps: Math.round(betToDeploy.odds_b * 100),
+      odds_draw_bps: Math.round(betToDeploy.odds_draw * 100),
+    });
+    console.log('[deployMissingMatches] open_until:', betToDeploy.open_until);
+    console.log('[deployMissingMatches] Current timestamp:', Math.floor(Date.now() / 1000));
+    console.log('[deployMissingMatches] Time until close:', Math.floor(new Date(betToDeploy.open_until).getTime() / 1000) - Math.floor(Date.now() / 1000), 'seconds');
+    console.log('[deployMissingMatches] ===================');
+    
     const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda, rpcUrl, effectiveMatchId);
     
     return Response.json({
