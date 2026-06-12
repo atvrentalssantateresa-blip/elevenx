@@ -223,9 +223,9 @@ export default function AdminMatchesPanel({ walletAddress }) {
           <Button
             onClick={async () => {
               try {
-                const res = await base44.functions.invoke('syncMarketDeployment');
+                const res = await base44.functions.invoke('syncOnChainStatus');
                 if (res.data.success) {
-                  alert(`✓ Sync Complete!\n\nUpdated: ${res.data.updated}\nAlready Deployed: ${res.data.alreadyDeployed}\nNot Found: ${res.data.notFound}`);
+                  alert(`✓ Sync Complete!\n\nUpdated: ${res.data.updated}\nAlready Deployed: ${res.data.alreadyDeployed}\nNot Found: ${res.data.notFound}\nSettled On-Chain: ${res.data.settledCount}`);
                   queryClient.invalidateQueries({ queryKey: ['adminMatches'] });
                   queryClient.invalidateQueries({ queryKey: ['allBetsForMatches'] });
                 } else {
