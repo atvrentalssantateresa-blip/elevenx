@@ -582,6 +582,21 @@ export default function Admin() {
                 <Button
                   onClick={async () => {
                     try {
+                      // Download CSV directly by opening the endpoint
+                      window.open('https://app.base44.com/api/functions/exportMatches', '_blank');
+                      toast.success('✓ Match export started!');
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">📥 Export Matches</span>
+                  <span className="text-xs text-gray-400">Download CSV with IDs</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
                       const res = await base44.functions.invoke('createQuickTestMatch');
                       toast.success('✓ Quick test match created! Expires in 5 minutes.');
                       queryClient.invalidateQueries({ queryKey: ['allBets'] });
