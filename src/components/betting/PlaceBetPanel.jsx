@@ -447,12 +447,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         </div>
         <Input
           type="number"
+          inputMode="decimal"
           placeholder={isBettingClosed ? "Betting Closed" : "0.00"}
           value={amount}
           min={0}
           max={maxMatcherStake !== null ? maxMatcherStake : undefined}
           step="any"
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => setAmount(e.target.value.replace(',', '.'))}
           disabled={isBettingClosed}
           className="bg-secondary/50 border-border/50 text-base font-heading font-bold h-10 disabled:opacity-50 disabled:cursor-not-allowed" />
         
