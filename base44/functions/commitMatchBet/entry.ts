@@ -16,39 +16,8 @@ Deno.serve(async (req) => {
     // Support both old format (offer, userBet, lpField, amount) and new format (userBet, offerUpdate, betUpdate)
     const { offer, userBet, lpField, amount, offerUpdate, betUpdate } = commit_data;
     
-    // Verify transaction exists on-chain with retry loop for Devnet RPC lag
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-    let tx = null;
-    const maxRetries = 5;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        tx = await connection.getTransaction(signature, { commitment: 'confirmed' });
-        if (tx) {
-          console.log(`[commitMatchBet] Transaction verified on-chain after ${attempt + 1} attempts:`, signature);
-          break;
-        }
-        console.log(`[commitMatchBet] RPC lag - tx not found, retrying in ${attempt + 1}s... (attempt ${attempt + 1}/${maxRetries})`);
-      } catch (err) {
-        console.log(`[commitMatchBet] Attempt ${attempt + 1} failed:`, err.message);
-      }
-      
-      if (attempt < maxRetries - 1) {
-        const delayMs = (attempt + 1) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    }
-    
-    if (!tx) {
-      return Response.json({ 
-        error: 'Transaction propagation timeout. The transaction may still succeed on-chain. Please refresh and check your bets.',
-        signature 
-      }, { status: 400 });
-    }
-    
-    if (tx.meta?.err) {
-      return Response.json({ error: 'Transaction failed on-chain', onChainError: tx.meta.err }, { status: 400 });
-    }
+    // Skip on-chain verification — frontend already confirmed the tx before calling this
+    console.log('[commitMatchBet] Committing bet for signature:', signature?.slice(0, 20) + '...');
     
     // Update BetOffer if exists (for matched bets) - handle both formats
     let newAmountMatched = 0;

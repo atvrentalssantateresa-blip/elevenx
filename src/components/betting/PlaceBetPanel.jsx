@@ -256,16 +256,24 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           });
           console.log('[PlaceBetPanel] matchBet response:', res.data);
         } else {
-          // No LP available - block betting (strict LP-first model)
-          console.log('[PlaceBetPanel] No LP available for outcome:', selectedOutcome, '- blocking bet');
-          throw new Error(`No liquidity available for ${outcomeLabel}. LP must seed this outcome first.`);
+          // No DB offer found — fall back to parimutuel (bet directly into on-chain pool)
+          console.log('[PlaceBetPanel] No DB offer found, using parimutuel placeBet for outcome:', selectedOutcome);
+          res = await base44.functions.invoke('placeBet', {
+            walletAddress: wallet,
+            bet_id: bet?.id,
+            match_id: matchId,
+            outcome: selectedOutcome,
+            amount: stakeNum,
+          });
+          console.log('[PlaceBetPanel] placeBet (parimutuel) response:', res.data);
         }
       }
       if (res.data?.error) throw new Error(res.data.error);
       // Include commit_data in instruction for post-tx commit
+      // Store commit_data separately so handleTransactionSuccess can use it
       setInstruction({
         ...res.data.solana_instruction,
-        commit_data: res.data.commit_data
+        _commit_data: res.data.commit_data,
       });
     } catch (err) {
       console.error('[PlaceBetPanel] Error in handleGetInstruction:', err);
@@ -286,7 +294,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     try {
       const commitPayload = {
         signature: result.signature,
-        commit_data: instruction.commit_data
+        commit_data: instruction._commit_data,
       };
 
       const commitFunction = 'commitMatchBet';
@@ -525,7 +533,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             <div className="mt-3 pt-3 border-t border-accent/20">
               <p className="text-xs text-muted-foreground mb-1">Transaction on Solana</p>
               <a
-              href={`https://solscan.io/tx/${lastSignature}?cluster=devnet`}
+              href={`https://solscan.io/tx/${lastSignature}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-primary text-xs font-bold hover:underline">
@@ -551,30 +559,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       <Button
         onClick={handleGetInstruction}
-        disabled={stakeNum <= 0 || isPreparing || isBettingClosed || bettingMode === 'no_liquidity'}
+        disabled={stakeNum <= 0 || isPreparing || isBettingClosed}
         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">
-        
-        {(() => {
-          // Debug: show why button is disabled
-          if (stakeNum <= 0) console.log('[PlaceBetPanel] Button disabled: stakeNum <= 0', stakeNum);
-          if (isPreparing) console.log('[PlaceBetPanel] Button disabled: isPreparing');
-          if (timeRemaining && timeRemaining.total <= 0) console.log('[PlaceBetPanel] Button disabled: betting closed');
-          if (bettingMode === 'no_liquidity') console.log('[PlaceBetPanel] Button disabled: no liquidity', { bettingMode, totalLiquidityForOutcome });
-          if (mode === 'match' && maxMatcherStake && stakeNum > maxMatcherStake) console.log('[PlaceBetPanel] Button disabled: stake exceeds max', { stakeNum, maxMatcherStake });
-
-          return timeRemaining && timeRemaining.total <= 0 ?
-          <>
-              <Clock className="w-4 h-4 mr-2" />
-              Betting Closed
-            </> :
-          bettingMode === 'no_liquidity' ?
-          <>
-              <Wallet className="w-4 h-4 mr-2" />
-              No Liquidity Available
-            </> :
-          isPreparing ? 'Preparing...' :
-          `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} @ ${odds.toFixed(2)}x`;
-        })()}
+        {timeRemaining && timeRemaining.total <= 0 ? (
+          <><Clock className="w-4 h-4 mr-2" />Betting Closed</>
+        ) : isPreparing ? 'Preparing...' : (
+          `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} @ ${odds.toFixed(2)}x`
+        )}
         </Button>
       }
     </div>);
