@@ -567,6 +567,23 @@ export default function Admin() {
                 </Button>
                 <Button
                   onClick={async () => {
+                    if (!confirm('⚠️ This will delete ALL old test/fake matches but KEEP the 71 real synced matches.\n\nContinue?')) return;
+                    try {
+                      const res = await base44.functions.invoke('cleanupOldMatches');
+                      toast.success(res.data.message || '✓ Cleanup complete!');
+                      queryClient.invalidateQueries({ queryKey: ['allBets', 'allMatches'] });
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-orange-600/20 hover:bg-orange-600/30 border border-orange-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🧹 Cleanup Old Matches</span>
+                  <span className="text-xs text-gray-400">Delete test matches, keep 71 real</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!confirm('⚠️ DANGER: This will delete EVERYTHING (matches, bets, users, etc.)\n\nAre you sure?')) return;
                     try {
                       await base44.functions.invoke('clearDatabase');
                       toast.success('✓ Database cleared!');
