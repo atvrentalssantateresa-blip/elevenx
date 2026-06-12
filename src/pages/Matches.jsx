@@ -75,13 +75,12 @@ export default function Matches() {
 
   const { data: allBets = [] } = useQuery({
     queryKey: ['bets'],
-    queryFn: () => base44.entities.Bet.filter({}),
+    queryFn: () => base44.entities.Bet.filter({ solana_market_created: true }),
   });
 
-  // Filter out dead markets (odds = 0) and non-deployed markets
+  // Filter out dead markets (odds = 0)
   const bets = allBets.filter(b => 
     b.status === 'open' && 
-    b.solana_market_created === true &&
     b.odds_a > 0 && 
     b.odds_b > 0 && 
     b.odds_draw > 0
