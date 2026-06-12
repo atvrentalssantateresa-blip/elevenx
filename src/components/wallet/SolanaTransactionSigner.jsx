@@ -312,8 +312,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // provide_liquidity — build instruction with exact PDA derivations
         console.log('=== PROVIDE_LIQUIDITY TRANSACTION ===');
         
-        // Use program ID from instruction (backend-provided) or fall back to window/global
-        const programId = new PublicKey(instruction.programId || window.SOLANA_PROGRAM_ID || '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
+        const programId = new PublicKey(instruction.programId || window.SOLANA_PROGRAM_ID);
         const matchId = instruction.match_id;
         const outcome = instruction.outcome; // u8 (0, 1, or 2)
         const amountSol = instruction.amount; // SOL amount
@@ -387,8 +386,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           throw new Error('Invalid market configuration. Admin must deploy this market on-chain first.');
         }
         
-        // Use program ID from instruction or fall back to window/global
-        const programId = new PublicKey(instruction.programId || window.SOLANA_PROGRAM_ID);
+        const programId = new PublicKey(instruction.programId);
         
         // Build keys - handle parimutuel mode (no LP offer PDA)
         const keys = [];
@@ -663,9 +661,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(withdrawFeesIx);
-      } else if (instruction.instruction_type === 'sweep_market_funds') {
-        // sweep_market_funds — admin sweeps stuck funds from market account to admin wallet
-        console.log('Creating sweep_market_funds program instruction:', instruction);
+      } else if (instruction.instruction_type === 'close_market') {
+        // close_market — admin-only recovery for dead markets with oracle_odds=[0,0,0]
+        console.log('Creating close_market program instruction:', instruction);
         
         const programId = new PublicKey(instruction.programId);
         const keys = instruction.keys.map(k => ({
@@ -675,19 +673,19 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         }));
         const data = Buffer.from(instruction.instruction_data, 'base64');
         
-        console.log('[sweep_market_funds] Keys:', keys.map(k => ({
+        console.log('[close_market] Keys:', keys.map(k => ({
           pubkey: k.pubkey.toBase58(),
           isSigner: k.isSigner,
           isWritable: k.isWritable,
         })));
         
-        const sweepIx = new TransactionInstruction({
+        const closeIx = new TransactionInstruction({
           keys,
           programId,
           data,
         });
         
-        transaction.add(sweepIx);
+        transaction.add(closeIx);
       }
 
       // Get recent blockhash for transaction
@@ -939,12 +937,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
   };
 
   if (signature) {
-    // Show success message for all transaction types - detect cluster from RPC URL
-    const rpcUrlCheck = instruction?.rpcUrl || window.SOLANA_RPC_URL || '';
-    const isDevnet = rpcUrlCheck.includes('devnet');
-    const isTestnet = rpcUrlCheck.includes('testnet');
-    const clusterParam = isDevnet ? '?cluster=devnet' : isTestnet ? '?cluster=testnet' : '';
-    const solanaScanUrl = `https://solscan.io/tx/${signature}${clusterParam}`;
+    // Show success message for all transaction types
+    const cluster = (window.SOLANA_RPC_URL || '').includes('devnet') ? 'devnet' : 'mainnet-beta';
+    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=${cluster}`;
     
     // Determine transaction type message and payout info
     let txMessage = 'Transaction confirmed on Solana';
@@ -990,6 +985,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         const solAmount = (instruction.amountLamports / 1e9).toFixed(6);
         payoutInfo = `◎${solAmount} SOL received`;
       }
+    } else if (instruction?.instruction_type === 'close_market') {
+      txMessage = '✓ Dead market closed! PDA freed for reuse.';
     }
     
     return (
