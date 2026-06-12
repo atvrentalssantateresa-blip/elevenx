@@ -752,6 +752,39 @@ export default function Admin() {
                 </Button>
                 <Button
                   onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
+                    try {
+                      const res = await base44.functions.invoke('deployMissingMatches');
+                      if (res.data.needsSigning) {
+                        toast.success(`Found ${res.data.totalMissing} missing matches. Deploying first...`);
+                        // Trigger deploy dialog
+                        setDeployMatchesDialog({
+                          instruction: res.data.solana_instruction,
+                          remaining: res.data.remaining,
+                          betId: res.data.bet_id,
+                          marketPda: res.data.market_pda,
+                          batchLabel: `Missing (${res.data.pda_status})`,
+                          batchSize: res.data.totalMissing,
+                          isMissingDeploy: true,
+                        });
+                      } else {
+                        toast.success(res.data.message || '✓ All matches deployed!');
+                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                      }
+                    } catch (err) {
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🎯 Deploy Missing (Smart)</span>
+                  <span className="text-xs text-gray-400">Deploy 34 missing with PDA check</span>
+                </Button>
+                <Button
+                  onClick={async () => {
                     try {
                       const res = await base44.functions.invoke('createQuickTestMatch');
                       toast.success('✓ Quick test match created! Expires in 5 minutes.');
