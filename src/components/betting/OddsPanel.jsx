@@ -109,13 +109,9 @@ export default function OddsPanel({ bet, match, onSelectOutcome, selectedOutcome
         </h3>
         <div className="flex items-center gap-1.5">
           {(() => {
-            // Match status takes absolute precedence - if match is live, show "live" regardless of bet.status
+            // Don't show "closed" badge when match is live - betting naturally closes at kickoff
             if (match?.status === 'live') {
-              return (
-                <Badge className="text-[9px] px-1.5 py-0 bg-destructive/20 text-destructive">
-                  live
-                </Badge>
-              );
+              return null;
             }
             
             // If match finished or bet settled, show closed (gray)
