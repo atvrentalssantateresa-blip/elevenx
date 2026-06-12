@@ -57,6 +57,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome OR selected offer
   const validOffers = Array.isArray(allOffers) ? allOffers : [];
   
+  console.log('[PlaceBetPanel] === LIQUIDITY DEBUG ===', {
+    allOffersIsArray: Array.isArray(allOffers),
+    allOffersLength: allOffers?.length,
+    allOffersRaw: allOffers,
+    validOffersLength: validOffers.length
+  });
+  
   // Debug: show all offers with their properties
   validOffers.forEach((o, idx) => {
     console.log(`[PlaceBetPanel] Offer ${idx}:`, {
@@ -64,6 +71,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       outcome: o.outcome,
       status: o.status,
       amount_unmatched: o.amount_unmatched,
+      amount_offered: o.amount_offered,
       isValid: (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0
     });
   });
@@ -87,6 +95,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     return parseFloat((sum + unmatched).toFixed(9));
   }, 0) :
   0;
+  
+  console.log('[PlaceBetPanel] === LIQUIDITY RESULTS ===', {
+    selectedOutcome,
+    totalLiquidityForOutcome,
+    hasAnyLiquidity: validOffers.some((o) => (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0)
+  });
 
   // Check if ANY LP liquidity exists for this bet (for UI display)
   const hasAnyLiquidity = validOffers.some((o) => {
