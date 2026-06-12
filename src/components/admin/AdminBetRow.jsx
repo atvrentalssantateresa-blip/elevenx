@@ -78,7 +78,7 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
           {getStatusBadge()}
           {bet.solana_market_pda && (
             <>
-              <a href={`https://solscan.io/account/${bet.solana_market_pda}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline flex items-center gap-1">
+              <a href={`https://solscan.io/account/${bet.solana_market_pda}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline flex items-center gap-1">
                 <ExternalLink className="w-3 h-3" />Solscan
               </a>
               <Button 
