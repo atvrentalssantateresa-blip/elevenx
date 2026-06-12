@@ -17,12 +17,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'THE_ODDS_API_KEY secret not set' }, { status: 500 });
     }
 
-    const apiUrl = `https://api.the-odds-api.com/v4/sports/soccer_world_cup/odds?apiKey=${apiKey}&regions=us&markets=h2h`;
-    const apiResponse = await fetch(apiUrl);
-    const apiMatches = await apiResponse.json();
-
-    if (!Array.isArray(apiMatches)) {
-      return Response.json({ error: 'Failed to fetch matches from API', apiMatches }, { status: 500 });
+    // Try multiple sport keys - soccer_epl works year-round
+    const sportKeys = ['soccer_epl', 'soccer_fifa_world_cup', 'soccer'];
+    let apiMatches = [];
+    
+    for (const sportKey of sportKeys) {
+      const apiUrl = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds?apiKey=${apiKey}&regions=us&markets=h2h`;
+      const apiResponse = await fetch(apiUrl);
+      const result = await apiResponse.json();
+      if (Array.isArray(result) && result.length > 0) {
+        apiMatches = result;
+        console.log(`[cleanupOldMatches] Using sport: ${sportKey}, found ${result.length} matches`);
+        break;
+      }
+    }
+    
+    if (apiMatches.length === 0) {
+      return Response.json({ error: 'No matches found from API - try again later', sportKeysTried: sportKeys }, { status: 500 });
     }
 
     console.log(`[cleanupOldMatches] Fetched ${apiMatches.length} real matches from API`);
