@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
     
     // Skip on-chain verification for admin DB overrides
     if (!signature.startsWith('db-override-')) {
-      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+      let rpcUrl = Deno.env.get('SOLANA_RPC_URL') || '';
+      if (rpcUrl.includes('RPC_URL=')) rpcUrl = rpcUrl.split('RPC_URL=')[1].trim();
+      if (!rpcUrl.startsWith('http')) rpcUrl = 'https://api.mainnet-beta.solana.com';
+      const connection = new Connection(rpcUrl, 'confirmed');
       const confirmation = await connection.getSignatureStatus(signature);
       
       if (!confirmation || !confirmation.value || confirmation.value.err) {

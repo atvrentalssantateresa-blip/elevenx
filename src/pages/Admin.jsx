@@ -73,7 +73,7 @@ export default function Admin() {
     try {
       console.log('[Admin] Calling settleMarketOnChain for bet:', bet.id, 'outcome:', outcome, 'wallet:', walletAddress);
       const res = await base44.functions.invoke('settleMarketOnChain', {
-        bet_id: bet.id,
+        market_pda: bet.solana_market_pda,
         winning_outcome: outcome,
         admin_wallet: walletAddress,
       });
@@ -107,7 +107,7 @@ export default function Admin() {
   const _doSettle = async (bet, outcome) => {
     try {
       const res = await base44.functions.invoke('settleMarketOnChain', {
-        bet_id: bet.id,
+        market_pda: bet.solana_market_pda,
         winning_outcome: outcome,
         admin_wallet: walletAddress,
       });
@@ -166,7 +166,7 @@ export default function Admin() {
     if (!walletAddress) return;
     try {
       const res = await base44.functions.invoke('settleMarketOnChain', {
-        bet_id: bet.id,
+        market_pda: bet.solana_market_pda,
         winning_outcome: 'void',
         admin_wallet: walletAddress,
       });
@@ -212,8 +212,12 @@ export default function Admin() {
       try {
         await base44.functions.invoke('commitSettlement', {
           signature: commitPayload.signature,
-          bet_id: voidDialog.bet.id,
-          winning_outcome: 'void',
+          commit_data: {
+            bet_id: voidDialog.bet.id,
+            match_id: voidDialog.bet.match_id,
+            winning_outcome: 'void',
+            outcome_label: 'Void',
+          },
         });
       } catch (err) {
         console.error('[Admin] commitSettlement failed:', err);
