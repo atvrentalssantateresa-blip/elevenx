@@ -148,6 +148,8 @@ export default function AdminMatchesPanel({ walletAddress }) {
           instruction: res.data.solana_instruction,
           remaining: res.data.remaining,
           betId: res.data.bet_id,
+          total: deployAllDialog.total, // Preserve total count
+          autoAdvance: true, // Enable auto-advance
         });
       } else if (res.data.autoContinue) {
         // Small delay to avoid rate limits
@@ -204,6 +206,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
                     remaining: res.data.remaining,
                     betId: res.data.bet_id,
                     total,
+                    autoAdvance: true,
                   });
                 } else {
                   alert(res.data.message || '✓ All matches deployed!');
@@ -417,8 +420,12 @@ export default function AdminMatchesPanel({ walletAddress }) {
           <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
             <div className="space-y-4">
               <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
-                <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {deployAllDialog.total - deployAllDialog.remaining} of {deployAllDialog.total}</h3>
-                <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployAllDialog.remaining}</p>
+                <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">
+                  Deploy Match {deployAllDialog.total ? deployAllDialog.total - deployAllDialog.remaining : '?'} of {deployAllDialog.total || '?'}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {deployAllDialog.autoAdvance ? 'Auto-deploying remaining matches...' : 'Sign each transaction to deploy matches one at a time.'} Remaining: {deployAllDialog.remaining}
+                </p>
               </div>
               <SolanaTransactionSigner
                 instruction={deployAllDialog.instruction}
@@ -436,21 +443,27 @@ export default function AdminMatchesPanel({ walletAddress }) {
                       console.error('[AdminMatchesPanel] commitMarketDeployment failed:', e);
                     }
                   }
-                  // Continue to next match
-                  handleDeployAllSuccess();
+                  // Auto-advance after 1 second
+                  if (deployAllDialog.autoAdvance && deployAllDialog.remaining > 0) {
+                    setTimeout(() => handleDeployAllSuccess(), 1000);
+                  } else {
+                    handleDeployAllSuccess();
+                  }
                 }}
                 onError={(err) => {
                   alert('Failed: ' + err.message);
                   setDeployAllDialog(null);
                 }}
               />
-              <Button
-                onClick={() => setDeployAllDialog(null)}
-                variant="outline"
-                className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
-              >
-                Cancel
-              </Button>
+              {!deployAllDialog.autoAdvance && (
+                <Button
+                  onClick={() => setDeployAllDialog(null)}
+                  variant="outline"
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-white border-gray-700"
+                >
+                  Cancel
+                </Button>
+              )}
             </div>
           </Card>
         </div>
