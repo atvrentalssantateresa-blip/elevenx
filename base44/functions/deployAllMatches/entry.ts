@@ -20,7 +20,7 @@ function getSolanaConfig() {
   return { rpcUrl, programIdStr, programId: new PublicKey(programIdStr), connection: new Connection(rpcUrl, 'confirmed') };
 }
 
-function buildCreateMarketInstruction(bet, match, programIdStr, programId, platformPda) {
+function buildCreateMarketInstruction(bet, match, programIdStr, programId, platformPda, rpcUrl) {
   const matchIdBytes = Buffer.alloc(32);
   Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
 
@@ -79,8 +79,6 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
     admin: 'SIGNER_WALLET',
     systemProgram: SystemProgram.programId.toBase58(),
   };
-
-  const rpcUrl = Deno.env.get('SOLANA_RPC_URL') || 'https://api.devnet.solana.com';
   
   return {
     marketPda: marketPda.toBase58(),
@@ -219,7 +217,7 @@ Deno.serve(async (req) => {
       });
     }
     
-    const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda);
+    const builtInstruction = buildCreateMarketInstruction(betToDeploy, matchToDeploy, programIdStr, programId, platformPda, rpcUrl);
 
     console.log(`[deployAllMatches] Ready to deploy: ${betToDeploy.title}, remaining: ${remaining - 1}`);
 
