@@ -51,14 +51,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   allOffers.
   filter((o) => {
     const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
-    console.log('[PlaceBetPanel] Offer filter check:', {
-      offer_id: o.id,
-      outcome: o.outcome,
-      selectedOutcome,
-      status: o.status,
-      amount_unmatched: o.amount_unmatched,
-      isValid
-    });
     return isValid;
   }).
   reduce((sum, o) => {
@@ -67,11 +59,20 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }, 0) :
   0;
 
-  // Fixed odds mode: bet against existing LP offers
+  // Fixed odds mode: bet against existing LP offers; parimutuel mode: bet into pool when no LP offers exist
   const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? true : false;
+  const isParimutuel = selectedOutcome && totalLiquidityForOutcome <= 0 && !selectedOffer;
 
-  // Betting mode: fixed_lp (bet against LP) or no_liquidity (wait for LP)
-  const bettingMode = totalLiquidityForOutcome > 0 || selectedOffer ? 'fixed_lp' : 'no_liquidity';
+  // Betting mode: fixed_lp (bet against LP) or parimutuel (bet into pool)
+  const bettingMode = totalLiquidityForOutcome > 0 || selectedOffer ? 'fixed_lp' : 'parimutuel';
+  
+  console.log('[PlaceBetPanel] Betting mode:', {
+    totalLiquidityForOutcome,
+    isParimutuel,
+    bettingMode,
+    selectedOutcome,
+    selectedOffer: selectedOffer?.id
+  });
 
   console.log('[PlaceBetPanel] Liquidity calculation:', {
     selectedOutcome,
@@ -117,12 +118,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const fixedOdds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
   const odds = fixedOdds;
 
-  // Calculate max stake based on available LP liquidity
+  // Calculate max stake based on available LP liquidity (no limit for parimutuel)
   const maxMatcherStake = bettingMode === 'fixed_lp' ?
   selectedOffer ?
   parseFloat((selectedOffer.amount_unmatched || 0).toFixed(4)) :
   parseFloat(totalLiquidityForOutcome.toFixed(4)) :
-  null;
+  undefined; // parimutuel - no max limit
 
   // Bettor payout: stake * odds from the Bet entity
   const matcherPayout = stakeNum * odds;
@@ -401,8 +402,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           }
         </div>
 
-        {/* Liquidity info row */}
-        {bettingMode === 'fixed_lp' &&
+        {/* Liquidity info row - Fixed odds */}
+        {bettingMode === 'fixed_lp' && totalLiquidityForOutcome > 0 &&
         <div className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2 border border-border/30">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground">Available</span>
@@ -413,16 +414,18 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           </div>
         }
 
-        {/* No liquidity */}
-        {mode === 'match' && selectedOutcome && !hasLiquidityForOutcome &&
-        <div className="bg-secondary/30 border border-border/30 rounded-lg p-2.5 flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground">⏳ No LP liquidity yet</p>
-            <a href={`/lp?matchId=${matchId}`} className="bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-[10px] py-1 px-2.5 rounded-lg transition-colors">
-              Add Liquidity
-            </a>
+        {/* Parimutuel mode banner */}
+        {isParimutuel &&
+        <div className="bg-accent/10 border border-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Zap className="w-3 h-3 text-accent" />
+            <div className="flex-1">
+              <p className="text-[10px] font-bold text-accent">Parimutuel Pool</p>
+              <p className="text-[9px] text-accent/80">Bet directly into the on-chain pool</p>
+            </div>
           </div>
         }
         
+        {/* Offer fully matched */}
         {mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 &&
         <div className="bg-secondary/30 border border-border/30 rounded-lg p-2.5 flex items-center justify-between">
           <p className="text-[10px] text-muted-foreground">Offer fully matched</p>
@@ -459,7 +462,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className={`text-[10px] font-bold text-muted-foreground uppercase tracking-wider ${timeRemaining && timeRemaining.total <= 0 ? 'opacity-50' : ''}`}>Stake (SOL)</label>
-          {bettingMode === 'fixed_lp' && maxMatcherStake && maxMatcherStake > 0 &&
+          {bettingMode === 'fixed_lp' && maxMatcherStake > 0 &&
           <button
             onClick={handleMaxBet}
             disabled={isBettingClosed}
