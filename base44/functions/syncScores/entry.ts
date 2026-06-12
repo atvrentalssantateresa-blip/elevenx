@@ -11,18 +11,11 @@ Deno.serve(async (req) => {
     if (!API_KEY) return Response.json({ error: 'THE_ODDS_API_KEY not set' }, { status: 500 });
 
     // Fetch all matches with scores from The Odds API
-    const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/scores`;
-    const params = new URLSearchParams({
-        apiKey: API_KEY,
-        daysFrom: 7,
-    });
-    const fullUrl = `${url}?${params}`;
-    console.log('[syncScores] Fetching:', fullUrl);
-    const response = await fetch(fullUrl);
+    const url = `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/scores/?apiKey=${API_KEY}&daysFrom=3`;
+    console.log('[syncScores] Fetching:', url);
+    const response = await fetch(url);
     
     console.log('[syncScores] API Response Status:', response.status);
-    const responseText = await response.text();
-    console.log('[syncScores] API Response:', responseText);
     
     if (response.status === 429) {
       return Response.json({ 
@@ -32,23 +25,15 @@ Deno.serve(async (req) => {
     }
     
     if (!response.ok) {
+      const errorText = await response.text();
       return Response.json({ 
         error: 'API request failed', 
-        message: `Status: ${response.status} - ${responseText}` 
+        message: `Status: ${response.status} - ${errorText}` 
       }, { status: response.status });
     }
     
-    let allMatches;
-    try {
-      allMatches = JSON.parse(responseText);
-    } catch (e) {
-      return Response.json({ 
-        error: 'Invalid API response', 
-        message: 'Could not parse JSON: ' + e.message 
-      }, { status: 500 });
-    }
-
     const allMatches = await response.json();
+    console.log('[syncScores] Parsed matches:', allMatches.length);
     
     if (!Array.isArray(allMatches)) {
       return Response.json({ 
@@ -90,17 +75,30 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Extract scores - API returns home_score and away_score
-        const scoreA = matchedGame.home_score !== null ? matchedGame.home_score : 0;
-        const scoreB = matchedGame.away_score !== null ? matchedGame.away_score : 0;
+        // Extract scores - API structure varies by sport/status
+        let scoreA = 0;
+        let scoreB = 0;
+        
+        // Try different score field names
+        if (matchedGame.home_score !== undefined && matchedGame.home_score !== null) {
+          scoreA = matchedGame.home_score;
+        }
+        if (matchedGame.away_score !== undefined && matchedGame.away_score !== null) {
+          scoreB = matchedGame.away_score;
+        }
+        
+        // Some APIs use scores object
+        if (matchedGame.scores) {
+          if (matchedGame.scores.home_score !== undefined) scoreA = matchedGame.scores.home_score;
+          if (matchedGame.scores.away_score !== undefined) scoreB = matchedGame.scores.away_score;
+        }
         
         // Determine match status from API
-        let status = dbMatch.status; // default to existing
+        let status = dbMatch.status;
         let winner = dbMatch.winner || '';
         
         if (matchedGame.completed) {
           status = 'finished';
-          // Determine winner
           if (scoreA > scoreB) winner = 'team_a';
           else if (scoreB > scoreA) winner = 'team_b';
           else winner = 'draw';
@@ -112,13 +110,16 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Update match with scores
+        // Update match with scores (batched to avoid rate limits)
         await base44.entities.Match.update(dbMatch.id, {
           score_a: scoreA,
           score_b: scoreB,
           status: status,
           winner: winner,
         });
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         updated.push({
           match_id: dbMatch.id,
