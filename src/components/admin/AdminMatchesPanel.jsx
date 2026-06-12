@@ -13,7 +13,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
   const [deployingMatchId, setDeployingMatchId] = useState(null);
   const [fixingTimestampsId, setFixingTimestampsId] = useState(null);
   const [pendingTimestampFix, setPendingTimestampFix] = useState(null);
-  const [deployAllDialog, setDeployAllDialog] = useState(null); // { instruction, remaining, betId }
+  const [deployAllDialog, setDeployAllDialog] = useState(null); // { instruction, remaining, betId, total }
 
   const { data: matches = [], isLoading } = useQuery({
     queryKey: ['adminMatches'],
@@ -127,7 +127,20 @@ export default function AdminMatchesPanel({ walletAddress }) {
     alert('✓ Market timestamps fixed!');
   };
 
-  const handleDeployAllSuccess = async () => {
+  const handleDeployAllSuccess = async (commitPayload) => {
+    // Commit DB update AFTER on-chain confirmation
+    if (commitPayload?.signature && deployAllDialog?.betId) {
+      try {
+        await base44.functions.invoke('commitMarketDeployment', {
+          bet_id: deployAllDialog.betId,
+          market_pda: commitPayload.marketPda || deployAllDialog.instruction?.accounts?.market,
+        });
+        console.log('[AdminMatchesPanel] ✓ Committed deployment to DB:', deployAllDialog.betId);
+      } catch (e) {
+        console.error('[AdminMatchesPanel] commitMarketDeployment failed:', e);
+      }
+    }
+    
     try {
       const res = await base44.functions.invoke('deployAllMatches');
       if (res.data.needsSigning) {
@@ -137,7 +150,8 @@ export default function AdminMatchesPanel({ walletAddress }) {
           betId: res.data.bet_id,
         });
       } else if (res.data.autoContinue) {
-        handleDeployAllSuccess();
+        // Small delay to avoid rate limits
+        setTimeout(() => handleDeployAllSuccess(), 2000);
       } else {
         setDeployAllDialog(null);
         alert(res.data.message || '✓ All matches deployed!');
@@ -183,10 +197,12 @@ export default function AdminMatchesPanel({ walletAddress }) {
             try {
               const res = await base44.functions.invoke('deployAllMatches');
               if (res.data.needsSigning) {
+                const total = res.data.remaining + 1; // remaining + current one being deployed
                 setDeployAllDialog({
                   instruction: res.data.solana_instruction,
                   remaining: res.data.remaining,
                   betId: res.data.bet_id,
+                  total,
                 });
               } else {
                 alert(res.data.message || '✓ All matches deployed!');
@@ -377,13 +393,28 @@ export default function AdminMatchesPanel({ walletAddress }) {
           <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
             <div className="space-y-4">
               <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-4">
-                <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {72 - deployAllDialog.remaining} of 72</h3>
+                <h3 className="font-heading font-bold text-lg text-purple-400 mb-1">Deploy Match {deployAllDialog.total - deployAllDialog.remaining} of {deployAllDialog.total}</h3>
                 <p className="text-sm text-gray-400">Sign each transaction to deploy matches one at a time. Remaining: {deployAllDialog.remaining}</p>
               </div>
               <SolanaTransactionSigner
                 instruction={deployAllDialog.instruction}
                 amount="0"
-                onSuccess={handleDeployAllSuccess}
+                betId={deployAllDialog.betId}
+                onSuccess={async (commitPayload) => {
+                  // Commit DB update AFTER on-chain confirmation
+                  if (commitPayload?.signature && deployAllDialog.betId) {
+                    try {
+                      await base44.functions.invoke('commitMarketDeployment', {
+                        bet_id: deployAllDialog.betId,
+                        market_pda: commitPayload.marketPda || deployAllDialog.instruction?.accounts?.market,
+                      });
+                    } catch (e) {
+                      console.error('[AdminMatchesPanel] commitMarketDeployment failed:', e);
+                    }
+                  }
+                  // Continue to next match
+                  handleDeployAllSuccess();
+                }}
                 onError={(err) => {
                   alert('Failed: ' + err.message);
                   setDeployAllDialog(null);
