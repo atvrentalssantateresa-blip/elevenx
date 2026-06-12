@@ -240,7 +240,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           amount: stakeNum,
           wallet_address: wallet
         });
-        console.log('[PlaceBetPanel] matchBet response:', res.data);
+        console.log('[PlaceBetPanel] matchBet response:', res);
       } else if (selectedOutcome) {
         // User clicked odds - auto-select first available offer
         const firstAvailableOffer = allOffers.find((o) =>
