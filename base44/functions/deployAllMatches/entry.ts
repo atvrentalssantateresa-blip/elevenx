@@ -118,31 +118,27 @@ Deno.serve(async (req) => {
     const body = await req.clone().json().catch(() => ({}));
     const base44 = createClientFromRequest(req);
 
-    // Support both platform auth and wallet-based auth
-    let isAdmin = false;
-    try {
-      const user = await base44.auth.me();
-      if (user && user.role === 'admin') isAdmin = true;
-    } catch (_) {}
-
-    if (!isAdmin) {
-      try {
-        const authHeader = req.headers.get('Authorization') || '';
-        const token = authHeader.replace('Bearer ', '');
-        if (token) {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-            if (payload.walletAddress) {
-              const walletUsers = await base44.asServiceRole.entities.WalletUser.filter({ wallet_address: payload.walletAddress });
-              if (walletUsers[0]?.role === 'admin') isAdmin = true;
-            }
-          }
-        }
-      } catch (_) {}
+    // Wallet-only auth for live site (no platform login required)
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!token) {
+      return Response.json({ error: 'Missing authorization token' }, { status: 403 });
     }
-
-    if (!isAdmin) {
+    
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return Response.json({ error: 'Invalid token format' }, { status: 403 });
+    }
+    
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.walletAddress) {
+      return Response.json({ error: 'Token missing walletAddress' }, { status: 403 });
+    }
+    
+    // Check if wallet is admin using service role (works without platform auth)
+    const walletUsers = await base44.asServiceRole.entities.WalletUser.filter({ wallet_address: payload.walletAddress });
+    if (!walletUsers[0] || walletUsers[0].role !== 'admin') {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
