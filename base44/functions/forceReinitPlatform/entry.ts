@@ -25,13 +25,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
 
+    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
+    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
+
     console.log('=== FORCE REINIT PLATFORM ===');
     console.log('Admin wallet:', walletAddress);
     console.log('ELEVENX_PROGRAM_ID from env:', SOLANA_PROGRAM_ID);
     console.log('SOLANA_RPC_URL from env:', SOLANA_RPC_URL);
-
-    const SOLANA_PROGRAM_ID = Deno.env.get('ELEVENX_PROGRAM_ID');
-    const SOLANA_RPC_URL = Deno.env.get('SOLANA_RPC_URL');
     if (!SOLANA_PROGRAM_ID || !SOLANA_RPC_URL) {
       return Response.json({ error: 'ELEVENX_PROGRAM_ID or SOLANA_RPC_URL secret not set' }, { status: 500 });
     }
