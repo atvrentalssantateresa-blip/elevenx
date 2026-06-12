@@ -24,7 +24,7 @@ export default function Admin() {
   const [fixTimestampDialog, setFixTimestampDialog] = useState(null); // { instruction, pendingSettle: { bet, outcome } }
   const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
-  const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId }
+  const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId, marketPda, matchIdToUpdate }
   const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
   const [sweepDialog, setSweepDialog] = useState(null); // { instruction, marketPda, balance }
   const [exportDialog, setExportDialog] = useState(null); // { content, filename }
@@ -275,6 +275,7 @@ export default function Admin() {
           remaining: res.data.remaining,
           betId: res.data.bet_id,
           marketPda: res.data.market_pda,
+          matchIdToUpdate: res.data.match_id_to_update, // _v2 suffix if PDA collision
           batchLabel,
           batchSize,
           force,
@@ -340,6 +341,7 @@ export default function Admin() {
           remaining: res.data.remaining,
           betId: res.data.bet_id,
           marketPda: res.data.market_pda,
+          matchIdToUpdate: res.data.match_id_to_update,
           batchLabel,
           batchSize,
           force,
@@ -766,6 +768,7 @@ export default function Admin() {
                           remaining: res.data.remaining,
                           betId: res.data.bet_id,
                           marketPda: res.data.market_pda,
+                          matchIdToUpdate: res.data.match_id_to_update, // _v2 suffix if PDA collision
                           batchLabel: `Missing (${res.data.pda_status})`,
                           batchSize: res.data.totalMissing,
                           isMissingDeploy: true,
@@ -1264,6 +1267,7 @@ export default function Admin() {
                         await base44.functions.invoke('commitMarketDeployment', {
                           bet_id: deployMatchesDialog.betId,
                           market_pda: deployMatchesDialog.marketPda,
+                          match_id: deployMatchesDialog.matchIdToUpdate, // Atomic _v2 update
                         });
                       } catch (e) {
                         console.error('[Admin] commitMarketDeployment failed:', e);

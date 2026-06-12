@@ -210,20 +210,18 @@ Deno.serve(async (req) => {
         const oracleOddsA = Number(data.readBigUInt64LE(156));
         const oracleOddsB = Number(data.readBigUInt64LE(164));
         const oracleOddsDraw = Number(data.readBigUInt64LE(172));
-        
+
         const isDead = oracleOddsA === 0 && oracleOddsB === 0 && oracleOddsDraw === 0;
-        
+
         const chainTeamA = new TextDecoder().decode(data.slice(40, 72)).replace(/\0/g, '').trim();
         const chainTeamB = new TextDecoder().decode(data.slice(72, 103)).replace(/\0/g, '').trim();
         const teamMismatch = chainTeamA !== match.team_a || chainTeamB !== match.team_b;
-        
+
         if (isDead || teamMismatch) {
           effectiveMatchId = match.id + '_v2';
           pdaStatus = isDead ? 'OCCUPIED_DEAD' : 'OCCUPIED_FAKE';
           console.log(`[deployMissingMatches] PDA ${pdaStatus} for ${match.id}, using ${effectiveMatchId}`);
-          
-          // Update DB bet record
-          await base44.asServiceRole.entities.Bet.update(bet.id, { match_id: effectiveMatchId });
+          // NOTE: match_id update is deferred to commitMarketDeployment (after tx success) for atomicity
         }
       }
       
@@ -253,7 +251,8 @@ Deno.serve(async (req) => {
       solana_instruction: builtInstruction.solana_instruction,
       bet_id: betToDeploy.id,
       market_pda: builtInstruction.marketPda,
-      match_id_used: effectiveMatchId,
+      match_id_to_update: effectiveMatchId, // Only update DB if tx succeeds
+      original_match_id: matchToDeploy.id,
       pda_status: pdaStatus,
     });
 

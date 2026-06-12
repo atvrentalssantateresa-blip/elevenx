@@ -37,16 +37,23 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { bet_id, market_pda } = body;
+    const { bet_id, market_pda, match_id } = body;
 
     if (!bet_id || !market_pda) {
       return Response.json({ error: 'Missing bet_id or market_pda' }, { status: 400 });
     }
 
-    await base44.asServiceRole.entities.Bet.update(bet_id, {
+    const updateData = {
       solana_market_created: true,
       solana_market_pda: market_pda,
-    });
+    };
+    
+    // Atomic match_id update (for _v2 collision resolution)
+    if (match_id) {
+      updateData.match_id = match_id;
+    }
+
+    await base44.asServiceRole.entities.Bet.update(bet_id, updateData);
 
     console.log(`[commitMarketDeployment] ✓ Bet ${bet_id} marked deployed: ${market_pda}`);
 
