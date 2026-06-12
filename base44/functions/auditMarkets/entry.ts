@@ -130,9 +130,9 @@ Deno.serve(async (req) => {
         }
         
         // Account exists - parse oracle_odds
-        // oracle_odds: [u64; 3] at byte offset 140 (after market struct fields)
+        // oracle_odds: [u64; 3] at byte offset 156 (after market struct fields)
         // Each u64 is 8 bytes little-endian
-        const oddsOffset = 140;
+        const oddsOffset = 156;
         const oracleOdds = [
           readU64LE(accountInfo.data, oddsOffset),
           readU64LE(accountInfo.data, oddsOffset + 8),
