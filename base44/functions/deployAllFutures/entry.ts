@@ -101,7 +101,15 @@ Deno.serve(async (req) => {
     const feeOptionBuf = Buffer.alloc(3);
     feeOptionBuf.writeUInt8(1, 0);
     feeOptionBuf.writeUInt16LE(0, 1);
-    const oddsArr = [0, 1, 2].map(i => Math.max(Math.round((firstMarket.outcomes?.[i]?.odds || 2.0) * 100), 101));
+    
+    // Validate and scale futures odds (decimal to basis points)
+    const oddsArr = [0, 1, 2].map(i => {
+      const rawOdds = firstMarket.outcomes?.[i]?.odds || 0;
+      if (rawOdds <= 0) {
+        throw new Error(`Invalid odds for ${firstMarket.country} outcome ${i}: ${rawOdds}. Must be > 0.`);
+      }
+      return Math.max(Math.round(rawOdds * 100), 101);
+    });
 
     const paramsData = Buffer.alloc(172);
     let offset = 0;

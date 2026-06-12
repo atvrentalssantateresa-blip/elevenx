@@ -940,9 +940,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
   if (signature) {
     // Show success message for all transaction types - detect cluster from RPC URL
-    const rpcUrl = instruction.rpcUrl || window.SOLANA_RPC_URL || '';
-    const isDevnet = rpcUrl.includes('devnet');
-    const isTestnet = rpcUrl.includes('testnet');
+    const rpcUrlCheck = instruction?.rpcUrl || window.SOLANA_RPC_URL || '';
+    const isDevnet = rpcUrlCheck.includes('devnet');
+    const isTestnet = rpcUrlCheck.includes('testnet');
     const clusterParam = isDevnet ? '?cluster=devnet' : isTestnet ? '?cluster=testnet' : '';
     const solanaScanUrl = `https://solscan.io/tx/${signature}${clusterParam}`;
     

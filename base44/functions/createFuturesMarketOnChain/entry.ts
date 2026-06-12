@@ -7,7 +7,8 @@ function getSolanaConfig() {
   let rawUrl = Deno.env.get('SOLANA_RPC_URL') || '';
   if (rawUrl.includes('RPC_URL=')) rawUrl = rawUrl.split('RPC_URL=')[1].trim();
   if (!rawUrl.startsWith('http') || rawUrl.includes('uuid')) rawUrl = 'https://api.mainnet-beta.solana.com';
-  const programIdStr = Deno.env.get('SOLANA_PROGRAM_ID') || '4epUYJPwoPhG9RPoQ6qT9dsAewJCDBSCGUpR1Xj9UxTm';
+  const programIdStr = Deno.env.get('ELEVENX_PROGRAM_ID');
+  if (!programIdStr) throw new Error('ELEVENX_PROGRAM_ID secret not set');
   return { 
     rpcUrl: rawUrl, 
     programIdStr, 
@@ -71,7 +72,15 @@ Deno.serve(async (req) => {
     const feeOptionBuf = Buffer.alloc(3);
     feeOptionBuf.writeUInt8(1, 0);
     feeOptionBuf.writeUInt16LE(0, 1);
-    const oddsArr = [0, 1, 2].map(i => Math.max(Math.round((futuresMarket.outcomes?.[i]?.odds || 2.0) * 100), 101));
+    
+    // Validate and scale futures odds (decimal to basis points)
+    const oddsArr = [0, 1, 2].map(i => {
+      const rawOdds = futuresMarket.outcomes?.[i]?.odds || 0;
+      if (rawOdds <= 0) {
+        throw new Error(`Invalid odds for ${futuresMarket.country} outcome ${i}: ${rawOdds}. Must be > 0.`);
+      }
+      return Math.max(Math.round(rawOdds * 100), 101);
+    });
 
     const paramsData = Buffer.alloc(172);
     let offset = 0;

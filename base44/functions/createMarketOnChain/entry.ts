@@ -83,13 +83,25 @@ Deno.serve(async (req) => {
     feeOptionBuf.writeUInt8(1, 0);
     feeOptionBuf.writeUInt16LE(feeRaw, 1);
 
-    // oracle_odds: each must be > 100 (100 = 1.0x). Validate odds are non-zero before scaling.
-    const oddsA = Math.max(Math.round((bet.odds_a > 0 ? bet.odds_a : 2.0) * 100), 101);
-    const oddsB = Math.max(Math.round((bet.odds_b > 0 ? bet.odds_b : 2.0) * 100), 101);
-    const oddsDraw = Math.max(Math.round((bet.odds_draw > 0 ? bet.odds_draw : 3.0) * 100), 101);
+    // Validate odds are non-zero and reasonable BEFORE scaling to basis points
+    const rawOddsA = bet.odds_a || 0;
+    const rawOddsB = bet.odds_b || 0;
+    const rawOddsDraw = bet.odds_draw || 0;
+    
+    // CRITICAL: Reject bets with zero/invalid odds - prevents dead markets
+    if (rawOddsA <= 0 || rawOddsB <= 0 || rawOddsDraw <= 0) {
+      return Response.json({ 
+        error: `Invalid odds: A=${rawOddsA}, B=${rawOddsB}, Draw=${rawOddsDraw}. Must all be > 0. Update bet with live odds first.` 
+      }, { status: 400 });
+    }
+    
+    // Scale decimal odds (e.g., 2.50) to basis points (250) where 100 = 1.0x
+    const oddsA = Math.max(Math.round(rawOddsA * 100), 101);
+    const oddsB = Math.max(Math.round(rawOddsB * 100), 101);
+    const oddsDraw = Math.max(Math.round(rawOddsDraw * 100), 101);
 
     console.log('[createMarketOnChain] openUntil:', openUntil, 'settleAfter:', settleAfter);
-    console.log('[createMarketOnChain] odds (bps):', oddsA, oddsB, oddsDraw);
+    console.log('[createMarketOnChain] odds (bps):', oddsA, oddsB, oddsDraw, '(raw:', rawOddsA, rawOddsB, rawOddsDraw, ')');
     console.log('[createMarketOnChain] feeRaw:', feeRaw);
 
     // Build instruction data:
