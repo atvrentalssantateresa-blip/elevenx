@@ -16,6 +16,9 @@ export async function callBackendFunction(functionName, payload) {
     throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
   }
   
+  console.log('[callBackendFunction] Calling:', functionName, 'with payload:', payload);
+  console.log('[callBackendFunction] Auth token exists:', !!authToken, 'length:', authToken?.length);
+  
   const response = await fetch(`/api/functions/${functionName}`, {
     method: 'POST',
     headers: {
@@ -25,10 +28,23 @@ export async function callBackendFunction(functionName, payload) {
     body: JSON.stringify(payload),
   });
   
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+  console.log('[callBackendFunction] Response status:', response.status, response.ok);
+  
+  // Try to parse response body regardless of status
+  let responseData;
+  try {
+    responseData = await response.json();
+    console.log('[callBackendFunction] Response data:', responseData);
+  } catch (parseErr) {
+    console.error('[callBackendFunction] Failed to parse response:', parseErr);
+    const text = await response.text();
+    console.error('[callBackendFunction] Raw response:', text);
+    throw new Error(`Invalid response from server: ${text.slice(0, 200)}`);
   }
   
-  return response.json();
+  if (!response.ok) {
+    throw new Error(responseData?.error || `HTTP ${response.status}`);
+  }
+  
+  return responseData;
 }
