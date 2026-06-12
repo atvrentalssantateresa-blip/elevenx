@@ -273,6 +273,12 @@ export default function Home() {
             const oddsA = (bet?.odds_a > 0) ? bet.odds_a : (featured?.odds_a || 0);
             const oddsB = (bet?.odds_b > 0) ? bet.odds_b : (featured?.odds_b || 0);
             const oddsDraw = (bet?.odds_draw > 0) ? bet.odds_draw : (featured?.odds_draw || 0);
+            
+            // Live score display
+            const scoreA = match.score_a ?? 0;
+            const scoreB = match.score_b ?? 0;
+            const hasScore = match.status === 'live' || match.status === 'finished' || (scoreA > 0 || scoreB > 0);
+            
             return (
               <Link to={`/match/${match.id}`} className="group block">
                 <motion.div
@@ -290,6 +296,14 @@ export default function Home() {
                       alt="match"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       style={{ objectPosition: 'center 15%' }} />
+                    
+                    {/* Live Badge Overlay */}
+                    {match.status === 'live' && (
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-destructive/90 backdrop-blur-sm px-2 py-1 rounded-full border border-destructive/50">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span className="text-[9px] font-bold text-white">LIVE</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Header */}
@@ -297,17 +311,27 @@ export default function Home() {
                     <span className="text-[10px] text-muted-foreground font-semibold truncate">
                       {match.group_stage || 'World Cup 2026'}
                     </span>
-                    <Badge className="text-[9px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground flex-shrink-0">
-                      UPCOMING
+                    <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${
+                      match.status === 'live' ? 'bg-destructive/20 text-destructive border border-destructive/30' :
+                      match.status === 'finished' ? 'bg-muted text-muted-foreground border border-border/30' :
+                      'bg-secondary text-secondary-foreground border border-border/30'
+                    }`}>
+                      {match.status === 'live' && <span className="w-1 h-1 rounded-full bg-destructive animate-pulse mr-1" />}
+                      {match.status === 'live' ? 'LIVE' : match.status === 'finished' ? 'FT' : 'UPCOMING'}
                     </Badge>
                   </div>
 
-                  {/* Match Matchup */}
+                  {/* Match Matchup with Scores */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     {/* Team A */}
                     <div className="flex-1 text-center">
                       <div className="text-2xl mb-1">{getTeamFlag(match.team_a, match.team_a_flag)}</div>
                       <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
+                      {hasScore && (
+                        <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                          <span className="text-xs font-bold text-destructive">{scoreA}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* VS */}
@@ -320,6 +344,11 @@ export default function Home() {
                     <div className="flex-1 text-center">
                       <div className="text-2xl mb-1">{getTeamFlag(match.team_b, match.team_b_flag)}</div>
                       <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
+                      {hasScore && (
+                        <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                          <span className="text-xs font-bold text-destructive">{scoreB}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
