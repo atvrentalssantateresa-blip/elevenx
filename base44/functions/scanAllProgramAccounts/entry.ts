@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     
     console.log('[scanAllProgramAccounts] Found', accounts.length, 'accounts');
     
-    // Parse account data
+    // Parse account data - decode team names from on-chain data
     const onChainMarkets = accounts.map(acc => {
       const pubkey = acc.pubkey.toBase58();
       const data = acc.account.data;
@@ -74,16 +74,24 @@ Deno.serve(async (req) => {
       const matchIdBytes = data.slice(8, 40);
       const matchIdRaw = new TextDecoder().decode(matchIdBytes).replace(/\0/g, '');
       
-      // is_initialized: u8 at offset 40
-      const isInitialized = data[40] === 1;
+      // team_a: 32 bytes at offset 40
+      const teamABytes = data.slice(40, 72);
+      const teamA = new TextDecoder().decode(teamABytes).replace(/\0/g, '').trim();
       
-      // settle_after: i64 at offset 41
-      const settleAfter = Number(data.readBigInt64LE(41));
+      // team_b: 32 bytes at offset 72
+      const teamBBytes = data.slice(72, 103);
+      const teamB = new TextDecoder().decode(teamBBytes).replace(/\0/g, '').trim();
+      
+      // is_initialized: u8 at offset 103
+      const isInitialized = data[103] === 1;
+      
+      // settle_after: i64 at offset 104
+      const settleAfter = Number(data.readBigInt64LE(104));
       
       // is_settled: u8 at offset 155
       const isSettled = data[155] === 1;
       
-      // oracle_odds: [u64; 3] at offset 156
+      // oracle_odds: [u64; 3] at offset 156 (LE format)
       const oddsA = Number(data.readBigUInt64LE(156));
       const oddsB = Number(data.readBigUInt64LE(164));
       const oddsDraw = Number(data.readBigUInt64LE(172));
@@ -91,6 +99,8 @@ Deno.serve(async (req) => {
       return {
         pda: pubkey,
         matchId: matchIdRaw,
+        team_a: teamA,
+        team_b: teamB,
         isInitialized,
         settleAfter,
         isSettled,
@@ -102,6 +112,45 @@ Deno.serve(async (req) => {
         lamports: acc.account.lamports,
       };
     });
+    
+    // 3. Cross-reference: match DB matches to on-chain markets by team names
+    const crossReference = matchData.map(dbMatch => {
+      const dbTeamA = dbMatch.team_a.toLowerCase().trim();
+      const dbTeamB = dbMatch.team_b.toLowerCase().trim();
+      
+      // Find matching on-chain market by team names
+      const matchingOnChain = onChainMarkets.find(onChain => {
+        const chainTeamA = onChain.team_a.toLowerCase().trim();
+        const chainTeamB = onChain.team_b.toLowerCase().trim();
+        
+        // Check if teams match (case-insensitive)
+        const teamsMatch = (dbTeamA === chainTeamA && dbTeamB === chainTeamB);
+        
+        // Check if market is bettable (odds[0] > 100 means > 1.0x in basis points)
+        const isBettable = onChain.oracleOdds.a > 100;
+        
+        return teamsMatch && isBettable;
+      });
+      
+      return {
+        db_match: dbMatch,
+        on_chain_match: matchingOnChain || null,
+        has_bettable_market: !!matchingOnChain,
+        status: matchingOnChain 
+          ? 'matched' 
+          : onChainMarkets.some(oc => 
+              oc.team_a.toLowerCase().trim() === dbTeamA && 
+              oc.team_b.toLowerCase().trim() === dbTeamB
+            ) 
+            ? 'on_chain_but_not_bettable' 
+            : 'not_deployed',
+      };
+    });
+    
+    // Summary statistics
+    const matchedCount = crossReference.filter(r => r.status === 'matched').length;
+    const notBettableCount = crossReference.filter(r => r.status === 'on_chain_but_not_bettable').length;
+    const notDeployedCount = crossReference.filter(r => r.status === 'not_deployed').length;
 
     return Response.json({
       success: true,
@@ -114,6 +163,13 @@ Deno.serve(async (req) => {
         programId: PROGRAM_ID,
         filter: { dataSize: 281 },
         accounts: onChainMarkets,
+      },
+      crossReference: {
+        total: crossReference.length,
+        matched: matchedCount,
+        notBettable: notBettableCount,
+        notDeployed: notDeployedCount,
+        details: crossReference,
       },
       comparison: {
         dbCount: matchData.length,
