@@ -86,9 +86,17 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
             <span className="text-[10px] text-muted-foreground font-semibold truncate">
               {match.group_stage || 'World Cup 2026'}
             </span>
-            <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${statusStyles[match.status] || statusStyles.upcoming}`}>
+            <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${
+              match.status === 'live' ? 'bg-destructive/20 text-destructive border border-destructive/30' :
+              match.status === 'finished' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+              match.status === 'cancelled' ? 'bg-muted text-muted-foreground border border-border/30' :
+              'bg-primary/10 text-primary border border-primary/20'
+            }`}>
               {match.status === 'live' && <span className="w-1 h-1 rounded-full bg-destructive animate-pulse mr-1" />}
-              {statusLabels[match.status] || 'Upcoming'}
+              {match.status === 'live' ? '● LIVE' :
+               match.status === 'finished' ? '🏆 FINAL' :
+               match.status === 'cancelled' ? 'CANCELLED' :
+               'UPCOMING'}
             </Badge>
           </div>
 
@@ -101,7 +109,7 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
             </div>
           )}
 
-          {/* Match Matchup */}
+          {/* Match Matchup with Live Scores */}
           <div className="flex items-center justify-between gap-2 mb-3">
             {/* Team A */}
             <div className="flex-1 text-center">
@@ -109,17 +117,21 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
                 {getTeamFlag(match.team_a, match.team_a_flag)}
               </div>
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
+              {/* Score Badge - Team A */}
+              {(match.status === 'live' || match.status === 'finished') && (
+                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                  <span className={`text-xs font-bold ${match.status === 'live' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {liveMatch.score_a ?? match.score_a ?? 0}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Score / VS */}
+            {/* VS / Live Indicator */}
             <div className="flex flex-col items-center gap-1 px-2 flex-shrink-0">
               {match.status === 'live' ? (
                 <>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-destructive">
-                      {liveMatch.score_a ?? match.score_a ?? 0} - {liveMatch.score_b ?? match.score_b ?? 0}
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground">VS</span>
                   <div className="flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
                     <span className="text-[9px] font-bold text-destructive">LIVE</span>
@@ -127,11 +139,7 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
                 </>
               ) : match.status === 'finished' ? (
                 <>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-muted-foreground">
-                      {match.score_a ?? 0} - {match.score_b ?? 0}
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground">VS</span>
                   <span className="text-[9px] font-bold text-muted-foreground">FT</span>
                 </>
               ) : (
@@ -150,12 +158,20 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
                 {getTeamFlag(match.team_b, match.team_b_flag)}
               </div>
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
+              {/* Score Badge - Team B */}
+              {(match.status === 'live' || match.status === 'finished') && (
+                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
+                  <span className={`text-xs font-bold ${match.status === 'live' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {liveMatch.score_b ?? match.score_b ?? 0}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Odds/Pool */}
+          {/* Odds/Pool - Dimmed for finished matches */}
           {bet ?
-          <div className="pt-2.5 border-t border-border/50">
+          <div className={`pt-2.5 border-t ${match.status === 'finished' ? 'border-border/20 opacity-50' : 'border-border/50'}`}>
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 <div className={`rounded-lg px-1.5 py-1 text-center text-xs border ${lpA > 0 ? 'bg-primary/10 border-primary/20' : 'bg-primary/5 border-primary/10'}`}>
                   <p className="text-[9px] text-muted-foreground truncate">{match.team_a.split(' ').pop()}</p>
@@ -172,13 +188,13 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
               </div>
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <span>◎{(bet.total_pool || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <ChevronRight className={`w-3.5 h-3.5 ${match.status === 'finished' ? 'text-muted-foreground/30' : 'text-muted-foreground group-hover:text-primary'} transition-colors`} />
               </div>
             </div> :
 
-          <div className="pt-2.5 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className={`pt-2.5 border-t ${match.status === 'finished' ? 'border-border/20 opacity-50' : 'border-border/30'} flex items-center justify-between text-[10px] text-muted-foreground`}>
               <span>No pool</span>
-              <ChevronRight className="w-3.5 h-3.5 group-hover:text-primary transition-colors" />
+              <ChevronRight className={`w-3.5 h-3.5 ${match.status === 'finished' ? 'text-muted-foreground/30' : 'text-muted-foreground group-hover:text-primary'} transition-colors`} />
             </div>
           }
         </div>

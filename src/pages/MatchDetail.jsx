@@ -233,14 +233,27 @@ export default function MatchDetail() {
             <p className="font-heading font-black text-sm">{match.team_a}</p>
           </div>
           <div className="text-center">
-            {match.status === 'finished' || match.status === 'live' ?
-            <div className="flex items-center gap-2">
+            {match.status === 'live' ? (
+              <>
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <span className="text-4xl font-heading font-bold text-destructive">{match.score_a ?? 0}</span>
+                  <span className="text-muted-foreground text-2xl">-</span>
+                  <span className="text-4xl font-heading font-bold text-destructive">{match.score_b ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                  <span className="text-lg font-bold text-destructive">LIVE</span>
+                </div>
+              </>
+            ) : match.status === 'finished' ? (
+              <div className="flex items-center gap-2">
                 <span className="text-2xl font-heading font-bold">{match.score_a ?? 0}</span>
                 <span className="text-muted-foreground text-base">-</span>
                 <span className="text-2xl font-heading font-bold">{match.score_b ?? 0}</span>
-              </div> :
-            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">VS</span>
-            }
+              </div>
+            ) : (
+              <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">VS</span>
+            )}
           </div>
           <div className="flex-1 text-center">
             <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-md">
