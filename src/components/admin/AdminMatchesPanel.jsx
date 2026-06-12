@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { callBackendFunction } from '@/lib/directFunctionCall';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -104,7 +105,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
     if (pendingDeploy?.bet_id) {
       const marketPda = result.marketPda || pendingDeploy.marketPda || pendingDeploy.accounts?.market;
       try {
-        await base44.functions.invoke('commitMarketDeployment', {
+        await callBackendFunction('commitMarketDeployment', {
           bet_id: pendingDeploy.bet_id,
           market_pda: marketPda,
         });
@@ -131,7 +132,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
     // Commit DB update AFTER on-chain confirmation
     if (commitPayload?.signature && deployAllDialog?.betId) {
       try {
-        await base44.functions.invoke('commitMarketDeployment', {
+        await callBackendFunction('commitMarketDeployment', {
           bet_id: deployAllDialog.betId,
           market_pda: commitPayload.marketPda || deployAllDialog.instruction?.accounts?.market,
         });
@@ -142,21 +143,20 @@ export default function AdminMatchesPanel({ walletAddress }) {
     }
     
     try {
-      const res = await base44.functions.invoke('deployAllMatches');
-      if (res.data.needsSigning) {
+      const res = await callBackendFunction('deployAllMatches');
+      if (res.needsSigning) {
         setDeployAllDialog({
-          instruction: res.data.solana_instruction,
-          remaining: res.data.remaining,
-          betId: res.data.bet_id,
-          total: deployAllDialog.total, // Preserve total count
-          autoAdvance: true, // Enable auto-advance
+          instruction: res.solana_instruction,
+          remaining: res.remaining,
+          betId: res.bet_id,
+          total: deployAllDialog.total,
+          autoAdvance: true,
         });
-      } else if (res.data.autoContinue) {
-        // Small delay to avoid rate limits
+      } else if (res.autoContinue) {
         setTimeout(() => handleDeployAllSuccess(), 2000);
       } else {
         setDeployAllDialog(null);
-        alert(res.data.message || '✓ All matches deployed!');
+        alert(res.message || '✓ All matches deployed!');
         queryClient.invalidateQueries({ queryKey: ['adminMatches'] });
         queryClient.invalidateQueries({ queryKey: ['allBetsForMatches'] });
       }
@@ -198,18 +198,18 @@ export default function AdminMatchesPanel({ walletAddress }) {
           <Button
             onClick={async () => {
               try {
-                const res = await base44.functions.invoke('deployAllMatches');
-                if (res.data.needsSigning) {
-                  const total = res.data.remaining + 1;
+                const res = await callBackendFunction('deployAllMatches');
+                if (res.needsSigning) {
+                  const total = res.remaining + 1;
                   setDeployAllDialog({
-                    instruction: res.data.solana_instruction,
-                    remaining: res.data.remaining,
-                    betId: res.data.bet_id,
+                    instruction: res.solana_instruction,
+                    remaining: res.remaining,
+                    betId: res.bet_id,
                     total,
                     autoAdvance: true,
                   });
                 } else {
-                  alert(res.data.message || '✓ All matches deployed!');
+                  alert(res.message || '✓ All matches deployed!');
                   queryClient.invalidateQueries({ queryKey: ['adminMatches'] });
                 }
               } catch (err) {
@@ -435,7 +435,7 @@ export default function AdminMatchesPanel({ walletAddress }) {
                   // Commit DB update AFTER on-chain confirmation
                   if (commitPayload?.signature && deployAllDialog.betId) {
                     try {
-                      await base44.functions.invoke('commitMarketDeployment', {
+                      await callBackendFunction('commitMarketDeployment', {
                         bet_id: deployAllDialog.betId,
                         market_pda: commitPayload.marketPda || deployAllDialog.instruction?.accounts?.market,
                       });
