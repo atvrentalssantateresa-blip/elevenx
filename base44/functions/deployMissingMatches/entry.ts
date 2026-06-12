@@ -196,6 +196,7 @@ Deno.serve(async (req) => {
     let matchToDeploy = null;
     let effectiveMatchId = null;
     let pdaStatus = null;
+    let skippedCount = 0;
     
     for (const match of missingMatches) {
       const bets = allBets.filter(b => b.match_id === match.id);
@@ -206,6 +207,7 @@ Deno.serve(async (req) => {
       // Validate odds
       if (bet.odds_a <= 0 || bet.odds_b <= 0 || bet.odds_draw <= 0) {
         console.log(`[deployMissingMatches] ☠️ Skipping ${match.team_a} vs ${match.team_b} - DEAD ODDS`);
+        skippedCount++;
         continue;
       }
       
@@ -215,6 +217,7 @@ Deno.serve(async (req) => {
         : new Date(match.match_time).getTime() - 5 * 60 * 1000;
       if (rawOpenUntil < Date.now()) {
         console.log(`[deployMissingMatches] ☠️ Skipping ${match.team_a} vs ${match.team_b} - BETTING CLOSED (${new Date(rawOpenUntil).toISOString()})`);
+        skippedCount++;
         continue;
       }
       
@@ -258,6 +261,7 @@ Deno.serve(async (req) => {
         success: true,
         message: '✓ All missing matches processed!',
         totalMissing: missingMatches.length,
+        skipped_count: skippedCount,
         needsSigning: false,
       });
     }
@@ -288,6 +292,7 @@ Deno.serve(async (req) => {
       message: `Sign to deploy ${matchToDeploy.team_a} vs ${matchToDeploy.team_b} (${pdaStatus}). ${missingMatches.length - 1} remaining.`,
       totalMissing: missingMatches.length,
       remaining: missingMatches.length - 1,
+      skipped_count: skippedCount,
       needsSigning: true,
       solana_instruction: builtInstruction.solana_instruction,
       bet_id: betToDeploy.id,
