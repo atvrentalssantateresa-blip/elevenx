@@ -678,14 +678,21 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
 
       setSignStep('confirming');
-      console.log('Waiting for confirmation (60s timeout)...');
+      console.log('Waiting for confirmation (30s timeout)...');
       let confirmation;
+      
+      // 30-second timeout for confirmation
+      const timeoutMs = 30000;
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+      
       try {
         // Try with confirmed commitment first
         confirmation = await connection.confirmTransaction(
           { signature: sig, blockhash, lastValidBlockHeight },
           'confirmed',
         );
+        clearTimeout(timeoutId);
         console.log('Transaction confirmation result:', confirmation);
         
         // If confirmation fails but transaction might have succeeded, check signature status
@@ -693,6 +700,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           console.log('✓ Transaction confirmed successfully');
         }
       } catch (confirmError) {
+        clearTimeout(timeoutId);
         console.log('[SolanaTransactionSigner] Confirmation failed, checking if transaction succeeded...');
         
         // Check if the transaction actually succeeded on-chain
