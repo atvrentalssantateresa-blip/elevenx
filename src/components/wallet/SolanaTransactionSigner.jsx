@@ -300,7 +300,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         const matchId = instruction.match_id;
         const outcome = instruction.outcome; // u8 (0, 1, or 2)
         const amountSol = instruction.amount; // SOL amount
-        const _parsedSol = parseFloat(amountSol);
+        const _parsedSol = parseFloat(String(amountSol).replace(',', '.'));
         if (isNaN(_parsedSol) || _parsedSol <= 0) throw new Error('Invalid LP deposit amount — please enter a valid SOL value');
         const amountLamports = BigInt(Math.round(_parsedSol * 1_000_000_000));
         

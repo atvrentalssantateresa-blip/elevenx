@@ -193,7 +193,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
     if (!wallet) {setPrepareError('Wallet not connected');return;}
 
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseFloat(String(amount).replace(',', '.'));
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setPrepareError('Please enter a valid SOL amount');
       return;

@@ -101,7 +101,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       return;
     }
 
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseFloat(String(amount).replace(',', '.'));
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setError('Please enter a valid SOL amount');
       return;
@@ -118,7 +118,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
         bet_id: bet.id,
         match_id,
         outcome: selectedOutcome,
-        amount: parseFloat(amount),
+        amount: parseFloat(String(amount).replace(',', '.')),
       });
 
       if (response.data.error) {
