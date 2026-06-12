@@ -57,6 +57,13 @@ Deno.serve(async (req) => {
       if (userBet.status !== 'active') {
         continue; // Skip already processed bets
       }
+
+      // VOID: all active bets get refunded, not lost
+      if (winning_outcome === 'void') {
+        await serviceRole.entities.UserBet.update(userBet.id, { status: 'refunded', actual_payout: 0 });
+        lostCount++;
+        continue;
+      }
       
       const isLp = userBet.role === 'lp';
       const backedWinner = userBet.outcome === winning_outcome;

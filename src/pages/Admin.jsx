@@ -189,7 +189,7 @@ export default function Admin() {
     // Call commitSettlement to update DB after on-chain tx confirms
     if (commitPayload?.signature && settleDialog?.bet) {
       try {
-        await base44.functions.invoke('commitSettlement', {
+        const res = await base44.functions.invoke('commitSettlement', {
           signature: commitPayload.signature,
           commit_data: {
             bet_id: settleDialog.bet.id,
@@ -198,8 +198,16 @@ export default function Admin() {
             outcome_label: settleDialog.outcome === 'a' ? settleDialog.bet.outcome_a : settleDialog.outcome === 'b' ? settleDialog.bet.outcome_b : 'Draw',
           },
         });
+        if (res.data?.error) {
+          toast.error('⚠️ On-chain settled but DB update failed: ' + res.data.error + ' — contact support with tx: ' + commitPayload.signature);
+          // Do NOT close dialog or invalidate — admin needs to see this
+          return;
+        }
+        toast.success(res.data?.message || '✓ Market settled! Winners can now claim.');
       } catch (err) {
         console.error('[Admin] commitSettlement failed:', err);
+        toast.error('⚠️ On-chain settled but DB update failed: ' + err.message + ' — tx: ' + commitPayload.signature?.slice(0, 16) + '...');
+        return; // Do NOT close dialog
       }
     }
     queryClient.invalidateQueries({ queryKey: ['allBets'] });
