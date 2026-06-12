@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Wallet, CheckCircle, X, Clock, Zap } from 'lucide-react';
 import { useWallet } from '@/lib/WalletContext';
 import SolanaTransactionSigner from '@/components/wallet/SolanaTransactionSigner';
+import { callBackendFunction } from '@/lib/directFunctionCall';
 
 const QUICK_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
@@ -234,7 +235,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           throw new Error('This offer is fully matched. Select another offer.');
         }
         console.log('[PlaceBetPanel] Calling matchBet with wallet:', wallet, 'offer:', selectedOffer.id, 'amount:', stakeNum);
-        res = await base44.functions.invoke('matchBet', {
+        res = await callBackendFunction('matchBet', {
           offer_id: selectedOffer.id,
           amount: stakeNum,
           wallet_address: wallet
@@ -249,7 +250,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         );
         if (firstAvailableOffer) {
           console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
-          res = await base44.functions.invoke('matchBet', {
+          res = await callBackendFunction('matchBet', {
             offer_id: firstAvailableOffer.id,
             amount: stakeNum,
             wallet_address: wallet
@@ -258,7 +259,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         } else {
           // No DB offer found — fall back to parimutuel (bet directly into on-chain pool)
           console.log('[PlaceBetPanel] No DB offer found, using parimutuel placeBet for outcome:', selectedOutcome);
-          res = await base44.functions.invoke('placeBet', {
+          res = await callBackendFunction('placeBet', {
             walletAddress: wallet,
             bet_id: bet?.id,
             match_id: matchId,
@@ -300,7 +301,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       const commitFunction = 'commitMatchBet';
       console.log('[PlaceBetPanel] Calling commit function:', commitFunction, commitPayload);
 
-      const commitRes = await base44.functions.invoke(commitFunction, commitPayload);
+      const commitRes = await callBackendFunction(commitFunction, commitPayload);
 
       if (commitRes.data.error) {
         console.error('[PlaceBetPanel] Commit failed:', commitRes.data.error);
