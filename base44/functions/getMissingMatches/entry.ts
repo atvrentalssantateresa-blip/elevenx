@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { Connection, PublicKey, GetProgramAccountsFilter } from 'npm:@solana/web3.js@1.98.4';
+import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'npm:buffer@6.0.3';
 
 Deno.serve(async (req) => {
@@ -40,59 +40,37 @@ Deno.serve(async (req) => {
       id: m.id,
       team_a: m.team_a,
       team_b: m.team_b,
-      match_id: m.id, // Using entity id as match_id
+      match_id: m.id,
     }));
 
-    // 2. Fetch ALL program accounts from chain using getProgramAccounts
+    // 2. Fetch ALL program accounts from chain
     const RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=f0184d45-f52a-44d3-9314-2365f64ea024';
     const PROGRAM_ID = '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu';
     
     const connection = new Connection(RPC_URL, 'confirmed');
     const programId = new PublicKey(PROGRAM_ID);
     
-    // Filter: dataSize = 281 (matches Market account size)
-    const filters = [
-      { dataSize: 281 }
-    ];
-    
-    console.log('[scanAllProgramAccounts] Fetching accounts for program:', PROGRAM_ID);
-    console.log('[scanAllProgramAccounts] Filter: dataSize=281');
+    const filters = [{ dataSize: 281 }];
     
     const accounts = await connection.getProgramAccounts(programId, {
       filters,
       commitment: 'confirmed',
     });
     
-    console.log('[scanAllProgramAccounts] Found', accounts.length, 'accounts');
-    
-    // Parse account data - decode team names from on-chain data
+    // Parse account data
     const onChainMarkets = accounts.map(acc => {
       const pubkey = acc.pubkey.toBase58();
       const data = acc.account.data;
       
-      // Parse Market struct (offset 8 to skip discriminator)
-      // match_id: 32 bytes at offset 8
       const matchIdBytes = data.slice(8, 40);
       const matchIdRaw = new TextDecoder().decode(matchIdBytes).replace(/\0/g, '');
-      
-      // team_a: 32 bytes at offset 40
       const teamABytes = data.slice(40, 72);
       const teamA = new TextDecoder().decode(teamABytes).replace(/\0/g, '').trim();
-      
-      // team_b: 32 bytes at offset 72
       const teamBBytes = data.slice(72, 103);
       const teamB = new TextDecoder().decode(teamBBytes).replace(/\0/g, '').trim();
-      
-      // is_initialized: u8 at offset 103
       const isInitialized = data[103] === 1;
-      
-      // settle_after: i64 at offset 104
       const settleAfter = Number(data.readBigInt64LE(104));
-      
-      // is_settled: u8 at offset 155
       const isSettled = data[155] === 1;
-      
-      // oracle_odds: [u64; 3] at offset 156 (LE format)
       const oddsA = Number(data.readBigUInt64LE(156));
       const oddsB = Number(data.readBigUInt64LE(164));
       const oddsDraw = Number(data.readBigUInt64LE(172));
@@ -105,70 +83,49 @@ Deno.serve(async (req) => {
         isInitialized,
         settleAfter,
         isSettled,
-        oracleOdds: {
-          a: oddsA,
-          b: oddsB,
-          draw: oddsDraw,
-        },
+        oracleOdds: { a: oddsA, b: oddsB, draw: oddsDraw },
         lamports: acc.account.lamports,
       };
     });
     
-    // 3. Build lookup maps for efficient matching
+    // 3. Build lookup maps
     const onChainByTeams = new Map();
     onChainMarkets.forEach(oc => {
       const key = `${oc.team_a.toLowerCase().trim()}|${oc.team_b.toLowerCase().trim()}`;
       onChainByTeams.set(key, oc);
     });
     
-    // 4. Categorize into three lists
-    const REAL_DEPLOYED = [];
+    // 4. Find MISSING matches only
     const MISSING = [];
-    const FAKE_ONCHAIN = [];
     
-    // Process DB matches
     matchData.forEach(dbMatch => {
       const dbTeamA = dbMatch.team_a.toLowerCase().trim();
       const dbTeamB = dbMatch.team_b.toLowerCase().trim();
       const key = `${dbTeamA}|${dbTeamB}`;
       const onChain = onChainByTeams.get(key);
       
+      // Skip if bettable market exists
       if (onChain && onChain.oracleOdds.a > 100) {
-        // Bettable market exists
-        REAL_DEPLOYED.push({
-          dbMatch: {
-            id: dbMatch.id,
-            team_a: dbMatch.team_a,
-            team_b: dbMatch.team_b,
-            match_id: dbMatch.match_id,
-          },
-          onChainMarket: onChain,
-          status: 'bettable',
-        });
-      } else if (onChain) {
+        return;
+      }
+      
+      // This is a MISSING match
+      if (onChain) {
         // Market exists but has dead odds
         MISSING.push({
-          dbMatch: {
-            id: dbMatch.id,
-            team_a: dbMatch.team_a,
-            team_b: dbMatch.team_b,
-            match_id: dbMatch.match_id,
-          },
-          reason: 'on_chain_market_exists_but_dead_odds',
-          onChainMarket: onChain,
-          pdaStatus: {
+          home_team: dbMatch.team_a,
+          away_team: dbMatch.team_b,
+          match_id: dbMatch.match_id,
+          pdaStatus: 'OCCUPIED_DEAD',
+          details: {
+            reason: 'on_chain_market_exists_but_dead_odds',
             pda: onChain.pda,
-            isDead: onChain.oracleOdds.a === 0 && onChain.oracleOdds.b === 0 && onChain.oracleOdds.draw === 0,
-            teamMismatch: false,
-            actualTeamA: onChain.team_a,
-            actualTeamB: onChain.team_b,
             oracleOdds: onChain.oracleOdds,
             lamports: onChain.lamports,
           },
         });
       } else {
         // No on-chain market - check if PDA is occupied by something else
-        // Derive expected PDA for this match
         const matchIdBytes = Buffer.alloc(32);
         Buffer.from(dbMatch.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(dbMatch.match_id.length, 32));
         const [expectedPda] = PublicKey.findProgramAddressSync(
@@ -177,85 +134,47 @@ Deno.serve(async (req) => {
         );
         const expectedPdaStr = expectedPda.toBase58();
         
-        // Check if this PDA is occupied by a different market
         const pdaOccupant = onChainMarkets.find(oc => oc.pda === expectedPdaStr);
         
         MISSING.push({
-          dbMatch: {
-            id: dbMatch.id,
-            team_a: dbMatch.team_a,
-            team_b: dbMatch.team_b,
-            match_id: dbMatch.match_id,
-          },
-          reason: pdaOccupant ? 'pda_occupied_by_different_market' : 'no_on_chain_market',
-          onChainMarket: null,
-          pdaStatus: pdaOccupant ? {
+          home_team: dbMatch.team_a,
+          away_team: dbMatch.team_b,
+          match_id: dbMatch.match_id,
+          pdaStatus: pdaOccupant ? 'OCCUPIED_FAKE' : 'FREE',
+          details: pdaOccupant ? {
+            reason: 'pda_occupied_by_different_market',
             pda: expectedPdaStr,
-            isDead: pdaOccupant.oracleOdds.a === 0 && pdaOccupant.oracleOdds.b === 0 && pdaOccupant.oracleOdds.draw === 0,
-            teamMismatch: true,
-            actualTeamA: pdaOccupant.team_a,
-            actualTeamB: pdaOccupant.team_b,
+            actualHomeTeam: pdaOccupant.team_a,
+            actualAwayTeam: pdaOccupant.team_b,
             oracleOdds: pdaOccupant.oracleOdds,
             lamports: pdaOccupant.lamports,
           } : {
+            reason: 'no_on_chain_market',
             pda: expectedPdaStr,
-            isOccupied: false,
-            isDead: null,
-            teamMismatch: false,
-            actualTeamA: null,
-            actualTeamB: null,
-            oracleOdds: null,
-            lamports: null,
+            isFree: true,
           },
         });
       }
     });
     
-    // Find fake on-chain markets (no matching DB record)
-    onChainMarkets.forEach(oc => {
-      const key = `${oc.team_a.toLowerCase().trim()}|${oc.team_b.toLowerCase().trim()}`;
-      const dbMatch = matchData.find(m => 
-        m.team_a.toLowerCase().trim() === oc.team_a.toLowerCase().trim() &&
-        m.team_b.toLowerCase().trim() === oc.team_b.toLowerCase().trim()
-      );
-      
-      if (!dbMatch) {
-        FAKE_ONCHAIN.push({
-          onChainMarket: {
-            pda: oc.pda,
-            matchId: oc.matchId,
-            team_a: oc.team_a,
-            team_b: oc.team_b,
-            oracleOdds: oc.oracleOdds,
-            lamports: oc.lamports,
-          },
-          reason: 'no_db_match',
-        });
-      }
-    });
-    
-    // Summary
+    // Summary by PDA status
     const summary = {
-      totalDbMatches: matchData.length,
-      totalOnChainMarkets: onChainMarkets.length,
-      realDeployed: REAL_DEPLOYED.length,
-      missing: MISSING.length,
-      fakeOnchain: FAKE_ONCHAIN.length,
+      totalMissing: MISSING.length,
+      occupiedDead: MISSING.filter(m => m.pdaStatus === 'OCCUPIED_DEAD').length,
+      occupiedFake: MISSING.filter(m => m.pdaStatus === 'OCCUPIED_FAKE').length,
+      freePda: MISSING.filter(m => m.pdaStatus === 'FREE').length,
     };
 
     return Response.json({
       success: true,
       summary,
-      REAL_DEPLOYED,
       MISSING,
-      FAKE_ONCHAIN,
     });
 
   } catch (error) {
-    console.error('scanAllProgramAccounts error:', error);
+    console.error('getMissingMatches error:', error);
     return Response.json({ 
       error: error.message,
-      stack: error.stack,
     }, { status: 500 });
   }
 });
