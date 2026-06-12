@@ -2,6 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
 import { Buffer } from 'node:buffer';
 
+async function anchorDiscriminator(name) {
+  const msg = new TextEncoder().encode(`global:${name}`);
+  const hash = await crypto.subtle.digest('SHA-256', msg);
+  return Buffer.from(new Uint8Array(hash).slice(0, 8));
+}
+
 function getSolanaConfig() {
   const rpcUrl = Deno.env.get('SOLANA_RPC_URL');
   const programIdStr = Deno.env.get('ELEVENX_PROGRAM_ID');
@@ -11,10 +17,13 @@ function getSolanaConfig() {
 }
 
 /**
- * Settle a market on-chain — test_announce_winner instruction
- * Discriminator: [23, 224, 211, 209, 146, 125, 80, 245]
- * Data: discriminator + outcome (u8)
- * Accounts: market, fee_vault, platform_config, admin, system_program
+ * Settle a market on-chain.
+ *
+ * winning_outcome = 'a' | 'b' | 'draw'  → settle_from_oracle (requires feed_pubkey)
+ * winning_outcome = 'void'               → force_void_market (admin only)
+ *
+ * settle_from_oracle accounts: market, fee_vault, feed (Switchboard), cranker (signer), system_program
+ * force_void_market  accounts: market, platform_config, admin (signer), system_program
  */
 Deno.serve(async (req) => {
   try {
@@ -22,9 +31,11 @@ Deno.serve(async (req) => {
     const serviceRole = base44.asServiceRole;
     const { rpcUrl, programIdStr, programId, connection } = getSolanaConfig();
 
-    const { bet_id, winning_outcome, admin_wallet } = await req.json();
-    if (!bet_id || !winning_outcome || !['a', 'b', 'draw'].includes(winning_outcome)) {
-      return Response.json({ error: 'Invalid parameters' }, { status: 400 });
+    const { bet_id, winning_outcome, admin_wallet, feed_pubkey } = await req.json();
+
+    const validOutcomes = ['a', 'b', 'draw', 'void'];
+    if (!bet_id || !winning_outcome || !validOutcomes.includes(winning_outcome)) {
+      return Response.json({ error: 'Invalid parameters. winning_outcome must be a|b|draw|void' }, { status: 400 });
     }
     if (!admin_wallet) return Response.json({ error: 'Admin wallet address required' }, { status: 400 });
 
@@ -41,40 +52,68 @@ Deno.serve(async (req) => {
     const platformInfo = await connection.getAccountInfo(platformPda);
     if (!platformInfo) return Response.json({ error: 'Platform config not found on-chain' }, { status: 400 });
 
-    const feeVaultInfo = await connection.getAccountInfo(feeVaultPda);
-    if (!feeVaultInfo) return Response.json({ error: 'Fee vault not found on-chain' }, { status: 400 });
+    // ── VOID path: force_void_market ──────────────────────────────────────────
+    if (winning_outcome === 'void') {
+      const disc = await anchorDiscriminator('force_void_market');
+      const keys = [
+        { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
+        { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: false },
+        { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+      ];
+      return Response.json({
+        success: true, bet_id, winning_outcome: 'void',
+        message: 'Sign to void market (force_void_market)',
+        solana_instruction: {
+          instruction_type: 'settle_market',
+          programId: programIdStr,
+          keys,
+          instruction_data: disc.toString('base64'),
+        },
+      });
+    }
 
-    const discriminator = Buffer.from([23, 224, 211, 209, 146, 125, 80, 245]);
-    const outcomeIndex = winning_outcome === 'a' ? 0 : winning_outcome === 'b' ? 1 : 2;
-    const instructionData = Buffer.alloc(9);
-    discriminator.copy(instructionData, 0);
-    instructionData.writeUInt8(outcomeIndex, 8);
+    // ── SETTLE path: settle_from_oracle ───────────────────────────────────────
+    // Requires a Switchboard feed pubkey pinned to this market via set_settlement_feed.
+    // The market account's settlement_feed field must match feed_pubkey.
+    if (!feed_pubkey) {
+      return Response.json({
+        error: 'feed_pubkey required for settle_from_oracle. Call set_settlement_feed first, then provide the feed pubkey here.',
+      }, { status: 400 });
+    }
 
-    console.log('[settleMarketOnChain] programId:', programIdStr, 'rpcUrl:', rpcUrl);
-    console.log('[settleMarketOnChain] Discriminator (hex):', discriminator.toString('hex'));
-    console.log('[settleMarketOnChain] Outcome:', winning_outcome, '-> index:', outcomeIndex);
+    // Validate feed pubkey is a valid Solana address
+    let feedPubkey;
+    try {
+      feedPubkey = new PublicKey(feed_pubkey);
+    } catch (_) {
+      return Response.json({ error: 'Invalid feed_pubkey: not a valid Solana address' }, { status: 400 });
+    }
 
-    // Accounts: market, fee_vault, platform_config [readonly], admin [signer], system_program
+    const disc = await anchorDiscriminator('settle_from_oracle');
+
+    // settle_from_oracle accounts: market, fee_vault, feed, cranker (signer), system_program
     const keys = [
       { pubkey: marketPda.toBase58(), isSigner: false, isWritable: true },
       { pubkey: feeVaultPda.toBase58(), isSigner: false, isWritable: true },
-      { pubkey: platformPda.toBase58(), isSigner: false, isWritable: false },
-      { pubkey: admin_wallet, isSigner: true, isWritable: true },
+      { pubkey: feedPubkey.toBase58(), isSigner: false, isWritable: false },
+      { pubkey: 'SIGNER_WALLET', isSigner: true, isWritable: true }, // cranker
       { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
     ];
-    console.log('[settleMarketOnChain] Accounts:', keys.map((k, i) => `[${i}] ${k.pubkey}`));
 
     const outcomeLabel = winning_outcome === 'a' ? bet.outcome_a : winning_outcome === 'b' ? bet.outcome_b : 'Draw';
     return Response.json({
       success: true, bet_id, winning_outcome,
-      message: `Sign to settle market: ${outcomeLabel}`,
+      message: `Sign to settle market via oracle: expected outcome ${outcomeLabel}`,
       solana_instruction: {
         instruction_type: 'settle_market',
         programId: programIdStr,
+        rpcUrl,
         keys,
-        instruction_data: instructionData.toString('base64'),
+        instruction_data: disc.toString('base64'),
       },
     });
+
   } catch (error) {
     console.error('[settleMarketOnChain] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });

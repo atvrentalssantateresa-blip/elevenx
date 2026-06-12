@@ -8,7 +8,7 @@ const { appId, token, functionsVersion, appBaseUrl } = appParams;
 // These are set by backend functions when they return instructions
 if (typeof window !== 'undefined') {
   // Default to devnet if not set - backend functions should override these
-  window.SOLANA_RPC_URL = 'https://api.devnet.solana.com';
+  window.SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
   window.ELEVENX_PROGRAM_ID = 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
 }
 
