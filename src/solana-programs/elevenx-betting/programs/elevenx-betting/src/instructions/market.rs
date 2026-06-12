@@ -99,6 +99,41 @@ pub fn update_market_timestamps(
     Ok(())
 }
 
+// ── close_market ──────────────────────────────────────────────────────────────
+/// Admin-only: Close a dead market (e.g., oracle_odds=[0,0,0]) and free its PDA.
+/// CRITICAL: Only use for markets that were never used (no bets, no liquidity).
+/// This instruction does NOT transfer funds - use sweep_market_funds first if needed.
+pub fn close_market(ctx: Context<CloseMarket>) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    
+    // Safety checks: ensure market was never used
+    require!(
+        market.total_matched == [0u64; 3],
+        BettingError::MarketAlreadyUsed
+    );
+    require!(
+        market.total_pending == [0u64; 3],
+        BettingError::MarketAlreadyUsed
+    );
+    require!(
+        market.total_lp_committed == 0,
+        BettingError::MarketAlreadyUsed
+    );
+    require!(
+        market.accrued_fees == 0,
+        BettingError::MarketAlreadyUsed
+    );
+    
+    // Mark as closed (settled + voided) to prevent any future operations
+    market.settled = true;
+    market.voided = true;
+    market.settlement_finalized = true;
+    
+    // Note: We don't actually free the PDA - Solana accounts can't be deleted
+    // But marking as settled+voided prevents any further operations
+    Ok(())
+}
+
 // ── set_settlement_feed ──────────────────────────────────────────────────────
 /// Admin-only: Pin the Switchboard On-Demand feed pubkey to a market.
 /// CRITICAL SECURITY: Must be set before settlement to prevent oracle

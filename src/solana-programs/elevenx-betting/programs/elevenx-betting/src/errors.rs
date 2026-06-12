@@ -76,4 +76,7 @@ pub enum BettingError {
 
     #[msg("Oracle returned an invalid result")]
     InvalidOracleResult,
+    
+    #[msg("Market has already been used (contains bets or liquidity)")]
+    MarketAlreadyUsed,
 }

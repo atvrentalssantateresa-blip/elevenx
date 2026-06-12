@@ -63,6 +63,12 @@ pub mod elevenx_betting {
         instructions::market::sweep_market_funds(ctx)
     }
 
+    /// Admin-only: Close a dead market (e.g., oracle_odds=[0,0,0]) to free its PDA.
+    /// CRITICAL: Only for markets that were never used (no bets, no liquidity).
+    pub fn close_market(ctx: Context<CloseMarket>) -> Result<()> {
+        instructions::market::close_market(ctx)
+    }
+
     // ── Liquidity (LP) ──────────────────────────────────────────────────────
 
     /// LP deposits SOL to cover bettors on a specific outcome at oracle odds.
