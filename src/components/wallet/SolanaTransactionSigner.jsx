@@ -225,53 +225,36 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(createMarketIx);
         
       } else if (instruction.instruction_type === 'settle_market' || instruction.instruction_type === 'settle_market_force' || instruction.instruction_type === 'test_announce_winner') {
-        // settle_market / settle_market_force / test_announce_winner - program instruction to announce winner and settle market
+        // settle_market — supports both single-instruction (void) and 2-instruction (attestation) paths
         console.log('=== SETTLE_MARKET INSTRUCTION ===');
-        console.log('instruction_type:', instruction.instruction_type);
-        console.log('Full instruction:', instruction);
-        console.log('instruction.keys:', instruction.keys);
-        console.log('instruction.keys?.length:', instruction.keys?.length);
-        
-        const programId = new PublicKey(instruction.programId);
-        
-        // Decode the instruction data from base64
-        const data = Buffer.from(instruction.instruction_data, 'base64');
-        console.log('[SolanaTransactionSigner] settle_market data length:', data.length);
-        console.log('[SolanaTransactionSigner] settle_market data (hex):', data.toString('hex'));
-        
-        // Build keys from instruction, replacing SIGNER_WALLET placeholder with actual wallet
-        if (!instruction.keys || instruction.keys.length === 0) {
-          console.error('[SolanaTransactionSigner] NO KEYS PROVIDED!');
-          throw new Error('settle_market instruction missing keys array');
+
+        if (instruction.instructions && instruction.instructions.length > 0) {
+          // Multi-instruction path: [Ed25519SigVerify, settle_with_attestation]
+          for (const ix of instruction.instructions) {
+            const programId = new PublicKey(ix.programId);
+            const data = Buffer.from(ix.instruction_data, 'base64');
+            const keys = (ix.keys || []).map(k => ({
+              pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+              isSigner: k.isSigner,
+              isWritable: k.isWritable,
+            }));
+            console.log(`[settle_market] Adding ix: programId=${ix.programId.slice(0, 8)}... keys=${keys.length} dataLen=${data.length}`);
+            transaction.add(new TransactionInstruction({ keys, programId, data }));
+          }
+        } else {
+          // Single-instruction path (force_void_market)
+          const programId = new PublicKey(instruction.programId);
+          const data = Buffer.from(instruction.instruction_data, 'base64');
+          if (!instruction.keys || instruction.keys.length === 0) {
+            throw new Error('settle_market instruction missing keys array');
+          }
+          const keys = instruction.keys.map(k => ({
+            pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+            isSigner: k.isSigner,
+            isWritable: k.isWritable,
+          }));
+          transaction.add(new TransactionInstruction({ keys, programId, data }));
         }
-        const keys = instruction.keys.map(k => {
-          const pubkeyStr = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
-          console.log('[SolanaTransactionSigner] Processing key:', {
-            original: k.pubkey,
-            replaced: pubkeyStr,
-            isSigner: k.isSigner,
-            isWritable: k.isWritable,
-          });
-          return {
-            pubkey: new PublicKey(pubkeyStr),
-            isSigner: k.isSigner,
-            isWritable: k.isWritable,
-          };
-        });
-        
-        console.log('[SolanaTransactionSigner] settle_market final keys:', keys.map(k => ({
-          pubkey: k.pubkey.toBase58(),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        })));
-        
-        const settleMarketIx = new TransactionInstruction({
-          keys,
-          programId,
-          data,
-        });
-        
-        transaction.add(settleMarketIx);
         
       } else if (instruction.instruction_type === 'claim_winnings') {
         // Claim winnings - program instruction to transfer SOL from pool to user
