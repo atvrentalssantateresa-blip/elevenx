@@ -59,19 +59,17 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }, 0) :
   0;
 
-  // Fixed odds mode: bet against existing LP offers; parimutuel mode: bet into pool when no LP offers exist
-  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? true : false;
-  const isParimutuel = selectedOutcome && totalLiquidityForOutcome <= 0 && !selectedOffer;
-
-  // Betting mode: fixed_lp (bet against LP) or parimutuel (bet into pool)
-  const bettingMode = totalLiquidityForOutcome > 0 || selectedOffer ? 'fixed_lp' : 'parimutuel';
+  // Check if betting is allowed (only when LP liquidity exists)
+  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? (selectedOffer.amount_unmatched || 0) > 0 : false;
+  const bettingMode = hasLiquidityForOutcome ? 'fixed_lp' : 'no_liquidity';
   
-  console.log('[PlaceBetPanel] Betting mode:', {
+  console.log('[PlaceBetPanel] Liquidity check:', {
     totalLiquidityForOutcome,
-    isParimutuel,
+    hasLiquidityForOutcome,
     bettingMode,
     selectedOutcome,
-    selectedOffer: selectedOffer?.id
+    selectedOffer: selectedOffer?.id,
+    selectedOfferUnmatched: selectedOffer?.amount_unmatched
   });
 
   console.log('[PlaceBetPanel] Liquidity calculation:', {
@@ -118,12 +116,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const fixedOdds = selectedOutcome === 'a' ? bet?.odds_a : selectedOutcome === 'b' ? bet?.odds_b : bet?.odds_draw || 0;
   const odds = fixedOdds;
 
-  // Calculate max stake based on available LP liquidity (no limit for parimutuel)
+  // Calculate max stake based on available LP liquidity
   const maxMatcherStake = bettingMode === 'fixed_lp' ?
   selectedOffer ?
   parseFloat((selectedOffer.amount_unmatched || 0).toFixed(4)) :
   parseFloat(totalLiquidityForOutcome.toFixed(4)) :
-  undefined; // parimutuel - no max limit
+  0;
 
   // Bettor payout: stake * odds from the Bet entity
   const matcherPayout = stakeNum * odds;
@@ -402,8 +400,8 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           }
         </div>
 
-        {/* Liquidity info row - Fixed odds */}
-        {bettingMode === 'fixed_lp' && totalLiquidityForOutcome > 0 &&
+        {/* Liquidity info row - show when LP exists */}
+        {bettingMode === 'fixed_lp' && maxMatcherStake > 0 &&
         <div className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2 border border-border/30">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-muted-foreground">Available</span>
@@ -414,25 +412,14 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
           </div>
         }
 
-        {/* Parimutuel mode banner */}
-        {isParimutuel &&
-        <div className="bg-accent/10 border border-accent/30 rounded-lg px-3 py-2 flex items-center gap-2">
-            <Zap className="w-3 h-3 text-accent" />
-            <div className="flex-1">
-              <p className="text-[10px] font-bold text-accent">Parimutuel Pool</p>
-              <p className="text-[9px] text-accent/80">Bet directly into the on-chain pool</p>
-            </div>
-          </div>
-        }
-        
-        {/* Offer fully matched */}
-        {mode === 'match' && selectedOffer && (selectedOffer.amount_unmatched || 0) <= 0 &&
+        {/* No liquidity - show Add Liquidity link */}
+        {bettingMode === 'no_liquidity' &&
         <div className="bg-secondary/30 border border-border/30 rounded-lg p-2.5 flex items-center justify-between">
-          <p className="text-[10px] text-muted-foreground">Offer fully matched</p>
-          <a href={`/lp?matchId=${matchId}`} className="bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-[10px] py-1 px-2.5 rounded-lg transition-colors">
-            Add Liquidity
-          </a>
-        </div>
+            <p className="text-[10px] text-muted-foreground">⏳ No LP liquidity yet</p>
+            <a href={`/lp?matchId=${matchId}`} className="bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent font-bold text-[10px] py-1 px-2.5 rounded-lg transition-colors">
+              Add Liquidity
+            </a>
+          </div>
         }
         
 
@@ -474,13 +461,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         <Input
           type="number"
           inputMode="decimal"
-          placeholder={isBettingClosed ? "Betting Closed" : "0.00"}
+          placeholder={bettingMode === 'no_liquidity' ? "No Liquidity" : isBettingClosed ? "Betting Closed" : "0.00"}
           value={amount}
           min={0}
-          max={maxMatcherStake !== null ? maxMatcherStake : undefined}
+          max={maxMatcherStake > 0 ? maxMatcherStake : undefined}
           step="any"
           onChange={(e) => setAmount(e.target.value.replace(',', '.'))}
-          disabled={isBettingClosed}
+          disabled={isBettingClosed || bettingMode === 'no_liquidity'}
           className="bg-secondary/50 border-border/50 text-base font-heading font-bold h-10 disabled:opacity-50 disabled:cursor-not-allowed" />
         
         <div className="flex gap-1.5 flex-wrap">
@@ -577,9 +564,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
 
       <Button
         onClick={handleGetInstruction}
-        disabled={stakeNum <= 0 || isPreparing || isBettingClosed}
+        disabled={stakeNum <= 0 || isPreparing || isBettingClosed || bettingMode === 'no_liquidity'}
         className="w-full h-12 font-heading font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">
-        {timeRemaining && timeRemaining.total <= 0 ? (
+        {bettingMode === 'no_liquidity' ? (
+          <><Clock className="w-4 h-4 mr-2" />Waiting for LP</>
+        ) : timeRemaining && timeRemaining.total <= 0 ? (
           <><Clock className="w-4 h-4 mr-2" />Betting Closed</>
         ) : isPreparing ? 'Preparing...' : (
           `Bet ◎${stakeNum > 0 ? stakeNum.toFixed(2) : '0.00'} @ ${odds.toFixed(2)}x`
