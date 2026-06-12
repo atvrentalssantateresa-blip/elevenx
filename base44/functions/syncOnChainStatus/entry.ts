@@ -50,9 +50,19 @@ Deno.serve(async (req) => {
 
     const { programId, connection } = getSolanaConfig();
     
-    // Get all bets
+    // Get all bets and matches
     const allBets = await base44.asServiceRole.entities.Bet.filter({});
-    console.log(`[syncOnChainStatus] Checking ${allBets.length} bets...`);
+    const allMatches = await base44.asServiceRole.entities.Match.filter({});
+    
+    // Create match ID set for filtering
+    const matchIds = new Set(allMatches.map(m => m.id));
+    
+    // Filter out orphan bets (bets without matching matches)
+    const validBets = allBets.filter(b => matchIds.has(b.match_id));
+    const orphanBets = allBets.filter(b => !matchIds.has(b.match_id));
+    
+    console.log(`[syncOnChainStatus] Total Bets: ${allBets.length}, Valid: ${validBets.length}, Orphans: ${orphanBets.length}`);
+    console.log(`[syncOnChainStatus] Total Matches: ${allMatches.length}`);
     
     let updated = 0;
     let alreadyDeployed = 0;
@@ -62,8 +72,8 @@ Deno.serve(async (req) => {
     
     // Process in batches to avoid rate limits
     const batchSize = 10;
-    for (let i = 0; i < allBets.length; i += batchSize) {
-      const batch = allBets.slice(i, i + batchSize);
+    for (let i = 0; i < validBets.length; i += batchSize) {
+      const batch = validBets.slice(i, i + batchSize);
       
       for (const bet of batch) {
         // Derive market PDA
@@ -136,7 +146,11 @@ Deno.serve(async (req) => {
     
     return Response.json({
       success: true,
-      message: `✓ Sync complete! ${updated} updated, ${alreadyDeployed} already deployed, ${notFound} not found, ${settledCount} settled on-chain.`,
+      message: `✓ Sync complete! ${updated} updated, ${alreadyDeployed} already deployed, ${notFound} not found, ${settledCount} settled on-chain. Skipped ${orphanBets.length} orphan bets.`,
+      totalBets: allBets.length,
+      totalMatches: allMatches.length,
+      orphanBets: orphanBets.length,
+      validBets: validBets.length,
       updated,
       alreadyDeployed,
       notFound,
