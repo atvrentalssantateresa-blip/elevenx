@@ -938,7 +938,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
   if (signature) {
     // Show success message for all transaction types
-    // Always use mainnet Solscan link (no cluster param for mainnet)
+    // Always use mainnet Solscan link (no cluster param)
     const solanaScanUrl = `https://solscan.io/tx/${signature}`;
     
     // Determine transaction type message and payout info
