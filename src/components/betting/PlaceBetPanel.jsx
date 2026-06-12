@@ -297,18 +297,40 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
         });
         console.log('[PlaceBetPanel] matchBet response:', res);
       } else if (selectedOutcome) {
-        // User clicked odds - auto-select first available offer
-        const firstAvailableOffer = allOffers.find((o) =>
-        (o.status === 'open' || o.status === 'partially_matched') &&
-        o.outcome === selectedOutcome &&
-        (o.amount_unmatched || 0) > 0
-        );
-        if (!firstAvailableOffer) {
+        // User clicked odds - auto-select best available offer (largest liquidity first)
+        const availableOffers = allOffers
+          .filter((o) =>
+            (o.status === 'open' || o.status === 'partially_matched') &&
+            o.outcome === selectedOutcome &&
+            (o.amount_unmatched || 0) > 0
+          )
+          .sort((a, b) => (b.amount_unmatched || 0) - (a.amount_unmatched || 0));
+        
+        if (availableOffers.length === 0) {
           throw new Error('No LP liquidity available for this outcome. Please wait for a liquidity provider.');
         }
-        console.log('[PlaceBetPanel] Auto-selecting offer:', firstAvailableOffer.id);
+        
+        // Find the best offer that can cover this stake
+        let selectedOfferForBet = availableOffers.find((o) => (o.amount_unmatched || 0) >= stakeNum);
+        
+        // If no single offer can cover the full stake, use the largest one
+        if (!selectedOfferForBet) {
+          selectedOfferForBet = availableOffers[0];
+          console.log('[PlaceBetPanel] Warning: Stake exceeds any single offer, using largest offer:', {
+            stake: stakeNum,
+            largestOffer: selectedOfferForBet.id,
+            largestOfferUnmatched: selectedOfferForBet.amount_unmatched
+          });
+        }
+        
+        console.log('[PlaceBetPanel] Auto-selecting offer:', {
+          offer_id: selectedOfferForBet.id,
+          amount_unmatched: selectedOfferForBet.amount_unmatched,
+          stake: stakeNum
+        });
+        
         res = await callBackendFunction('matchBet', {
-          offer_id: firstAvailableOffer.id,
+          offer_id: selectedOfferForBet.id,
           amount: stakeNum,
           wallet_address: wallet
         });
