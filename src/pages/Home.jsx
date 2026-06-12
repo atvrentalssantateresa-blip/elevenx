@@ -37,10 +37,19 @@ export default function Home() {
     queryFn: () => base44.entities.Match.list('match_time', 100)
   });
 
-  const { data: bets = [] } = useQuery({
+  const { data: allBets = [] } = useQuery({
     queryKey: ['bets'],
     queryFn: () => base44.entities.Bet.list('-created_date', 200)
   });
+
+  // Filter out dead markets (odds = 0) and non-deployed markets
+  const bets = allBets.filter(b => 
+    b.status === 'open' && 
+    b.solana_market_created === true &&
+    b.odds_a > 0 && 
+    b.odds_b > 0 && 
+    b.odds_draw > 0
+  );
 
   const { data: userBets = [] } = useQuery({
     queryKey: ['allUserBets'],
