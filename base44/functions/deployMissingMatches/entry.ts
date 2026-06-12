@@ -161,23 +161,73 @@ Deno.serve(async (req) => {
     const allMatches = await base44.asServiceRole.entities.Match.filter({});
     const matchMap = new Map(allMatches.map(m => [m.id, m]));
     
-    // Filter to only deployed bets with valid matches
-    const deployedBets = allBets.filter(b => b.solana_market_created && b.solana_market_pda && matchMap.has(b.match_id));
-    
-    // Build set of deployed team combinations
+    // CRITICAL FIX: Check on-chain PDA existence for ALL bets, not just those with solana_market_created=true
+    // This prevents duplicates when commitMarketDeployment wasn't called
     const deployedTeams = new Set();
-    for (const bet of deployedBets) {
+    const pdaCache = new Map(); // Cache PDA checks to avoid redundant RPC calls
+    
+    for (const bet of allBets) {
+      if (!matchMap.has(bet.match_id)) continue;
+      
       const match = matchMap.get(bet.match_id);
-      if (match) {
-        const key = `${match.team_a.toLowerCase().trim()}|${match.team_b.toLowerCase().trim()}`;
+      const key = `${match.team_a.toLowerCase().trim()}|${match.team_b.toLowerCase().trim()}`;
+      
+      // Skip if already marked as deployed in this run
+      if (deployedTeams.has(key)) continue;
+      
+      // Check if DB says deployed (fast path)
+      if (bet.solana_market_created && bet.solana_market_pda) {
         deployedTeams.add(key);
+        continue;
+      }
+      
+      // Otherwise, check on-chain PDA existence
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
+      const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
+      
+      // Use cached result if available
+      let marketInfo = pdaCache.get(marketPda.toBase58());
+      if (marketInfo === undefined) {
+        marketInfo = await connection.getAccountInfo(marketPda);
+        pdaCache.set(marketPda.toBase58(), marketInfo);
+      }
+      
+      if (marketInfo) {
+        // PDA exists - verify it's a valid market (not dead/fake)
+        const data = marketInfo.data;
+        const oracleOddsA = Number(data.readBigUInt64LE(156));
+        const oracleOddsB = Number(data.readBigUInt64LE(164));
+        const oracleOddsDraw = Number(data.readBigUInt64LE(172));
+        
+        const chainTeamA = new TextDecoder().decode(data.slice(40, 72)).replace(/\0/g, '').trim();
+        const chainTeamB = new TextDecoder().decode(data.slice(72, 103)).replace(/\0/g, '').trim();
+        
+        // Valid market: non-zero odds AND matching team names
+        const isValid = (oracleOddsA > 0 || oracleOddsB > 0 || oracleOddsDraw > 0) &&
+                        (chainTeamA === match.team_a && chainTeamB === match.team_b);
+        
+        if (isValid) {
+          deployedTeams.add(key);
+          console.log(`[deployMissingMatches] ✓ ${match.team_a} vs ${match.team_b} already deployed (on-chain check)`);
+        }
       }
     }
     
     // Find MISSING matches (not in deployed set)
+    // CRITICAL: Also check on-chain to avoid creating duplicates
     const missingMatches = allMatches.filter(m => {
       const key = `${m.team_a.toLowerCase().trim()}|${m.team_b.toLowerCase().trim()}`;
-      return !deployedTeams.has(key);
+      if (deployedTeams.has(key)) return false; // Already marked as deployed in DB
+      
+      // Check if there's ANY bet for this match with a PDA (even if solana_market_created=false)
+      const matchBets = allBets.filter(b => b.match_id === m.id && b.solana_market_pda);
+      if (matchBets.length > 0) {
+        // There's a PDA in DB - verify it's actually valid on-chain before deploying
+        return false; // Skip, let cleanup function handle invalid ones
+      }
+      
+      return true;
     });
     
     console.log(`[deployMissingMatches] Found ${missingMatches.length} missing matches out of ${allMatches.length} total`);
@@ -221,11 +271,16 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // Check PDA status
+      // Check PDA status - use cached result if available
       const matchIdBytes = Buffer.alloc(32);
       Buffer.from(match.id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(match.id.length, 32));
       const [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), matchIdBytes], programId);
-      const marketInfo = await connection.getAccountInfo(marketPda);
+      
+      let marketInfo = pdaCache.get(marketPda.toBase58());
+      if (marketInfo === undefined) {
+        marketInfo = await connection.getAccountInfo(marketPda);
+        pdaCache.set(marketPda.toBase58(), marketInfo);
+      }
       
       effectiveMatchId = match.id;
       pdaStatus = 'FREE';
@@ -242,12 +297,27 @@ Deno.serve(async (req) => {
         const chainTeamB = new TextDecoder().decode(data.slice(72, 103)).replace(/\0/g, '').trim();
         const teamMismatch = chainTeamA !== match.team_a || chainTeamB !== match.team_b;
 
-        if (isDead || teamMismatch) {
-          effectiveMatchId = match.id + '_v2';
-          pdaStatus = isDead ? 'OCCUPIED_DEAD' : 'OCCUPIED_FAKE';
-          console.log(`[deployMissingMatches] PDA ${pdaStatus} for ${match.id}, using ${effectiveMatchId}`);
-          // NOTE: match_id update is deferred to commitMarketDeployment (after tx success) for atomicity
+        // CRITICAL FIX: Do NOT create _v2 suffix - skip dead/fake markets and let admin clean them up first
+        // Creating _v2 generates duplicate PDAs without closing the old ones
+        if (isDead) {
+          pdaStatus = 'OCCUPIED_DEAD';
+          console.log(`[deployMissingMatches] ☠️ SKIP ${match.team_a} vs ${match.team_b} - PDA dead (odds=[0,0,0]), admin must close first`);
+          skippedCount++;
+          continue; // Skip this match, try next
         }
+        
+        if (teamMismatch) {
+          pdaStatus = 'OCCUPIED_FAKE';
+          console.log(`[deployMissingMatches] ☠️ SKIP ${match.team_a} vs ${match.team_b} - PDA has fake teams (${chainTeamA} vs ${chainTeamB}), admin must close first`);
+          skippedCount++;
+          continue; // Skip this match, try next
+        }
+        
+        // PDA exists and looks valid - should have been caught by deployedTeams check, but double-check
+        pdaStatus = 'OCCUPIED_VALID';
+        console.log(`[deployMissingMatches] ☠️ SKIP ${match.team_a} vs ${match.team_b} - PDA already valid`);
+        skippedCount++;
+        continue;
       }
       
       betToDeploy = bet;

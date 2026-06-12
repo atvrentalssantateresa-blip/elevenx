@@ -610,65 +610,27 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
-                    if (!confirm('⚠️ This will close all 64 dead markets (oracle_odds=[0,0,0]) created by the bad CLI script.\n\nThis marks them as voided so LPs can withdraw and PDAs are freed.\n\nContinue?')) return;
-                    
-                    toast.loading('Scanning for dead markets...', { duration: 2000 });
-                    
                     try {
-                      const bets = await base44.entities.Bet.filter({ solana_market_pda: { $exists: true } });
-                      let closed = 0;
-                      let failed = 0;
-                      let skipped = 0;
-                      
-                      for (const bet of bets) {
-                        if (!bet.solana_market_pda) continue;
-                        
-                        try {
-                          const res = await base44.functions.invoke('closeMarket', { market_pda: bet.solana_market_pda });
-                          if (res.data.solana_instruction) {
-                            // Auto-sign for batch operation
-                            const phantom = window.solana;
-                            if (!phantom?.isConnected) {
-                              await phantom.connect();
-                            }
-                            
-                            const programId = new PublicKey(res.data.solana_instruction.programId);
-                            const keys = res.data.solana_instruction.keys.map(k => ({
-                              pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? phantom.publicKey.toBase58() : k.pubkey),
-                              isSigner: k.isSigner,
-                              isWritable: k.isWritable,
-                            }));
-                            const data = Buffer.from(res.data.solana_instruction.instruction_data, 'base64');
-                            
-                            const ix = new TransactionInstruction({ keys, programId, data });
-                            const tx = new Transaction().add(ix);
-                            tx.recentBlockhash = (await connection.getLatestBlockhash('confirmed')).blockhash;
-                            tx.feePayer = phantom.publicKey;
-                            
-                            const sig = await phantom.signAndSendTransaction(tx, { skipPreflight: true });
-                            await connection.confirmTransaction(sig.signature, 'confirmed');
-                            closed++;
-                          } else {
-                            skipped++;
-                          }
-                        } catch (err) {
-                          failed++;
-                        }
-                        
-                        // Rate limit
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                      const res = await callBackendFunction('cleanupDuplicateMarkets', {});
+                      if (res.needsSigning) {
+                        toast.success(`Found ${res.duplicateCount} duplicates/fake/dead markets. Cleaning up...`);
+                        setSweepDialog({
+                          instruction: res.solana_instruction,
+                          totalDuplicates: res.duplicateCount,
+                          cleanupMode: true,
+                        });
+                      } else {
+                        toast.success(res.message || '✓ No duplicates found!');
+                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
                       }
-                      
-                      toast.success(`✓ Closed ${closed} dead markets! ${skipped > 0 ? `${skipped} skipped (not dead).` : ''} ${failed > 0 ? `${failed} failed.` : ''}`);
-                      queryClient.invalidateQueries({ queryKey: ['allBets'] });
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
                 >
-                  <span className="font-bold text-lg text-white">🔧 Close Dead Markets</span>
-                  <span className="text-xs text-gray-400">Recover 64 PDAs from bad CLI</span>
+                  <span className="font-bold text-lg text-white">🧹 Cleanup Duplicates</span>
+                  <span className="text-xs text-gray-400">Close 57 fake/dead PDAs</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -711,46 +673,31 @@ export default function Admin() {
                       toast.error('Connect wallet first!');
                       return;
                     }
-                    if (!confirm('⚠️ This will scan for dead markets (oracle_odds=[0,0,0]) and close them.\n\nOnly use this if you have dead markets from the bad CLI script.\n\nContinue?')) return;
                     try {
-                      // First, fetch all bets to find dead markets
-                      const bets = await base44.asServiceRole.entities.Bet.list();
-                      const deadMarkets = bets.filter(b => b.solana_market_pda && b.odds_a === 0 && b.odds_b === 0 && b.odds_draw === 0);
-                      
-                      if (deadMarkets.length === 0) {
-                        toast.success('✓ No dead markets found!');
-                        return;
+                      const res = await callBackendFunction('cleanupDuplicateMarkets', {});
+                      if (res.needsSigning) {
+                        toast.success(`Found ${res.duplicateCount} duplicates/fake/dead markets. Closing first...`);
+                        // Set up cleanup dialog (reuse sweepDialog or create new one)
+                        setSweepDialog({
+                          instruction: res.solana_instruction,
+                          marketPda: res.market_pda,
+                          balance: { sol: 0, lamports: 0 }, // Not used for close_market
+                          cleanupMode: true,
+                          remaining: res.remaining,
+                          totalDuplicates: res.duplicateCount,
+                        });
+                      } else {
+                        toast.success(res.message || '✓ No duplicates found!');
+                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
                       }
-                      
-                      toast(`Found ${deadMarkets.length} dead markets. Closing...`, { icon: '🔧' });
-                      
-                      let closed = 0;
-                      let failed = 0;
-                      for (const bet of deadMarkets) {
-                        try {
-                          const res = await base44.functions.invoke('closeMarket', { market_pda: bet.solana_market_pda });
-                          if (res.data.solana_instruction) {
-                            // In a real scenario, you'd sign each transaction
-                            // For now, just count them
-                            closed++;
-                          }
-                        } catch (err) {
-                          failed++;
-                          console.error('Failed to close market:', bet.solana_market_pda, err);
-                        }
-                        // Rate limit: 200ms between calls
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                      }
-                      
-                      toast.success(`✓ Closed ${closed} dead markets! ${failed > 0 ? `${failed} failed.` : ''}`);
                     } catch (err) {
                       toast.error('Error: ' + err.message);
                     }
                   }}
                   className="h-24 flex flex-col gap-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/30 rounded-xl"
                 >
-                  <span className="font-bold text-lg text-white">🔧 Close Dead Markets</span>
-                  <span className="text-xs text-gray-400">Recover 64 PDAs from bad CLI</span>
+                  <span className="font-bold text-lg text-white">🧹 Cleanup Duplicates</span>
+                  <span className="text-xs text-gray-400">Close 57 fake/dead PDAs</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -1391,22 +1338,70 @@ export default function Admin() {
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <Card className="bg-gray-900 border border-gray-800 p-6 max-w-lg w-full">
               <div className="space-y-4">
-                <div className="bg-orange-600/20 border border-orange-600/30 rounded-xl p-4">
-                  <h3 className="font-heading font-bold text-lg text-orange-400 mb-1">Sweep Market Funds</h3>
-                  <p className="text-sm text-gray-400">Balance: ◎{sweepDialog.balance?.sol.toFixed(6)} SOL ({sweepDialog.balance?.lamports} lamports)</p>
-                </div>
-                <SolanaTransactionSigner
-                  instruction={sweepDialog.instruction}
-                  amount={sweepDialog.balance?.sol.toFixed(6)}
-                  onSuccess={() => {
-                    toast.success('✓ Market funds swept to your wallet!');
-                    setSweepDialog(null);
-                  }}
-                  onError={(err) => {
-                    toast.error('Failed: ' + err.message);
-                    setSweepDialog(null);
-                  }}
-                />
+                {sweepDialog.cleanupMode ? (
+                  <>
+                    <div className="bg-red-600/20 border border-red-600/30 rounded-xl p-4">
+                      <h3 className="font-heading font-bold text-lg text-red-400 mb-1">Cleanup Duplicate Market</h3>
+                      <p className="text-sm text-gray-400">Closing {sweepDialog.totalDuplicates} duplicate/fake/dead PDAs. {sweepDialog.remaining} remaining after this.</p>
+                    </div>
+                    <SolanaTransactionSigner
+                      instruction={sweepDialog.instruction}
+                      amount="0"
+                      onSuccess={async () => {
+                        // Auto-continue cleanup loop
+                        const remaining = sweepDialog.remaining || 0;
+                        if (remaining > 0) {
+                          try {
+                            const res = await callBackendFunction('cleanupDuplicateMarkets', {});
+                            if (res.needsSigning) {
+                              setSweepDialog({
+                                ...sweepDialog,
+                                instruction: res.solana_instruction,
+                                marketPda: res.market_pda,
+                                remaining: res.remaining,
+                              });
+                              toast.success(`✓ Closed 1 duplicate. ${res.remaining} remaining...`);
+                            } else {
+                              toast.success(`✓ All ${sweepDialog.totalDuplicates} duplicates cleaned up!`);
+                              setSweepDialog(null);
+                              queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                            }
+                          } catch (err) {
+                            toast.error('Cleanup stopped: ' + err.message);
+                            setSweepDialog(null);
+                          }
+                        } else {
+                          toast.success('✓ All duplicates cleaned up!');
+                          setSweepDialog(null);
+                          queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                        }
+                      }}
+                      onError={(err) => {
+                        toast.error('Failed: ' + err.message);
+                        setSweepDialog(null);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-orange-600/20 border border-orange-600/30 rounded-xl p-4">
+                      <h3 className="font-heading font-bold text-lg text-orange-400 mb-1">Sweep Market Funds</h3>
+                      <p className="text-sm text-gray-400">Balance: ◎{sweepDialog.balance?.sol.toFixed(6)} SOL ({sweepDialog.balance?.lamports} lamports)</p>
+                    </div>
+                    <SolanaTransactionSigner
+                      instruction={sweepDialog.instruction}
+                      amount={sweepDialog.balance?.sol.toFixed(6)}
+                      onSuccess={() => {
+                        toast.success('✓ Market funds swept to your wallet!');
+                        setSweepDialog(null);
+                      }}
+                      onError={(err) => {
+                        toast.error('Failed: ' + err.message);
+                        setSweepDialog(null);
+                      }}
+                    />
+                  </>
+                )}
                 <Button
                   onClick={() => setSweepDialog(null)}
                   variant="outline"
