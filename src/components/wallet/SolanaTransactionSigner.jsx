@@ -3,7 +3,7 @@ import { Wallet, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Buffer } from 'buffer';
-import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import { base44 } from '@/api/base44Client';
 
 // Compute Anchor discriminator: SHA256("global:<name>").slice(0, 8)
@@ -309,30 +309,70 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(claimIx);
         
       } else if (instruction.instruction_type === 'provide_liquidity') {
-        // provide_liquidity — use instruction_data + keys directly from backend
-        console.log('Creating provide_liquidity program instruction:', instruction);
+        // provide_liquidity — build instruction with exact PDA derivations
+        console.log('=== PROVIDE_LIQUIDITY TRANSACTION ===');
         
-        const programId = new PublicKey(instruction.programId);
+        const programId = new PublicKey('3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
+        const matchId = instruction.match_id;
+        const outcome = instruction.outcome; // u8 (0, 1, or 2)
+        const amountSol = instruction.amount; // SOL amount
+        const amountLamports = BigInt(Math.floor(amountSol * 1e9));
         
-        // Guard: ensure keys array exists and has 4 accounts
-        if (!instruction.keys || !Array.isArray(instruction.keys) || instruction.keys.length === 0) {
-          console.error('[SolanaTransactionSigner] provide_liquidity: keys array is missing or empty:', instruction.keys);
-          throw new Error('Invalid instruction: keys array is undefined or empty. Backend must provide 4 accounts (market, lpOffer, lp, systemProgram).');
-        }
+        console.log('[provide_liquidity] Params:', { matchId, outcome, amountSol, amountLamports: amountLamports.toString() });
         
-        // Build keys: replace signer wallet placeholder, mark lp (index 2) as signer
-        const keys = instruction.keys.map((k, i) => ({
-          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
-          isSigner: i === 2 ? true : k.isSigner,
-          isWritable: k.isWritable,
-        }));
+        // Derive market PDA: seeds = ["market", match_id_bytes (32 bytes)]
+        const matchIdBytes = Buffer.alloc(32);
+        Buffer.from(matchId, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(matchId.length, 32));
+        const [marketPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('market'), matchIdBytes],
+          programId
+        );
+        console.log('[provide_liquidity] ✓ Market PDA:', marketPda.toBase58());
         
-        // Use instruction_data from backend (has correct hardcoded discriminator)
-        const data = Buffer.from(instruction.instruction_data, 'base64');
-        console.log('[SolanaTransactionSigner] provide_liquidity data (hex):', data.toString('hex'));
+        // Derive lp_offer PDA: seeds = ["lp_offer", market_pubkey (32), lp_wallet (32), outcome (1 byte)]
+        const outcomeByte = Buffer.from([outcome]); // Single u8 byte
+        const [lpOfferPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from('lp_offer'),
+            marketPda.toBuffer(),
+            provider.publicKey.toBuffer(),
+            outcomeByte
+          ],
+          programId
+        );
+        console.log('[provide_liquidity] ✓ LP Offer PDA:', lpOfferPda.toBase58());
         
-        const provideIx = new TransactionInstruction({ keys, programId, data });
+        // Build instruction data: discriminator (8 bytes) + outcome (u8) + amount (u64 LE)
+        const disc = await anchorDiscriminator('provide_liquidity');
+        const data = Buffer.alloc(17);
+        disc.copy(data, 0);
+        data.writeUInt8(outcome, 8);
+        data.writeBigUInt64LE(amountLamports, 9);
+        console.log('[provide_liquidity] Instruction data (hex):', data.toString('hex'));
+        
+        // Build keys array (exact order: market, lp_offer, lp, system_program)
+        const keys = [
+          { pubkey: marketPda, isSigner: false, isWritable: true },
+          { pubkey: lpOfferPda, isSigner: false, isWritable: true },
+          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // lp (signer)
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ];
+        console.log('[provide_liquidity] Keys:', keys.map(k => ({ pubkey: k.pubkey.toBase58(), isSigner: k.isSigner, isWritable: k.isWritable })));
+        
+        const provideIx = new TransactionInstruction({
+          keys,
+          programId,
+          data,
+        });
+        
+        // Add priority fee (compute unit price) for mainnet
+        const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: 0.001 * 1e6, // 0.001 lamports per compute unit
+        });
+        transaction.add(priorityFeeIx);
         transaction.add(provideIx);
+        
+        console.log('[provide_liquidity] Transaction built with priority fee');
         
       } else if (instruction.instruction_type === 'place_bet') {
         // place_bet — call the actual program instruction
