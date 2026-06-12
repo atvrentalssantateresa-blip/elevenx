@@ -176,7 +176,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const maxMatcherStake = bettingMode === 'fixed_lp' ?
   selectedOffer ?
   parseFloat((selectedOffer.amount_unmatched || 0).toFixed(4)) :
-  parseFloat(totalLiquidityForOutcome.toFixed(4)) :
+  // When no specific offer selected, use the LARGEST single offer (not total)
+  // because bets match against one offer at a time
+  parseFloat(
+    validOffers
+      .filter((o) => (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome)
+      .reduce((max, o) => Math.max(max, o.amount_unmatched || 0), 0).toFixed(4)
+  ) :
   0;
 
   // Bettor payout: stake * odds from the Bet entity
