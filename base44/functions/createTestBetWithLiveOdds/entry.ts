@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
 
-    let odds_a = 0, odds_b = 0, odds_draw = 0, bookmaker = 'TheStatsAPI';
+    // Fetch current odds - validate non-zero (required by program)
+    let odds_a = 2.0, odds_b = 2.0, odds_draw = 3.0, bookmaker = 'TheStatsAPI';
 
     if (oddsRes.ok) {
       const oddsData = await oddsRes.json();
@@ -69,6 +70,11 @@ Deno.serve(async (req) => {
           odds_a = parseFloat(m.home?.last_seen || m.home?.opening || 0);
           odds_draw = parseFloat(m.draw?.last_seen || m.draw?.opening || 0);
           odds_b = parseFloat(m.away?.last_seen || m.away?.opening || 0);
+          
+          // Validate odds are non-zero (program requires > 1.0x)
+          if (!odds_a || odds_a <= 0) odds_a = 2.0;
+          if (!odds_b || odds_b <= 0) odds_b = 2.0;
+          if (!odds_draw || odds_draw <= 0) odds_draw = 3.0;
         }
       }
     }

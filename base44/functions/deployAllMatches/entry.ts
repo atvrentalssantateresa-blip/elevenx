@@ -43,9 +43,10 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
   feeOptionBuf.writeUInt8(1, 0);
   feeOptionBuf.writeUInt16LE(feeRaw, 1);
 
-  const oddsA = Math.max(Math.round((bet.odds_a || 2.0) * 100), 101);
-  const oddsB = Math.max(Math.round((bet.odds_b || 2.0) * 100), 101);
-  const oddsDraw = Math.max(Math.round((bet.odds_draw || 3.0) * 100), 101);
+  // oracle_odds: each must be > 100 (100 = 1.0x). Validate odds are non-zero before scaling.
+  const oddsA = Math.max(Math.round((bet.odds_a > 0 ? bet.odds_a : 2.0) * 100), 101);
+  const oddsB = Math.max(Math.round((bet.odds_b > 0 ? bet.odds_b : 2.0) * 100), 101);
+  const oddsDraw = Math.max(Math.round((bet.odds_draw > 0 ? bet.odds_draw : 3.0) * 100), 101);
 
   const paramsData = Buffer.alloc(172);
   let offset = 0;

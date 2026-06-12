@@ -312,7 +312,7 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         // provide_liquidity — build instruction with exact PDA derivations
         console.log('=== PROVIDE_LIQUIDITY TRANSACTION ===');
         
-        const programId = new PublicKey('3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
+        const programId = new PublicKey(instruction.programId || window.SOLANA_PROGRAM_ID);
         const matchId = instruction.match_id;
         const outcome = instruction.outcome; // u8 (0, 1, or 2)
         const amountSol = instruction.amount; // SOL amount
@@ -661,31 +661,6 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         });
         
         transaction.add(withdrawFeesIx);
-      } else if (instruction.instruction_type === 'sweep_market_funds') {
-        // sweep_market_funds — admin sweeps stuck funds from market account to admin wallet
-        console.log('Creating sweep_market_funds program instruction:', instruction);
-        
-        const programId = new PublicKey(instruction.programId);
-        const keys = instruction.keys.map(k => ({
-          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        }));
-        const data = Buffer.from(instruction.instruction_data, 'base64');
-        
-        console.log('[sweep_market_funds] Keys:', keys.map(k => ({
-          pubkey: k.pubkey.toBase58(),
-          isSigner: k.isSigner,
-          isWritable: k.isWritable,
-        })));
-        
-        const sweepIx = new TransactionInstruction({
-          keys,
-          programId,
-          data,
-        });
-        
-        transaction.add(sweepIx);
       }
 
       // Get recent blockhash for transaction
@@ -938,7 +913,9 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
   if (signature) {
     // Show success message for all transaction types
-    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
+    const rpcUrl = instruction?.rpcUrl || window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    const cluster = rpcUrl.includes('devnet') ? 'devnet' : 'mainnet-beta';
+    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=${cluster}`;
     
     // Determine transaction type message and payout info
     let txMessage = 'Transaction confirmed on Solana';

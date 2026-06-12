@@ -119,6 +119,45 @@ pub fn set_settlement_feed(ctx: Context<SetSettlementFeed>, feed_pubkey: Pubkey)
     Ok(())
 }
 
+// ── close_market ──────────────────────────────────────────────────────────────
+/// Admin-only: Close a dead market with oracle_odds=[0,0,0].
+/// This marks the market as closed and voided, allowing LP withdrawals.
+/// Used to recover from bad CLI script that created 64 dead markets.
+/// 
+/// REQUIREMENTS:
+/// - Market must have oracle_odds = [0,0,0] (dead market)
+/// - Market must have no matched bets (total_matched = [0,0,0])
+/// - Market must have no pending bets (total_pending = [0,0,0])
+/// - Market must have no LP committed (total_lp_committed = 0)
+pub fn close_market(ctx: Context<CloseMarket>) -> Result<()> {
+    let market = &mut ctx.accounts.market;
+    
+    // Only allow closing dead markets (odds = 0)
+    require!(
+        market.oracle_odds[0] == 0 && market.oracle_odds[1] == 0 && market.oracle_odds[2] == 0,
+        BettingError::Unauthorized
+    );
+    
+    // Ensure no funds are locked
+    require!(
+        market.total_matched[0] == 0 && market.total_matched[1] == 0 && market.total_matched[2] == 0,
+        BettingError::Unauthorized
+    );
+    require!(
+        market.total_pending[0] == 0 && market.total_pending[1] == 0 && market.total_pending[2] == 0,
+        BettingError::Unauthorized
+    );
+    require!(market.total_lp_committed == 0, BettingError::Unauthorized);
+    
+    // Mark as voided and settled
+    market.voided = true;
+    market.settled = true;
+    market.settlement_finalized = true;
+    
+    msg!("[close_market] Closed dead market {}", market.key());
+    Ok(())
+}
+
 // ── sweep_market_funds ────────────────────────────────────────────────────────
 /// Admin-only: Sweep residual SOL from a settled/voided market.
 /// SECURITY FIX: 30-day grace period prevents sweeping unclaimed winnings.
@@ -236,6 +275,22 @@ pub struct SetSettlementFeed<'info> {
     pub admin: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseMarket<'info> {
+    #[account(
+        mut,
+        seeds = [b"market", market.match_id.as_ref()],
+        bump = market.bump,
+    )]
+    pub market: Account<'info, BetMarket>,
+
+    #[account(seeds = [b"platform"], bump = platform_config.bump)]
+    pub platform_config: Account<'info, PlatformConfig>,
+
+    #[account(constraint = admin.key() == platform_config.admin @ BettingError::Unauthorized)]
+    pub admin: Signer<'info>,
 }
 
 #[derive(Accounts)]
