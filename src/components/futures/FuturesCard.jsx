@@ -92,7 +92,7 @@ export default function FuturesCard({ market, index, onSelect }) {
                   )}
                 </div>
               ) : market.status === 'settled' ? (
-                <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full">✓ SETTLED</span>
+                <span className="text-[9px] font-bold text-yellow-500 bg-yellow-500/20 border border-yellow-500/30 px-2 py-0.5 rounded-full">🏆 FINAL</span>
               ) : market.status === 'closed' ? (
                 <span className="text-[9px] font-bold text-muted-foreground bg-muted/50 border border-border px-2 py-0.5 rounded-full">CLOSED</span>
               ) : (
