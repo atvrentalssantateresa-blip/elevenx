@@ -293,69 +293,28 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(claimIx);
         
       } else if (instruction.instruction_type === 'provide_liquidity') {
-        // provide_liquidity — build instruction with exact PDA derivations
+        // provide_liquidity — use backend-provided keys and instruction_data directly
         console.log('=== PROVIDE_LIQUIDITY TRANSACTION ===');
         
         const programId = new PublicKey(instruction.programId || window.SOLANA_PROGRAM_ID);
-        const matchId = instruction.match_id;
-        const outcome = instruction.outcome; // u8 (0, 1, or 2)
-        // instruction.amount may be undefined if panel passes amount via prop — fall back to the `amount` prop
-        const amountSol = instruction.amount ?? amount;
-        const _parsedSol = parseFloat(String(amountSol).replace(',', '.'));
-        if (isNaN(_parsedSol) || _parsedSol <= 0) throw new Error('Invalid LP deposit amount — please enter a valid SOL value');
-        const amountLamports = BigInt(Math.round(_parsedSol * 1_000_000_000));
         
-        console.log('[provide_liquidity] Params:', { matchId, outcome, amountSol, amountLamports: amountLamports.toString() });
+        if (!instruction.instruction_data) throw new Error('Missing instruction_data from backend');
+        if (!instruction.keys || instruction.keys.length === 0) throw new Error('Missing keys from backend');
         
-        // Derive market PDA: seeds = ["market", match_id_bytes (32 bytes)]
-        const matchIdBytes = Buffer.alloc(32);
-        Buffer.from(matchId, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(matchId.length, 32));
-        const [marketPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from('market'), matchIdBytes],
-          programId
-        );
-        console.log('[provide_liquidity] ✓ Market PDA:', marketPda.toBase58());
-        
-        // Derive lp_offer PDA: seeds = ["lp_offer", market_pubkey (32), lp_wallet (32), outcome (1 byte)]
-        const outcomeByte = Buffer.from([outcome]); // Single u8 byte
-        const [lpOfferPda] = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from('lp_offer'),
-            marketPda.toBuffer(),
-            provider.publicKey.toBuffer(),
-            outcomeByte
-          ],
-          programId
-        );
-        console.log('[provide_liquidity] ✓ LP Offer PDA:', lpOfferPda.toBase58());
-        
-        // Build instruction data: discriminator (8 bytes) + outcome (u8) + amount (u64 LE)
-        const disc = await anchorDiscriminator('provide_liquidity');
-        const data = Buffer.alloc(17);
-        disc.copy(data, 0);
-        data.writeUInt8(outcome, 8);
-        data.writeBigUInt64LE(amountLamports, 9);
+        const data = Buffer.from(instruction.instruction_data, 'base64');
         console.log('[provide_liquidity] Instruction data (hex):', data.toString('hex'));
         
-        // Build keys array (exact order: market, lp_offer, lp, system_program)
-        const keys = [
-          { pubkey: marketPda, isSigner: false, isWritable: true },
-          { pubkey: lpOfferPda, isSigner: false, isWritable: true },
-          { pubkey: provider.publicKey, isSigner: true, isWritable: true }, // lp (signer)
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        ];
+        const keys = instruction.keys.map(k => ({
+          pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        }));
         console.log('[provide_liquidity] Keys:', keys.map(k => ({ pubkey: k.pubkey.toBase58(), isSigner: k.isSigner, isWritable: k.isWritable })));
         
-        const provideIx = new TransactionInstruction({
-          keys,
-          programId,
-          data,
-        });
+        const provideIx = new TransactionInstruction({ keys, programId, data });
         
-        // Add priority fee (compute unit price) for mainnet
-        const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
-          microLamports: 0.001 * 1e6, // 0.001 lamports per compute unit
-        });
+        // Add priority fee for mainnet
+        const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 });
         transaction.add(priorityFeeIx);
         transaction.add(provideIx);
         
