@@ -9,7 +9,7 @@ const { appId, token, functionsVersion, appBaseUrl } = appParams;
 if (typeof window !== 'undefined') {
   // Default to devnet if not set - backend functions should override these
   window.SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
-  window.ELEVENX_PROGRAM_ID = 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
+  window.ELEVENX_PROGRAM_ID = '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu';
 }
 
 // Get wallet auth token from localStorage if available

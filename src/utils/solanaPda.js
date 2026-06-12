@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 // CRITICAL: Program ID must be set via environment variable - never hardcode
 // This reads from the global window.ELEVENX_PROGRAM_ID set at app initialization
 const getProgramId = () => {
-  const programId = window.ELEVENX_PROGRAM_ID || 'EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN';
+  const programId = window.ELEVENX_PROGRAM_ID || '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu';
   return programId;
 };
 
