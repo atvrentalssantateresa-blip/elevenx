@@ -816,6 +816,39 @@ export default function Admin() {
                   <span className="font-bold text-lg text-white">🔧 Fix LP Sync</span>
                   <span className="text-xs text-gray-400">Fix progress bars</span>
                 </Button>
+                <Button
+                  onClick={async () => {
+                    if (!walletAddress) {
+                      toast.error('Connect wallet first!');
+                      return;
+                    }
+                    try {
+                      const res = await base44.functions.invoke('deployMissingMatches');
+                      if (res.data.needsSigning) {
+                        toast.success(`Found ${res.data.totalMissing} missing matches. Deploying first...`);
+                        // Set up dialog for signing
+                        setDeployMatchesDialog({
+                          instruction: res.data.solana_instruction,
+                          remaining: res.data.remaining,
+                          betId: res.data.bet_id,
+                          marketPda: res.data.market_pda,
+                          batchLabel: `Missing (${res.data.pda_status})`,
+                          batchSize: res.data.totalMissing,
+                        });
+                      } else {
+                        toast.success(res.data.message || '✓ All matches deployed!');
+                        queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                      }
+                    } catch (err) {
+                      console.error('[Admin] deployMissingMatches error:', err);
+                      toast.error('Error: ' + err.message);
+                    }
+                  }}
+                  className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
+                >
+                  <span className="font-bold text-lg text-white">🎯 Deploy Missing (Smart)</span>
+                  <span className="text-xs text-gray-400">Deploy 34 missing with PDA check</span>
+                </Button>
               </div>
             </Card>
           </TabsContent>
