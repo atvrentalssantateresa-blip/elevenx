@@ -29,7 +29,10 @@ export default function AdminBetRow({ bet, match, onSettle, onVoid }) {
       return res.data;
     },
     enabled: !!bet.match_id,
-    refetchInterval: 5000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: false,
   });
 
   if (!match) return null;
