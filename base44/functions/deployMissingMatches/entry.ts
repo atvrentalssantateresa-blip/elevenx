@@ -25,9 +25,11 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
   const [voteTallyPda] = PublicKey.findProgramAddressSync([Buffer.from('vote_tally'), marketPda.toBuffer()], programId);
   const [feeVaultPda] = PublicKey.findProgramAddressSync([Buffer.from('fee_vault')], programId);
 
-  // Use bet.open_until if set, otherwise fallback to match.match_time - 5 minutes (betting closes 5 min before kickoff)
-  const openUntilRaw = bet.open_until || match.match_time;
-  const openUntil = Math.floor(new Date(openUntilRaw).getTime() / 1000);
+  // Use bet.open_until if set, otherwise fallback to match.match_time (betting closes at kickoff)
+  const rawOpenUntil = bet.open_until
+    ? new Date(bet.open_until).getTime()
+    : new Date(match.match_time).getTime();
+  const openUntil = Math.floor(rawOpenUntil / 1000);
   const settleAfter = openUntil + 60;
 
   const outcomeNames = ['A', 'B', 'Draw'].map((fallback, i) => {
