@@ -938,8 +938,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
 
   if (signature) {
     // Show success message for all transaction types
-    const cluster = (window.SOLANA_RPC_URL || '').includes('devnet') ? 'devnet' : 'mainnet-beta';
-    const solanaScanUrl = `https://solscan.io/tx/${signature}?cluster=${cluster}`;
+    // Always use mainnet Solscan link (no cluster param for mainnet)
+    const solanaScanUrl = `https://solscan.io/tx/${signature}`;
     
     // Determine transaction type message and payout info
     let txMessage = 'Transaction confirmed on Solana';

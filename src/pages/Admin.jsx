@@ -25,7 +25,8 @@ export default function Admin() {
   const [fixTimestampDialog, setFixTimestampDialog] = useState(null); // { instruction, pendingSettle: { bet, outcome } }
   const [initPlatformDialog, setInitPlatformDialog] = useState(null); // { instruction }
   const [deployFuturesDialog, setDeployFuturesDialog] = useState(null); // { instruction, remaining, marketId }
-  const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId, marketPda, matchIdToUpdate }
+  const [deployMatchesDialog, setDeployMatchesDialog] = useState(null); // { instruction, remaining, betId, marketPda, matchIdToUpdate, autoDeploy, deployedCount, totalMissing }
+  const [autoDeploying, setAutoDeploying] = useState(false); // Track auto-deploy loop state
   const [withdrawFeesDialog, setWithdrawFeesDialog] = useState(null); // { instruction, amountSOL }
   const [sweepDialog, setSweepDialog] = useState(null); // { instruction, marketPda, balance }
   const [exportDialog, setExportDialog] = useState(null); // { content, filename }
@@ -758,10 +759,10 @@ export default function Admin() {
                       return;
                     }
                     try {
-                      // Use direct HTTP call with wallet JWT (bypasses platform auth)
                       const res = await callBackendFunction('deployMissingMatches', {});
                       if (res.needsSigning) {
-                        toast.success(`Found ${res.totalMissing} missing matches. Deploying first...`);
+                        toast.success(`Found ${res.totalMissing} missing matches. Auto-deploying...`);
+                        setAutoDeploying(true);
                         setDeployMatchesDialog({
                           instruction: res.solana_instruction,
                           remaining: res.remaining,
@@ -770,7 +771,9 @@ export default function Admin() {
                           matchIdToUpdate: res.match_id_to_update,
                           batchLabel: `Missing (${res.pda_status})`,
                           batchSize: res.totalMissing,
-                          isMissingDeploy: true,
+                          autoDeploy: true,
+                          deployedCount: 0,
+                          totalMissing: res.totalMissing,
                         });
                       } else {
                         toast.success(res.message || '✓ All matches deployed!');
@@ -783,7 +786,7 @@ export default function Admin() {
                   className="h-24 flex flex-col gap-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-600/30 rounded-xl"
                 >
                   <span className="font-bold text-lg text-white">🎯 Deploy Missing (Smart)</span>
-                  <span className="text-xs text-gray-400">Deploy 34 missing with PDA check</span>
+                  <span className="text-xs text-gray-400">Auto-loop deploy all missing</span>
                 </Button>
                 <Button
                   onClick={async () => {
@@ -825,17 +828,21 @@ export default function Admin() {
                       return;
                     }
                     try {
-                      // Use direct HTTP call with wallet JWT (bypasses platform auth)
                       const res = await callBackendFunction('deployMissingMatches', {});
                       if (res.needsSigning) {
-                        toast.success(`Found ${res.totalMissing} missing matches. Deploying first...`);
+                        toast.success(`Found ${res.totalMissing} missing matches. Auto-deploying...`);
+                        setAutoDeploying(true);
                         setDeployMatchesDialog({
                           instruction: res.solana_instruction,
                           remaining: res.remaining,
                           betId: res.bet_id,
                           marketPda: res.market_pda,
+                          matchIdToUpdate: res.match_id_to_update,
                           batchLabel: `Missing (${res.pda_status})`,
                           batchSize: res.totalMissing,
+                          autoDeploy: true,
+                          deployedCount: 0,
+                          totalMissing: res.totalMissing,
                         });
                       } else {
                         toast.success(res.message || '✓ All matches deployed!');
@@ -849,7 +856,7 @@ export default function Admin() {
                   className="h-24 flex flex-col gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 rounded-xl"
                 >
                   <span className="font-bold text-lg text-white">🎯 Deploy Missing (Smart)</span>
-                  <span className="text-xs text-gray-400">Deploy 34 missing with PDA check</span>
+                  <span className="text-xs text-gray-400">Auto-loop deploy all missing</span>
                 </Button>
               </div>
             </Card>
@@ -1263,7 +1270,6 @@ export default function Admin() {
                     // Commit DB update AFTER on-chain confirmation
                     if (deployMatchesDialog.betId && deployMatchesDialog.marketPda) {
                       try {
-                        // Use direct HTTP call with wallet JWT (bypasses platform auth)
                         await callBackendFunction('commitMarketDeployment', {
                           bet_id: deployMatchesDialog.betId,
                           market_pda: deployMatchesDialog.marketPda,
@@ -1273,18 +1279,73 @@ export default function Admin() {
                         console.error('[Admin] commitMarketDeployment failed:', e);
                       }
                     }
-                    // Calculate start/end from batchOffset stored in batchLabel
-                    const label = deployMatchesDialog.batchLabel || '';
-                    const match = label.match(/Batch (\d+)–(\d+)/);
-                    const startIndex = match ? parseInt(match[1]) - 1 : 0;
-                    const endIndex = match ? parseInt(match[2]) - 1 : deployMatchesDialog.batchSize - 1;
-                    handleDeployMatchesSuccess(startIndex, endIndex, deployMatchesDialog.batchLabel, deployMatchesDialog.force);
+                    
+                    // Auto-deploy loop for Deploy Missing (Smart) flow
+                    if (deployMatchesDialog.autoDeploy) {
+                      const deployedCount = (deployMatchesDialog.deployedCount || 0) + 1;
+                      const totalMissing = deployMatchesDialog.totalMissing || deployMatchesDialog.remaining + 1;
+                      const remaining = deployMatchesDialog.remaining || 0;
+                      
+                      toast.success(`✓ Deployed ${deployedCount}/${totalMissing} markets! ${remaining - 1 > 0 ? `${remaining - 1} remaining...` : 'Done!'}`);
+                      
+                      // Auto-call deployMissingMatches for next market
+                      try {
+                        const res = await callBackendFunction('deployMissingMatches', {});
+                        if (res.needsSigning && res.solana_instruction) {
+                          // More markets to deploy - update dialog with next instruction
+                          setDeployMatchesDialog({
+                            instruction: res.solana_instruction,
+                            remaining: res.remaining,
+                            betId: res.bet_id,
+                            marketPda: res.market_pda,
+                            matchIdToUpdate: res.match_id_to_update,
+                            batchLabel: `Missing (${res.pda_status})`,
+                            batchSize: res.totalMissing,
+                            autoDeploy: true,
+                            deployedCount,
+                            totalMissing,
+                          });
+                        } else {
+                          // All done
+                          toast.success(`✓ All ${totalMissing} missing markets deployed!`);
+                          setDeployMatchesDialog(null);
+                          setAutoDeploying(false);
+                          queryClient.invalidateQueries({ queryKey: ['allBets'] });
+                        }
+                      } catch (err) {
+                        console.error('[Admin] Auto-deploy error:', err);
+                        toast.error('Auto-deploy stopped: ' + err.message);
+                        setDeployMatchesDialog(null);
+                        setAutoDeploying(false);
+                      }
+                    } else {
+                      // Regular batch deploy - calculate start/end from batchLabel
+                      const label = deployMatchesDialog.batchLabel || '';
+                      const match = label.match(/Batch (\d+)–(\d+)/);
+                      const startIndex = match ? parseInt(match[1]) - 1 : 0;
+                      const endIndex = match ? parseInt(match[2]) - 1 : deployMatchesDialog.batchSize - 1;
+                      handleDeployMatchesSuccess(startIndex, endIndex, deployMatchesDialog.batchLabel, deployMatchesDialog.force);
+                    }
                   }}
                   onError={(err) => {
+                    console.error('[Admin] Deploy transaction error:', err);
                     toast.error('Failed: ' + err.message);
-                    setDeployMatchesDialog(null);
+                    if (autoDeploying) {
+                      setAutoDeploying(false);
+                    }
+                    // Don't auto-close dialog on error - let user see the error
                   }}
                 />
+                {deployMatchesDialog.autoDeploy && (
+                  <div className="bg-purple-600/20 border border-purple-600/30 rounded-xl p-3 text-center">
+                    <p className="text-sm text-purple-400 font-bold">
+                      🚀 Auto-deploying... {deployMatchesDialog.deployedCount || 0}/{deployMatchesDialog.totalMissing || deployMatchesDialog.remaining + 1} markets deployed
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {deployMatchesDialog.remaining || 0} remaining — Phantom will prompt for each transaction
+                    </p>
+                  </div>
+                )}
                 <Button
                   onClick={() => setDeployMatchesDialog(null)}
                   variant="outline"
