@@ -43,20 +43,27 @@ function buildCreateMarketInstruction(bet, match, programIdStr, programId, platf
   feeOptionBuf.writeUInt8(1, 0);
   feeOptionBuf.writeUInt16LE(feeRaw, 1);
 
-  // Validate odds are non-zero BEFORE scaling to basis points
+  // Validate odds exist and are non-zero BEFORE scaling to basis points
   const rawOddsA = bet.odds_a || 0;
   const rawOddsB = bet.odds_b || 0;
   const rawOddsDraw = bet.odds_draw || 0;
   
-  // CRITICAL: Reject bets with zero/invalid odds - prevents dead markets
-  if (rawOddsA <= 0 || rawOddsB <= 0 || rawOddsDraw <= 0) {
-    throw new Error(`Invalid odds for ${bet.title || bet.match_id}: A=${rawOddsA}, B=${rawOddsB}, Draw=${rawOddsDraw}. Update with live odds first.`);
+  // CRITICAL: Skip bets with zero/null/invalid odds - prevents dead markets
+  // Each odds value must be > 1.0 (decimal format from The Odds API)
+  if (!rawOddsA || !rawOddsB || !rawOddsDraw || rawOddsA <= 0 || rawOddsB <= 0 || rawOddsDraw <= 0) {
+    throw new Error(`Invalid odds for ${bet.title || bet.match_id}: A=${rawOddsA}, B=${rawOddsB}, Draw=${rawOddsDraw}. Run autoFetchOdds first.`);
   }
   
-  // Scale decimal odds (e.g., 2.50) to basis points (250) where 100 = 1.0x
-  const oddsA = Math.max(Math.round(rawOddsA * 100), 101);
-  const oddsB = Math.max(Math.round(rawOddsB * 100), 101);
-  const oddsDraw = Math.max(Math.round(rawOddsDraw * 100), 101);
+  // Convert decimal odds (e.g., 2.50) to basis points (250) where 100 = 1.0x
+  // Each value MUST be > 100 (minimum 101 = 1.01x multiplier)
+  const oddsA = Math.round(rawOddsA * 100);
+  const oddsB = Math.round(rawOddsB * 100);
+  const oddsDraw = Math.round(rawOddsDraw * 100);
+  
+  // Enforce minimum 101 (1.01x) to prevent invalid on-chain state
+  if (oddsA < 101 || oddsB < 101 || oddsDraw < 101) {
+    throw new Error(`Odds too low for ${bet.title || bet.match_id}: A=${oddsA}, B=${oddsB}, Draw=${oddsDraw}. Minimum is 101 (1.01x)`);
+  }
 
   const paramsData = Buffer.alloc(172);
   let offset = 0;
