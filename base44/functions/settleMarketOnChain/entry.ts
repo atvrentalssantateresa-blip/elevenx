@@ -44,28 +44,15 @@ async function signWithOracleKey(messageBytes) {
   const oraclePrivKeyRaw = Deno.env.get('ORACLE_PRIVATE_KEY');
   if (!oraclePrivKeyRaw) throw new Error('ORACLE_PRIVATE_KEY secret not set');
 
-  // Accept base58-encoded 64-byte keypair (Solana keypair format) or 32-byte seed
+  // @noble/ed25519 v2 requires a sha512 sync implementation in non-browser envs
+  ed.etc.sha512Sync = (...msgs) => sha512(ed.etc.concatBytes(...msgs));
+
+  // Accept base58-encoded 64-byte keypair (Solana format) or 32-byte seed
   const decoded = bs58.decode(oraclePrivKeyRaw.trim());
-  
-  // Solana keypairs are 64 bytes: first 32 = seed, last 32 = pubkey
-  // SubtleCrypto importKey for Ed25519 expects the 32-byte raw seed
   const seedBytes = decoded.length === 64 ? decoded.slice(0, 32) : decoded;
-  
-  const privateKey = await crypto.subtle.importKey(
-    'raw',
-    seedBytes,
-    { name: 'Ed25519' },
-    false,
-    ['sign'],
-  );
 
-  const signatureBuffer = await crypto.subtle.sign(
-    { name: 'Ed25519' },
-    privateKey,
-    messageBytes,
-  );
-
-  return Buffer.from(signatureBuffer);
+  const signatureBytes = await ed.sign(messageBytes, seedBytes);
+  return Buffer.from(signatureBytes);
 }
 
 Deno.serve(async (req) => {
