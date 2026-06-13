@@ -126,6 +126,12 @@ Deno.serve(async (req) => {
     const ADMIN_WALLET = '4xfwNAkxNbgZuR5LsjTh91z9Sw3d9AVvHvbPpTaiipZZ';
     const effectiveRole = (userWallet === ADMIN_WALLET) ? 'admin' : (walletUser.role || 'user');
     
+    console.log('[walletAuth] Role check:', {
+      userWallet: userWallet?.slice(0, 8),
+      isAdminWallet: userWallet === ADMIN_WALLET,
+      effectiveRole,
+    });
+    
     const tokenPayload = {
       userId: walletUser.id,
       walletAddress: userWallet,
@@ -166,11 +172,13 @@ Deno.serve(async (req) => {
 
     console.log('✓ User authenticated - token generated for userId:', walletUser.id);
     
+    console.log('[walletAuth] Returning response with role:', effectiveRole);
+    
     return Response.json({
       success: true,
       userId: walletUser.id,
       walletAddress: userWallet,
-      role: walletUser.role,
+      role: effectiveRole,
       username: walletUser.username || walletUser.full_name,
       email: walletUser.email,
       authToken: token,
