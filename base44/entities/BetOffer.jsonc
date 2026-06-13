@@ -44,10 +44,11 @@
         "partially_matched",
         "fully_matched",
         "cancelled",
-        "settled"
+        "settled",
+        "withdrawn"
       ],
       "default": "open",
-      "description": "Offer status"
+      "description": "Offer status \u2014 'withdrawn' is terminal: LP removed on-chain, amount_unmatched=0"
     },
     "odds_at_creation": {
       "type": "number",

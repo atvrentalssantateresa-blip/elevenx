@@ -130,6 +130,8 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
       } else {
         setInstruction(response.data.solana_instruction);
         setCommitData(response.data.commit_data);
+        // CRITICAL: show the signer — this was the missing line causing no Phantom prompt
+        setShowSigner(true);
       }
     } catch (err) {
       setError(err.message);
@@ -424,7 +426,7 @@ export default function ProvideLiquidityPanel({ bet, match, match_id }) {
           <CheckCircle className="w-8 h-8 text-accent mx-auto mb-2" />
           <p className="font-heading font-bold text-sm text-accent">✓ Liquidity provided successfully!</p>
           <a
-            href={`https://solscan.io/tx/${successSignature}?cluster=devnet`}
+            href={`https://solscan.io/tx/${successSignature}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-primary text-xs font-bold hover:underline mt-2"
