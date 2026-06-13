@@ -20,44 +20,36 @@ Deno.serve(async (req) => {
     // Check auth: either platform admin OR admin wallet address
     const ADMIN_WALLET = '4xfwNAkxNbgZuR5LsjTh91z9Sw3d9AVvHvbPpTaiipZZ';
     let isAdmin = false;
+    let authMethod = '';
     
     // Try 1: Platform admin via base44.auth.me()
     try {
       const user = await base44.auth.me();
       if (user && user.role === 'admin') {
         isAdmin = true;
-        console.log('[bulkDeployFutures] Authenticated as platform admin:', user.email);
+        authMethod = `platform_admin (${user.email})`;
       }
     } catch (_) {}
     
-    // Try 2: Check wallet address from request payload (passed from frontend)
+    // Try 2: Check JWT token from Authorization header
     if (!isAdmin) {
-      try {
-        const body = await req.clone().json().catch(() => ({}));
-        if (body.walletAddress && body.walletAddress === ADMIN_WALLET) {
-          isAdmin = true;
-          console.log('[bulkDeployFutures] Authenticated as admin wallet:', body.walletAddress);
-        }
-      } catch (_) {}
+      const authHeader = req.headers.get('Authorization') || '';
+      const token = authHeader.replace('Bearer ', '');
+      if (token && token.split('.').length === 3) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+          if (payload.walletAddress === ADMIN_WALLET) {
+            isAdmin = true;
+            authMethod = `admin_wallet (${payload.walletAddress.slice(0, 8)}...)`;
+          } else if (payload.role === 'admin') {
+            isAdmin = true;
+            authMethod = `jwt_admin_role`;
+          }
+        } catch (_) {}
+      }
     }
     
-    // Try 3: Check JWT token for wallet address
-    if (!isAdmin) {
-      try {
-        const authHeader = req.headers.get('Authorization') || '';
-        const token = authHeader.replace('Bearer ', '');
-        if (token) {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-            if (payload.walletAddress === ADMIN_WALLET || payload.role === 'admin') {
-              isAdmin = true;
-              console.log('[bulkDeployFutures] Authenticated via JWT:', payload.walletAddress || payload.role);
-            }
-          }
-        }
-      } catch (_) {}
-    }
+    console.log('[bulkDeployFutures] Auth check:', { isAdmin, authMethod });
     
     if (!isAdmin) {
       console.error('[bulkDeployFutures] Access denied - not admin');
