@@ -74,7 +74,29 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   // allOffers already filtered to open/partially_matched with amount_unmatched > 0 in queryFn
   const validOffers = Array.isArray(allOffers) ? allOffers : [];
   
-  // CRITICAL DEBUG INFO
+  const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
+  validOffers.
+  filter((o) => {
+    const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
+    return isValid;
+  }).
+  reduce((sum, o) => {
+    const unmatched = parseFloat((o.amount_unmatched || 0).toFixed(9));
+    return parseFloat((sum + unmatched).toFixed(9));
+  }, 0) :
+  0;
+  
+  // Check if ANY LP liquidity exists for this bet (for UI display)
+  const hasAnyLiquidity = validOffers.some((o) => {
+    const hasUnmatched = (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0;
+    return hasUnmatched;
+  });
+
+  // Check if betting is allowed for the selected outcome
+  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? (selectedOffer.amount_unmatched || 0) > 0 : false;
+  const bettingMode = hasLiquidityForOutcome ? 'fixed_lp' : 'no_liquidity';
+  
+  // CRITICAL DEBUG INFO (after all variables are declared)
   console.log('========== [PlaceBetPanel] RENDER DEBUG ==========');
   console.log('[PlaceBetPanel] bet.id:', bet?.id);
   console.log('[PlaceBetPanel] allOffers:', allOffers);
@@ -102,47 +124,12 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     });
   });
   
-  const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
-  validOffers.
-  filter((o) => {
-    const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
-    console.log(`[PlaceBetPanel] Filtering offer ${o.id}:`, { 
-      status: o.status, 
-      outcome: o.outcome, 
-      selectedOutcome, 
-      matches: isValid,
-      amount_unmatched: o.amount_unmatched
-    });
-    return isValid;
-  }).
-  reduce((sum, o) => {
-    const unmatched = parseFloat((o.amount_unmatched || 0).toFixed(9));
-    console.log(`[PlaceBetPanel] Adding offer ${o.id} unmatched:`, unmatched);
-    return parseFloat((sum + unmatched).toFixed(9));
-  }, 0) :
-  0;
-  
   console.log('[PlaceBetPanel] === LIQUIDITY RESULTS ===', {
     selectedOutcome,
     totalLiquidityForOutcome,
     hasAnyLiquidity: validOffers.some((o) => (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0)
   });
 
-  // Check if ANY LP liquidity exists for this bet (for UI display)
-  const hasAnyLiquidity = validOffers.some((o) => {
-    const hasUnmatched = (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0;
-    console.log(`[PlaceBetPanel] hasAnyLiquidity check for ${o.id}:`, {
-      status: o.status,
-      amount_unmatched: o.amount_unmatched,
-      hasUnmatched
-    });
-    return hasUnmatched;
-  });
-
-  // Check if betting is allowed for the selected outcome
-  const hasLiquidityForOutcome = selectedOutcome ? totalLiquidityForOutcome > 0 : selectedOffer ? (selectedOffer.amount_unmatched || 0) > 0 : false;
-  const bettingMode = hasLiquidityForOutcome ? 'fixed_lp' : 'no_liquidity';
-  
   console.log('[PlaceBetPanel] FINAL LIQUIDITY STATE:', {
     validOffersCount: validOffers.length,
     totalLiquidityForOutcome,
