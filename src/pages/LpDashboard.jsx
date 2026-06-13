@@ -1085,6 +1085,7 @@ export default function LpDashboard() {
                         // Get outcome label from market outcomes array
                         const outcomeData = futuresMarket.outcomes?.[chainOffer.outcome];
                         const outcomeLabel = outcomeData?.label || `Outcome ${chainOffer.outcome + 1}`;
+                        const outcomeFlag = outcomeData?.flag || futuresMarket.country_flag || '🏆';
                         
                         // Build position object from on-chain data
                         const position = {
@@ -1093,6 +1094,7 @@ export default function LpDashboard() {
                           match_id: marketId,
                           outcome: chainOffer.outcome === 0 ? 'a' : chainOffer.outcome === 1 ? 'b' : 'draw',
                           outcome_label: outcomeLabel,
+                          outcome_flag: outcomeFlag,
                           outcome_num: chainOffer.outcome,
                           liquidity_deposited: chainOffer.amountCommitted,
                           liquidity_matched: chainOffer.amountMatched,

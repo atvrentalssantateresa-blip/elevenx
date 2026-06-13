@@ -483,7 +483,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                 'from-primary/20 to-primary/10 border-primary/30'}`
                 }>
                   <span className="text-xl filter drop-shadow-md">
-                    {isFutures ? '🏆' : offer.outcome === 'a' ? matchData.team_a_flag || '🏠' : offer.outcome === 'b' ? matchData.team_b_flag || '🏠' : '🤝'}
+                    {isFutures ? (offer.outcome_flag || position.outcome_flag || '🏆') : offer.outcome === 'a' ? matchData.team_a_flag || '🏠' : offer.outcome === 'b' ? matchData.team_b_flag || '🏠' : '🤝'}
                   </span>
                 </div>
               </div>
