@@ -495,6 +495,7 @@ export default function LpDashboard() {
       const connection = new Connection(rpcUrl, 'confirmed');
       const result = {};
       
+      // Process markets sequentially with a small delay to avoid RPC rate limits
       for (const market of futuresMarkets) {
         const marketPda = market.solana_market_pda;
         if (!marketPda) continue;
@@ -519,10 +520,10 @@ export default function LpDashboard() {
           }
         }).filter(Boolean);
         
-        // Fetch all accounts in parallel
-        const accountInfos = await Promise.all(
-          pdas.map(({ pda }) => connection.getAccountInfo(new PublicKey(pda)).catch(() => null))
-        );
+        // Fetch all 3 outcome accounts in parallel (small batch — only 3 per market)
+        const accountInfos = await Promise.allSettled(
+          pdas.map(({ pda }) => connection.getAccountInfo(new PublicKey(pda)))
+        ).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null));
         
         pdas.forEach(({ outcome, pda }, i) => {
           const info = accountInfos[i];
@@ -546,12 +547,16 @@ export default function LpDashboard() {
         if (marketOffers.length > 0) {
           result[market.id] = marketOffers;
         }
+        
+        // Small delay between markets to avoid RPC rate limits
+        await new Promise(r => setTimeout(r, 100));
       }
       
       return result;
     },
     enabled: !!walletAddress && futuresMarkets.length > 0,
-    staleTime: 30000,
+    staleTime: 60000,
+    retry: false,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
