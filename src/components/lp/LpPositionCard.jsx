@@ -693,6 +693,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             // Priority 0: Refunded/Withdrawn - but STILL allow unmatched withdrawal
             // Only show "Withdrawn" badge if there's NO unmatched liquidity left on-chain
+            const onChainClosed = onChainOffer?.closed === true;
             const hasUnmatchedOnChain = onChainOffer ? onChainOffer.unmatched > 0 : liquidityUnmatched > 0;
             if (liquidityMatched === 0 && (isRefunded || isWithdrawn || userBetStatus === 'refunded' || userBetStatus === 'withdrawn')) {
               // If there's still unmatched on-chain, show withdraw button instead
@@ -769,7 +770,6 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             // Priority 4: Has unmatched liquidity - withdraw unmatched (only if on-chain closed == false)
             // CRITICAL: Never show withdraw if on-chain closed flag is true (AlreadyWithdrawn error)
-            const onChainClosed = onChainOffer?.closed === true;
             const onChainUnmatched = onChainOffer ? onChainOffer.unmatched : liquidityUnmatched;
             const canWithdrawUnmatched = (onChainOffer ? (onChainUnmatched > 0 && !onChainClosed) : hasUnmatchedLiquidity) && 
                                          userBetStatus !== 'refunded' && 
