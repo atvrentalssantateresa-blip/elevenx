@@ -33,33 +33,55 @@ export default function Futures() {
   const handleDeployAll = async () => {
     setIsDeploying(true);
     try {
-      console.log('[Futures] Calling deployAllFutures...');
-      const res = await base44.functions.invoke('deployAllFutures');
+      console.log('[Futures] Calling bulkDeployFutures...');
+      const res = await base44.functions.invoke('bulkDeployFutures', {});
       console.log('[Futures] Deploy response:', res.data);
       
       if (res.data.error) {
         throw new Error(res.data.error);
       }
       
-      if (res.data.needsSigning && res.data.solana_instruction) {
-        console.log('[Futures] Setting pending deploy:', res.data.solana_instruction);
-        setPendingDeploy({
-          ...res.data.solana_instruction,
-          market_id: res.data.market_id,
-          remaining: res.data.remaining,
+      if (res.data.instructions && res.data.instructions.length > 0) {
+        console.log('[Futures] Setting pending bulk deploy:', res.data.instructions.length, 'markets');
+        setPendingBulkDeploy({
+          instructions: res.data.instructions,
+          marketUpdates: res.data.marketUpdates,
+          marketCount: res.data.marketCount,
+          currentIndex: 0,
         });
-      } else if (res.data.verified) {
-        alert(res.data.message || '✓ All futures verified on-chain!');
-        queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
       } else {
-        alert(res.data.message || '✓ Deployment complete!');
+        alert(res.data.message || '✓ All futures verified on-chain!');
         queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
       }
     } catch (err) {
       console.error('[Futures] Deploy error:', err);
-      alert('Error deploying futures: ' + (err.message || 'Unknown error') + '\n\nMake sure Platform is initialized first (Admin → Platform tab → Init Platform)');
+      alert('Error deploying futures: ' + (err.message || 'Unknown error'));
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const [pendingBulkDeploy, setPendingBulkDeploy] = useState(null);
+
+  const handleBulkDeploySuccess = async (result) => {
+    console.log('Market deployed:', result);
+    
+    const currentUpdate = pendingBulkDeploy?.marketUpdates[pendingBulkDeploy.currentIndex];
+    if (currentUpdate) {
+      await base44.entities.FuturesMarket.update(currentUpdate.id, {
+        solana_market_created: true,
+        solana_market_pda: currentUpdate.solana_market_pda,
+      });
+    }
+
+    const nextIndex = pendingBulkDeploy.currentIndex + 1;
+
+    if (nextIndex < pendingBulkDeploy.instructions.length) {
+      setPendingBulkDeploy(prev => ({ ...prev, currentIndex: nextIndex }));
+    } else {
+      setPendingBulkDeploy(null);
+      queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
+      alert(`✓ Successfully deployed all ${pendingBulkDeploy.instructions.length} futures markets to Solana!`);
     }
   };
 
@@ -348,35 +370,35 @@ export default function Futures() {
               </button>
             )}
 
-      {/* Deploy Transaction Modal */}
-      {pendingDeploy && (
+      {/* Bulk Deploy Transaction Modal */}
+      {pendingBulkDeploy && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-md w-full">
+          <div className="bg-card border border-border/50 rounded-2xl p-6 max-w-lg w-full">
             <div className="space-y-4">
               <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
-                <p className="text-sm font-bold text-primary mb-1">Deploy Futures Market</p>
+                <p className="text-sm font-bold text-primary mb-1">
+                  Deploy Market {pendingBulkDeploy.currentIndex + 1} of {pendingBulkDeploy.instructions.length}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Sign transaction to deploy this market on-chain
-                  {pendingDeploy.remaining > 0 && ` • ${pendingDeploy.remaining} remaining after`}
+                  Sign each transaction to deploy markets one at a time. Remaining: {pendingBulkDeploy.instructions.length - pendingBulkDeploy.currentIndex}
                 </p>
               </div>
+
+              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all"
+                  style={{ width: `${(pendingBulkDeploy.currentIndex / pendingBulkDeploy.instructions.length) * 100}%` }}
+                />
+              </div>
+
               <SolanaTransactionSigner
-                instruction={pendingDeploy}
+                instruction={pendingBulkDeploy.instructions[pendingBulkDeploy.currentIndex]}
                 amount={0}
-                futures_market_id={pendingDeploy.market_id}
-                onSuccess={handleDeploySuccess}
-                onError={(err) => {
-                  console.error('Deploy failed:', err);
-                  alert('Transaction failed: ' + (err.message || 'Unknown error'));
-                }}
+                futures_market_id={pendingBulkDeploy.marketUpdates[pendingBulkDeploy.currentIndex]?.id}
+                onSuccess={handleBulkDeploySuccess}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPendingDeploy(null)}
-                className="w-full"
-              >
-                Cancel
+              <Button variant="outline" size="sm" onClick={() => setPendingBulkDeploy(null)} className="w-full">
+                Cancel (Deployed {pendingBulkDeploy.currentIndex} so far)
               </Button>
             </div>
           </div>
