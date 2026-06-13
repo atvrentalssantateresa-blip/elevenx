@@ -1,66 +1,47 @@
-/**
- * Direct HTTP client for calling backend functions with wallet JWT.
- * Bypasses Base44 SDK auth requirements for wallet-only sessions.
- */
+import { appParams } from '@/lib/app-params';
 
 /**
  * Call a backend function directly via HTTP with wallet JWT auth token.
- * @param {string} functionName - Name of the backend function to call
- * @param {object} payload - Function parameters
- * @returns {Promise<any>} Function response data
+ * Uses the correct Base44 API endpoint to avoid 404s.
  */
 export async function callBackendFunction(functionName, payload) {
   const authToken = localStorage.getItem('elevenx_auth_token');
-  const walletSession = localStorage.getItem('elevenx_wallet_session');
-  const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
   
   if (!authToken) {
     throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
   }
-  
-  console.log('[callBackendFunction] Calling:', functionName);
-  console.log('[callBackendFunction] Token length:', authToken?.length);
-  console.log('[callBackendFunction] Wallet address:', walletAddress?.slice(0, 8));
-  
-  // Use Base44's internal function invoke endpoint
-  let response;
-  try {
-    response = await fetch(`/.base44/functions/${functionName}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        'X-Wallet-Token': authToken, // Fallback header
-      },
-      body: JSON.stringify({
-        ...payload,
-        _auth_token: authToken, // Fallback in body
-      }),
-    });
-  } catch (networkErr) {
-    console.error('[callBackendFunction] Network error:', networkErr);
-    throw new Error('Network error - cannot reach backend. Please check your connection.');
-  }
-  
+
+  const appId = appParams.appId;
+  if (!appId) throw new Error('App ID not found');
+
+  const url = `/api/apps/${appId}/functions/${functionName}`;
+  console.log('[callBackendFunction] POST', url);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'X-App-Id': appId,
+    },
+    body: JSON.stringify(payload),
+  });
+
   console.log('[callBackendFunction] Response status:', response.status);
-  
+
   const responseText = await response.text();
-  console.log('[callBackendFunction] Raw response:', responseText.slice(0, 500));
-  
-  if (!responseText) {
-    throw new Error(`Empty response (HTTP ${response.status})`);
-  }
-  
+  if (!responseText) throw new Error(`Empty response (HTTP ${response.status})`);
+
   let responseData;
   try {
     responseData = JSON.parse(responseText);
-  } catch (parseErr) {
+  } catch {
     throw new Error(`Invalid JSON: ${responseText.slice(0, 200)}`);
   }
-  
+
   if (!response.ok) {
     throw new Error(responseData?.error || `HTTP ${response.status}`);
   }
-  
+
   return responseData;
 }
