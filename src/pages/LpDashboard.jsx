@@ -63,6 +63,7 @@ export default function LpDashboard() {
       console.log('=== LP QUERY STARTED ===');
       console.log('walletAddress (from auth):', walletAddress);
       console.log('enabled:', !!walletAddress);
+      console.log('Query cache time:', new Date().toISOString());
 
       // Step 1: Fetch ALL UserBets
       console.log('Step 1: Fetching all UserBets...');
