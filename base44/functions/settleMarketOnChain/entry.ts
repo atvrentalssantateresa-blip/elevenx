@@ -1,13 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { PublicKey } from 'npm:@solana/web3.js@1.98.4';
-import { Buffer } from 'node:buffer';
+import { Buffer } from 'npm:buffer@6.0.3';
 import bs58 from 'npm:bs58@5.0.0';
 import * as ed from 'npm:@noble/ed25519@2.1.0';
 import { sha512 } from 'npm:@noble/hashes@1.4.0/sha512';
 
 const ORACLE_PUBKEY = 'TANKr3X5h45271pGw2GxGoaeHXZRBXHwr1AAvcAop2G';
-const ED25519_PROGRAM = 'Ed25519SigVerify111111111111111111111111111111';
-const INSTRUCTIONS_SYSVAR = 'Sysvar1nstructions1111111111111111111111111111';
+const ED25519_PROGRAM = 'Ed25519SigVerify111111111111111111111111111111'; // Solana Ed25519 native program
+const INSTRUCTIONS_SYSVAR = 'Sysvar1nstructions1111111111111111111111111111'; // 46-char sysvar — valid Solana special address
 const SYSTEM_PROGRAM = '11111111111111111111111111111111';
 
 async function anchorDiscriminator(name) {

@@ -4,16 +4,15 @@ import { Buffer } from 'npm:buffer@6.0.3';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 function getSolanaConfig() {
-  let rawUrl = Deno.env.get('SOLANA_RPC_URL') || '';
-  if (rawUrl.includes('RPC_URL=')) rawUrl = rawUrl.split('RPC_URL=')[1].trim();
-  if (!rawUrl.startsWith('http') || rawUrl.includes('uuid')) rawUrl = 'https://api.mainnet-beta.solana.com';
+  const rpcUrl = Deno.env.get('SOLANA_RPC_URL') || '';
   const programIdStr = Deno.env.get('ELEVENX_PROGRAM_ID');
+  if (!rpcUrl) throw new Error('SOLANA_RPC_URL secret not set');
   if (!programIdStr) throw new Error('ELEVENX_PROGRAM_ID secret not set');
   return { 
-    rpcUrl: rawUrl, 
+    rpcUrl, 
     programIdStr, 
     programId: new PublicKey(programIdStr), 
-    connection: new Connection(rawUrl, 'confirmed') 
+    connection: new Connection(rpcUrl, 'confirmed') 
   };
 }
 
@@ -100,12 +99,12 @@ Deno.serve(async (req) => {
     const [platformConfigPda] = PublicKey.findProgramAddressSync([Buffer.from('platform')], programId);
     const platformConfigInfo = await connection.getAccountInfo(platformConfigPda);
     
-    if (!platformConfigInfo || !platformConfigInfo.owner.equals(programId)) {
+    if (!platformConfigInfo) {
       const [feeVaultPda] = PublicKey.findProgramAddressSync([Buffer.from('fee_vault')], programId);
       const initDiscriminator = Buffer.from(sha256("global:initialize_platform")).slice(0, 8);
       const initParams = Buffer.alloc(3);
-      initParams.writeUInt16LE(0, 0);
-      initParams.writeUInt8(51, 2);
+      initParams.writeUInt16LE(200, 0);
+      initParams.writeUInt8(1, 2);
       return Response.json({
         success: false,
         error: 'Platform config not initialized',
@@ -114,7 +113,7 @@ Deno.serve(async (req) => {
           instruction_type: 'initialize_platform',
           programId: programIdStr,
           instruction_data: Buffer.concat([initDiscriminator, initParams]).toString('base64'),
-          accounts: { platformConfig: platformConfigPda.toBase58(), feeVault: feeVaultPda.toBase58(), admin: '' }
+          accounts: { platformConfig: platformConfigPda.toBase58(), feeVault: feeVaultPda.toBase58(), admin: 'SIGNER_WALLET' }
         }
       });
     }

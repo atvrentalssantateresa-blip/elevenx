@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey, SystemProgram } from 'npm:@solana/web3.js@1.98.4';
-import { Buffer } from 'node:buffer';
+import { Buffer } from 'npm:buffer@6.0.3';
 import { sha256 } from 'npm:@noble/hashes@1.4.0/sha256';
 
 function getSolanaConfig() {
@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
     const [platformPda] = PublicKey.findProgramAddressSync([Buffer.from('platform')], programId);
     const [feeVaultPda] = PublicKey.findProgramAddressSync([Buffer.from('fee_vault')], programId); // kept for response metadata only
 
-    // Check platform init
+    // Check platform init — existence check only, matching diagnosePlatform logic
     const platformInfo = await connection.getAccountInfo(platformPda);
-    if (!platformInfo) {
+    if (!platformInfo || platformInfo.data.length < 8) {
       // Return platform init instruction
       const initDisc = Buffer.from(sha256('global:initialize_platform')).slice(0, 8);
       const initParams = Buffer.alloc(3);
