@@ -11,8 +11,8 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const { userBetId, offerId, signature } = payload;
 
-    if (!userBetId) {
-      return Response.json({ error: 'Missing userBetId' }, { status: 400 });
+    if (!userBetId && !offerId) {
+      return Response.json({ error: 'Missing userBetId or offerId' }, { status: 400 });
     }
 
     if (!signature) {
@@ -38,12 +38,20 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, userBetId, message: 'Already finalized', alreadyDone: true });
     }
 
-    // Resolve offer: prefer explicit offerId, fall back to userBet.offer_id
+    // Resolve offer: prefer explicit offerId, fall back to userBet.offer_id, then search by LP wallet
     const resolvedOfferId = offerId || userBet.offer_id || null;
     let offer = null;
     if (resolvedOfferId) {
       const offers = await base44.entities.BetOffer.filter({ id: resolvedOfferId });
       offer = offers[0] || null;
+    }
+    // If still not found, search by wallet + bet_id + outcome
+    if (!offer && userBet) {
+      const offers = await base44.asServiceRole.entities.BetOffer.filter({
+        bet_id: userBet.bet_id,
+        lp_wallet_address: userBet.wallet_address,
+      });
+      offer = offers.find(o => o.outcome === userBet.outcome) || offers[0] || null;
     }
 
     // Fetch Bet to update LP totals

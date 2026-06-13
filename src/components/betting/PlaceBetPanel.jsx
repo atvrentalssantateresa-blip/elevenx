@@ -342,8 +342,18 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       }
       if (res.error) {
         console.error('[PlaceBetPanel] Error in response:', res.error);
-        // If the offer is stale on-chain, refresh the list so the UI updates
+        // If the offer is stale on-chain, mark it withdrawn in DB and refresh
         if (res.offer_stale) {
+          const staleOfferId = selectedOffer?.id || 
+            allOffers.find(o => o.outcome === selectedOutcome && (o.status === 'open' || o.status === 'partially_matched'))?.id;
+          if (staleOfferId) {
+            try {
+              await base44.entities.BetOffer.update(staleOfferId, { status: 'withdrawn', amount_unmatched: 0 });
+              console.log('[PlaceBetPanel] Marked stale offer as withdrawn:', staleOfferId);
+            } catch (e) {
+              console.warn('[PlaceBetPanel] Could not mark offer withdrawn:', e.message);
+            }
+          }
           await refetchOffers();
         }
         throw new Error(res.error);

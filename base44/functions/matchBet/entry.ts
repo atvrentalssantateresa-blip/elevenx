@@ -248,44 +248,33 @@ Deno.serve(async (req) => {
     }
 
     // PRE-FLIGHT: Verify on-chain LP offer still has real liquidity.
-    // Prevents sending a tx that reverts with AnchorError 6017 (NoLiquidity).
-    // LpOffer layout: discriminator(8) + market(32) + lp(32) + outcome(1) + odds_bps(8)
-    //   + amount_committed(u64 LE @81) + amount_matched(u64 LE @89) + closed(bool @97)
+    // Only check available liquidity — do NOT block on closed flag (stale DB offers may be closed
+    // and need the tx to fail naturally so the UI can refresh).
     try {
       const { Connection } = await import('npm:@solana/web3.js@1.98.4');
       const rpcUrl = Deno.env.get('SOLANA_RPC_URL') || 'https://api.mainnet-beta.solana.com';
       const connection = new Connection(rpcUrl, 'confirmed');
       const accountInfo = await connection.getAccountInfo(lpOfferPda);
-      if (!accountInfo || accountInfo.data.length < 98) {
-        return Response.json({
-          error: 'LP offer no longer available on-chain',
-          hint: 'The liquidity for this offer has been withdrawn. Please refresh and select another offer.',
-          offer_stale: true,
-        }, { status: 400 });
-      }
-      const data = accountInfo.data;
-      const closed = data[97] === 1;
-      const committed = Number(data.readBigUInt64LE(81));
-      const matched = Number(data.readBigUInt64LE(89));
-      const onChainUnmatched = Math.max(0, committed - matched);
-      console.log('[matchBet] On-chain LP offer state:', {
-        closed,
-        committed: committed / 1e9,
-        matched: matched / 1e9,
-        unmatched: onChainUnmatched / 1e9,
-        requested: amountLamports,
-      });
-      if (closed || onChainUnmatched < amountLamports) {
-        return Response.json({
-          error: closed
-            ? 'LP offer is closed on-chain. Please refresh and select another offer.'
-            : `Insufficient on-chain liquidity (available: ◎${(onChainUnmatched / 1e9).toFixed(4)}, requested: ◎${(amountLamports / 1e9).toFixed(4)})`,
-          offer_stale: true,
-          available: onChainUnmatched / 1e9,
-        }, { status: 400 });
+      if (accountInfo && accountInfo.data.length >= 98) {
+        const data = accountInfo.data;
+        const committed = Number(data.readBigUInt64LE(81));
+        const matched = Number(data.readBigUInt64LE(89));
+        const onChainUnmatched = Math.max(0, committed - matched);
+        console.log('[matchBet] On-chain LP offer state:', {
+          committed: committed / 1e9,
+          matched: matched / 1e9,
+          unmatched: onChainUnmatched / 1e9,
+          requested: amountLamports,
+        });
+        if (onChainUnmatched < amountLamports) {
+          return Response.json({
+            error: `Insufficient on-chain liquidity (available: ◎${(onChainUnmatched / 1e9).toFixed(4)}, requested: ◎${(amountLamports / 1e9).toFixed(4)})`,
+            offer_stale: true,
+            available: onChainUnmatched / 1e9,
+          }, { status: 400 });
+        }
       }
     } catch (preflightErr) {
-      // Non-fatal: if RPC is down, proceed — the tx will revert on-chain if liquidity is missing
       console.warn('[matchBet] On-chain pre-flight check failed (non-fatal):', preflightErr.message);
     }
 
