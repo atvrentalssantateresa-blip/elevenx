@@ -85,16 +85,21 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   validOffers.
   filter((o) => {
     const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
-    console.log(`[PlaceBetPanel] Filtering offer ${o.id}: outcome=${o.outcome}, selectedOutcome=${selectedOutcome}, status=${o.status}, unmatched=${o.amount_unmatched}, matches=${isValid}`);
     return isValid;
   }).
   reduce((sum, o) => {
     const unmatched = parseFloat((o.amount_unmatched || 0).toFixed(9));
-    const newSum = parseFloat((sum + unmatched).toFixed(9));
-    console.log(`[PlaceBetPanel] Reduce step: offer=${o.id}, unmatched=${unmatched}, sum_before=${sum}, sum_after=${newSum}`);
-    return newSum;
+    return parseFloat((sum + unmatched).toFixed(9));
   }, 0) :
   0;
+  
+  // DIRECT DEBUG - will always show
+  console.log('💰💰💰 LIQUIDITY CALCULATION 💰💰💰', {
+    selectedOutcome,
+    validOffersCount: validOffers.length,
+    offersForOutcome: validOffers.filter(o => o.outcome === selectedOutcome).map(o => ({ id: o.id, outcome: o.outcome, unmatched: o.amount_unmatched, status: o.status })),
+    totalLiquidityForOutcome
+  });
   
   // Check if ANY LP liquidity exists for this bet (for UI display)
   const hasAnyLiquidity = validOffers.some((o) => {
