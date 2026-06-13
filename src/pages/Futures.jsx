@@ -370,14 +370,26 @@ export default function Futures() {
               </div>
             </div>
             {isAdmin && (
-              <button
-                onClick={handleDeployAll}
-                disabled={isDeploying}
-                className="hidden sm:flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-600/50 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
-              >
-                {isDeploying ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
-                Deploy All Futures
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const res = await base44.functions.invoke('debugAuth', {});
+                    console.log('DEBUG AUTH RESPONSE:', res.data);
+                    alert('Check console for debug auth info');
+                  }}
+                  className="hidden sm:flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                >
+                  Debug Auth
+                </button>
+                <button
+                  onClick={handleDeployAll}
+                  disabled={isDeploying}
+                  className="hidden sm:flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-600/50 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                >
+                  {isDeploying ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
+                  Deploy All Futures
+                </button>
+              </div>
             )}
 
       {/* Bulk Deploy Transaction Modal */}
