@@ -60,6 +60,13 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       // Filter out offers with zero on-chain liquidity
       const finalOffers = offersWithOnChain.filter(o => (o.amount_unmatched || 0) > 0);
       console.log('[PlaceBetPanel] Final offers with liquidity:', finalOffers.length, finalOffers.map(o => ({ id: o.id, outcome: o.outcome, unmatched: o.amount_unmatched, onChain: o._onChainVerified })));
+      
+      // EXTRA DEBUG: Log Haiti/Scotland offers specifically
+      const haitiOffers = finalOffers.filter(o => o.outcome === 'a');
+      const scotlandOffers = finalOffers.filter(o => o.outcome === 'b');
+      console.log('[PlaceBetPanel] Haiti offers (outcome=a):', haitiOffers.length, haitiOffers);
+      console.log('[PlaceBetPanel] Scotland offers (outcome=b):', scotlandOffers.length, scotlandOffers);
+      
       return finalOffers;
     },
     enabled: !!bet?.id,
@@ -74,10 +81,11 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   // allOffers already filtered to open/partially_matched with amount_unmatched > 0 in queryFn
   const validOffers = Array.isArray(allOffers) ? allOffers : [];
   
-  const totalLiquidityForOutcome = mode === 'match' && selectedOutcome ?
+  const totalLiquidityForOutcome = selectedOutcome ?
   validOffers.
   filter((o) => {
     const isValid = (o.status === 'open' || o.status === 'partially_matched') && o.outcome === selectedOutcome;
+    console.log(`[PlaceBetPanel] Filtering offer ${o.id}: outcome=${o.outcome}, selectedOutcome=${selectedOutcome}, status=${o.status}, unmatched=${o.amount_unmatched}, matches=${isValid}`);
     return isValid;
   }).
   reduce((sum, o) => {
@@ -99,17 +107,24 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   // CRITICAL DEBUG INFO (after all variables are declared)
   console.log('========== [PlaceBetPanel] RENDER DEBUG ==========');
   console.log('[PlaceBetPanel] bet.id:', bet?.id);
+  console.log('[PlaceBetPanel] matchId:', matchId);
+  console.log('[PlaceBetPanel] selectedOutcome:', selectedOutcome);
+  console.log('[PlaceBetPanel] selectedOffer:', selectedOffer);
   console.log('[PlaceBetPanel] allOffers:', allOffers);
   console.log('[PlaceBetPanel] validOffers:', validOffers);
   console.log('[PlaceBetPanel] bettingMode:', bettingMode);
   console.log('[PlaceBetPanel] totalLiquidityForOutcome:', totalLiquidityForOutcome);
+  console.log('[PlaceBetPanel] hasAnyLiquidity:', hasAnyLiquidity);
   console.log('===================================================');
   
   console.log('[PlaceBetPanel] === LIQUIDITY DEBUG ===', {
     allOffersIsArray: Array.isArray(allOffers),
     allOffersLength: allOffers?.length,
     allOffersRaw: allOffers,
-    validOffersLength: validOffers.length
+    validOffersLength: validOffers.length,
+    selectedOutcome,
+    mode,
+    validOffersOutcomes: validOffers.map(o => ({ id: o.id, outcome: o.outcome, status: o.status, unmatched: o.amount_unmatched }))
   });
   
   // Debug: show all offers with their properties
