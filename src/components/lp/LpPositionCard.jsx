@@ -174,9 +174,6 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
     liquidityDeposited,
     liquidityMatched,
     liquidityUnmatched,
-    dbStatus,
-    isWithdrawn,
-    isRefunded,
   });
   
   console.log('[LpPositionCard] === FINAL DISPLAY VALUES ===');
