@@ -20,7 +20,7 @@ import LiquidityDetailModal from '@/components/lp/LiquidityDetailModal';
 import LpPositionCard from '@/components/lp/LpPositionCard';
 import LpStatsHeader from '@/components/lp/LpStatsHeader';
 import { getWalletFromAuth } from '@/utils/auth';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
 
@@ -488,25 +488,22 @@ export default function LpDashboard() {
   const [pendingFuturesTx, setPendingFuturesTx] = useState(null);
   const [pendingFuturesCommit, setPendingFuturesCommit] = useState(null);
   
-  // Fetch on-chain lp_offer data for futures markets - pure client-side, no backend calls
+  // Fetch on-chain lp_offer data for futures markets via backend proxy (avoids sandbox 403)
   const { data: onChainFuturesLpOffers = {} } = useQuery({
     queryKey: ['onchain-futures-lp-offers', walletAddress, futuresMarkets.length],
     queryFn: async () => {
       if (!walletAddress || futuresMarkets.length === 0) return {};
-      
-      const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
       const programId = new PublicKey(window.SOLANA_PROGRAM_ID || '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
-      const connection = new Connection(rpcUrl, 'confirmed');
       const result = {};
-      
-      // Process markets sequentially with a small delay to avoid RPC rate limits
+
       for (const market of futuresMarkets) {
         const marketPda = market.solana_market_pda;
         if (!marketPda) continue;
-        
+
         const marketOffers = [];
-        
-        // Derive and fetch all 3 outcome PDAs in parallel
+
+        // Derive all 3 outcome PDAs client-side (no RPC needed)
         const pdas = [0, 1, 2].map((outcome) => {
           try {
             const [pda] = PublicKey.findProgramAddressSync(
@@ -523,39 +520,35 @@ export default function LpDashboard() {
             return null;
           }
         }).filter(Boolean);
-        
-        // Fetch all 3 outcome accounts in parallel (small batch — only 3 per market)
-        const accountInfos = await Promise.allSettled(
-          pdas.map(({ pda }) => connection.getAccountInfo(new PublicKey(pda)))
-        ).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null));
-        
-        pdas.forEach(({ outcome, pda }, i) => {
-          const info = accountInfos[i];
-          if (!info || info.data.length < 98) return;
-          const data = info.data;
-          const amountCommitted = Number(data.readBigUInt64LE(81)) / 1e9;
-          const amountMatched = Number(data.readBigUInt64LE(89)) / 1e9;
-          const closed = data[97] === 1;
-          if (amountCommitted > 0) {
-            marketOffers.push({
-              outcome,
-              pda,
-              amountCommitted,
-              amountMatched,
-              available: Math.max(0, amountCommitted - amountMatched),
-              closed,
-            });
+
+        // Fetch each PDA via backend function (no direct RPC from browser)
+        for (const { outcome, pda } of pdas) {
+          try {
+            const res = await base44.functions.invoke('fetchLpOfferOnChain', { pda });
+            const d = res.data;
+            if (d.exists && d.amountCommitted > 0) {
+              marketOffers.push({
+                outcome,
+                pda,
+                amountCommitted: d.amountCommitted,
+                amountMatched: d.amountMatched,
+                available: d.available,
+                closed: d.closed,
+              });
+            }
+          } catch {
+            // Account doesn't exist — skip
           }
-        });
-        
+        }
+
         if (marketOffers.length > 0) {
           result[market.id] = marketOffers;
         }
-        
-        // Small delay between markets to avoid RPC rate limits
+
+        // Small delay between markets to avoid rate limits
         await new Promise(r => setTimeout(r, 100));
       }
-      
+
       return result;
     },
     enabled: !!walletAddress && futuresMarkets.length > 0,

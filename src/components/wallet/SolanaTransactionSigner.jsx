@@ -3,8 +3,15 @@ import { Wallet, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Buffer } from 'buffer';
-import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import { base44 } from '@/api/base44Client';
+
+// Route all RPC calls through backend to avoid sandbox 403s on direct mainnet RPC
+async function rpc(action, params = {}) {
+  const res = await base44.functions.invoke('solanaRpc', { action, params });
+  if (res.data?.error) throw new Error(`RPC ${action} failed: ${res.data.error}`);
+  return res.data;
+}
 
 // Compute Anchor discriminator: SHA256("global:<name>").slice(0, 8)
 // Anchor uses "global:<instruction_name>" format by default
@@ -88,20 +95,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
       console.log('========================================');
 
-      // CRITICAL: Read RPC URL from instruction or use environment-based default
-      // Backend functions should provide rpcUrl in instruction if non-standard
-      // Default to mainnet - devnet is only for testing
-      const rpcUrl = instruction.rpcUrl || window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-      const connection = new Connection(rpcUrl, {
-        commitment: 'confirmed',
-        confirmTransactionInitialTimeout: 60000,
-      });
-      console.log('[SolanaTransactionSigner] Using RPC URL:', rpcUrl);
-      console.log('[SolanaTransactionSigner] Network config:', {
-        windowSolanaRpcUrl: window.SOLANA_RPC_URL,
-        instructionRpcUrl: instruction.rpcUrl,
-        fallbackUsed: !instruction.rpcUrl && !window.SOLANA_RPC_URL,
-      });
+      // All RPC calls go through backend (solanaRpc function) to avoid sandbox 403s
+      console.log('[SolanaTransactionSigner] Using backend RPC proxy (solanaRpc)');
       const transaction = new Transaction();
       
       // Check instruction type and build appropriate transaction
@@ -626,8 +621,8 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(closeIx);
       }
 
-      // Get recent blockhash for transaction
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      // Get recent blockhash via backend proxy (avoids sandbox 403 on direct RPC)
+      const { blockhash, lastValidBlockHeight } = await rpc('getLatestBlockhash');
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = provider.publicKey;
 
@@ -680,68 +675,37 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
       }
 
       setSignStep('confirming');
-      console.log('Waiting for confirmation (30s timeout)...');
-      let confirmation;
-      
-      // 30-second timeout for confirmation
-      const timeoutMs = 30000;
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
-      
-      try {
-        // Try with confirmed commitment first
-        confirmation = await connection.confirmTransaction(
-          { signature: sig, blockhash, lastValidBlockHeight },
-          'confirmed',
-        );
-        clearTimeout(timeoutId);
-        console.log('Transaction confirmation result:', confirmation);
-        
-        // If confirmation fails but transaction might have succeeded, check signature status
-        if (!confirmation.value?.err) {
-          console.log('✓ Transaction confirmed successfully');
-        }
-      } catch (confirmError) {
-        clearTimeout(timeoutId);
-        console.log('[SolanaTransactionSigner] Confirmation failed, checking if transaction succeeded...');
-        
-        // Check if the transaction actually succeeded on-chain
+      console.log('Waiting for confirmation via backend proxy...');
+
+      // Confirm via backend proxy — polls up to ~30s with 2s intervals
+      let confirmErr = null;
+      let confirmed = false;
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2000));
         try {
-          const status = await connection.getSignatureStatus(sig, { searchTransactionHistory: true });
-          console.log('[SolanaTransactionSigner] Signature status:', status);
-          
-          if (status.value && status.value.confirmationStatus === 'confirmed') {
-            console.log('✓ Transaction confirmed (delayed status update)');
-            confirmation = { value: {} }; // Treat as success
-          } else if (status.value?.err) {
-            throw new Error('Transaction failed on-chain: ' + JSON.stringify(status.value.err));
-          } else {
-            throw confirmError; // Re-throw original error
+          const statusData = await rpc('getSignatureStatus', { signature: sig });
+          const s = statusData.status;
+          console.log('[SolanaTransactionSigner] Signature status:', s);
+          if (s?.err) {
+            confirmErr = s.err;
+            break;
           }
-        } catch (statusError) {
-          console.error('[SolanaTransactionSigner] Status check failed:', statusError);
-          throw confirmError; // Re-throw original error
+          if (s?.confirmationStatus === 'confirmed' || s?.confirmationStatus === 'finalized') {
+            confirmed = true;
+            break;
+          }
+        } catch (e) {
+          console.warn('[SolanaTransactionSigner] Status poll error:', e.message);
         }
       }
-      
-      // Retry with processed commitment if confirmed fails
-      if (!confirmation && sig) {
-        try {
-          console.log('[SolanaTransactionSigner] Retrying with processed commitment...');
-          confirmation = await connection.confirmTransaction(
-            { signature: sig, blockhash, lastValidBlockHeight },
-            'processed',
-          );
-          console.log('Transaction confirmed (processed):', confirmation);
-        } catch (retryError) {
-          console.error('[SolanaTransactionSigner] Retry confirmation failed:', retryError);
-          throw new Error('Transaction confirmation timeout - please check Solscan');
-        }
-      }
-      
-      if (!confirmation) {
+
+      if (!confirmed && !confirmErr) {
         throw new Error('Transaction confirmation timeout - please check Solscan');
       }
+
+      // Fake confirmation shape for error handling below
+      const confirmation = { value: { err: confirmErr || null } };
 
       // Check for on-chain errors BEFORE setting signature
       if (confirmation.value?.err) {

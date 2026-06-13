@@ -10,7 +10,7 @@ import BetCountdown from '@/components/betting/BetCountdown';
 import WithdrawAmountModal from '@/components/lp/WithdrawAmountModal';
 import { base44 } from '@/api/base44Client';
 import { callBackendFunction } from '@/lib/directFunctionCall';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
 /**
@@ -47,42 +47,18 @@ function deriveLpOfferPda(marketPda, lpWallet, outcome) {
  *   amount_matched: u64 (8) → offset 89-96
  *   closed: bool (1) → offset 97
  */
+// Route through backend to avoid sandbox 403 on direct RPC calls
 async function fetchLpOfferOnChain(positionPda) {
   try {
-    const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-    const connection = new Connection(rpcUrl, 'confirmed');
-    const pubkey = new PublicKey(positionPda);
-    console.log('[fetchLpOfferOnChain] === READING LP_OFFER PDA ===');
-    console.log('[fetchLpOfferOnChain] PDA:', positionPda);
-    const accountInfo = await connection.getAccountInfo(pubkey);
-    if (!accountInfo) {
-      console.warn('[fetchLpOfferOnChain] Account NOT FOUND for PDA:', positionPda);
-      return null;
-    }
-    const data = accountInfo.data;
-    console.log('[fetchLpOfferOnChain] Account data length:', data.length, '(expected >= 98)');
-    if (data.length < 98) {
-      console.error('[fetchLpOfferOnChain] Data too short:', data.length);
-      return null;
-    }
-    const CLOSED_OFFSET = 97;
-    const AMOUNT_COMMITTED_OFFSET = 81;  // discriminator(8) + market(32) + lp(32) + outcome(1) + odds_bps(8) = 81
-    const AMOUNT_MATCHED_OFFSET = 89;    // 81 + 8 = 89
-    const amountCommittedLamports = Number(data.readBigUInt64LE(AMOUNT_COMMITTED_OFFSET));
-    const amountMatchedLamports = Number(data.readBigUInt64LE(AMOUNT_MATCHED_OFFSET));
-    const closed = data[CLOSED_OFFSET] === 1;
-    console.log('[fetchLpOfferOnChain] === DECODED VALUES ===');
-    console.log('[fetchLpOfferOnChain] amount_committed (bytes 81-88):', amountCommittedLamports, 'lamports =', amountCommittedLamports / 1e9, 'SOL');
-    console.log('[fetchLpOfferOnChain] amount_matched (bytes 89-96):', amountMatchedLamports, 'lamports =', amountMatchedLamports / 1e9, 'SOL');
-    console.log('[fetchLpOfferOnChain] unmatched:', (amountCommittedLamports - amountMatchedLamports) / 1e9, 'SOL');
-    console.log('[fetchLpOfferOnChain] closed:', closed);
-    console.log('[fetchLpOfferOnChain] raw bytes 81-89 (hex):', data.slice(81, 89).toString('hex'));
-    console.log('[fetchLpOfferOnChain] raw bytes 89-97 (hex):', data.slice(89, 97).toString('hex'));
+    console.log('[fetchLpOfferOnChain] Fetching via backend:', positionPda);
+    const res = await base44.functions.invoke('fetchLpOfferOnChain', { pda: positionPda });
+    const d = res.data;
+    if (!d.exists) return null;
     return {
-      amountCommitted: amountCommittedLamports / 1e9,
-      amountMatched: amountMatchedLamports / 1e9,
-      unmatched: Math.max(0, (amountCommittedLamports - amountMatchedLamports)) / 1e9,
-      closed,
+      amountCommitted: d.amountCommitted,
+      amountMatched: d.amountMatched,
+      unmatched: d.available,
+      closed: d.closed,
     };
   } catch (err) {
     console.error('[fetchLpOfferOnChain] Error:', err.message);
@@ -97,29 +73,21 @@ async function fetchLpOfferOnChain(positionPda) {
  *   settled: bool at offset 276
  *   voided: bool at offset 277
  */
+// Route through backend to avoid sandbox 403 on direct RPC calls
 async function fetchMarketStateOnChain(marketPda) {
   try {
-    const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-    const connection = new Connection(rpcUrl, 'confirmed');
-    const pubkey = new PublicKey(marketPda);
-    const accountInfo = await connection.getAccountInfo(pubkey);
-    if (!accountInfo) return null;
-    const data = accountInfo.data;
-    if (data.length < 278) return null;
-    
-    const WINNING_OUTCOME_OFFSET = 155;
-    const SETTLED_OFFSET = 276;
-    const VOIDED_OFFSET = 277;
-    
-    const winningOutcomeRaw = data[WINNING_OUTCOME_OFFSET];
-    const settled = data[SETTLED_OFFSET] === 1;
-    const voided = data[VOIDED_OFFSET] === 1;
-    
+    const res = await base44.functions.invoke('solanaRpc', { action: 'getAccountInfo', params: { pubkey: marketPda } });
+    const d = res.data;
+    if (!d.exists) return null;
+    const raw = Buffer.from(d.data_b64, 'base64');
+    if (raw.length < 278) return null;
+    const winningOutcomeRaw = raw[155];
+    const settled = raw[276] === 1;
+    const voided = raw[277] === 1;
     let winningOutcome = null;
     if (winningOutcomeRaw === 1) winningOutcome = 'a';
     else if (winningOutcomeRaw === 2) winningOutcome = 'b';
     else if (winningOutcomeRaw === 3) winningOutcome = 'draw';
-    
     return { settled, voided, winningOutcome };
   } catch (err) {
     console.error('[fetchMarketStateOnChain] Error:', err.message);
