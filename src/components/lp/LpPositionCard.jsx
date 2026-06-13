@@ -165,7 +165,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   
   // CRITICAL: On-chain unmatched is the ONLY source of truth after withdrawals
   const liquidityUnmatched = onChainOffer 
-    ? onChainOffer.unmatched 
+    ? (onChainOffer.unmatched != null ? onChainOffer.unmatched : onChainOffer.available != null ? onChainOffer.available : Math.max(0, liquidityDeposited - liquidityMatched))
     : (offer.liquidity_unmatched !== undefined ? offer.liquidity_unmatched : Math.max(0, liquidityDeposited - liquidityMatched));
   
   console.log('[LpPositionCard] PARTIAL WITHDRAWAL CHECK:', {
@@ -273,7 +273,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Withdrawn = unmatched liquidity already withdrawn (no bets were matched, so nothing left)
   // CRITICAL: Only consider withdrawn if on-chain closed OR truly zero unmatched on-chain
   const onChainClosed = onChainOffer?.closed === true;
-  const onChainUnmatchedRaw = onChainOffer ? onChainOffer.unmatched : liquidityUnmatched;
+  const onChainUnmatchedRaw = onChainOffer 
+    ? (onChainOffer.unmatched != null ? onChainOffer.unmatched : onChainOffer.available != null ? onChainOffer.available : liquidityUnmatched)
+    : liquidityUnmatched;
   const isWithdrawn = (dbStatus === 'withdrawn' || offer.status === 'withdrawn') && (onChainUnmatchedRaw <= 0 || onChainClosed);
 
   console.log('[LpPositionCard] Win/Loss Check:', {
@@ -710,7 +712,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
             // Priority 0: Refunded/Withdrawn - but STILL allow unmatched withdrawal
             // Only show "Withdrawn" badge if there's NO unmatched liquidity left on-chain
             const onChainClosed = onChainOffer?.closed === true;
-            const onChainUnmatchedForCheck = onChainOffer ? onChainOffer.unmatched : liquidityUnmatched;
+            const onChainUnmatchedForCheck = onChainOffer 
+              ? (onChainOffer.unmatched != null ? onChainOffer.unmatched : onChainOffer.available != null ? onChainOffer.available : liquidityUnmatched)
+              : liquidityUnmatched;
             
             // CRITICAL: Only show "Withdrawn" badge if on-chain closed OR truly zero unmatched
             // This fixes partial withdrawal bug - don't block withdrawal if there's still unmatched liquidity
@@ -793,7 +797,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             // Priority 4: Has unmatched liquidity - withdraw unmatched (only if on-chain closed == false)
             // CRITICAL: Never show withdraw if on-chain closed flag is true (AlreadyWithdrawn error)
-            const onChainUnmatched = onChainOffer ? onChainOffer.unmatched : liquidityUnmatched;
+            const onChainUnmatched = onChainOffer 
+              ? (onChainOffer.unmatched != null ? onChainOffer.unmatched : onChainOffer.available != null ? onChainOffer.available : liquidityUnmatched)
+              : liquidityUnmatched;
             const canWithdrawUnmatched = (onChainOffer ? (onChainUnmatched > 0 && !onChainClosed) : hasUnmatchedLiquidity) && 
                                          userBetStatus !== 'refunded' && 
                                          userBetStatus !== 'withdrawn' &&

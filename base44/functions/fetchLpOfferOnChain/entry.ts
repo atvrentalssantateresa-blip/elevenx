@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       amountCommitted,
       amountMatched,
       available: Math.max(0, amountCommitted - amountMatched),
+      unmatched: Math.max(0, amountCommitted - amountMatched),
       closed,
     });
   } catch (error) {

@@ -60,13 +60,18 @@ export default function Home() {
   const betByMatch = {};
   bets.forEach((b) => {betByMatch[b.match_id] = b;});
 
-  const totalVolume = bets.reduce((s, b) => s + (b.total_pool || 0), 0);
+  // Calculate match pools from Bet entities
+  const matchPools = bets.reduce((s, b) => s + (b.total_pool || 0), 0);
+  
+  // Calculate futures pools from FuturesMarket entities
+  const futuresPools = futuresMarkets.reduce((s, m) => s + (m.total_volume || 0), 0);
+  
+  // Total volume = matches + futures
+  const totalVolume = matchPools + futuresPools;
   const activeBettors = new Set(userBets.map((ub) => ub.created_by_id)).size;
 
   // Protocol Vault calculations
-  const unresolvedStakes = bets
-    .filter((b) => b.status === 'open' || b.status === 'closed')
-    .reduce((acc, b) => acc + (b.total_pool || 0), 0);
+  const unresolvedStakes = matchPools + futuresPools;
   
   const unclaimedWinnings = userBets
     .filter((ub) => ub.status === 'won' || ub.status === 'refunded')
@@ -231,16 +236,22 @@ export default function Home() {
               <p className="text-sm font-heading font-bold text-emerald-400">◎0.0000</p>
             </div>
 
-            {/* Unresolved Stakes */}
+            {/* Unresolved Stakes - Match Pools */}
             <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">In Pools</p>
-              <p className="text-sm font-heading font-bold text-yellow-400">◎{totalVolume.toFixed(4)}</p>
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Match Pools</p>
+              <p className="text-sm font-heading font-bold text-yellow-400">◎{matchPools.toFixed(4)}</p>
+            </div>
+
+            {/* Futures Pools */}
+            <div className="flex flex-col justify-center border-l border-white/5 pl-4">
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Futures Pools</p>
+              <p className="text-sm font-heading font-bold text-primary">◎{futuresPools.toFixed(4)}</p>
             </div>
 
             {/* Total Volume */}
             <div className="flex flex-col justify-center border-l border-white/5 pl-4">
-              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Volume</p>
-              <p className="text-sm font-heading font-bold text-primary">◎{totalVolume.toLocaleString()}</p>
+              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Total Volume</p>
+              <p className="text-sm font-heading font-bold text-primary">◎{totalVolume.toFixed(4)}</p>
             </div>
 
             {/* Active Bettors */}
