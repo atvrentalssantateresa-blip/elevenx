@@ -35,6 +35,15 @@ const createBase44AxiosClient = () => {
 
 // Create a client factory that gets a fresh client with current auth on each invoke
 const createBase44Client = () => {
+  const walletToken = getWalletAuthToken();
+  const authToken = walletToken || token;
+  
+  console.log('[base44Client] Creating client with auth:', {
+    hasWalletToken: !!walletToken,
+    hasPlatformToken: !!token,
+    tokenPrefix: authToken ? authToken.slice(0, 20) + '...' : 'none',
+  });
+  
   return createClient({
     appId,
     token,
