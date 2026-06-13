@@ -3,7 +3,7 @@ import { Wallet, Loader, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Buffer } from 'buffer';
-import { PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, Ed25519Program, SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
 import { base44 } from '@/api/base44Client';
 
 // Route all RPC calls through backend to avoid sandbox 403s on direct mainnet RPC
@@ -229,19 +229,31 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
           ? instruction.instructions
           : [{ programId: instruction.programId, instruction_data: instruction.instruction_data, keys: instruction.keys || [] }];
 
+        // Resolve pubkey strings, handling well-known Solana program addresses.
+        // The 46-char strings like 'Ed25519SigVerify111...' are NOT valid base58 for new PublicKey(),
+        // so we use the SDK-provided constants instead.
+        const resolvePubkey = (str) => {
+          if (str === 'Ed25519SigVerify111111111111111111111111111111') {
+            return Ed25519Program.programId;
+          }
+          if (str === 'Sysvar1nstructions1111111111111111111111111111') {
+            return SYSVAR_INSTRUCTIONS_PUBKEY;
+          }
+          return new PublicKey(str);
+        };
+
         for (let ixIdx = 0; ixIdx < ixList.length; ixIdx++) {
-          const ix = ixList[ixIdx];
+        const ix = ixList[ixIdx];
 
-          // Guard: programId must be a base58 string of at least 32 chars
-          if (typeof ix.programId !== 'string' || ix.programId.length < 32) {
-            throw new Error(`settle_market ix[${ixIdx}]: invalid programId "${ix.programId}" (expected base58 string)`);
-          }
-          if (!ix.instruction_data) {
-            throw new Error(`settle_market ix[${ixIdx}]: missing instruction_data`);
-          }
+        if (!ix.programId) {
+          throw new Error(`settle_market ix[${ixIdx}]: missing programId`);
+        }
+        if (!ix.instruction_data) {
+          throw new Error(`settle_market ix[${ixIdx}]: missing instruction_data`);
+        }
 
-          const programId = new PublicKey(ix.programId);
-          const data = Buffer.from(ix.instruction_data, 'base64');
+        const programId = resolvePubkey(ix.programId);
+        const data = Buffer.from(ix.instruction_data, 'base64');
 
           // Resolve the connected wallet pubkey: prefer provider.publicKey, then instruction.admin_wallet
           const connectedWalletPubkey = provider.publicKey?.toBase58?.() || instruction.admin_wallet || null;
@@ -254,12 +266,11 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
                 throw new Error(`settle_market ix[${ixIdx}] key[${ki}]: SIGNER_WALLET sentinel found but wallet pubkey is not available. Connect Phantom first.`);
               }
             }
-            if (typeof rawPubkey !== 'string' || rawPubkey.length < 32) {
-              console.error(`[settle_market] ix[${ixIdx}] key[${ki}]: invalid pubkey field="${JSON.stringify(k)}" resolved="${rawPubkey}"`);
-              throw new Error(`settle_market ix[${ixIdx}] key[${ki}]: invalid pubkey "${rawPubkey}" (slot ${ki})`);
+            if (!rawPubkey || typeof rawPubkey !== 'string') {
+              throw new Error(`settle_market ix[${ixIdx}] key[${ki}]: invalid pubkey "${rawPubkey}"`);
             }
             return {
-              pubkey: new PublicKey(rawPubkey),
+              pubkey: resolvePubkey(rawPubkey),
               isSigner: !!k.isSigner,
               isWritable: !!k.isWritable,
             };
