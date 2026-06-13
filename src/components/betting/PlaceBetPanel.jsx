@@ -90,7 +90,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   }).
   reduce((sum, o) => {
     const unmatched = parseFloat((o.amount_unmatched || 0).toFixed(9));
-    return parseFloat((sum + unmatched).toFixed(9));
+    const newSum = parseFloat((sum + unmatched).toFixed(9));
+    console.log(`[PlaceBetPanel] Reduce step: offer=${o.id}, unmatched=${unmatched}, sum_before=${sum}, sum_after=${newSum}`);
+    return newSum;
   }, 0) :
   0;
   
