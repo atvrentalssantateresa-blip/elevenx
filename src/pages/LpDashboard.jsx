@@ -20,6 +20,8 @@ import LiquidityDetailModal from '@/components/lp/LiquidityDetailModal';
 import LpPositionCard from '@/components/lp/LpPositionCard';
 import LpStatsHeader from '@/components/lp/LpStatsHeader';
 import { getWalletFromAuth } from '@/utils/auth';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 
 
 
@@ -482,82 +484,76 @@ export default function LpDashboard() {
   const [pendingFuturesTx, setPendingFuturesTx] = useState(null);
   const [pendingFuturesCommit, setPendingFuturesCommit] = useState(null);
   
-  // Fetch on-chain lp_offer data for futures markets - ONE CARD PER OUTCOME (0,1,2)
+  // Fetch on-chain lp_offer data for futures markets - pure client-side, no backend calls
   const { data: onChainFuturesLpOffers = {} } = useQuery({
     queryKey: ['onchain-futures-lp-offers', walletAddress, futuresMarkets.length],
     queryFn: async () => {
       if (!walletAddress || futuresMarkets.length === 0) return {};
       
-      console.log('[LpDashboard] === FETCHING ON-CHAIN FUTURES LP OFFERS ===');
+      const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+      const programId = new PublicKey(window.SOLANA_PROGRAM_ID || '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
+      const connection = new Connection(rpcUrl, 'confirmed');
       const result = {};
       
-      // For each futures market, derive and fetch lp_offer PDAs for outcomes 0, 1, 2
       for (const market of futuresMarkets) {
         const marketPda = market.solana_market_pda;
-        if (!marketPda) {
-          console.log('[LpDashboard] Skipping market', market.id, '- no solana_market_pda');
-          continue;
-        }
+        if (!marketPda) continue;
         
-        console.log('[LpDashboard] Market:', market.id, 'solana_market_pda:', marketPda);
         const marketOffers = [];
         
-        // Derive PDA for each outcome: seeds ["lp_offer", marketPda, lpWallet, [outcome]]
-        for (let outcome = 0; outcome < 3; outcome++) {
+        // Derive and fetch all 3 outcome PDAs in parallel
+        const pdas = [0, 1, 2].map((outcome) => {
           try {
-            // Derive PDA
-            const deriveRes = await base44.functions.invoke('deriveLpOfferPda', {
-              market_pda: marketPda,
-              lp_wallet: walletAddress,
-              outcome,
-            });
-            
-            const pda = deriveRes.data?.pda;
-            if (!pda) {
-              console.log('[LpDashboard] No PDA derived for outcome', outcome);
-              continue;
-            }
-            
-            console.log('[LpDashboard] Outcome', outcome, '→ PDA:', pda);
-            
-            // Fetch on-chain account data directly
-            const chainData = await base44.functions.invoke('fetchLpOfferOnChain', {
-              pda,
-            });
-            
-            if (chainData.data && chainData.data.exists && !chainData.error) {
-              console.log('[LpDashboard] ✓ On-chain data for outcome', outcome, ':', chainData.data);
-              marketOffers.push({
-                outcome,
-                pda,
-                amountCommitted: chainData.data.amountCommitted,
-                amountMatched: chainData.data.amountMatched,
-                available: chainData.data.available,
-                closed: chainData.data.closed,
-              });
-            } else {
-              console.log('[LpDashboard] ✗ No data for outcome', outcome, '- error:', chainData.error);
-            }
-          } catch (err) {
-            console.error('[LpDashboard] Error fetching outcome', outcome, ':', err.message);
+            const [pda] = PublicKey.findProgramAddressSync(
+              [
+                Buffer.from('lp_offer'),
+                new PublicKey(marketPda).toBuffer(),
+                new PublicKey(walletAddress).toBuffer(),
+                Buffer.from([outcome]),
+              ],
+              programId
+            );
+            return { outcome, pda: pda.toBase58() };
+          } catch {
+            return null;
           }
-        }
+        }).filter(Boolean);
+        
+        // Fetch all accounts in parallel
+        const accountInfos = await Promise.all(
+          pdas.map(({ pda }) => connection.getAccountInfo(new PublicKey(pda)).catch(() => null))
+        );
+        
+        pdas.forEach(({ outcome, pda }, i) => {
+          const info = accountInfos[i];
+          if (!info || info.data.length < 98) return;
+          const data = info.data;
+          const amountCommitted = Number(data.readBigUInt64LE(81)) / 1e9;
+          const amountMatched = Number(data.readBigUInt64LE(89)) / 1e9;
+          const closed = data[97] === 1;
+          if (amountCommitted > 0) {
+            marketOffers.push({
+              outcome,
+              pda,
+              amountCommitted,
+              amountMatched,
+              available: Math.max(0, amountCommitted - amountMatched),
+              closed,
+            });
+          }
+        });
         
         if (marketOffers.length > 0) {
-          console.log('[LpDashboard] Market', market.id, 'has', marketOffers.length, 'offers:', marketOffers);
           result[market.id] = marketOffers;
         }
       }
       
-      console.log('[LpDashboard] === FINAL RESULT ===');
-      console.log('[LpDashboard] Total markets with offers:', Object.keys(result).length);
-      console.log('[LpDashboard] Result:', result);
       return result;
     },
     enabled: !!walletAddress && futuresMarkets.length > 0,
-    staleTime: 3000,
+    staleTime: 30000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const handleFuturesLiquidity = async (outcome, amount) => {
