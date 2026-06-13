@@ -53,20 +53,29 @@ Deno.serve(async (req) => {
     const isAdminWallet = tokenPayload?.walletAddress === ADMIN_WALLET;
     const isAdminRole = tokenPayload?.role === 'admin';
     
+    // Check for different field names (wallet_address vs walletAddress, etc.)
+    const walletField = tokenPayload?.walletAddress || tokenPayload?.wallet_address || tokenPayload?.wallet || tokenPayload?.pubkey || tokenPayload?.publicKey;
+    const roleField = tokenPayload?.role || tokenPayload?.userRole || tokenPayload?.accessLevel;
+    
+    const isAdminWalletCheck = walletField === ADMIN_WALLET;
+    const isAdminRoleCheck = roleField === 'admin';
+
     return Response.json({
       headers_received: Object.keys(allHeaders),
       has_authorization: !!authHeader,
       token_length: token?.length || 0,
       token_format_valid: token && token.split('.').length === 3,
       token_payload: tokenPayload ? {
-        wallet: tokenPayload.walletAddress?.slice(0, 8),
-        role: tokenPayload.role,
+        wallet: walletField?.slice?.(0, 8) || 'NOT_FOUND',
+        role: roleField || 'NOT_FOUND',
         all_fields: tokenPayload,
       } : null,
       decode_error: decodeError,
-      is_admin_wallet: isAdminWallet,
-      is_admin_role: isAdminRole,
-      can_access: isAdminWallet || isAdminRole,
+      wallet_field_found: !!walletField,
+      role_field_found: !!roleField,
+      is_admin_wallet: isAdminWalletCheck,
+      is_admin_role: isAdminRoleCheck,
+      can_access: isAdminWalletCheck || isAdminRoleCheck,
     });
     
   } catch (error) {
