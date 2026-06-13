@@ -71,6 +71,9 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     retry: 2
   });
   
+  // allOffers already filtered to open/partially_matched with amount_unmatched > 0 in queryFn
+  const validOffers = Array.isArray(allOffers) ? allOffers : [];
+  
   // CRITICAL DEBUG INFO
   console.log('========== [PlaceBetPanel] RENDER DEBUG ==========');
   console.log('[PlaceBetPanel] bet.id:', bet?.id);
@@ -79,9 +82,6 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   console.log('[PlaceBetPanel] bettingMode:', bettingMode);
   console.log('[PlaceBetPanel] totalLiquidityForOutcome:', totalLiquidityForOutcome);
   console.log('===================================================');
-
-  // allOffers already filtered to open/partially_matched with amount_unmatched > 0 in queryFn
-  const validOffers = Array.isArray(allOffers) ? allOffers : [];
   
   console.log('[PlaceBetPanel] === LIQUIDITY DEBUG ===', {
     allOffersIsArray: Array.isArray(allOffers),
