@@ -76,7 +76,7 @@ export default function AppLayout() {
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200">
                 <TwitterIcon />
               </a>
-              <a href="https://t.me" target="_blank" rel="noopener noreferrer"
+              <a href="https://t.me/elevenXbets" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-all duration-200">
                 <TelegramIcon />
               </a>
