@@ -141,6 +141,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   
   console.log('[PlaceBetPanel] === LIQUIDITY RESULTS ===', {
     selectedOutcome,
+    selectedOutcomeType: typeof selectedOutcome,
     totalLiquidityForOutcome,
     hasAnyLiquidity: validOffers.some((o) => (o.status === 'open' || o.status === 'partially_matched') && (o.amount_unmatched || 0) > 0)
   });
@@ -155,6 +156,17 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     selectedOffer: selectedOffer?.id,
     selectedOfferUnmatched: selectedOffer?.amount_unmatched
   });
+  
+  // Debug: Check if outcome matching is working
+  if (selectedOutcome) {
+    const matchingOffers = validOffers.filter(o => o.outcome === selectedOutcome);
+    console.log('[PlaceBetPanel] Outcome matching debug:', {
+      selectedOutcome,
+      matchingOffersCount: matchingOffers.length,
+      matchingOffers: matchingOffers.map(o => ({ id: o.id, outcome: o.outcome, unmatched: o.amount_unmatched })),
+      allOfferOutcomes: validOffers.map(o => o.outcome)
+    });
+  }
 
   console.log('[PlaceBetPanel] Liquidity calculation:', {
     selectedOutcome,
