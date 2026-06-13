@@ -70,14 +70,16 @@ export default function LpDashboard() {
       console.log('Total UserBets fetched:', allUserBets.length);
       console.log('First 3 UserBets:', allUserBets.slice(0, 3));
 
-      // Step 2: Filter for LP role
+      // Step 2: Filter for LP role — exclude terminal withdrawn/refunded states from list
       console.log('Step 2: Filtering for role=lp...');
       console.log('Wallet address from auth:', walletAddress);
       console.log('Wallet address length:', walletAddress?.length);
+      const HIDDEN_STATUSES = new Set(['withdrawn', 'refunded']);
       const lpUserBets = allUserBets.filter((ub) => {
         const walletMatch = ub.wallet_address === walletAddress;
         const roleMatch = ub.role === 'lp';
-        const match = walletMatch && roleMatch;
+        const notWithdrawn = !HIDDEN_STATUSES.has(ub.status);
+        const match = walletMatch && roleMatch && notWithdrawn;
         console.log('Checking UserBet:', ub.id, {
           ub_wallet: ub.wallet_address,
           query_wallet: walletAddress,
@@ -450,6 +452,8 @@ export default function LpDashboard() {
       await queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress], refetchType: 'active' });
       await queryClient.invalidateQueries({ queryKey: ['openBets'] });
       await queryClient.invalidateQueries({ queryKey: ['userBets'], refetchType: 'active' });
+      // Invalidate futures on-chain cache so closed positions disappear immediately
+      await queryClient.invalidateQueries({ queryKey: ['onchain-futures-lp-offers'] });
       console.log('[LpDashboard] Queries invalidated and refetched');
     }, 1500);
   };

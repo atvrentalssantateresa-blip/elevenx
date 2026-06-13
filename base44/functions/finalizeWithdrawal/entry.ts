@@ -38,41 +38,35 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, userBetId, message: 'Already finalized', alreadyDone: true });
     }
 
-    // For traditional LP (with offer_id), fetch and update BetOffer
+    // Resolve offer: prefer explicit offerId, fall back to userBet.offer_id
+    const resolvedOfferId = offerId || userBet.offer_id || null;
     let offer = null;
-    if (offerId) {
-      const offers = await base44.entities.BetOffer.filter({ id: offerId });
-      offer = offers[0];
-      if (!offer) {
-        return Response.json({ error: 'Offer not found' }, { status: 404 });
-      }
+    if (resolvedOfferId) {
+      const offers = await base44.entities.BetOffer.filter({ id: resolvedOfferId });
+      offer = offers[0] || null;
     }
 
     // Fetch Bet to update LP totals
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
 
-    const withdrawAmount = userBet.amount || offer.amount_unmatched || 0;
+    const withdrawAmount = userBet.amount || (offer ? offer.amount_unmatched : 0) || 0;
 
     // Update database records
-    // For won/settled LP positions: mark as claimed
-    // For pending/active LP positions (unmatched withdrawal): mark as refunded/withdrawn
-    const newStatus = ['won', 'settled'].includes(userBet.status) ? 'claimed' : 'refunded';
-    
-    // Calculate new unmatched amounts (subtract withdrawn amount)
-    const newLiquidityUnmatched = Math.max(0, (userBet.liquidity_unmatched || 0) - withdrawAmount);
-    const newOfferUnmatched = offer ? Math.max(0, (offer.amount_unmatched || 0) - withdrawAmount) : 0;
+    // For won/settled LP positions: mark as claimed; otherwise mark as withdrawn
+    const newUserBetStatus = ['won', 'settled'].includes(userBet.status) ? 'claimed' : 'withdrawn';
     
     await base44.entities.UserBet.update(userBetId, { 
-      status: newStatus,
-      liquidity_unmatched: newLiquidityUnmatched,
+      status: newUserBetStatus,
+      liquidity_unmatched: 0,
     });
     
-    if (offerId && offer) {
-      const offerStatus = ['won', 'settled'].includes(userBet.status) ? 'settled' : 'cancelled';
-      await base44.entities.BetOffer.update(offerId, { 
+    // Always mark BetOffer as withdrawn with amount_unmatched=0 so frontend filters it out
+    if (offer) {
+      const offerStatus = ['won', 'settled'].includes(userBet.status) ? 'settled' : 'withdrawn';
+      await base44.entities.BetOffer.update(offer.id, { 
         status: offerStatus,
-        amount_unmatched: newOfferUnmatched,
+        amount_unmatched: 0,
       });
     }
     
