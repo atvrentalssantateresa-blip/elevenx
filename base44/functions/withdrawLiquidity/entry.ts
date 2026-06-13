@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { Connection, PublicKey } from 'npm:@solana/web3.js@1.98.4';
-import { Buffer } from 'node:buffer';
+import { Buffer } from 'npm:buffer@6.0.3';
 
 function getSolanaConfig() {
   const rpcUrl = Deno.env.get('SOLANA_RPC_URL');
@@ -21,9 +21,43 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const { programIdStr, programId, connection } = getSolanaConfig();
 
-    const { walletAddress, userBetId } = await req.json();
+    const { walletAddress, userBetId, solana_position_pda, solana_market_pda } = await req.json();
 
     if (!walletAddress) return Response.json({ error: 'Wallet not connected' }, { status: 401 });
+
+    const discriminator = Buffer.from([10, 224, 253, 15, 227, 173, 172, 25]);
+
+    // --- Direct PDA path (futures on-chain positions with no DB record) ---
+    if (!userBetId && solana_position_pda && solana_market_pda) {
+      console.log('[withdrawLiquidity] Direct PDA path:', { solana_market_pda, solana_position_pda });
+      const marketPdaPubkey = new PublicKey(solana_market_pda);
+      const lpOfferPdaPubkey = new PublicKey(solana_position_pda);
+
+      const accountInfo = await connection.getAccountInfo(lpOfferPdaPubkey);
+      const onChainBalance = (accountInfo?.lamports || 0) / 1e9;
+      if (onChainBalance < 0.001) {
+        return Response.json({ error: 'No funds available on-chain' }, { status: 400 });
+      }
+
+      const keys = [
+        { pubkey: marketPdaPubkey.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: lpOfferPdaPubkey.toBase58(), isSigner: false, isWritable: true },
+        { pubkey: walletAddress, isSigner: true, isWritable: true },
+        { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+      ];
+      return Response.json({
+        success: true, amount: onChainBalance,
+        solana_instruction: {
+          instruction_type: 'withdraw_liquidity',
+          programId: programIdStr,
+          keys,
+          instruction_data: discriminator.toString('base64'),
+        },
+        message: `Sign to withdraw ◎${onChainBalance.toFixed(4)}`,
+      });
+    }
+
+    // --- DB-backed path ---
     if (!userBetId) return Response.json({ error: 'Missing userBetId' }, { status: 400 });
 
     const userBets = await base44.entities.UserBet.filter({ id: userBetId });
@@ -64,8 +98,6 @@ Deno.serve(async (req) => {
     if (onChainBalance < 0.001) {
       return Response.json({ error: 'No funds available on-chain' }, { status: 400 });
     }
-
-    const discriminator = Buffer.from([10, 224, 253, 15, 227, 173, 172, 25]);
 
     console.log('[withdrawLiquidity] programId:', programIdStr);
     console.log('[withdrawLiquidity] Discriminator (hex):', discriminator.toString('hex'));

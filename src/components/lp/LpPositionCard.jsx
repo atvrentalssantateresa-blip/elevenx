@@ -16,7 +16,7 @@ import { Buffer } from 'buffer';
  */
 function deriveLpOfferPda(marketPda, lpWallet, outcome) {
   try {
-    const programId = new PublicKey('EQiqoL7VX5n4BTxuHwyWBa1bmYvTSeWRWBdSCyyFxHvN');
+    const programId = new PublicKey(window.SOLANA_PROGRAM_ID || '3ecFdHPbcU88UQ37iStPcGaz7Bg16RdSDDYqW5FzPabu');
     const [pda] = PublicKey.findProgramAddressSync(
       [
         Buffer.from('lp_offer'),
@@ -47,7 +47,7 @@ function deriveLpOfferPda(marketPda, lpWallet, outcome) {
  */
 async function fetchLpOfferOnChain(positionPda) {
   try {
-    const rpcUrl = 'https://api.devnet.solana.com';
+    const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const connection = new Connection(rpcUrl, 'confirmed');
     const pubkey = new PublicKey(positionPda);
     console.log('[fetchLpOfferOnChain] === READING LP_OFFER PDA ===');
@@ -97,7 +97,7 @@ async function fetchLpOfferOnChain(positionPda) {
  */
 async function fetchMarketStateOnChain(marketPda) {
   try {
-    const rpcUrl = 'https://api.devnet.solana.com';
+    const rpcUrl = window.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const connection = new Connection(rpcUrl, 'confirmed');
     const pubkey = new PublicKey(marketPda);
     const accountInfo = await connection.getAccountInfo(pubkey);
@@ -404,14 +404,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
     try {
       const userBetId = offer.userBetId || offer.id;
-      const hasMatchedInDb = offer.amount_matched > 0 || offer.liquidity_matched > 0;
-      const isSettled = offer.status === 'settled';
-
-      // CRITICAL: Call correct function based on LP position state
-      // - LP WON (settled): use withdrawLpWinnings to claim matched winnings + fees
-      // - LP LOST/UNMATCHED: use withdrawLiquidity to withdraw unmatched funds
-      console.log('[LpPositionCard] Determining withdraw type for userBet:', userBetId);
-      console.log('[LpPositionCard] LP state:', { isLpWon, isLpLost, isSettled, liquidityMatched, dbStatus });
+      console.log('[LpPositionCard] LP state:', { isLpWon, isLpLost, liquidityMatched, dbStatus, userBetId, isFutures });
       
       let res;
       
@@ -422,25 +415,17 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
           userBetId,
           walletAddress
         });
+      } else if (isFutures && positionPda && !userBetId) {
+        // FUTURES on-chain position with no DB record — build instruction directly
+        console.log('[LpPositionCard] Futures on-chain withdraw (no DB record) - using PDA:', positionPda);
+        res = await base44.functions.invoke('withdrawLiquidity', {
+          walletAddress,
+          solana_position_pda: positionPda,
+          solana_market_pda: marketPda,
+        });
       } else {
         // LP LOST or UNMATCHED - withdraw unmatched liquidity
         console.log('[LpPositionCard] Withdrawing unmatched liquidity - calling withdrawLiquidity');
-        
-        // Run on-chain check first
-        const checkRes = await base44.functions.invoke('checkLpOfferOnChain', { userBetId });
-        console.log('[LpPositionCard] On-chain check result:', checkRes.data);
-        
-        if (!checkRes.data.canClaim) {
-          let userMessage = checkRes.data.error || 'Cannot withdraw';
-          if (checkRes.data.reason === 'already_withdrawn') {
-            userMessage = 'This LP position has already been withdrawn on-chain.';
-          } else if (checkRes.data.reason === 'not_found_on_chain') {
-            userMessage = 'LP position not found on-chain. The market may not be deployed.';
-          }
-          alert('Cannot withdraw:\n\n' + userMessage);
-          return;
-        }
-        
         res = await base44.functions.invoke('withdrawLiquidity', { 
           userBetId,
           walletAddress 
