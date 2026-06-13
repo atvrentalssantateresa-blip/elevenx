@@ -424,17 +424,19 @@ export default function LpDashboard() {
     const signature = txResult.signature;
     const userBetId = pendingTx?.userBetId;
     const offerId = pendingTx?.offerId;
+    const withdrawAmount = pendingTx?.amount || 0;
     // Notify card to refetch on-chain state so withdraw button disappears immediately
     pendingTx?.onSuccess?.();
 
-    console.log('[LpDashboard] handleWithdrawSuccess - finalizing withdrawal:', { userBetId, offerId, signature });
+    console.log('[LpDashboard] handleWithdrawSuccess - finalizing withdrawal:', { userBetId, offerId, signature, withdrawAmount });
 
     if (userBetId) {
       try {
         const finalizeRes = await base44.functions.invoke('finalizeWithdrawal', {
           signature,
           userBetId,
-          offerId: offerId || null
+          offerId: offerId || null,
+          withdrawAmount
         });
         console.log('[LpDashboard] finalizeWithdrawal response:', finalizeRes);
       } catch (err) {

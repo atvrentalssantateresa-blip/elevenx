@@ -58,23 +58,32 @@ Deno.serve(async (req) => {
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
     const bet = bets[0];
 
-    const withdrawAmount = userBet.amount || (offer ? offer.amount_unmatched : 0) || 0;
+    // Calculate actual withdrawn amount (use payload amount if provided for partial withdrawals)
+    const requestedWithdrawAmount = payload.withdrawAmount || userBet.amount || (offer ? offer.amount_unmatched : 0) || 0;
+    const currentUnmatched = userBet.liquidity_unmatched || (offer ? offer.amount_unmatched : 0) || 0;
+    const remainingUnmatched = Math.max(0, currentUnmatched - requestedWithdrawAmount);
 
     // Update database records
-    // For won/settled LP positions: mark as claimed; otherwise mark as withdrawn
-    const newUserBetStatus = ['won', 'settled'].includes(userBet.status) ? 'claimed' : 'withdrawn';
+    // For won/settled LP positions: mark as claimed; otherwise mark as withdrawn (only if fully withdrawn)
+    const isFullyWithdrawn = remainingUnmatched <= 0;
+    const newUserBetStatus = ['won', 'settled'].includes(userBet.status) ? 'claimed' : (isFullyWithdrawn ? 'withdrawn' : userBet.status);
     
+    // CRITICAL: Do NOT reduce liquidity_deposited - track withdrawn separately to preserve original deposit amount for display
     await base44.entities.UserBet.update(userBetId, { 
       status: newUserBetStatus,
-      liquidity_unmatched: 0,
+      liquidity_unmatched: remainingUnmatched,
+      liquidity_withdrawn: (userBet.liquidity_withdrawn || 0) + requestedWithdrawAmount,
     });
     
-    // Always mark BetOffer as withdrawn with amount_unmatched=0 so frontend filters it out
+    // Update BetOffer: reduce amount_unmatched, only mark withdrawn if fully withdrawn
     if (offer) {
-      const offerStatus = ['won', 'settled'].includes(userBet.status) ? 'settled' : 'withdrawn';
+      const newAmountUnmatched = Math.max(0, (offer.amount_unmatched || 0) - requestedWithdrawAmount);
+      const isOfferFullyWithdrawn = newAmountUnmatched <= 0 && (offer.amount_matched || 0) <= 0;
+      const offerStatus = ['won', 'settled'].includes(userBet.status) ? 'settled' : (isOfferFullyWithdrawn ? 'withdrawn' : offer.status);
+      
       await base44.entities.BetOffer.update(offer.id, { 
         status: offerStatus,
-        amount_unmatched: 0,
+        amount_unmatched: newAmountUnmatched,
       });
     }
     
@@ -82,19 +91,20 @@ Deno.serve(async (req) => {
     if (bet) {
       const lpField = userBet.outcome === 'a' ? 'lp_amount_a' : userBet.outcome === 'b' ? 'lp_amount_b' : 'lp_amount_draw';
       await base44.entities.Bet.update(userBet.bet_id, {
-        [lpField]: Math.max(0, (bet[lpField] || 0) - withdrawAmount),
+        [lpField]: Math.max(0, (bet[lpField] || 0) - requestedWithdrawAmount),
       });
     }
 
-    console.log(`Withdrawal finalized: UserBet ${userBetId}, Offer ${offerId}, amount: ${withdrawAmount}, signature: ${signature}`);
+    console.log(`Withdrawal finalized: UserBet ${userBetId}, Offer ${offerId}, amount: ${requestedWithdrawAmount}, remaining: ${remainingUnmatched}, signature: ${signature}`);
 
     return Response.json({
       success: true,
       userBetId,
       offerId,
       signature,
-      amount: withdrawAmount,
-      message: `Withdrawn ◎${withdrawAmount}`,
+      amount: requestedWithdrawAmount,
+      remaining: remainingUnmatched,
+      message: `Withdrawn ◎${requestedWithdrawAmount}${isFullyWithdrawn ? '' : ` (◎${remainingUnmatched.toFixed(4)} remaining)}`}`,
     });
 
   } catch (error) {

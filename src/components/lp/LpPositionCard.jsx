@@ -151,17 +151,19 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   
   // CRITICAL: For FUTURES, use ONLY on-chain data (NO DB fallback)
   // For matches, use on-chain with DB fallback
+  // Use on-chain committed as deposited (original amount), DB liquidity_withdrawn tracks partial withdrawals
   const liquidityDeposited = isFutures 
     ? (onChainOffer ? onChainOffer.amountCommitted : 0)
-    : (onChainOffer ? onChainOffer.amountCommitted : (offer.liquidity_deposited || 0));
+    : (onChainOffer ? onChainOffer.amountCommitted : (offer.liquidity_deposited || offer.amount_offered || 0));
   
   const liquidityMatched = isFutures 
     ? (onChainOffer ? onChainOffer.amountMatched : 0)
     : (onChainOffer ? onChainOffer.amountMatched : (offer.liquidity_matched || 0));
   
+  // CRITICAL: Use on-chain available balance for unmatched (always accurate after partial withdrawals)
   const liquidityUnmatched = isFutures 
     ? (onChainOffer ? onChainOffer.unmatched : 0)
-    : (onChainOffer ? onChainOffer.unmatched : Math.max(0, liquidityDeposited - liquidityMatched));
+    : (onChainOffer ? onChainOffer.unmatched : (offer.liquidity_unmatched !== undefined ? offer.liquidity_unmatched : Math.max(0, liquidityDeposited - liquidityMatched - (offer.liquidity_withdrawn || 0))));
   
   console.log('[LpPositionCard] === FINAL DISPLAY VALUES ===');
   console.log('[LpPositionCard] position.id:', position.id);
@@ -776,8 +778,9 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                                          userBetStatus !== 'withdrawn' &&
                                          onWithdrawRequest;
 
-            // If on-chain says already closed, show Withdrawn badge instead
+            // If on-chain says already closed, show Withdrawn badge with amount withdrawn
             if (onChainClosed) {
+              const withdrawnAmount = (offer.liquidity_withdrawn || 0) + (offer.liquidity_deposited || 0) - (offer.liquidity_unmatched || 0);
               return (
                 <div className="flex-1 flex flex-col gap-1">
                   <Button
@@ -785,7 +788,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                     variant="outline"
                     className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Withdrawn (on-chain)
+                    Withdrawn ◎{((offer.liquidity_deposited || 0) - (offer.liquidity_unmatched || 0)).toFixed(4)}
                   </Button>
                 </div>
               );
@@ -798,7 +801,10 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                   className="flex-1 h-8 sm:h-9 text-[10px] sm:text-xs border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 rounded-xl font-heading font-bold bg-[#242424]">
                   
                   <Wallet className="w-3 h-3 mr-1" />
-                  Withdraw ◎{(onChainOffer ? onChainUnmatched : liquidityUnmatched).toFixed(4)}
+                  Withdraw ◎{onChainUnmatched.toFixed(4)}
+                  {onChainUnmatched < liquidityUnmatched && (
+                    <span className="text-[8px] ml-1 opacity-60">(on-chain)</span>
+                  )}
                 </Button>);
             }
 
