@@ -104,34 +104,39 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Detect if this is a futures LP position
   const isFutures = offer?._isFutures || position?._isFutures || false;
 
-  // For FUTURES: Derive PDA and read EXCLUSIVELY from on-chain (no DB fallback)
-  // For matches: use existing logic with DB fallback
+  // Get market PDA and wallet from position data
   const marketPda = position?.solana_market_pda || position?.userBet?.solana_market_pda || bet?.solana_market_pda;
-  const lpWallet = position?.wallet_address || position?.userBet?.wallet_address;
+  const lpWallet = position?.wallet_address || offer?.lp_wallet_address;
   
-  // Derive outcome number
-  const outcomeNum = isFutures 
-    ? (offer.outcome_num !== undefined ? offer.outcome_num : 0)
-    : (offer?.outcome === 'a' ? 1 : offer?.outcome === 'b' ? 2 : 3);
+  // Derive outcome number (1=a, 2=b, 3=draw)
+  const outcomeNum = offer?.outcome === 'a' ? 1 : offer?.outcome === 'b' ? 2 : 3;
   
-  // For futures: derive PDA from seeds if not provided
-  const positionPda = isFutures && marketPda && lpWallet
-    ? (position?.solana_position_pda || deriveLpOfferPda(marketPda, lpWallet, outcomeNum))
-    : (position?.solana_position_pda || position?.userBet?.solana_position_pda);
+  // CRITICAL: Always derive positionPda from seeds if not explicitly provided
+  const positionPda = position?.solana_position_pda || (marketPda && lpWallet ? deriveLpOfferPda(marketPda, lpWallet, outcomeNum) : null);
   
   console.log('[LpPositionCard] === PDA LOOKUP ===');
   console.log('[LpPositionCard] position.id:', position.id);
-  console.log('[LpPositionCard] isFutures:', isFutures);
   console.log('[LpPositionCard] marketPda:', marketPda);
   console.log('[LpPositionCard] lpWallet:', lpWallet);
   console.log('[LpPositionCard] outcomeNum:', outcomeNum);
   console.log('[LpPositionCard] positionPda:', positionPda);
+  console.log('[LpPositionCard] position.solana_position_pda:', position?.solana_position_pda);
   
   const { data: onChainOffer, refetch: refetchOnChain } = useQuery({
     queryKey: ['lp-offer-onchain', positionPda],
     queryFn: () => fetchLpOfferOnChain(positionPda),
-    enabled: isFutures ? !!(positionPda && marketPda && lpWallet) : !!positionPda,
-    staleTime: 5000,
+    enabled: !!(positionPda && marketPda && lpWallet),
+    staleTime: 2000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+  
+  console.log('[LpPositionCard] Query debug:', {
+    positionPda,
+    marketPda,
+    lpWallet,
+    enabled: !!(positionPda && marketPda && lpWallet),
+    onChainOffer,
   });
   
   console.log('[LpPositionCard] === ON-CHAIN QUERY RESULT ===');
@@ -149,30 +154,27 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
   // Get match from position data if not passed
   const matchData = match || position.match || { team_a: 'Team A', team_b: 'Team B', team_a_flag: '', team_b_flag: '', group_stage: '', match_end_time: null, winner: '' };
   
-  // CRITICAL: For FUTURES, use ONLY on-chain data (NO DB fallback)
-  // For matches, use on-chain with DB fallback
-  // Use on-chain committed as deposited (original amount), DB liquidity_withdrawn tracks partial withdrawals
-  const liquidityDeposited = isFutures 
-    ? (onChainOffer ? onChainOffer.amountCommitted : 0)
-    : (onChainOffer ? onChainOffer.amountCommitted : (offer.liquidity_deposited || offer.amount_offered || 0));
+  // CRITICAL: ALWAYS use on-chain data when available for accurate post-withdrawal balances
+  const liquidityDeposited = onChainOffer 
+    ? onChainOffer.amountCommitted 
+    : (offer.liquidity_deposited || offer.amount_offered || 0);
   
-  const liquidityMatched = isFutures 
-    ? (onChainOffer ? onChainOffer.amountMatched : 0)
-    : (onChainOffer ? onChainOffer.amountMatched : (offer.liquidity_matched || 0));
+  const liquidityMatched = onChainOffer 
+    ? onChainOffer.amountMatched 
+    : (offer.liquidity_matched || 0);
   
-  // CRITICAL: Use on-chain available balance for unmatched (always accurate after partial withdrawals)
-  const liquidityUnmatched = isFutures 
-    ? (onChainOffer ? onChainOffer.unmatched : 0)
-    : (onChainOffer ? onChainOffer.unmatched : (offer.liquidity_unmatched !== undefined ? offer.liquidity_unmatched : Math.max(0, liquidityDeposited - liquidityMatched - (offer.liquidity_withdrawn || 0))));
+  // CRITICAL: On-chain unmatched is the ONLY source of truth after withdrawals
+  const liquidityUnmatched = onChainOffer 
+    ? onChainOffer.unmatched 
+    : (offer.liquidity_unmatched !== undefined ? offer.liquidity_unmatched : Math.max(0, liquidityDeposited - liquidityMatched));
   
   console.log('[LpPositionCard] === FINAL DISPLAY VALUES ===');
   console.log('[LpPositionCard] position.id:', position.id);
-  console.log('[LpPositionCard] isFutures:', isFutures);
-  console.log('[LpPositionCard] data source:', onChainOffer ? 'ON-CHAIN' : (isFutures ? 'NO DATA' : 'DB FALLBACK'));
+  console.log('[LpPositionCard] onChainOffer:', onChainOffer);
+  console.log('[LpPositionCard] data source:', onChainOffer ? 'ON-CHAIN ✓' : 'DB FALLBACK');
   console.log('[LpPositionCard] liquidityDeposited:', liquidityDeposited, 'SOL');
   console.log('[LpPositionCard] liquidityMatched:', liquidityMatched, 'SOL');
   console.log('[LpPositionCard] liquidityUnmatched:', liquidityUnmatched, 'SOL');
-  console.log('[LpPositionCard] onChainOffer:', onChainOffer);
   
   // Bug 2 Fix: Read settlement state from on-chain market, not DB
   const onChainSettled = onChainMarket?.settled === true;
