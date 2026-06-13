@@ -284,6 +284,25 @@ Deno.serve(async (req) => {
       positionPda: positionPda.toBase58(),
     });
 
+    // Serialize place_bet instruction data: discriminator(8) + outcome(u8) + amount(u64 LE)
+    // Discriminator: SHA256("global:place_bet")[0..8] = [222, 62, 67, 220, 63, 166, 126, 33]
+    const discriminator = Buffer.from([222, 62, 67, 220, 63, 166, 126, 33]);
+    const instructionData = Buffer.alloc(17);
+    discriminator.copy(instructionData, 0);
+    instructionData.writeUInt8(outcomeIndex, 8);
+    instructionData.writeBigUInt64LE(BigInt(amountLamports), 9);
+
+    const keys = [
+      { pubkey: marketPda.toBase58(),        isSigner: false, isWritable: true },
+      { pubkey: lpOfferPda.toBase58(),        isSigner: false, isWritable: true },
+      { pubkey: positionPda.toBase58(),       isSigner: false, isWritable: true },
+      { pubkey: trimmedWallet,                isSigner: true,  isWritable: true },
+      { pubkey: '11111111111111111111111111111111', isSigner: false, isWritable: false },
+    ];
+
+    console.log('[matchBet] place_bet instruction_data (hex):', instructionData.toString('hex'));
+    console.log('[matchBet] place_bet keys:', keys.map((k, i) => `[${i}] ${k.pubkey}`));
+
     return Response.json({
       success: true,
       potential_payout,
@@ -291,10 +310,8 @@ Deno.serve(async (req) => {
       solana_instruction: {
         instruction_type: 'place_bet',
         programId: SOLANA_PROGRAM_ID,
-        marketPda: marketPda.toBase58(),
-        lpOfferPda: lpOfferPda.toBase58(),
-        bettorPositionPda: positionPda.toBase58(),
-        outcome: outcomeIndex,
+        keys,
+        instruction_data: instructionData.toString('base64'),
         amountLamports,
       },
       // Data to commit after transaction succeeds (not written to DB yet)
