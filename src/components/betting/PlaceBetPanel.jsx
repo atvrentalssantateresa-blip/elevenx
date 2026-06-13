@@ -48,7 +48,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
             const onChain = await base44.functions.invoke('fetchLpOfferOnChain', { pda: o.solana_position_pda });
             console.log('[PlaceBetPanel] On-chain data for offer', o.id, ':', onChain.data);
             if (onChain.data?.exists && onChain.data?.available !== undefined) {
-              const onChainUnmatched = Number(onChain.data.available) / 1e9;
+              const onChainUnmatched = Number(onChain.data.available) || 0;
               console.log('[PlaceBetPanel] Using on-chain amount:', o.id, onChainUnmatched, '(DB was:', dbAmount, ')');
               return { ...o, amount_unmatched: onChainUnmatched, _onChainVerified: true };
             } else {
