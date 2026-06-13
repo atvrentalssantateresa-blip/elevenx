@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import BetCountdown from '@/components/betting/BetCountdown';
 import WithdrawAmountModal from '@/components/lp/WithdrawAmountModal';
 import { base44 } from '@/api/base44Client';
+import { callBackendFunction } from '@/lib/directFunctionCall';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
@@ -408,51 +409,41 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
       
       let res;
       
+      let resData;
+
       if (isLpWon && liquidityMatched > 0) {
-        // LP WON - claim matched winnings + fees
         console.log('[LpPositionCard] LP WON - calling withdrawLpWinnings');
-        res = await base44.functions.invoke('withdrawLpWinnings', {
-          userBetId,
-          walletAddress
-        });
+        resData = await callBackendFunction('withdrawLpWinnings', { userBetId, walletAddress });
       } else if (positionPda && marketPda && !userBetId) {
-        // On-chain position with no DB record (futures or match) — use PDAs directly
         console.log('[LpPositionCard] On-chain withdraw (no DB record) - using PDA:', positionPda);
-        res = await base44.functions.invoke('withdrawLiquidity', {
+        resData = await callBackendFunction('withdrawLiquidity', {
           walletAddress,
           solana_position_pda: positionPda,
           solana_market_pda: marketPda,
         });
       } else {
-        // LP LOST or UNMATCHED - withdraw unmatched liquidity
         console.log('[LpPositionCard] Withdrawing unmatched liquidity - calling withdrawLiquidity');
-        res = await base44.functions.invoke('withdrawLiquidity', { 
-          userBetId,
-          walletAddress 
-        });
+        resData = await callBackendFunction('withdrawLiquidity', { userBetId, walletAddress });
       }
 
-      // Handle HTTP errors
-      if (res.status !== 200 || res.data?.error) {
-        const errorMsg = res.data?.error || res.statusText || 'Unknown error';
-        console.error('[LpPositionCard] Withdraw failed:', { status: res.status, error: errorMsg });
-        alert('Withdraw failed:\n\n' + errorMsg);
+      if (resData?.error) {
+        console.error('[LpPositionCard] Withdraw failed:', resData.error);
+        alert('Withdraw failed:\n\n' + resData.error);
         return;
       }
 
-      console.log('[LpPositionCard] Withdraw response:', res.data);
-      console.log('[LpPositionCard] Solana instruction:', res.data.solana_instruction);
+      console.log('[LpPositionCard] Withdraw response:', resData);
+      console.log('[LpPositionCard] Solana instruction:', resData.solana_instruction);
 
       onWithdrawRequest({
-        solanaInstruction: res.data.solana_instruction,
+        solanaInstruction: resData.solana_instruction,
         withdrawAmount: selectedAmount,
-        lpFeeBonus: res.data.lpFeeBonus || 0,
-        totalWithdraw: selectedAmount + (res.data.lpFeeBonus || 0),
+        lpFeeBonus: resData.lpFeeBonus || 0,
+        totalWithdraw: selectedAmount + (resData.lpFeeBonus || 0),
         positionId: offer.userBetId || offer.id,
         offerId: offer.offer_id || null,
         match: match,
         onSuccess: () => {
-          // Refetch on-chain state immediately after tx confirms so button disappears
           setTimeout(() => refetchOnChain(), 2000);
         }
       });
