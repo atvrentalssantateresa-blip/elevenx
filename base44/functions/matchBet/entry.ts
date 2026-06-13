@@ -247,17 +247,57 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    // PRE-FLIGHT: Verify on-chain LP offer has real liquidity.
-    // If account doesn't exist → LP withdrew and closed the account. Block bet + mark stale.
+    // PRE-FLIGHT: Verify on-chain LP offer using fetchLpOfferOnChain backend function (same logic, guaranteed consistency)
     try {
-      const { Connection } = await import('npm:@solana/web3.js@1.98.4');
-      const rpcUrl = Deno.env.get('SOLANA_RPC_URL') || 'https://api.mainnet-beta.solana.com';
-      const connection = new Connection(rpcUrl, 'confirmed');
-      const accountInfo = await connection.getAccountInfo(lpOfferPda);
-
-      if (!accountInfo) {
+      console.log('[matchBet] === ON-CHAIN PRE-FLIGHT CHECK ===');
+      
+      // Derive expected PDA from seeds to verify stored PDA is correct
+      const programId = new PublicKey(SOLANA_PROGRAM_ID);
+      const matchIdBytes = Buffer.alloc(32);
+      Buffer.from(offer.match_id, 'utf-8').copy(matchIdBytes, 0, 0, Math.min(offer.match_id.length, 32));
+      
+      const [marketPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('market'), matchIdBytes],
+        programId
+      );
+      
+      const lpWalletPubkey = new PublicKey(offer.lp_wallet_address);
+      const outcomeIndex = offer.outcome === 'a' ? 0 : offer.outcome === 'b' ? 1 : 2;
+      
+      const [expectedPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('lp_offer'),
+          marketPda.toBuffer(),
+          lpWalletPubkey.toBuffer(),
+          Buffer.from([outcomeIndex]),
+        ],
+        programId
+      );
+      
+      console.log('[matchBet] PDA verification:', {
+        stored_pda: offer.solana_position_pda,
+        expected_pda: expectedPda.toBase58(),
+        match: offer.solana_position_pda === expectedPda.toBase58(),
+      });
+      
+      // Use the DERIVED PDA (not stored) to ensure we're checking the right account
+      const pdaToCheck = expectedPda.toBase58();
+      
+      console.log('[matchBet] LP Offer PDA (derived from seeds):', pdaToCheck);
+      
+      // Call fetchLpOfferOnChain to get consistent on-chain data (same parsing logic)
+      const onChainRes = await fetch(`${req.url.replace('/matchBet', '/fetchLpOfferOnChain')}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pda: pdaToCheck }),
+      });
+      const onChainData = await onChainRes.json();
+      
+      console.log('[matchBet] fetchLpOfferOnChain response:', onChainData);
+      
+      if (!onChainData.exists) {
         // Account doesn't exist on-chain — LP already withdrew and closed it. Clean up DB.
-        console.warn('[matchBet] LP offer account not found on-chain (withdrawn):', lpOfferPda.toBase58());
+        console.warn('[matchBet] LP offer account not found on-chain (withdrawn):', pdaToCheck);
         await serviceRole.entities.BetOffer.update(offer.id, { status: 'withdrawn', amount_unmatched: 0 });
         return Response.json({
           error: 'This LP offer has been withdrawn on-chain. Refreshing...',
@@ -266,34 +306,26 @@ Deno.serve(async (req) => {
           force_refresh: true,
         }, { status: 400 });
       }
-
-      // CRITICAL: Convert Uint8Array to Buffer for proper readBigUInt64LE support
-      const data = Buffer.from(accountInfo.data);
-      console.log('[matchBet] On-chain account data length:', data.length);
       
-      if (data.length < 98) {
-        console.error('[matchBet] Account data too short:', data.length);
-        return Response.json({
-          error: 'Invalid on-chain account data',
-          offer_stale: true,
-          force_refresh: true,
-        }, { status: 400 });
-      }
-
-      const closed = data[97] === 1;
-      const committed = Number(data.readBigUInt64LE(81));
-      const matched = Number(data.readBigUInt64LE(89));
-      const onChainUnmatched = Math.max(0, committed - matched);
-      console.log('[matchBet] On-chain LP offer state:', {
-        closed,
-        committed: committed / 1e9,
-        matched: matched / 1e9,
-        unmatched: onChainUnmatched / 1e9,
-        requested: amountLamports,
+      const { amountCommitted, amountMatched, closed, available: onChainUnmatched } = onChainData;
+      
+      // CRITICAL: Log raw values BEFORE any logic decisions (as requested)
+      console.log('[matchBet] On-chain LP offer state (raw):', {
+        pda: pdaToCheck,
+        account_data_length: onChainData.accountDataLength || 'N/A',
+        closed_byte_raw: closed ? '1' : '0',
+        committed_lamports: Math.round(amountCommitted * 1e9),
+        matched_lamports: Math.round(amountMatched * 1e9),
+        unmatched_lamports: Math.round(onChainUnmatched * 1e9),
+        committed_sol: amountCommitted,
+        matched_sol: amountMatched,
+        unmatched_sol: onChainUnmatched,
+        requested_sol: amount,
       });
       
-      // If account is closed, mark as withdrawn
-      if (closed) {
+      // Only treat as closed/withdrawn if closed===true AND onChainUnmatched<=0
+      if (closed && onChainUnmatched <= 0) {
+        console.log('[matchBet] Offer is truly closed with zero liquidity, marking as withdrawn');
         await serviceRole.entities.BetOffer.update(offer.id, { status: 'withdrawn', amount_unmatched: 0 });
         return Response.json({
           error: 'This LP offer has been closed on-chain',
@@ -303,22 +335,27 @@ Deno.serve(async (req) => {
         }, { status: 400 });
       }
       
+      // If closed but still has liquidity, allow betting (LP hasn't withdrawn yet)
+      if (closed) {
+        console.warn('[matchBet] Offer marked closed on-chain but still has liquidity:', onChainUnmatched);
+      }
+      
       // If on-chain unmatched is less than DB value, update DB
       const dbUnmatched = offer.amount_unmatched || 0;
-      if (onChainUnmatched / 1e9 < dbUnmatched) {
+      if (onChainUnmatched < dbUnmatched) {
         console.log('[matchBet] DB stale detected, updating:', {
           dbUnmatched,
-          onChainUnmatched: onChainUnmatched / 1e9,
+          onChainUnmatched,
         });
-        await serviceRole.entities.BetOffer.update(offer.id, { amount_unmatched: onChainUnmatched / 1e9 });
+        await serviceRole.entities.BetOffer.update(offer.id, { amount_unmatched: onChainUnmatched });
       }
       
       // Check if requested amount exceeds on-chain liquidity
-      if (amountLamports > onChainUnmatched) {
+      if (amount > onChainUnmatched) {
         return Response.json({
-          error: `Insufficient on-chain liquidity (available: ◎${(onChainUnmatched / 1e9).toFixed(4)}, requested: ◎${amount})`,
+          error: `Insufficient on-chain liquidity (available: ◎${onChainUnmatched.toFixed(4)}, requested: ◎${amount})`,
           offer_stale: false,
-          available: onChainUnmatched / 1e9,
+          available: onChainUnmatched,
           force_refresh: false,
         }, { status: 400 });
       }
