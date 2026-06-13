@@ -22,17 +22,30 @@ Deno.serve(async (req) => {
     
     // Decode token if present
     let tokenPayload = null;
+    let decodeError = null;
     if (token && token.split('.').length === 3) {
       try {
-        tokenPayload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const payloadStr = atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'));
+        tokenPayload = JSON.parse(payloadStr);
+        console.log('[debugAuth] RAW token payload:', JSON.stringify(tokenPayload, null, 2));
         console.log('[debugAuth] Token payload:', {
           walletAddress: tokenPayload.walletAddress?.slice(0, 8),
           role: tokenPayload.role,
           userId: tokenPayload.userId,
         });
       } catch (e) {
+        decodeError = e.message;
         console.log('[debugAuth] Could not decode token:', e.message);
+        // Try to show raw payload anyway
+        try {
+          const rawPayload = atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'));
+          console.log('[debugAuth] Raw payload string:', rawPayload);
+        } catch (e2) {
+          console.log('[debugAuth] Cannot even base64 decode:', e2.message);
+        }
       }
+    } else {
+      console.log('[debugAuth] Token format invalid, parts:', token ? token.split('.').length : 0);
     }
     
     // Check admin status
@@ -44,10 +57,13 @@ Deno.serve(async (req) => {
       headers_received: Object.keys(allHeaders),
       has_authorization: !!authHeader,
       token_length: token?.length || 0,
+      token_format_valid: token && token.split('.').length === 3,
       token_payload: tokenPayload ? {
         wallet: tokenPayload.walletAddress?.slice(0, 8),
         role: tokenPayload.role,
+        all_fields: tokenPayload,
       } : null,
+      decode_error: decodeError,
       is_admin_wallet: isAdminWallet,
       is_admin_role: isAdminRole,
       can_access: isAdminWallet || isAdminRole,
