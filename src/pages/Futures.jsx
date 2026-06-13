@@ -34,13 +34,17 @@ export default function Futures() {
     setIsDeploying(true);
     try {
       console.log('[Futures] Calling bulkDeployFutures...');
-      // Get wallet address from session
-      const walletSession = localStorage.getItem('elevenx_wallet_session');
-      const walletAddress = walletSession ? JSON.parse(walletSession).address : null;
+      // Debug: Check auth token
+      const token = localStorage.getItem('elevenx_auth_token');
+      console.log('[Futures] Auth token exists:', !!token);
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        console.log('[Futures] Token payload:', { wallet: payload.walletAddress?.slice(0, 8), role: payload.role });
+      } else {
+        console.error('[Futures] NO AUTH TOKEN - please reconnect wallet!');
+      }
       
-      const res = await base44.functions.invoke('bulkDeployFutures', {
-        walletAddress,
-      });
+      const res = await base44.functions.invoke('bulkDeployFutures', {});
       console.log('[Futures] Deploy response:', res.data);
       
       if (res.data.error) {

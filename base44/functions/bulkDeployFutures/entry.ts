@@ -17,44 +17,39 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const serviceRole = base44.asServiceRole;
     
-    // Check auth: either platform admin OR admin wallet address
+    // Admin wallet check ONLY - no platform auth dependency
     const ADMIN_WALLET = '4xfwNAkxNbgZuR5LsjTh91z9Sw3d9AVvHvbPpTaiipZZ';
-    let isAdmin = false;
-    let authMethod = '';
     
-    // Try 1: Platform admin via base44.auth.me()
-    try {
-      const user = await base44.auth.me();
-      if (user && user.role === 'admin') {
-        isAdmin = true;
-        authMethod = `platform_admin (${user.email})`;
-      }
-    } catch (_) {}
+    // Get JWT from Authorization header
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
     
-    // Try 2: Check JWT token from Authorization header
-    if (!isAdmin) {
-      const authHeader = req.headers.get('Authorization') || '';
-      const token = authHeader.replace('Bearer ', '');
-      if (token && token.split('.').length === 3) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-          if (payload.walletAddress === ADMIN_WALLET) {
-            isAdmin = true;
-            authMethod = `admin_wallet (${payload.walletAddress.slice(0, 8)}...)`;
-          } else if (payload.role === 'admin') {
-            isAdmin = true;
-            authMethod = `jwt_admin_role`;
-          }
-        } catch (_) {}
-      }
+    if (!token || token.split('.').length !== 3) {
+      console.error('[bulkDeployFutures] No valid JWT token');
+      return Response.json({ error: 'Admin only - no auth token' }, { status: 403 });
     }
     
-    console.log('[bulkDeployFutures] Auth check:', { isAdmin, authMethod });
+    // Decode JWT payload
+    let payload;
+    try {
+      payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    } catch (e) {
+      console.error('[bulkDeployFutures] Failed to decode JWT:', e.message);
+      return Response.json({ error: 'Invalid token' }, { status: 403 });
+    }
     
-    if (!isAdmin) {
-      console.error('[bulkDeployFutures] Access denied - not admin');
+    console.log('[bulkDeployFutures] JWT payload:', {
+      walletAddress: payload.walletAddress?.slice(0, 8),
+      role: payload.role,
+    });
+    
+    // Check if admin wallet OR admin role
+    if (payload.walletAddress !== ADMIN_WALLET && payload.role !== 'admin') {
+      console.error('[bulkDeployFutures] Access denied - wallet:', payload.walletAddress?.slice(0, 8), 'role:', payload.role);
       return Response.json({ error: 'Admin only' }, { status: 403 });
     }
+    
+    console.log('[bulkDeployFutures] ✓ Authenticated as admin');
 
     // Get all futures markets that are not yet deployed (open OR coming_soon)
     const allMarkets = await serviceRole.entities.FuturesMarket.filter({});
