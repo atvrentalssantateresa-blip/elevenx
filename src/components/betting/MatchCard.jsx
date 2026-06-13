@@ -88,13 +88,13 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
             </span>
             <Badge className={`text-[9px] font-semibold uppercase tracking-wider flex-shrink-0 ${
               match.status === 'live' ? 'bg-destructive/20 text-destructive border border-destructive/30' :
-              match.status === 'finished' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+              match.status === 'finished' ? 'bg-accent/20 text-accent border border-accent/30' :
               match.status === 'cancelled' ? 'bg-muted text-muted-foreground border border-border/30' :
               'bg-primary/10 text-primary border border-primary/20'
             }`}>
               {match.status === 'live' && <span className="w-1 h-1 rounded-full bg-destructive animate-pulse mr-1" />}
               {match.status === 'live' ? '● LIVE' :
-               match.status === 'finished' ? '🏆 FINAL' :
+               match.status === 'finished' ? '✓ FINISHED' :
                match.status === 'cancelled' ? 'CANCELLED' :
                'UPCOMING'}
             </Badge>
@@ -119,8 +119,12 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_a}</p>
               {/* Score Badge - Team A */}
               {(match.status === 'live' || match.status === 'finished') && (
-                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                  <span className={`text-xs font-bold ${match.status === 'live' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                <div className={`mt-1 flex items-center justify-center gap-1 rounded px-2 py-0.5 border ${
+                  match.status === 'finished' ? 'bg-accent/10 border-accent/20' : 'bg-destructive/10 border-destructive/20'
+                }`}>
+                  <span className={`text-xs font-bold ${
+                    match.status === 'live' ? 'text-destructive' : 'text-accent'
+                  }`}>
                     {liveMatch.score_a ?? match.score_a ?? 0}
                   </span>
                 </div>
@@ -160,8 +164,12 @@ export default function MatchCard({ match, bet, index = 0, onOddsRefresh }) {
               <p className="text-[10px] text-foreground truncate font-medium">{match.team_b}</p>
               {/* Score Badge - Team B */}
               {(match.status === 'live' || match.status === 'finished') && (
-                <div className="mt-1 flex items-center justify-center gap-1 bg-destructive/10 border border-destructive/20 rounded px-2 py-0.5">
-                  <span className={`text-xs font-bold ${match.status === 'live' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                <div className={`mt-1 flex items-center justify-center gap-1 rounded px-2 py-0.5 border ${
+                  match.status === 'finished' ? 'bg-accent/10 border-accent/20' : 'bg-destructive/10 border-destructive/20'
+                }`}>
+                  <span className={`text-xs font-bold ${
+                    match.status === 'live' ? 'text-destructive' : 'text-accent'
+                  }`}>
                     {liveMatch.score_b ?? match.score_b ?? 0}
                   </span>
                 </div>

@@ -99,10 +99,23 @@ Deno.serve(async (req) => {
       let scoreB = 0;
       
       if (matchedGame.scores && Array.isArray(matchedGame.scores)) {
-        const homeScoreObj = matchedGame.scores.find(s => s.name === matchedGame.home_team);
-        const awayScoreObj = matchedGame.scores.find(s => s.name === matchedGame.away_team);
-        scoreA = homeScoreObj?.score ? parseInt(homeScoreObj.score) : 0;
-        scoreB = awayScoreObj?.score ? parseInt(awayScoreObj.score) : 0;
+        // Try multiple matching strategies
+        const homeScoreObj = matchedGame.scores.find(s => 
+          s.name === matchedGame.home_team || 
+          s.name?.toLowerCase().includes(matchedGame.home_team.toLowerCase())
+        );
+        const awayScoreObj = matchedGame.scores.find(s => 
+          s.name === matchedGame.away_team || 
+          s.name?.toLowerCase().includes(matchedGame.away_team.toLowerCase())
+        );
+        scoreA = homeScoreObj?.score !== undefined ? parseInt(homeScoreObj.score) : 0;
+        scoreB = awayScoreObj?.score !== undefined ? parseInt(awayScoreObj.score) : 0;
+        
+        console.log(`[syncScores] ${dbMatch.team_a} vs ${dbMatch.team_b}: scores=${scoreA}-${scoreB}`, {
+          homeScoreObj,
+          awayScoreObj,
+          allScores: matchedGame.scores
+        });
       }
       
       // Determine match status based on completed flag and scores
