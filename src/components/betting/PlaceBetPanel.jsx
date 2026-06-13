@@ -342,8 +342,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       }
       if (res.error) {
         console.error('[PlaceBetPanel] Error in response:', res.error);
-        // If the offer is stale on-chain, the backend already fixed the DB — just refresh
-        if (res.offer_stale) {
+        // If the offer is stale on-chain, the backend already fixed the DB — force refresh
+        if (res.offer_stale || res.force_refresh) {
+          console.log('[PlaceBetPanel] Offer stale/force_refresh detected, invalidating and refetching...');
+          await queryClient.invalidateQueries({ queryKey: ['allOffers', bet?.id], refetchType: 'all' });
           await refetchOffers();
         }
         throw new Error(res.error);

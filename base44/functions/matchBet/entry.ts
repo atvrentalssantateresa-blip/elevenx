@@ -260,9 +260,10 @@ Deno.serve(async (req) => {
         console.warn('[matchBet] LP offer account not found on-chain (withdrawn):', lpOfferPda.toBase58());
         await serviceRole.entities.BetOffer.update(offer.id, { status: 'withdrawn', amount_unmatched: 0 });
         return Response.json({
-          error: 'This LP offer has been withdrawn. Please refresh and try again.',
+          error: 'This LP offer has been withdrawn on-chain. Refreshing...',
           offer_stale: true,
           available: 0,
+          force_refresh: true,
         }, { status: 400 });
       }
 
@@ -288,10 +289,11 @@ Deno.serve(async (req) => {
           }
           return Response.json({
             error: closed
-              ? 'This LP offer has been withdrawn. Please refresh and try again.'
-              : `Insufficient on-chain liquidity (available: ◎${(onChainUnmatched / 1e9).toFixed(4)}, requested: ◎${(amountLamports / 1e9).toFixed(4)})`,
+              ? 'This LP offer has been withdrawn on-chain. Refreshing...'
+              : `Insufficient on-chain liquidity (available: ◎${(onChainUnmatched / 1e9).toFixed(4)})`,
             offer_stale: true,
             available: onChainUnmatched / 1e9,
+            force_refresh: closed,
           }, { status: 400 });
         }
       }
