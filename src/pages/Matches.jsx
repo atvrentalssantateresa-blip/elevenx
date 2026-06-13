@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Trophy, Search, Globe, ChevronDown, ChevronUp, Rocket, Loader } from 'lucide-react';
+import { Trophy, Search, Globe, ChevronDown, ChevronUp, Rocket, Loader, Bug } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import MatchCard from '@/components/betting/MatchCard';
 import { motion } from 'framer-motion';
 import GroupNavigation, { WORLD_CUP_GROUPS_2026 } from '@/components/futures/GroupNavigation';
+import { callBackendFunction } from '@/lib/directFunctionCall';
 
 export default function Matches() {
   const [activeGroup, setActiveGroup] = useState('ALL');
@@ -38,6 +39,17 @@ export default function Matches() {
       alert('Error deploying matches: ' + err.message);
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const handleDebugAuth = async () => {
+    try {
+      const res = await callBackendFunction('debugAuth', {});
+      console.log('DEBUG AUTH RESPONSE:', res);
+      alert('Check console - token length: ' + (res.token_length || 0) + '\n\nWallet: ' + (res.wallet_address || 'N/A') + '\nRole: ' + (res.role || 'N/A'));
+    } catch (err) {
+      console.error('Debug auth failed:', err);
+      alert('Debug failed: ' + err.message);
     }
   };
 
@@ -223,14 +235,23 @@ export default function Matches() {
               </div>
             </div>
             {isAdmin && (
-              <button
-                onClick={handleDeployAll}
-                disabled={isDeploying}
-                className="hidden sm:flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
-              >
-                {isDeploying ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
-                Deploy All Matches
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDebugAuth}
+                  className="hidden sm:flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                >
+                  <Bug className="w-3.5 h-3.5" />
+                  Debug Auth
+                </button>
+                <button
+                  onClick={handleDeployAll}
+                  disabled={isDeploying}
+                  className="hidden sm:flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                >
+                  {isDeploying ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
+                  Deploy All Matches
+                </button>
+              </div>
             )}
             {/* Expand/Collapse Button */}
             <button
