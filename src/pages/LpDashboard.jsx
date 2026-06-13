@@ -389,14 +389,17 @@ export default function LpDashboard() {
 
     if (pendingCommitData) {
       try {
+        console.log('[LpDashboard] Calling commitLiquidity with:', { signature, commit_data: pendingCommitData });
         const commitRes = await base44.functions.invoke('commitLiquidity', {
           signature,
           commit_data: pendingCommitData
         });
+        console.log('[LpDashboard] commitLiquidity response:', commitRes.data);
         if (commitRes.data.error) {
           setError('Commit failed: ' + commitRes.data.error);
         }
       } catch (err) {
+        console.error('[LpDashboard] commitLiquidity error:', err);
         setError('Commit failed: ' + err.message);
       }
       setPendingCommitData(null);
@@ -404,15 +407,18 @@ export default function LpDashboard() {
 
     // Small delay so SolanaTransactionSigner can show its success state, then close
     setTimeout(async () => {
+      console.log('[LpDashboard] Transaction success - refreshing LP positions...');
       setPendingTx(null);
       setAmount('');
       setSelectedBet(null);
       setModalTransactionMode(false);
       setDetailModalOpen(false);
       setError(null);
-      // Only refetch myOffers - don't invalidate everything (causes jarring refresh)
+      // CRITICAL: Force refresh by invalidating AND refetching
+      await queryClient.invalidateQueries({ queryKey: ['myOffers', walletAddress], refetchType: 'all' });
       await refetchOffers();
-    }, 2500);
+      console.log('[LpDashboard] LP positions refreshed');
+    }, 1500);
   };
 
   const handleTxError = (err) => {

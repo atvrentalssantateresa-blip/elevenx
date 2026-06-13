@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       // Update existing offer - recalculate status based on new unmatched amount
       const existingOffer = existingOffers[0];
       const newAmountUnmatched = (existingOffer.amount_unmatched || 0) + offer.amount_unmatched;
-      const newStatus = newAmountUnmatched <= 0.0001 ? 'fully_matched' : 'partially_matched';
+      const newStatus = newAmountUnmatched <= 0.0001 ? 'fully_matched' : 'open'; // Use 'open' for new liquidity
       
       await serviceRole.entities.BetOffer.update(existingOffer.id, {
         amount_offered: (existingOffer.amount_offered || 0) + offer.amount_offered,
@@ -47,10 +47,13 @@ Deno.serve(async (req) => {
       offerId = existingOffer.id;
       console.log('[commitLiquidity] Updated existing BetOffer:', offerId, 'status:', newStatus, 'unmatched:', newAmountUnmatched);
     } else {
-      // Create new offer
-      const newOffer = await serviceRole.entities.BetOffer.create(offer);
+      // Create new offer with status 'open'
+      const newOffer = await serviceRole.entities.BetOffer.create({
+        ...offer,
+        status: 'open', // Explicitly set status to 'open' for new offers
+      });
       offerId = newOffer.id;
-      console.log('[commitLiquidity] Created new BetOffer:', offerId);
+      console.log('[commitLiquidity] Created new BetOffer:', offerId, 'status: open');
     }
     
     // Commit UserBet for LP position (fixed odds betting)
