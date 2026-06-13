@@ -1,20 +1,15 @@
-import { appParams } from '@/lib/app-params';
-
 /**
  * Call a backend function directly via HTTP with wallet JWT auth token.
- * Uses the correct Base44 API endpoint to avoid 404s.
+ * Uses /functions/<name> which works on both Base44 sandbox and custom domains.
  */
 export async function callBackendFunction(functionName, payload) {
   const authToken = localStorage.getItem('elevenx_auth_token');
-  
+
   if (!authToken) {
     throw new Error('Wallet not connected. Please connect your Phantom wallet first.');
   }
 
-  const appId = appParams.appId;
-  if (!appId) throw new Error('App ID not found');
-
-  const url = `/api/apps/${appId}/functions/${functionName}`;
+  const url = `/functions/${functionName}`;
   console.log('[callBackendFunction] POST', url);
 
   const response = await fetch(url, {
@@ -22,7 +17,6 @@ export async function callBackendFunction(functionName, payload) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
-      'X-App-Id': appId,
     },
     body: JSON.stringify(payload),
   });
