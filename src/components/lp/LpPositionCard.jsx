@@ -721,6 +721,8 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                 console.log('[LpPositionCard] Partial withdrawal detected - showing withdraw button for remaining:', onChainUnmatchedForCheck);
               } else if (onChainUnmatchedForCheck <= 0 || onChainClosed) {
                 // Truly withdrawn - no liquidity left or on-chain closed
+                // CRITICAL: Use Math.max(0, ...) to prevent negative withdrawn amounts
+                const withdrawnAmount = Math.max(0, liquidityDeposited - liquidityMatched - onChainUnmatchedForCheck);
                 return (
                   <div className="flex-1 flex flex-col gap-1">
                     <Button
@@ -729,7 +731,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                       className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
                       
                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Withdrawn ◎{((offer.liquidity_deposited || 0) - (onChainUnmatchedForCheck || 0)).toFixed(4)}
+                      Withdrawn ◎{withdrawnAmount.toFixed(4)}
                     </Button>
                   </div>);
               }
@@ -799,7 +801,8 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             // If on-chain says already closed, show Withdrawn badge with amount withdrawn
             if (onChainClosed) {
-              const withdrawnAmount = (offer.liquidity_withdrawn || 0) + (offer.liquidity_deposited || 0) - (offer.liquidity_unmatched || 0);
+              // CRITICAL: Use Math.max(0, ...) to prevent negative withdrawn amounts
+              const withdrawnAmount = Math.max(0, liquidityDeposited - liquidityMatched - liquidityUnmatched);
               return (
                 <div className="flex-1 flex flex-col gap-1">
                   <Button
@@ -807,7 +810,7 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                     variant="outline"
                     className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Withdrawn ◎{((offer.liquidity_deposited || 0) - (offer.liquidity_unmatched || 0)).toFixed(4)}
+                    Withdrawn ◎{withdrawnAmount.toFixed(4)}
                   </Button>
                 </div>
               );
