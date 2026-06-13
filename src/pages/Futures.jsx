@@ -33,10 +33,16 @@ export default function Futures() {
   const handleDeployAll = async () => {
     setIsDeploying(true);
     try {
+      console.log('[Futures] Calling deployAllFutures...');
       const res = await base44.functions.invoke('deployAllFutures');
+      console.log('[Futures] Deploy response:', res.data);
+      
+      if (res.data.error) {
+        throw new Error(res.data.error);
+      }
       
       if (res.data.needsSigning && res.data.solana_instruction) {
-        // Store instruction for signing modal
+        console.log('[Futures] Setting pending deploy:', res.data.solana_instruction);
         setPendingDeploy({
           ...res.data.solana_instruction,
           market_id: res.data.market_id,
@@ -50,7 +56,8 @@ export default function Futures() {
         queryClient.invalidateQueries({ queryKey: ['futures-markets'] });
       }
     } catch (err) {
-      alert('Error deploying futures: ' + err.message);
+      console.error('[Futures] Deploy error:', err);
+      alert('Error deploying futures: ' + (err.message || 'Unknown error') + '\n\nMake sure Platform is initialized first (Admin → Platform tab → Init Platform)');
     } finally {
       setIsDeploying(false);
     }
