@@ -66,17 +66,13 @@ Deno.serve(async (req) => {
     if (userBet.role !== 'lp') return Response.json({ error: 'Not an LP bet' }, { status: 400 });
 
     let offer = null;
-    let withdrawAmount = 0;
+    // Don't check DB withdrawAmount - use on-chain balance instead
     if (userBet.offer_id) {
       const offers = await base44.entities.BetOffer.filter({ id: userBet.offer_id });
       offer = offers[0];
-      if (!offer) return Response.json({ error: 'Offer not found' }, { status: 404 });
-      withdrawAmount = offer.amount_unmatched || 0;
-    } else {
-      withdrawAmount = userBet.liquidity_unmatched || 0;
-    }
-    if (withdrawAmount <= 0) {
-      return Response.json({ error: 'No unmatched liquidity remaining' }, { status: 400 });
+      if (!offer) {
+        console.log('[withdrawLiquidity] Offer not found in DB, using UserBet data');
+      }
     }
 
     const bets = await base44.entities.Bet.filter({ id: userBet.bet_id });
@@ -95,8 +91,9 @@ Deno.serve(async (req) => {
     const lpOfferPubkey = offer?.solana_position_pda ? new PublicKey(offer.solana_position_pda) : lpOfferPda;
     const accountInfo = await connection.getAccountInfo(lpOfferPubkey);
     const onChainBalance = (accountInfo?.lamports || 0) / 1e9;
+    console.log('[withdrawLiquidity] On-chain balance:', onChainBalance, 'SOL');
     if (onChainBalance < 0.001) {
-      return Response.json({ error: 'No funds available on-chain' }, { status: 400 });
+      return Response.json({ error: 'No funds available on-chain (may already be withdrawn)' }, { status: 400 });
     }
 
     console.log('[withdrawLiquidity] programId:', programIdStr);

@@ -691,21 +691,26 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
 
             }
 
-            // Priority 0: Refunded/Withdrawn (unmatched positions) - CHECK THIS FIRST
-            // Use aggregated userBetStatus to prevent old pending records from showing withdraw buttons
+            // Priority 0: Refunded/Withdrawn - but STILL allow unmatched withdrawal
+            // Only show "Withdrawn" badge if there's NO unmatched liquidity left on-chain
+            const hasUnmatchedOnChain = onChainOffer ? onChainOffer.unmatched > 0 : liquidityUnmatched > 0;
             if (liquidityMatched === 0 && (isRefunded || isWithdrawn || userBetStatus === 'refunded' || userBetStatus === 'withdrawn')) {
-              return (
-                <div className="flex-1 flex flex-col gap-1">
-                  <Button
-                    disabled
-                    variant="outline"
-                    className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
-                    
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Withdrawn ◎{liquidityDeposited.toFixed(4)}
-                  </Button>
-                </div>);
-
+              // If there's still unmatched on-chain, show withdraw button instead
+              if (hasUnmatchedOnChain && onWithdrawRequest && !onChainClosed) {
+                // Fall through to unmatched withdrawal logic below
+              } else {
+                return (
+                  <div className="flex-1 flex flex-col gap-1">
+                    <Button
+                      disabled
+                      variant="outline"
+                      className="w-full h-8 text-[10px] sm:text-xs border-white/10 text-white/40 bg-white/5 rounded-xl font-heading font-bold">
+                      
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Withdrawn ◎{liquidityDeposited.toFixed(4)}
+                    </Button>
+                  </div>);
+              }
             }
 
             // Priority 1: Already claimed (MATCHED positions only)

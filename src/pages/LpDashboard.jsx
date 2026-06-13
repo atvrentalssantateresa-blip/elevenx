@@ -70,26 +70,26 @@ export default function LpDashboard() {
       console.log('Total UserBets fetched:', allUserBets.length);
       console.log('First 3 UserBets:', allUserBets.slice(0, 3));
 
-      // Step 2: Filter for LP role — exclude terminal withdrawn/refunded states from list
+      // Step 2: Filter for LP role — show ALL LP positions (including withdrawn/refunded if they have unmatched liquidity)
       console.log('Step 2: Filtering for role=lp...');
       console.log('Wallet address from auth:', walletAddress);
       console.log('Wallet address length:', walletAddress?.length);
-      const HIDDEN_STATUSES = new Set(['withdrawn', 'refunded']);
       const lpUserBets = allUserBets.filter((ub) => {
         const walletMatch = ub.wallet_address === walletAddress;
         const roleMatch = ub.role === 'lp';
-        const notWithdrawn = !HIDDEN_STATUSES.has(ub.status);
-        const match = walletMatch && roleMatch && notWithdrawn;
+        const match = walletMatch && roleMatch;
         console.log('Checking UserBet:', ub.id, {
           ub_wallet: ub.wallet_address,
           query_wallet: walletAddress,
           wallet_match: walletMatch,
           role: ub.role,
           role_match: roleMatch,
-          final_match: match
+          final_match: match,
+          status: ub.status,
+          liquidity_unmatched: ub.liquidity_unmatched
         });
         if (match) {
-          console.log('✓ LP UserBet found:', ub.id, 'wallet:', ub.wallet_address, 'role:', ub.role);
+          console.log('✓ LP UserBet found:', ub.id, 'wallet:', ub.wallet_address, 'role:', ub.role, 'status:', ub.status, 'unmatched:', ub.liquidity_unmatched);
         }
         return match;
       });
@@ -123,8 +123,8 @@ export default function LpDashboard() {
             // CRITICAL: For futures, use liquidity_* fields; for matches, use amount
             amount_offered: isFutures ? ub.liquidity_deposited || ub.amount : ub.amount_offered || ub.amount,
             amount_matched: isFutures ? ub.liquidity_matched || 0 : ub.amount_matched || ub.liquidity_matched || 0,
-            amount_unmatched: isFutures ? ub.liquidity_unmatched || ub.amount : ub.amount_unmatched || ub.liquidity_unmatched || ub.amount,
-            status: ub.status === 'active' ? 'open' : ub.status,
+            amount_unmatched: isFutures ? (ub.liquidity_unmatched !== undefined ? ub.liquidity_unmatched : ub.amount) : (ub.liquidity_unmatched !== undefined ? ub.liquidity_unmatched : ub.amount_unmatched || ub.amount),
+            status: ub.status === 'active' || ub.status === 'pending' ? 'open' : ub.status,
             odds_at_creation: ub.amount > 0 ? ub.potential_payout / ub.amount : 2.0,
             lp_wallet_address: ub.wallet_address,
             _isFutures: isFutures
@@ -458,15 +458,16 @@ export default function LpDashboard() {
     }, 1500);
   };
 
-  // Stats - calculate from UserBet data (works for both traditional LP and parimutuel)
+  // Stats - calculate from grouped LP positions (use aggregated totals when available)
   const totalCommitted = myOffers.reduce((s, o) => {
-    return s + (o.userBet?.amount || o.amount_offered || 0);
+    // Use grouped total if available, otherwise fall back to individual values
+    return s + (o.total_liquidity_deposited || o.userBet?.liquidity_deposited || o.userBet?.amount || o.amount_offered || 0);
   }, 0);
-  const totalMatched = myOffers.reduce((s, o) => s + (o.amount_matched || 0), 0);
-  const totalUnmatched = myOffers.reduce((s, o) => s + (o.amount_unmatched || 0), 0);
+  const totalMatched = myOffers.reduce((s, o) => s + (o.total_liquidity_matched || o.amount_matched || 0), 0);
+  const totalUnmatched = myOffers.reduce((s, o) => s + (o.total_liquidity_unmatched || o.amount_unmatched || 0), 0);
   const totalFeesEarned = totalMatched * 0.02; // 2% fee on matched portion
-  const totalClaimed = myOffers.filter((o) => o.status === 'claimed' || o.userBet?.status === 'claimed').reduce((s, o) => s + (o.userBet?.actual_payout || o.amount_matched || 0), 0);
-  const activeOffers = myOffers.filter((o) => o.status === 'open' || o.status === 'partially_matched');
+  const totalClaimed = myOffers.filter((o) => o.userBetStatus === 'claimed' || o.status === 'claimed' || o.userBet?.status === 'claimed').reduce((s, o) => s + (o.userBet?.actual_payout || o.amount_matched || 0), 0);
+  const activeOffers = myOffers.filter((o) => o.userBetStatus === 'open' || o.userBetStatus === 'active' || o.status === 'open' || o.status === 'partially_matched');
 
   const offersWithUserBet = myOffers;
   
@@ -1021,22 +1022,34 @@ export default function LpDashboard() {
                     {matchLpPositions.map((offer, idx) => {
                       const match = matches.find((m) => m.id === offer.match_id);
                       const bet = bets.find((b) => b.id === offer.bet_id || b.match_id === offer.match_id);
+                      
+                      // Use aggregated values for grouped positions
+                      const positionData = {
+                        ...offer,
+                        userBetId: offer.userBetId || offer.id,
+                        bet_winning_outcome: bet?.winning_outcome || match?.winner || '',
+                        // Override with grouped totals if available
+                        liquidity_deposited: offer.total_liquidity_deposited || offer.liquidity_deposited,
+                        liquidity_matched: offer.total_liquidity_matched || offer.liquidity_matched,
+                        liquidity_unmatched: offer.total_liquidity_unmatched || offer.liquidity_unmatched,
+                      };
+                      
                       console.log('[LpDashboard] Rendering Match LP position:', {
                         offer_id: offer.id,
                         userBetId: offer.userBetId,
                         offer_status: offer.status,
                         userBetStatus: offer.userBetStatus,
-                        userBet_status: offer.userBet?.status,
-                        bet_id: bet?.id,
-                        bet_winning_outcome: bet?.winning_outcome,
-                        match_winner: match?.winner,
-                        final_position_status: { ...offer, userBetId: offer.userBetId || offer.id }.status,
-                        final_position_userBetStatus: { ...offer, userBetId: offer.userBetId || offer.id }.userBetStatus
+                        is_grouped: !!offer._groupedTransactions,
+                        grouped_count: offer._groupedTransactions?.length || 1,
+                        total_liquidity_deposited: positionData.liquidity_deposited,
+                        total_liquidity_matched: positionData.liquidity_matched,
+                        total_liquidity_unmatched: positionData.liquidity_unmatched,
                       });
+                      
                       return (
                         <LpPositionCard
                           key={`match-${offer.id || offer.userBetId}`}
-                          position={{ ...offer, userBetId: offer.userBetId || offer.id, bet_winning_outcome: bet?.winning_outcome || match?.winner || '' }}
+                          position={positionData}
                           match={match}
                           bet={bet}
                           walletAddress={walletAddress}
