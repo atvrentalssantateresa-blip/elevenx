@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getTeamFlag } from '@/utils/flags';
 import { motion } from 'framer-motion';
 import { DollarSign, TrendingUp, Clock, CheckCircle, ArrowRight, Percent, CheckCircle2, Wallet, Trophy, Calendar, AlertCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -483,7 +484,13 @@ export default function LpPositionCard({ position, match, bet, walletAddress, on
                 'from-primary/20 to-primary/10 border-primary/30'}`
                 }>
                   <span className="text-xl filter drop-shadow-md">
-                    {isFutures ? (offer.outcome_flag || position.outcome_flag || '🏆') : offer.outcome === 'a' ? matchData.team_a_flag || '🏠' : offer.outcome === 'b' ? matchData.team_b_flag || '🏠' : '🤝'}
+                    {isFutures
+                      ? (offer.outcome_flag || position.outcome_flag || '🏆')
+                      : offer.outcome === 'a'
+                        ? (matchData.team_a_flag || getTeamFlag(matchData.team_a) || getTeamFlag(offer.outcome_label) || '🏳️')
+                        : offer.outcome === 'b'
+                          ? (matchData.team_b_flag || getTeamFlag(matchData.team_b) || getTeamFlag(offer.outcome_label) || '🏳️')
+                          : '🤝'}
                   </span>
                 </div>
               </div>
