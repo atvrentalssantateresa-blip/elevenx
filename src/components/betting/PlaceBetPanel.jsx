@@ -21,25 +21,16 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
   const { isConnected, connect, isConnecting, walletAddress } = useWallet();
   const queryClient = useQueryClient();
 
-  // Fetch all LP offers for this bet
+  // Fetch all LP offers for this bet — only active offers with real liquidity
   const { data: allOffers = [], refetch: refetchOffers, isLoading: isLoadingOffers } = useQuery({
     queryKey: ['allOffers', bet?.id],
     queryFn: async () => {
-      console.log('[PlaceBetPanel] Fetching offers for bet:', bet?.id);
       const offers = await base44.entities.BetOffer.filter({ bet_id: bet?.id });
-      console.log('[PlaceBetPanel] RAW BetOffers fetched:', {
-        bet_id: bet?.id,
-        count: offers.length,
-        offers: offers.map((o) => ({
-          id: o.id,
-          outcome: o.outcome,
-          status: o.status,
-          amount_unmatched: o.amount_unmatched,
-          amount_offered: o.amount_offered,
-          lp_wallet_address: o.lp_wallet_address
-        }))
-      });
-      return offers;
+      // Filter to only offers that have real available liquidity
+      return offers.filter(o =>
+        (o.status === 'open' || o.status === 'partially_matched') &&
+        (o.amount_unmatched || 0) > 0
+      );
     },
     enabled: !!bet?.id,
     staleTime: 3000,
@@ -54,7 +45,7 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
     betId: bet?.id
   });
 
-  // For BETTORS (mode='match'): Check total available LP liquidity for selected outcome OR selected offer
+  // allOffers already filtered to open/partially_matched with amount_unmatched > 0 in queryFn
   const validOffers = Array.isArray(allOffers) ? allOffers : [];
   
   console.log('[PlaceBetPanel] === LIQUIDITY DEBUG ===', {
@@ -351,6 +342,10 @@ export default function PlaceBetPanel({ bet, matchId, mode = 'match', selectedOu
       }
       if (res.error) {
         console.error('[PlaceBetPanel] Error in response:', res.error);
+        // If the offer is stale on-chain, refresh the list so the UI updates
+        if (res.offer_stale) {
+          await refetchOffers();
+        }
         throw new Error(res.error);
       }
       if (!res.solana_instruction) {
