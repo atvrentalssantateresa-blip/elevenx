@@ -225,52 +225,43 @@ export default function SolanaTransactionSigner({ instruction, amount, userBetId
         transaction.add(createMarketIx);
         
       } else if (instruction.instruction_type === 'settle_market' || instruction.instruction_type === 'settle_market_force' || instruction.instruction_type === 'test_announce_winner') {
-        // settle_market — supports either a single instruction OR a 2-ix array (Ed25519 + settle_with_attestation)
+        // settle_market — always iterate instruction.instructions[] array (multi-ix: Ed25519 first, then settle)
         console.log('=== SETTLE_MARKET INSTRUCTION ===');
+        console.log('[settle_market] Full instruction object:', JSON.stringify({ instruction_type: instruction.instruction_type, programId: instruction.programId, instructionsCount: instruction.instructions?.length }, null, 2));
 
-        if (instruction.instructions && instruction.instructions.length > 0) {
-          // Multi-instruction path (Ed25519 sig verify + settle_with_attestation)
-          for (let ixIdx = 0; ixIdx < instruction.instructions.length; ixIdx++) {
-            const ix = instruction.instructions[ixIdx];
-            
-            if (!ix.programId || typeof ix.programId !== 'string') {
-              throw new Error(`settle_market ix[${ixIdx}]: missing or invalid programId (got ${JSON.stringify(ix.programId)})`);
-            }
-            if (!ix.instruction_data) {
-              throw new Error(`settle_market ix[${ixIdx}]: missing instruction_data`);
-            }
-            
-            const programId = new PublicKey(ix.programId);
-            const data = Buffer.from(ix.instruction_data, 'base64');
-            
-            const keys = (ix.keys || []).map((k, ki) => {
-              const rawPubkey = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
-              if (!rawPubkey || typeof rawPubkey !== 'string') {
-                throw new Error(`settle_market ix[${ixIdx}] key[${ki}]: invalid pubkey "${rawPubkey}" (original: "${k.pubkey}")`);
-              }
-              return {
-                pubkey: new PublicKey(rawPubkey),
-                isSigner: k.isSigner,
-                isWritable: k.isWritable,
-              };
-            });
-            
-            console.log(`[settle_market] ix[${ixIdx}] programId=${ix.programId} keys=${keys.length} dataLen=${data.length}`);
-            transaction.add(new TransactionInstruction({ keys, programId, data }));
+        // Normalise: prefer .instructions array; fall back to wrapping single-ix fields
+        const ixList = (instruction.instructions && instruction.instructions.length > 0)
+          ? instruction.instructions
+          : [{ programId: instruction.programId, instruction_data: instruction.instruction_data, keys: instruction.keys || [] }];
+
+        for (let ixIdx = 0; ixIdx < ixList.length; ixIdx++) {
+          const ix = ixList[ixIdx];
+
+          // Guard: programId must be a base58 string of at least 32 chars
+          if (typeof ix.programId !== 'string' || ix.programId.length < 32) {
+            throw new Error(`settle_market ix[${ixIdx}]: invalid programId "${ix.programId}" (expected base58 string)`);
           }
-        } else {
-          // Single-instruction path (force_void_market or legacy)
-          const programId = new PublicKey(instruction.programId);
-          const data = Buffer.from(instruction.instruction_data, 'base64');
-          if (!instruction.keys || instruction.keys.length === 0) {
-            throw new Error('settle_market instruction missing keys array');
+          if (!ix.instruction_data) {
+            throw new Error(`settle_market ix[${ixIdx}]: missing instruction_data`);
           }
-          const keys = instruction.keys.map(k => ({
-            pubkey: new PublicKey(k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey),
-            isSigner: k.isSigner,
-            isWritable: k.isWritable,
-          }));
-          console.log('[settle_market] Single ix keys:', keys.map(k => k.pubkey.toBase58()));
+
+          const programId = new PublicKey(ix.programId);
+          const data = Buffer.from(ix.instruction_data, 'base64');
+
+          const keys = (ix.keys || []).map((k, ki) => {
+            const rawPubkey = k.pubkey === 'SIGNER_WALLET' ? provider.publicKey.toBase58() : k.pubkey;
+            if (typeof rawPubkey !== 'string' || rawPubkey.length < 32) {
+              console.error(`[settle_market] ix[${ixIdx}] key[${ki}]: invalid pubkey field="${JSON.stringify(k)}" resolved="${rawPubkey}"`);
+              throw new Error(`settle_market ix[${ixIdx}] key[${ki}]: invalid pubkey "${rawPubkey}"`);
+            }
+            return {
+              pubkey: new PublicKey(rawPubkey),
+              isSigner: !!k.isSigner,
+              isWritable: !!k.isWritable,
+            };
+          });
+
+          console.log(`[settle_market] ix[${ixIdx}] programId=${ix.programId} keys=${keys.length} dataLen=${data.length}`);
           transaction.add(new TransactionInstruction({ keys, programId, data }));
         }
         
